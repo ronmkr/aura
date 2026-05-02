@@ -2,7 +2,7 @@
 
 use crate::{Error, Result};
 use socket2::{Domain, Protocol, Socket, Type};
-use std::net::{IpAddr, SocketAddr};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use tokio::net::{TcpStream, UdpSocket};
 
 /// Binds a socket to a specific network interface or local IP.
@@ -71,7 +71,10 @@ pub async fn bind_udp_bound(
     interface: Option<&str>,
     local_addr: Option<IpAddr>,
 ) -> Result<UdpSocket> {
-    let bind_addr = SocketAddr::new(local_addr.unwrap_or("0.0.0.0".parse().unwrap()), local_port);
+    let bind_addr = SocketAddr::new(
+        local_addr.unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
+        local_port,
+    );
     let domain = if bind_addr.is_ipv4() {
         Domain::IPV4
     } else {

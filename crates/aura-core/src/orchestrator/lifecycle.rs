@@ -18,7 +18,7 @@ pub(crate) async fn handle_incoming_peer(
     addr: std::net::SocketAddr,
     bt_registry: std::collections::HashMap<[u8; 20], Arc<BtTask>>,
     storage_tx: mpsc::Sender<StorageRequest>,
-    subtask_tx: mpsc::UnboundedSender<SubTaskEvent>,
+    subtask_tx: mpsc::Sender<SubTaskEvent>,
     my_peer_id: [u8; 20],
     cancellation_tokens: std::collections::HashMap<TaskId, CancellationToken>,
     local_addr: Option<std::net::IpAddr>,
@@ -137,17 +137,14 @@ impl Orchestrator {
                             .connect_timeout(Some(config.network.connect_timeout_secs))
                             .proxy(config.network.proxy.clone())
                             .build_http();
-
                         match worker.resolve_metadata().await {
                             Ok(m) => {
-                                let _ = subtask_tx.send(SubTaskEvent::Matured(id, sub_id, m));
+                                let _ = subtask_tx.send(SubTaskEvent::Matured(id, sub_id, m)).await;
                             }
                             Err(e) => {
-                                let _ = subtask_tx.send(SubTaskEvent::Failed(
-                                    id,
-                                    sub_id,
-                                    e.to_string(),
-                                ));
+                                let _ = subtask_tx
+                                    .send(SubTaskEvent::Failed(id, sub_id, e.to_string()))
+                                    .await;
                             }
                         }
                     }
@@ -155,17 +152,14 @@ impl Orchestrator {
                         let worker = crate::worker::WorkerBuilder::new(uri)
                             .local_addr(local_addr)
                             .build_ftp();
-
                         match worker.resolve_metadata().await {
                             Ok(m) => {
-                                let _ = subtask_tx.send(SubTaskEvent::Matured(id, sub_id, m));
+                                let _ = subtask_tx.send(SubTaskEvent::Matured(id, sub_id, m)).await;
                             }
                             Err(e) => {
-                                let _ = subtask_tx.send(SubTaskEvent::Failed(
-                                    id,
-                                    sub_id,
-                                    e.to_string(),
-                                ));
+                                let _ = subtask_tx
+                                    .send(SubTaskEvent::Failed(id, sub_id, e.to_string()))
+                                    .await;
                             }
                         }
                     }
@@ -188,23 +182,23 @@ impl Orchestrator {
                                     Arc::new(t)
                                 }
                                 Err(e) => {
-                                    let _ = subtask_tx.send(SubTaskEvent::Failed(
-                                        id,
-                                        sub_id,
-                                        e.to_string(),
-                                    ));
+                                    let _ = subtask_tx
+                                        .send(SubTaskEvent::Failed(id, sub_id, e.to_string()))
+                                        .await;
                                     return;
                                 }
                             }
                         };
 
                         let info_hash = bt_task.state.torrent.info_hash().unwrap_or([0; 20]);
-                        let _ = subtask_tx.send(SubTaskEvent::BtTaskRegistered(
-                            id,
-                            sub_id,
-                            info_hash,
-                            bt_task.clone(),
-                        ));
+                        let _ = subtask_tx
+                            .send(SubTaskEvent::BtTaskRegistered(
+                                id,
+                                sub_id,
+                                info_hash,
+                                bt_task.clone(),
+                            ))
+                            .await;
 
                         let total_length = bt_task.state.torrent.total_length();
                         let metadata = Metadata {
@@ -212,7 +206,9 @@ impl Orchestrator {
                             total_length: Some(total_length),
                             name: Some(bt_task.state.torrent.info.name.clone()),
                         };
-                        let _ = subtask_tx.send(SubTaskEvent::Matured(id, sub_id, metadata));
+                        let _ = subtask_tx
+                            .send(SubTaskEvent::Matured(id, sub_id, metadata))
+                            .await;
 
                         // Start tracker loop
                         let tracker_task = bt_task.clone();
@@ -380,7 +376,9 @@ impl Orchestrator {
                 let subtask_tx_progress = subtask_tx.clone();
                 tokio::spawn(async move {
                     while let Some(bytes) = progress_rx.recv().await {
-                        let _ = subtask_tx_progress.send(SubTaskEvent::Downloaded(meta_id, bytes));
+                        let _ = subtask_tx_progress
+                            .send(SubTaskEvent::Downloaded(meta_id, bytes))
+                            .await;
                     }
                 });
 
@@ -411,11 +409,11 @@ impl Orchestrator {
                                                 segment: piece.segment,
                                                 data: piece.data,
                                             }).await;
-                                            let _ = subtask_tx.send(SubTaskEvent::RangeFinished(meta_id, sub_id, range));
+                                            let _ = subtask_tx.send(SubTaskEvent::RangeFinished(meta_id, sub_id, range)).await;
                                         }
                                         Err(e) => {
                                             debug!(%meta_id, %sub_id, error = %e, "Range fetch failed");
-                                            let _ = subtask_tx.send(SubTaskEvent::Failed(meta_id, sub_id, e.to_string()));
+                                            let _ = subtask_tx.send(SubTaskEvent::Failed(meta_id, sub_id, e.to_string())).await;
                                         }
                                     }
                                 }
@@ -442,11 +440,11 @@ impl Orchestrator {
                                                 segment: piece.segment,
                                                 data: piece.data,
                                             }).await;
-                                            let _ = subtask_tx.send(SubTaskEvent::RangeFinished(meta_id, sub_id, range));
+                                            let _ = subtask_tx.send(SubTaskEvent::RangeFinished(meta_id, sub_id, range)).await;
                                         }
                                         Err(e) => {
                                             debug!(%meta_id, %sub_id, error = %e, "Range fetch failed");
-                                            let _ = subtask_tx.send(SubTaskEvent::Failed(meta_id, sub_id, e.to_string()));
+                                            let _ = subtask_tx.send(SubTaskEvent::Failed(meta_id, sub_id, e.to_string())).await;
                                         }
                                     }
                                 }

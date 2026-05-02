@@ -169,6 +169,7 @@ dependencies = [
  "igd-next",
  "local-ip-address",
  "notify",
+ "percent-encoding",
  "rand 0.8.6",
  "regex",
  "reqwest",

@@ -70,7 +70,7 @@ impl Orchestrator {
         }
 
         if initialized {
-            let meta_task = self.tasks.get(&meta_id).unwrap();
+            let meta_task = self.tasks.get(&meta_id).expect("Task must exist");
             let _ = self.event_tx.send(Event::MetadataResolved {
                 id: meta_id,
                 final_uri: metadata.final_uri,

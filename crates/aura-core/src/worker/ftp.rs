@@ -55,7 +55,8 @@ impl FtpWorker {
 
     pub async fn resolve_metadata(&self) -> Result<Metadata> {
         let mut ftp: AsyncFtpStream = self.connect().await?;
-        let url = Url::parse(&self.uri).unwrap();
+        let url = Url::parse(&self.uri)
+            .map_err(|e| Error::Protocol(format!("Invalid FTP URL: {}", e)))?;
         let path = url.path().trim_start_matches('/');
 
         let size = ftp
@@ -87,7 +88,8 @@ impl ProtocolWorker for FtpWorker {
         progress: Option<ProgressSender>,
     ) -> Result<PieceData> {
         let mut ftp: AsyncFtpStream = self.connect().await?;
-        let url = Url::parse(&self.uri).unwrap();
+        let url = Url::parse(&self.uri)
+            .map_err(|e| Error::Protocol(format!("Invalid FTP URL: {}", e)))?;
         let path = url.path().trim_start_matches('/');
 
         // Set restart point for range-based download
