@@ -27,6 +27,7 @@ pub struct Config {
     pub bandwidth: BandwidthConfig,
     pub bittorrent: BitTorrentConfig,
     pub storage: StorageConfig,
+    pub vpn: VpnConfig,
     pub general: GeneralConfig,
 }
 
@@ -43,6 +44,9 @@ pub struct NetworkConfig {
     pub connect_timeout_secs: u64,
     pub tcp_keepalive_secs: u64,
     pub proxy: Option<String>,
+    pub max_redirects: usize,
+    pub http_retry_count: u32,
+    pub http_retry_delay_secs: u64,
 }
 
 impl Default for NetworkConfig {
@@ -58,6 +62,9 @@ impl Default for NetworkConfig {
             connect_timeout_secs: 30,
             tcp_keepalive_secs: 60,
             proxy: None,
+            max_redirects: 20,
+            http_retry_count: 5,
+            http_retry_delay_secs: 2,
         }
     }
 }
@@ -70,6 +77,7 @@ pub struct BandwidthConfig {
     pub per_task_download_limit: u64,
     pub per_task_upload_limit: u64,
     pub max_concurrent_downloads: usize,
+    pub max_active_tasks: usize,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -85,6 +93,8 @@ pub struct BitTorrentConfig {
     pub seed_ratio: f32,
     pub seed_time_mins: u32,
     pub endgame_mode_enabled: bool,
+    pub min_split_size_mb: u64,
+    pub max_connections_per_torrent: usize,
 }
 
 impl Default for BitTorrentConfig {
@@ -100,6 +110,8 @@ impl Default for BitTorrentConfig {
             seed_ratio: 1.0,
             seed_time_mins: 0,
             endgame_mode_enabled: true,
+            min_split_size_mb: 20,
+            max_connections_per_torrent: 100,
         }
     }
 }
@@ -112,6 +124,8 @@ pub struct StorageConfig {
     pub preallocate: bool,
     pub allocation_mode: String, // "none", "prealloc", "falloc"
     pub save_session_interval_secs: u64,
+    pub read_ahead_kb: u32,
+    pub write_buffer_kb: u32,
 }
 
 impl Default for StorageConfig {
@@ -122,6 +136,30 @@ impl Default for StorageConfig {
             preallocate: true,
             allocation_mode: "falloc".to_string(),
             save_session_interval_secs: 10,
+            read_ahead_kb: 128,
+            write_buffer_kb: 256,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct VpnConfig {
+    pub type_name: Option<String>, // "openvpn", "wireguard"
+    pub profile_path: Option<String>,
+    pub auto_connect: bool,
+    pub check_interval_secs: u64,
+    pub force_tunnel: bool,
+}
+
+impl Default for VpnConfig {
+    fn default() -> Self {
+        Self {
+            type_name: None,
+            profile_path: None,
+            auto_connect: false,
+            check_interval_secs: 5,
+            force_tunnel: true,
         }
     }
 }
@@ -133,6 +171,7 @@ pub struct GeneralConfig {
     pub log_path: Option<String>,
     pub check_integrity: bool,
     pub event_poll_interval_ms: u64,
+    pub daemon_mode: bool,
 }
 
 impl Default for GeneralConfig {
@@ -142,6 +181,7 @@ impl Default for GeneralConfig {
             log_path: None,
             check_integrity: true,
             event_poll_interval_ms: 500,
+            daemon_mode: false,
         }
     }
 }

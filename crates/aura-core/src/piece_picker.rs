@@ -36,6 +36,10 @@ impl PiecePicker {
         self.in_progress.set(piece_idx, false);
     }
 
+    pub fn release_piece(&mut self, piece_idx: usize) {
+        self.in_progress.set(piece_idx, false);
+    }
+
     /// Records the bitfield of a new peer or updates an existing one.
     pub fn add_peer_bitfield(&mut self, addr: String, bitfield: Bitfield) {
         // If we already had this peer, subtract its old bitfield counts

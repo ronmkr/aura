@@ -15,7 +15,8 @@ pub struct Info {
     pub name: String,
     #[serde(rename = "piece length")]
     pub piece_length: u64,
-    pub pieces: serde_bencode::value::Value,
+    #[serde(with = "serde_bytes")]
+    pub pieces: Vec<u8>,
     pub length: Option<u64>,
     pub files: Option<Vec<File>>,
 }
@@ -60,25 +61,17 @@ impl Torrent {
     }
 
     pub fn pieces_count(&self) -> usize {
-        match &self.info.pieces {
-            serde_bencode::value::Value::Bytes(b) => b.len() / 20,
-            _ => 0,
-        }
+        self.info.pieces.len() / 20
     }
 
     pub fn piece_hash(&self, index: usize) -> Result<[u8; 20]> {
-        match &self.info.pieces {
-            serde_bencode::value::Value::Bytes(b) => {
-                let start = index * 20;
-                if start + 20 > b.len() {
-                    return Err(Error::Protocol("Piece index out of range".to_string()));
-                }
-                let mut hash = [0u8; 20];
-                hash.copy_from_slice(&b[start..start + 20]);
-                Ok(hash)
-            }
-            _ => Err(Error::Protocol("Invalid pieces format".to_string())),
+        let start = index * 20;
+        if start + 20 > self.info.pieces.len() {
+            return Err(Error::Protocol("Piece index out of range".to_string()));
         }
+        let mut hash = [0u8; 20];
+        hash.copy_from_slice(&self.info.pieces[start..start + 20]);
+        Ok(hash)
     }
 }
 
@@ -91,7 +84,7 @@ mod tests {
         let info = Info {
             name: "test.txt".to_string(),
             piece_length: 1024,
-            pieces: serde_bencode::value::Value::Bytes(vec![0; 20]),
+            pieces: vec![0; 20],
             length: Some(1024),
             files: None,
         };

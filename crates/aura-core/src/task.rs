@@ -43,6 +43,7 @@ pub struct SubTask {
     pub total_length: u64,
     pub completed_length: u64,
     pub active: bool,
+    pub phase: DownloadPhase,
 }
 
 /// The high-level representation of a logical download operation.
@@ -114,7 +115,7 @@ impl MetaTask {
         }
     }
 
-    pub fn initialize_ranges(&mut self, num_ranges: usize) {
+    pub fn generate_ranges(&mut self, num_ranges: usize) {
         if self.total_length == 0 {
             return;
         }
@@ -145,6 +146,7 @@ impl MetaTask {
             total_length: 0,
             completed_length: 0,
             active: true,
+            phase: DownloadPhase::MetadataExchange,
         });
         sub_id
     }
@@ -158,6 +160,18 @@ impl MetaTask {
             return Some(range);
         }
         None
+    }
+
+    pub fn mark_range_complete(&mut self, sub_id: TaskId, range: Range) {
+        self.in_flight_ranges.retain(|(sid, r)| *sid != sub_id || *r != range);
+        if let Some(sub) = self.subtasks.iter_mut().find(|s| s.id == sub_id) {
+            sub.assigned_ranges.retain(|r| *r != range);
+            sub.completed_length += range.length();
+        }
+    }
+
+    pub fn is_complete(&self) -> bool {
+        self.completed_length >= self.total_length && self.total_length > 0
     }
 
     pub fn progress(&self) -> f64 {

@@ -1,0 +1,63 @@
+# Aura: High-Performance Download Engine (Complete Example Configuration)
+
+[network]
+# interface = "tun0"                   # Bind to a specific network interface (e.g., VPN tunnel)
+# local_addr = "192.168.1.100"         # Bind to a specific local IP address
+listen_port = 6881                     # Port for incoming BitTorrent connections
+dht_port = 6881                        # Port for DHT (UDP)
+rpc_port = 6800                        # Port for JSON-RPC 2.0 server
+# rpc_secret = "your_secret_here"      # Optional secret for RPC authentication
+user_agent = "Aura/0.1.0"              # Custom User-Agent string
+connect_timeout_secs = 30              # Connection timeout for all protocols
+tcp_keepalive_secs = 60                # TCP keepalive interval
+# proxy = "socks5://127.0.0.1:9050"    # Optional global proxy (HTTP/SOCKS5 supported)
+max_redirects = 20                     # Maximum HTTP redirect depth
+http_retry_count = 5                   # Number of retries for transient HTTP errors
+http_retry_delay_secs = 2              # Delay between HTTP retries
+
+[bandwidth]
+# All limits are in bytes per second. 0 means unlimited.
+global_download_limit = 0              # Total download speed cap (e.g., 5242880 for 5MiB/s)
+global_upload_limit = 0                # Total upload speed cap
+per_task_download_limit = 0            # Speed cap per individual download task
+per_task_upload_limit = 0              # Upload cap per individual download task
+max_concurrent_downloads = 5           # Max active downloads (queued tasks stay in 'Waiting')
+max_active_tasks = 100                 # Total tasks allowed in the engine (active + paused)
+
+[bittorrent]
+enabled = true                         # Global BitTorrent protocol toggle
+max_peers_per_torrent = 50             # Max connections per torrent
+max_overall_peers = 200                # Total global peer limit
+request_pipeline_size = 10             # Number of in-flight requests per peer (pipelining)
+dht_enabled = true                     # Enable Distributed Hash Table (BEP 5)
+pex_enabled = true                     # Enable Peer Exchange (BEP 11)
+lpd_enabled = false                    # Enable Local Peer Discovery (Multicast)
+seed_ratio = 1.0                       # Target seed ratio (1.0 = upload as much as downloaded)
+seed_time_mins = 0                     # Seed time limit in minutes (0 for infinite)
+endgame_mode_enabled = true            # Parallel fetch final blocks from all peers (ADR 0035)
+min_split_size_mb = 20                 # Minimum piece/segment size for splitting
+max_connections_per_torrent = 100      # Hard cap on connections for a single swarm
+
+[storage]
+download_dir = "."                     # Default directory for finished files
+cache_size_mb = 16                     # In-memory write-back cache size (reduces disk seek)
+preallocate = true                     # Reserve disk space before starting (prevents fragmentation)
+allocation_mode = "falloc"             # "none", "prealloc" (zeros), "falloc" (sparse/fast)
+save_session_interval_secs = 10        # Interval to sync .aura control files to disk
+read_ahead_kb = 128                    # Size of read-ahead buffer for seeding
+write_buffer_kb = 256                  # Size of sequential write aggregation buffer
+
+[vpn]
+# Native VPN integration (ADR 0038)
+# type_name = "wireguard"              # "openvpn" or "wireguard"
+# profile_path = "/etc/wireguard/wg0.conf"
+auto_connect = false                   # Attempt to trigger VPN connection on startup
+check_interval_secs = 5                # Frequency of tunnel health checks
+force_tunnel = true                    # Refuse any traffic if VPN tunnel is not confirmed
+
+[general]
+log_level = "info"                     # "trace", "debug", "info", "warn", "error"
+# log_path = "aura.log"                # Optional path to log file (default is stdout)
+check_integrity = true                 # Perform piece hash verification (SHA-1)
+event_poll_interval_ms = 500           # Internal event loop sleep time
+daemon_mode = false                    # Start in background as a system service
