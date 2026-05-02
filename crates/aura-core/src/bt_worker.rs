@@ -350,6 +350,7 @@ impl BtWorker {
         self.run_loop_with_stream(stream, meta_id, sub_id, task, storage_tx, subtask_tx, token).await
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn run_loop_with_stream(
         mut self,
         stream: TcpStream,
@@ -490,6 +491,7 @@ impl BtWorker {
         res
     }
 
+    #[allow(clippy::too_many_arguments)]
     async fn trigger_request<S>(
         &mut self, 
         framed: &mut Framed<S, PeerCodec>, 

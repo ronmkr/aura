@@ -38,6 +38,12 @@ impl KBucket {
     }
 }
 
+impl Default for KBucket {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct KrpcMessage {
     #[serde(rename = "t")]
@@ -134,15 +140,15 @@ impl RoutingTable {
 
     pub fn distance(&self, id: &NodeId) -> u128 {
         let mut dist = 0u128;
-        for i in 0..20 {
-            dist = (dist << 8) | (self.my_id[i] ^ id[i]) as u128;
+        for (a, b) in self.my_id.iter().zip(id.iter()) {
+            dist = (dist << 8) | (a ^ b) as u128;
         }
         dist
     }
 
     pub fn bucket_index(&self, id: &NodeId) -> usize {
-        for i in 0..20 {
-            let xor = self.my_id[i] ^ id[i];
+        for (i, (a, b)) in self.my_id.iter().zip(id.iter()).enumerate() {
+            let xor = a ^ b;
             if xor != 0 {
                 return i * 8 + xor.leading_zeros() as usize;
             }
@@ -163,8 +169,8 @@ impl RoutingTable {
 
         all_nodes.sort_by_key(|n| {
             let mut dist = 0u128;
-            for i in 0..20 {
-                dist = (dist << 8) | (n.id[i] ^ target[i]) as u128;
+            for (a, b) in n.id.iter().zip(target.iter()) {
+                dist = (dist << 8) | (a ^ b) as u128;
             }
             dist
         });
@@ -196,7 +202,7 @@ pub struct DhtActor {
 }
 
 impl DhtActor {
-    pub async fn new(addr: &str, my_id: NodeId, command_rx: mpsc::Receiver<DhtCommand>, local_addr: Option<std::net::IpAddr>) -> Result<Self> {
+    pub async fn new(_addr: &str, my_id: NodeId, command_rx: mpsc::Receiver<DhtCommand>, local_addr: Option<std::net::IpAddr>) -> Result<Self> {
         let socket = crate::net_util::bind_udp_bound(6881, None, local_addr).await
             .map_err(|e| Error::Config(format!("Failed to bind DHT UDP socket: {}", e)))?;
         Ok(Self {

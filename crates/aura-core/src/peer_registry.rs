@@ -69,6 +69,12 @@ impl PeerRegistry {
     }
 }
 
+impl Default for PeerRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -13,11 +13,15 @@ pub struct Bitfield {
 impl Bitfield {
     /// Creates a new Bitfield initialized to all zeros.
     pub fn new(num_pieces: usize) -> Self {
-        let num_bytes = (num_pieces + 7) / 8;
+        let num_bytes = num_pieces.div_ceil(8);
         Self {
-            bits: vec![0; num_bytes],
+            bits: vec![0u8; num_bytes],
             num_pieces,
         }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 
     /// Sets the value of a bit at the given index.
