@@ -1,10 +1,10 @@
 //! tracker: Implementation of BitTorrent HTTP and UDP trackers.
 
-use std::net::Ipv4Addr;
-use crate::{Result, Error};
 use crate::torrent::Torrent;
-use serde::{Deserialize, Serialize};
+use crate::{Error, Result};
 use futures_util::future::join_all;
+use serde::{Deserialize, Serialize};
+use std::net::Ipv4Addr;
 
 pub mod udp;
 
@@ -24,21 +24,30 @@ pub struct TrackerClient {
 }
 
 impl TrackerClient {
-    pub fn new(peer_id: [u8; 20], port: u16, local_addr: Option<std::net::IpAddr>, user_agent: Option<String>) -> Self {
+    pub fn new(
+        peer_id: [u8; 20],
+        port: u16,
+        local_addr: Option<std::net::IpAddr>,
+        user_agent: Option<String>,
+    ) -> Self {
         let mut headers = reqwest::header::HeaderMap::new();
-        let ua = user_agent.clone().unwrap_or_else(|| "Aura/0.1.0".to_string());
-        headers.insert(reqwest::header::USER_AGENT, reqwest::header::HeaderValue::from_str(&ua).unwrap_or_else(|_| reqwest::header::HeaderValue::from_static("Aura/0.1.0")));
-        
-        let mut builder = reqwest::Client::builder()
-            .default_headers(headers);
+        let ua = user_agent
+            .clone()
+            .unwrap_or_else(|| "Aura/0.1.0".to_string());
+        headers.insert(
+            reqwest::header::USER_AGENT,
+            reqwest::header::HeaderValue::from_str(&ua)
+                .unwrap_or_else(|_| reqwest::header::HeaderValue::from_static("Aura/0.1.0")),
+        );
+
+        let mut builder = reqwest::Client::builder().default_headers(headers);
 
         if let Some(addr) = local_addr {
             builder = builder.local_address(addr);
         }
 
         Self {
-            client: builder.build()
-                .unwrap_or_else(|_| reqwest::Client::new()),
+            client: builder.build().unwrap_or_else(|_| reqwest::Client::new()),
             peer_id,
             port,
             local_addr,
@@ -76,7 +85,9 @@ impl TrackerClient {
         if success {
             Ok(all_peers)
         } else {
-            Err(Error::Protocol("All tracker announcements failed".to_string()))
+            Err(Error::Protocol(
+                "All tracker announcements failed".to_string(),
+            ))
         }
     }
 
@@ -86,7 +97,10 @@ impl TrackerClient {
         } else if url.starts_with("udp") {
             self.announce_udp(&url, torrent).await
         } else {
-            Err(Error::Protocol(format!("Unsupported tracker protocol: {}", url)))
+            Err(Error::Protocol(format!(
+                "Unsupported tracker protocol: {}",
+                url
+            )))
         }
     }
 
@@ -104,18 +118,28 @@ impl TrackerClient {
             torrent.total_length()
         );
 
-        let bytes = self.client.get(&url).send().await
+        let bytes = self
+            .client
+            .get(&url)
+            .send()
+            .await
             .map_err(|e| Error::Protocol(format!("Tracker request failed: {}", e)))?
-            .bytes().await
+            .bytes()
+            .await
             .map_err(|e| Error::Protocol(format!("Failed to read tracker response: {}", e)))?;
-        
+
         let res_val: serde_bencode::value::Value = serde_bencode::from_bytes(&bytes)
             .map_err(|e| Error::Protocol(format!("Failed to bdecode tracker response: {}", e)))?;
 
         if let serde_bencode::value::Value::Dict(dict) = res_val {
-            if let Some(serde_bencode::value::Value::Bytes(reason)) = dict.get(b"failure reason".as_slice()) {
+            if let Some(serde_bencode::value::Value::Bytes(reason)) =
+                dict.get(b"failure reason".as_slice())
+            {
                 let reason_str = String::from_utf8_lossy(reason).to_string();
-                return Err(Error::Protocol(format!("Tracker reported failure: {}", reason_str)));
+                return Err(Error::Protocol(format!(
+                    "Tracker reported failure: {}",
+                    reason_str
+                )));
             }
 
             if let Some(peers) = dict.get(b"peers".as_slice()) {
@@ -123,7 +147,9 @@ impl TrackerClient {
             }
         }
 
-        Err(Error::Protocol("Invalid tracker response format (missing peers)".to_string()))
+        Err(Error::Protocol(
+            "Invalid tracker response format (missing peers)".to_string(),
+        ))
     }
 
     pub(crate) fn parse_peers(&self, peers_val: serde_bencode::value::Value) -> Result<Vec<Peer>> {
@@ -132,12 +158,16 @@ impl TrackerClient {
                 let mut peers = Vec::new();
                 for p in list {
                     if let serde_bencode::value::Value::Dict(dict) = p {
-                        let ip = if let Some(serde_bencode::value::Value::Bytes(b)) = dict.get(b"ip".as_slice()) {
+                        let ip = if let Some(serde_bencode::value::Value::Bytes(b)) =
+                            dict.get(b"ip".as_slice())
+                        {
                             String::from_utf8_lossy(b).to_string()
                         } else {
                             continue;
                         };
-                        let port = if let Some(serde_bencode::value::Value::Int(p)) = dict.get(b"port".as_slice()) {
+                        let port = if let Some(serde_bencode::value::Value::Int(p)) =
+                            dict.get(b"port".as_slice())
+                        {
                             *p as u16
                         } else {
                             continue;
@@ -151,9 +181,7 @@ impl TrackerClient {
                 }
                 Ok(peers)
             }
-            serde_bencode::value::Value::Bytes(bytes) => {
-                self.parse_compact_peers_raw(&bytes)
-            }
+            serde_bencode::value::Value::Bytes(bytes) => self.parse_compact_peers_raw(&bytes),
             _ => Err(Error::Protocol("Invalid peers format".to_string())),
         }
     }
@@ -190,16 +218,18 @@ mod tests {
     #[test]
     fn test_parse_non_compact_peers() {
         let client = TrackerClient::new([0; 20], 6881, None, None);
-        
+
         use std::collections::HashMap;
         let mut peer_dict = HashMap::new();
-        peer_dict.insert(b"ip".to_vec(), serde_bencode::value::Value::Bytes(b"127.0.0.1".to_vec()));
+        peer_dict.insert(
+            b"ip".to_vec(),
+            serde_bencode::value::Value::Bytes(b"127.0.0.1".to_vec()),
+        );
         peer_dict.insert(b"port".to_vec(), serde_bencode::value::Value::Int(6881));
-        
-        let peers_val = serde_bencode::value::Value::List(vec![
-            serde_bencode::value::Value::Dict(peer_dict)
-        ]);
-        
+
+        let peers_val =
+            serde_bencode::value::Value::List(vec![serde_bencode::value::Value::Dict(peer_dict)]);
+
         let peers = client.parse_peers(peers_val).unwrap();
         assert_eq!(peers.len(), 1);
         assert_eq!(peers[0].ip, "127.0.0.1");

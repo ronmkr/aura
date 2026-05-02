@@ -23,14 +23,17 @@ impl BufferPool {
     /// Acquires a buffer from the pool or allocates a new one if empty.
     pub fn acquire(&self) -> BytesMut {
         let mut guard = self.available.lock().unwrap();
-        guard.pop_front().unwrap_or_else(|| BytesMut::with_capacity(self.chunk_size))
+        guard
+            .pop_front()
+            .unwrap_or_else(|| BytesMut::with_capacity(self.chunk_size))
     }
 
     /// Returns a buffer to the pool for reuse.
     pub fn release(&self, mut buffer: BytesMut) {
         buffer.clear();
         let mut guard = self.available.lock().unwrap();
-        if guard.len() < 100 { // Limit pool growth
+        if guard.len() < 100 {
+            // Limit pool growth
             guard.push_back(buffer);
         }
     }
@@ -43,12 +46,12 @@ mod tests {
     #[test]
     fn test_buffer_pool_reuse() {
         let pool = BufferPool::new(1024, 1);
-        
+
         let buf1 = pool.acquire();
         assert_eq!(buf1.capacity(), 1024);
-        
+
         pool.release(buf1);
-        
+
         let buf2 = pool.acquire();
         assert_eq!(buf2.capacity(), 1024);
         // In a real test we'd check pointers to ensure it's the SAME buffer,

@@ -122,7 +122,7 @@ mod tests {
         bf.set(0, true);
         bf.set(7, true);
         bf.set(8, true);
-        
+
         let bytes = bf.as_bytes();
         // 10 pieces = 2 bytes (8 + 2 bits)
         assert_eq!(bytes.len(), 2);
@@ -130,7 +130,7 @@ mod tests {
         assert_eq!(bytes[0], 0b10000001);
         // Byte 1: 10000000 (128)
         assert_eq!(bytes[1], 0b10000000);
-        
+
         let bf2 = Bitfield::from_bytes(&bytes, 10);
         assert!(bf2.get(0));
         assert!(bf2.get(7));

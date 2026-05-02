@@ -1,5 +1,5 @@
+use crate::{Error, Result};
 use serde::{Deserialize, Serialize};
-use crate::{Result, Error};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(default)]

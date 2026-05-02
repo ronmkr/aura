@@ -120,11 +120,11 @@ impl MetaTask {
             return;
         }
         self.pending_ranges.clear();
-        
+
         // Generate granular ranges
         let actual_num_ranges = std::cmp::max(num_ranges, 32);
         let granular_size = self.total_length.div_ceil(actual_num_ranges as u64);
-        
+
         for i in 0..actual_num_ranges {
             let start = i as u64 * granular_size;
             let end = std::cmp::min(start + granular_size, self.total_length);
@@ -163,7 +163,8 @@ impl MetaTask {
     }
 
     pub fn mark_range_complete(&mut self, sub_id: TaskId, range: Range) {
-        self.in_flight_ranges.retain(|(sid, r)| *sid != sub_id || *r != range);
+        self.in_flight_ranges
+            .retain(|(sid, r)| *sid != sub_id || *r != range);
         if let Some(sub) = self.subtasks.iter_mut().find(|s| s.id == sub_id) {
             sub.assigned_ranges.retain(|r| *r != range);
             sub.completed_length += range.length();

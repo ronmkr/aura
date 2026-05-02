@@ -1,19 +1,19 @@
+use crate::bt_task::BtTask;
+use crate::orchestrator::SubTaskEvent;
+use crate::storage::StorageRequest;
+use crate::{Error, Result, TaskId};
+use bytes::BytesMut;
+use futures_util::{SinkExt, StreamExt};
+use sha1::{Digest, Sha1};
 use std::sync::Arc;
-use tokio::net::TcpStream;
 use tokio::io::AsyncWriteExt;
+use tokio::net::TcpStream;
 use tokio_util::codec::Framed;
 use tokio_util::sync::CancellationToken;
-use futures_util::{SinkExt, StreamExt};
-use tracing::{info, debug, error};
-use sha1::{Sha1, Digest};
-use bytes::BytesMut;
-use crate::{Result, TaskId, Error};
-use crate::storage::StorageRequest;
-use crate::orchestrator::SubTaskEvent;
-use crate::bt_task::BtTask;
+use tracing::{debug, error, info};
 
 pub mod protocol;
-pub use protocol::{PeerId, Handshake, PeerMessage, PeerCodec, HANDSHAKE_LEN, BLOCK_SIZE};
+pub use protocol::{Handshake, PeerCodec, PeerId, PeerMessage, BLOCK_SIZE, HANDSHAKE_LEN};
 
 pub struct BtWorker {
     pub peer_addr: String,
@@ -46,10 +46,12 @@ impl BtWorker {
 
     async fn connect_and_handshake(&self) -> Result<(TcpStream, [u8; 20])> {
         debug!(addr = %self.peer_addr, "Connecting to peer...");
-        let remote_addr: std::net::SocketAddr = self.peer_addr.parse()
-            .map_err(|e| Error::Protocol(format!("Invalid peer address {}: {}", self.peer_addr, e)))?;
-        
-        let mut stream = crate::net_util::connect_tcp_bound(remote_addr, None, self.local_addr).await?;
+        let remote_addr: std::net::SocketAddr = self.peer_addr.parse().map_err(|e| {
+            Error::Protocol(format!("Invalid peer address {}: {}", self.peer_addr, e))
+        })?;
+
+        let mut stream =
+            crate::net_util::connect_tcp_bound(remote_addr, None, self.local_addr).await?;
 
         debug!(addr = %self.peer_addr, "Sending handshake...");
         let handshake = Handshake::new(self.info_hash, self.my_id);
@@ -78,8 +80,11 @@ impl BtWorker {
     ) -> Result<()> {
         let (stream, peer_id) = self.connect_and_handshake().await?;
         self.peer_id = peer_id;
-        
-        self.run_loop_with_stream(stream, _meta_id, sub_id, task, storage_tx, subtask_tx, token).await
+
+        self.run_loop_with_stream(
+            stream, _meta_id, sub_id, task, storage_tx, subtask_tx, token,
+        )
+        .await
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -94,10 +99,10 @@ impl BtWorker {
         token: CancellationToken,
     ) -> Result<()> {
         let mut framed = Framed::new(stream, PeerCodec);
-        
+
         // Initial state
         framed.send(PeerMessage::Interested).await?;
-        
+
         let mut peer_choking = true;
         let peer_addr = self.peer_addr.clone();
 
@@ -129,7 +134,7 @@ impl BtWorker {
                                     picker.add_peer_bitfield(peer_addr.clone(), bf.clone());
                                     drop(picker);
                                     let _ = subtask_tx.send(SubTaskEvent::PeerBitfield(meta_id, self.peer_id, bf));
-                                    
+
                                     if !peer_choking {
                                         self.trigger_request(&mut framed, &task, piece_length, total_length, meta_id, storage_tx.clone(), subtask_tx.clone()).await?;
                                     }
@@ -142,7 +147,7 @@ impl BtWorker {
                                     picker.add_peer_bitfield(peer_addr.clone(), bf);
                                     drop(picker);
                                     let _ = subtask_tx.send(SubTaskEvent::PeerHave(meta_id, self.peer_id, idx));
-                                    
+
                                     if !peer_choking {
                                         self.trigger_request(&mut framed, &task, piece_length, total_length, meta_id, storage_tx.clone(), subtask_tx.clone()).await?;
                                     }
@@ -151,7 +156,7 @@ impl BtWorker {
                                     if Some(index as usize) == self.current_piece {
                                         let len = block.len();
                                         self.piece_buffer[begin as usize..begin as usize + len].copy_from_slice(&block);
-                                        
+
                                         self.bytes_received += len as u64;
                                         let _ = subtask_tx.send(SubTaskEvent::Downloaded(meta_id, len as u64));
 
@@ -192,16 +197,17 @@ impl BtWorker {
 
     #[allow(clippy::too_many_arguments)]
     async fn trigger_request<S>(
-        &mut self, 
-        framed: &mut Framed<S, PeerCodec>, 
+        &mut self,
+        framed: &mut Framed<S, PeerCodec>,
         task: &BtTask,
         piece_length: u64,
         total_length: u64,
         meta_id: TaskId,
         storage_tx: tokio::sync::mpsc::Sender<StorageRequest>,
         subtask_tx: tokio::sync::mpsc::UnboundedSender<SubTaskEvent>,
-    ) -> Result<()> 
-    where S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin
+    ) -> Result<()>
+    where
+        S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
     {
         let max_in_flight = self.pipeline_size as u64 * BLOCK_SIZE as u64;
 
@@ -217,19 +223,22 @@ impl BtWorker {
                 let mut hasher = Sha1::new();
                 hasher.update(&self.piece_buffer);
                 let actual_hash: [u8; 20] = hasher.finalize().into();
-                
-                let expected_hash = &task.state.torrent.info.pieces[piece_idx * 20..(piece_idx + 1) * 20];
-                
+
+                let expected_hash =
+                    &task.state.torrent.info.pieces[piece_idx * 20..(piece_idx + 1) * 20];
+
                 if actual_hash == expected_hash {
                     info!(addr = %self.peer_addr, %piece_idx, "Piece download complete and verified");
-                    let _ = storage_tx.send(StorageRequest::Write {
-                        task_id: meta_id,
-                        segment: crate::worker::Segment {
-                            offset: piece_idx as u64 * piece_length,
-                            length: piece_total_len,
-                        },
-                        data: self.piece_buffer.clone().freeze(),
-                    }).await;
+                    let _ = storage_tx
+                        .send(StorageRequest::Write {
+                            task_id: meta_id,
+                            segment: crate::worker::Segment {
+                                offset: piece_idx as u64 * piece_length,
+                                length: piece_total_len,
+                            },
+                            data: self.piece_buffer.clone().freeze(),
+                        })
+                        .await;
 
                     let mut bf = task.state.bitfield.lock().await;
                     bf.set(piece_idx, true);
@@ -245,20 +254,34 @@ impl BtWorker {
                 self.bytes_received = 0;
                 self.bytes_requested = 0;
                 self.piece_buffer.clear();
-                
-                return Box::pin(self.trigger_request(framed, task, piece_length, total_length, meta_id, storage_tx, subtask_tx)).await;
+
+                return Box::pin(self.trigger_request(
+                    framed,
+                    task,
+                    piece_length,
+                    total_length,
+                    meta_id,
+                    storage_tx,
+                    subtask_tx,
+                ))
+                .await;
             }
 
             // Pipelining: fill up to MAX_IN_FLIGHT
-            while (self.bytes_requested - self.bytes_received) < max_in_flight && self.bytes_requested < piece_total_len {
-                let length = std::cmp::min(BLOCK_SIZE, (piece_total_len - self.bytes_requested) as u32);
+            while (self.bytes_requested - self.bytes_received) < max_in_flight
+                && self.bytes_requested < piece_total_len
+            {
+                let length =
+                    std::cmp::min(BLOCK_SIZE, (piece_total_len - self.bytes_requested) as u32);
                 debug!(addr = %self.peer_addr, %piece_idx, begin = self.bytes_requested, %length, "Requesting next block (pipelined)");
-                
-                framed.send(PeerMessage::Request {
-                    index: piece_idx as u32,
-                    begin: self.bytes_requested as u32,
-                    length,
-                }).await?;
+
+                framed
+                    .send(PeerMessage::Request {
+                        index: piece_idx as u32,
+                        begin: self.bytes_requested as u32,
+                        length,
+                    })
+                    .await?;
                 self.bytes_requested += length as u64;
             }
         } else {
@@ -277,10 +300,19 @@ impl BtWorker {
                 self.bytes_received = 0;
                 self.bytes_requested = 0;
                 self.piece_buffer = BytesMut::zeroed(piece_total_len as usize);
-                
+
                 drop(picker);
                 drop(my_bf);
-                return Box::pin(self.trigger_request(framed, task, piece_length, total_length, meta_id, storage_tx, subtask_tx)).await;
+                return Box::pin(self.trigger_request(
+                    framed,
+                    task,
+                    piece_length,
+                    total_length,
+                    meta_id,
+                    storage_tx,
+                    subtask_tx,
+                ))
+                .await;
             }
         }
 
@@ -315,7 +347,11 @@ mod tests {
     #[test]
     fn test_piece_message_serialization() {
         let block = Bytes::from(vec![1, 2, 3, 4]);
-        let msg = PeerMessage::Piece { index: 1, begin: 0, block: block.clone() };
+        let msg = PeerMessage::Piece {
+            index: 1,
+            begin: 0,
+            block: block.clone(),
+        };
         let mut buf = BytesMut::new();
         let mut codec = PeerCodec;
         codec.encode(msg.clone(), &mut buf).unwrap();

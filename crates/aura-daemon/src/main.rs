@@ -1,16 +1,12 @@
 use aura_core::orchestrator::Engine;
 use aura_core::task::TaskType;
 use aura_core::TaskId;
-use axum::{
-    extract::State,
-    routing::post,
-    Json, Router,
-};
+use axum::{extract::State, routing::post, Json, Router};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::sync::Arc;
-use tracing::info;
 use tower_http::cors::CorsLayer;
+use tracing::info;
 
 #[derive(Debug, Deserialize)]
 struct JsonRpcRequest {
@@ -113,51 +109,71 @@ async fn handle_add_uri(engine: &Engine, params: Option<Value>) -> Result<Value,
 
     let id = TaskId(rand::random());
     let name = "rpc-download".to_string(); // In a real scenario, we'd infer this later
-    let sources: Vec<(String, TaskType)> = uris.into_iter().map(|u| {
-        let ttype = if u.ends_with(".torrent") { TaskType::BitTorrent } else { TaskType::Http };
-        (u, ttype)
-    }).collect();
+    let sources: Vec<(String, TaskType)> = uris
+        .into_iter()
+        .map(|u| {
+            let ttype = if u.ends_with(".torrent") {
+                TaskType::BitTorrent
+            } else {
+                TaskType::Http
+            };
+            (u, ttype)
+        })
+        .collect();
 
-    engine.add_task_with_sources(id, name, sources).await
+    engine
+        .add_task_with_sources(id, name, sources)
+        .await
         .map_err(|e| json!({ "code": -32000, "message": e.to_string() }))?;
 
     Ok(json!(id.0.to_string()))
 }
 
 async fn handle_tell_active(engine: &Engine) -> Result<Value, Value> {
-    let active = engine.tell_active().await
+    let active = engine
+        .tell_active()
+        .await
         .map_err(|e| json!({ "code": -32000, "message": e.to_string() }))?;
 
-    let res: Vec<Value> = active.into_iter().map(|t| {
-        json!({
-            "gid": t.id.0.to_string(),
-            "status": format!("{:?}", t.phase).to_lowercase(),
-            "totalLength": t.total_length.to_string(),
-            "completedLength": t.completed_length.to_string(),
-            "name": t.name,
+    let res: Vec<Value> = active
+        .into_iter()
+        .map(|t| {
+            json!({
+                "gid": t.id.0.to_string(),
+                "status": format!("{:?}", t.phase).to_lowercase(),
+                "totalLength": t.total_length.to_string(),
+                "completedLength": t.completed_length.to_string(),
+                "name": t.name,
+            })
         })
-    }).collect();
+        .collect();
 
     Ok(json!(res))
 }
 
 async fn handle_pause(engine: &Engine, params: Option<Value>) -> Result<Value, Value> {
     let gid = parse_gid(params)?;
-    engine.pause(gid).await
+    engine
+        .pause(gid)
+        .await
         .map_err(|e| json!({ "code": -32000, "message": e.to_string() }))?;
     Ok(json!("OK"))
 }
 
 async fn handle_unpause(engine: &Engine, params: Option<Value>) -> Result<Value, Value> {
     let gid = parse_gid(params)?;
-    engine.unpause(gid).await
+    engine
+        .unpause(gid)
+        .await
         .map_err(|e| json!({ "code": -32000, "message": e.to_string() }))?;
     Ok(json!("OK"))
 }
 
 async fn handle_remove(engine: &Engine, params: Option<Value>) -> Result<Value, Value> {
     let gid = parse_gid(params)?;
-    engine.remove(gid).await
+    engine
+        .remove(gid)
+        .await
         .map_err(|e| json!({ "code": -32000, "message": e.to_string() }))?;
     Ok(json!("OK"))
 }
@@ -166,7 +182,8 @@ fn parse_gid(params: Option<Value>) -> Result<TaskId, Value> {
     let params = params.ok_or_else(|| json!({ "code": -32602, "message": "Invalid params" }))?;
     let gid_str: String = serde_json::from_value(params[0].clone())
         .map_err(|_| json!({ "code": -32602, "message": "Invalid GID" }))?;
-    let gid = gid_str.parse::<u64>()
+    let gid = gid_str
+        .parse::<u64>()
         .map_err(|_| json!({ "code": -32602, "message": "Invalid GID format" }))?;
     Ok(TaskId(gid))
 }

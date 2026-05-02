@@ -1,14 +1,14 @@
 //! bt_task: Handles BitTorrent-specific task logic.
 
-use crate::{Result, TaskId, Error};
-use crate::torrent::Torrent;
 use crate::bitfield::Bitfield;
-use crate::piece_picker::PiecePicker;
 use crate::peer_registry::PeerRegistry;
-use crate::tracker::{TrackerClient, Peer};
+use crate::piece_picker::PiecePicker;
+use crate::torrent::Torrent;
+use crate::tracker::{Peer, TrackerClient};
+use crate::{Error, Result, TaskId};
 use std::sync::Arc;
-use tokio::sync::{Mutex, mpsc};
-use tracing::{info, debug, warn};
+use tokio::sync::{mpsc, Mutex};
+use tracing::{debug, info, warn};
 
 #[derive(Debug)]
 pub struct BtTaskState {
@@ -38,8 +38,13 @@ pub struct BtTask {
 }
 
 impl BtTask {
-    pub async fn from_file(id: TaskId, path: &str, dht_tx: mpsc::Sender<crate::dht::DhtCommand>) -> Result<Self> {
-        let data = tokio::fs::read(path).await
+    pub async fn from_file(
+        id: TaskId,
+        path: &str,
+        dht_tx: mpsc::Sender<crate::dht::DhtCommand>,
+    ) -> Result<Self> {
+        let data = tokio::fs::read(path)
+            .await
             .map_err(|e| Error::Protocol(format!("Failed to read torrent file: {}", e)))?;
         let torrent = Torrent::from_bytes(&data)?;
         Ok(Self {
@@ -75,7 +80,7 @@ impl BtTask {
                                 port: addr.port(),
                             });
                         }
-                        
+
                         if !peers.is_empty() {
                             info!(%self.id, count = peers.len(), "Discovered peers from DHT");
                             let mut registry = self.state.registry.lock().await;
@@ -95,16 +100,16 @@ impl BtTask {
     }
 
     pub async fn run_tracker_loop(
-        &self, 
-        my_id: [u8; 20], 
-        port: u16, 
+        &self,
+        my_id: [u8; 20],
+        port: u16,
         token: tokio_util::sync::CancellationToken,
         local_addr: Option<std::net::IpAddr>,
         user_agent: Option<String>,
     ) -> Result<()> {
         let tracker = TrackerClient::new(my_id, port, local_addr, user_agent);
         info!(%self.id, "Starting tracker announce");
-        
+
         loop {
             tokio::select! {
                 _ = token.cancelled() => break,
@@ -122,7 +127,7 @@ impl BtTask {
                     }
                 }
             }
-            
+
             tokio::select! {
                 _ = token.cancelled() => break,
                 _ = tokio::time::sleep(std::time::Duration::from_secs(60)) => {}
@@ -137,16 +142,20 @@ impl BtTask {
         let registry = self.state.registry.lock().await;
         let peer = registry.get_peer_to_connect()?;
         let addr = format!("{}:{}", peer.ip, peer.port);
-        
+
         // Try to pick a piece, but it's okay if we can't yet (we still need bitfields)
         let bf = self.state.bitfield.lock().await;
         let picker = self.state.picker.lock().await;
         let piece_idx = picker.pick_next(&bf, &addr);
-        
+
         Some((piece_idx, peer))
     }
 
-    pub async fn update_peer_state(&self, addr: &str, state: crate::peer_registry::ConnectionState) {
+    pub async fn update_peer_state(
+        &self,
+        addr: &str,
+        state: crate::peer_registry::ConnectionState,
+    ) {
         let mut registry = self.state.registry.lock().await;
         registry.update_state(addr, state);
     }

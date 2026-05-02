@@ -1,6 +1,6 @@
-use std::net::IpAddr;
-use crate::worker::http::HttpWorker;
 use crate::worker::ftp::FtpWorker;
+use crate::worker::http::HttpWorker;
+use std::net::IpAddr;
 
 /// Builder for protocol workers to ensure idiomatic and robust construction.
 pub struct WorkerBuilder {

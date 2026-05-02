@@ -1,8 +1,8 @@
-use crate::{Result, TaskId, Error};
+use super::{Metadata, PieceData, ProgressSender, ProtocolWorker, Segment};
+use crate::{Error, Result, TaskId};
 use async_trait::async_trait;
 use bytes::BytesMut;
 use futures_util::StreamExt;
-use super::{ProtocolWorker, Segment, PieceData, Metadata, ProgressSender};
 
 /// A specialized worker for the HTTP(S) protocol.
 pub struct HttpWorker {
@@ -13,7 +13,7 @@ pub struct HttpWorker {
 
 impl HttpWorker {
     pub fn new(
-        uri: String, 
+        uri: String,
         local_addr: Option<std::net::IpAddr>,
         user_agent: Option<String>,
         connect_timeout: Option<u64>,
@@ -25,7 +25,9 @@ impl HttpWorker {
             .user_agent(user_agent.unwrap_or_else(|| "Aura/0.1.0".to_string()))
             .cookie_provider(cookie_jar)
             .redirect(reqwest::redirect::Policy::none())
-            .connect_timeout(std::time::Duration::from_secs(connect_timeout.unwrap_or(30)))
+            .connect_timeout(std::time::Duration::from_secs(
+                connect_timeout.unwrap_or(30),
+            ))
             .tcp_keepalive(std::time::Duration::from_secs(60));
 
         if let Some(addr) = local_addr {
@@ -38,9 +40,8 @@ impl HttpWorker {
             }
         }
 
-        let client = builder.build()
-            .expect("Failed to build HTTP client");
-            
+        let client = builder.build().expect("Failed to build HTTP client");
+
         Self {
             client,
             uri,
@@ -60,8 +61,10 @@ impl HttpWorker {
             if let Some(ref ref_uri) = referer {
                 request = request.header("Referer", ref_uri);
             }
-            
-            let response = request.send().await
+
+            let response = request
+                .send()
+                .await
                 .map_err(|e| Error::Protocol(format!("Metadata resolution failed: {}", e)))?;
 
             if response.status().is_redirection() {
@@ -69,31 +72,40 @@ impl HttpWorker {
                     return Err(Error::Protocol("Too many redirects".to_string()));
                 }
                 redirect_count += 1;
-                
-                let next_url = response.headers().get("Location")
+
+                let next_url = response
+                    .headers()
+                    .get("Location")
                     .and_then(|h| h.to_str().ok())
-                    .ok_or_else(|| Error::Protocol("Redirect without Location header".to_string()))?;
-                
+                    .ok_or_else(|| {
+                        Error::Protocol("Redirect without Location header".to_string())
+                    })?;
+
                 let resolved_next = url::Url::parse(&current_uri)
                     .and_then(|base| base.join(next_url))
                     .map_err(|e| Error::Protocol(format!("Invalid redirect URL: {}", e)))?
                     .to_string();
-                
+
                 referer = Some(current_uri);
                 current_uri = resolved_next;
                 continue;
             }
 
-            let total_length = response.headers()
+            let total_length = response
+                .headers()
                 .get("Content-Range")
                 .and_then(|h| h.to_str().ok())
                 .and_then(|s| s.split('/').next_back())
                 .and_then(|s| s.parse::<u64>().ok());
 
-            let name = response.headers()
+            let name = response
+                .headers()
                 .get("Content-Disposition")
                 .and_then(|h| h.to_str().ok())
-                .and_then(|s| s.find("filename=").map(|pos| s[pos+9..].trim_matches('"').to_string()));
+                .and_then(|s| {
+                    s.find("filename=")
+                        .map(|pos| s[pos + 9..].trim_matches('"').to_string())
+                });
 
             return Ok(Metadata {
                 final_uri: current_uri,
@@ -106,21 +118,33 @@ impl HttpWorker {
 
 #[async_trait]
 impl ProtocolWorker for HttpWorker {
-    async fn fetch_segment(&self, _task_id: TaskId, segment: Segment, progress: Option<ProgressSender>) -> Result<PieceData> {
-        let range_header = format!("bytes={}-{}", segment.offset, segment.offset + segment.length - 1);
-        let mut request = self.client.get(&self.uri)
-            .header("Range", range_header);
+    async fn fetch_segment(
+        &self,
+        _task_id: TaskId,
+        segment: Segment,
+        progress: Option<ProgressSender>,
+    ) -> Result<PieceData> {
+        let range_header = format!(
+            "bytes={}-{}",
+            segment.offset,
+            segment.offset + segment.length - 1
+        );
+        let mut request = self.client.get(&self.uri).header("Range", range_header);
 
         if let Some(ref ref_uri) = self.referer {
             request = request.header("Referer", ref_uri);
         }
 
-        let response = request.send()
+        let response = request
+            .send()
             .await
             .map_err(|e| Error::Protocol(format!("HTTP request failed: {}", e)))?;
 
         if !response.status().is_success() {
-            return Err(Error::Protocol(format!("HTTP error status: {}", response.status())));
+            return Err(Error::Protocol(format!(
+                "HTTP error status: {}",
+                response.status()
+            )));
         }
 
         let mut buffer = BytesMut::with_capacity(segment.length as usize);
@@ -148,13 +172,13 @@ impl ProtocolWorker for HttpWorker {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use wiremock::{MockServer, Mock, ResponseTemplate};
-    use wiremock::matchers::{method, path, header};
+    use wiremock::matchers::{header, method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
 
     #[tokio::test]
     async fn test_http_worker_referer_propagation() {
         let server = MockServer::start().await;
-        
+
         // 1. Initial request redirects to 2
         Mock::given(method("GET"))
             .and(path("/start"))
@@ -170,20 +194,54 @@ mod tests {
             .mount(&server)
             .await;
 
-        let worker = HttpWorker::new(format!("{}/start", server.uri()), None, None, None, None, None);
-        let metadata = worker.resolve_metadata().await.expect("Should resolve metadata with redirects");
-        
-        let worker_final = HttpWorker::new(metadata.final_uri, None, None, None, None, Some(format!("{}/start", server.uri())));
-        let result = worker_final.fetch_segment(TaskId(1), Segment { offset: 0, length: 11 }, None).await;
-        
+        let worker = HttpWorker::new(
+            format!("{}/start", server.uri()),
+            None,
+            None,
+            None,
+            None,
+            None,
+        );
+        let metadata = worker
+            .resolve_metadata()
+            .await
+            .expect("Should resolve metadata with redirects");
+
+        let worker_final = HttpWorker::new(
+            metadata.final_uri,
+            None,
+            None,
+            None,
+            None,
+            Some(format!("{}/start", server.uri())),
+        );
+        let result = worker_final
+            .fetch_segment(
+                TaskId(1),
+                Segment {
+                    offset: 0,
+                    length: 11,
+                },
+                None,
+            )
+            .await;
+
         assert!(result.is_ok(), "Worker should succeed with resolved URI");
     }
 
     #[tokio::test]
     async fn test_http_worker_redirect_loop() {
         let server = MockServer::start().await;
-        Mock::given(method("GET")).and(path("/a")).respond_with(ResponseTemplate::new(302).insert_header("Location", "/b")).mount(&server).await;
-        Mock::given(method("GET")).and(path("/b")).respond_with(ResponseTemplate::new(302).insert_header("Location", "/a")).mount(&server).await;
+        Mock::given(method("GET"))
+            .and(path("/a"))
+            .respond_with(ResponseTemplate::new(302).insert_header("Location", "/b"))
+            .mount(&server)
+            .await;
+        Mock::given(method("GET"))
+            .and(path("/b"))
+            .respond_with(ResponseTemplate::new(302).insert_header("Location", "/a"))
+            .mount(&server)
+            .await;
 
         let worker = HttpWorker::new(format!("{}/a", server.uri()), None, None, None, None, None);
         let result = worker.resolve_metadata().await;

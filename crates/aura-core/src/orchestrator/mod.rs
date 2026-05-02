@@ -1,24 +1,24 @@
-use std::collections::HashMap;
-use std::sync::Arc;
-use tokio::sync::{mpsc, broadcast};
-use tokio_util::sync::CancellationToken;
-use rand::Rng;
-use arc_swap::ArcSwap;
-use crate::{Result, TaskId};
-use crate::task::{MetaTask, Range};
-use crate::storage::StorageRequest;
-use crate::worker::Metadata;
-use crate::bt_task::BtTask;
-use crate::throttler::Throttler;
-use crate::bt_worker::PeerId;
 use crate::bitfield::Bitfield;
+use crate::bt_task::BtTask;
+use crate::bt_worker::PeerId;
 use crate::dht::DhtCommand;
 use crate::nat::NatCommand;
+use crate::storage::StorageRequest;
+use crate::task::{MetaTask, Range};
+use crate::throttler::Throttler;
+use crate::worker::Metadata;
+use crate::{Result, TaskId};
+use arc_swap::ArcSwap;
+use rand::Rng;
+use std::collections::HashMap;
+use std::sync::Arc;
+use tokio::sync::{broadcast, mpsc};
+use tokio_util::sync::CancellationToken;
 
 pub mod commands;
+pub mod engine;
 pub mod events;
 pub mod lifecycle;
-pub mod engine;
 
 pub use engine::Engine;
 
@@ -55,10 +55,22 @@ pub enum SubTaskEvent {
 #[derive(Debug, Clone, serde::Serialize)]
 pub enum Event {
     TaskAdded(TaskId),
-    MetadataResolved { id: TaskId, final_uri: String, total_length: u64, name: Option<String> },
-    TaskProgress { id: TaskId, completed_bytes: u64, total_bytes: u64 },
+    MetadataResolved {
+        id: TaskId,
+        final_uri: String,
+        total_length: u64,
+        name: Option<String>,
+    },
+    TaskProgress {
+        id: TaskId,
+        completed_bytes: u64,
+        total_bytes: u64,
+    },
     TaskCompleted(TaskId),
-    TaskError { id: TaskId, message: String },
+    TaskError {
+        id: TaskId,
+        message: String,
+    },
 }
 
 pub struct Orchestrator {
@@ -111,7 +123,7 @@ impl Orchestrator {
     ) -> (Self, broadcast::Receiver<Event>) {
         let (event_tx, event_rx) = broadcast::channel(1024);
         let (subtask_tx, subtask_rx) = mpsc::unbounded_channel();
-        
+
         let mut peer_id = [0u8; 20];
         peer_id[..8].copy_from_slice(b"-AR0001-");
         rand::thread_rng().fill(&mut peer_id[8..]);
@@ -142,21 +154,32 @@ impl Orchestrator {
 
     pub async fn run(mut self) -> Result<()> {
         tracing::info!("Orchestrator started");
-        
+
         let local_addr = self.resolve_local_addr();
         let config_initial = self.config.load();
-        let bind_addr = std::net::SocketAddr::new(local_addr.unwrap_or("0.0.0.0".parse().unwrap()), config_initial.network.listen_port);
-        
-        let listener = tokio::net::TcpListener::bind(bind_addr).await
-            .map_err(|e| crate::Error::Config(format!("Failed to bind Peer Listener on {}: {}", bind_addr, e)))?;
+        let bind_addr = std::net::SocketAddr::new(
+            local_addr.unwrap_or("0.0.0.0".parse().unwrap()),
+            config_initial.network.listen_port,
+        );
+
+        let listener = tokio::net::TcpListener::bind(bind_addr)
+            .await
+            .map_err(|e| {
+                crate::Error::Config(format!(
+                    "Failed to bind Peer Listener on {}: {}",
+                    bind_addr, e
+                ))
+            })?;
         tracing::info!("Peer Listener listening on {}", bind_addr);
 
-        let mut save_interval = tokio::time::interval(std::time::Duration::from_secs(config_initial.storage.save_session_interval_secs));
-        
+        let mut save_interval = tokio::time::interval(std::time::Duration::from_secs(
+            config_initial.storage.save_session_interval_secs,
+        ));
+
         // VPN Kill-switch Monitor
         let config_monitor = self.config.clone();
         let subtask_tx_monitor = self.subtask_tx.clone();
-        
+
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(std::time::Duration::from_secs(2));
             loop {
@@ -164,12 +187,18 @@ impl Orchestrator {
                 let config = config_monitor.load();
                 if let Some(ref iface) = config.network.interface {
                     use local_ip_address::list_afinet_netifas;
-                    let is_up = list_afinet_netifas().ok().map(|ifas: Vec<(String, std::net::IpAddr)>| {
-                        ifas.into_iter().any(|(name, _)| name == *iface)
-                    }).unwrap_or(false);
+                    let is_up = list_afinet_netifas()
+                        .ok()
+                        .map(|ifas: Vec<(String, std::net::IpAddr)>| {
+                            ifas.into_iter().any(|(name, _)| name == *iface)
+                        })
+                        .unwrap_or(false);
 
                     if !is_up {
-                        tracing::warn!("VPN Kill-switch triggered! Interface {} is down. Stopping all tasks.", iface);
+                        tracing::warn!(
+                            "VPN Kill-switch triggered! Interface {} is down. Stopping all tasks.",
+                            iface
+                        );
                         let _ = subtask_tx_monitor.send(SubTaskEvent::KillSwitch);
                     }
                 }

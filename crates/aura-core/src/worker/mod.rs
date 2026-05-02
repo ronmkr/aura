@@ -5,13 +5,13 @@ use async_trait::async_trait;
 use bytes::Bytes;
 use tokio::sync::mpsc;
 
-pub mod http;
-pub mod ftp;
 pub mod builder;
+pub mod ftp;
+pub mod http;
 
-pub use http::HttpWorker;
-pub use ftp::FtpWorker;
 pub use builder::WorkerBuilder;
+pub use ftp::FtpWorker;
+pub use http::HttpWorker;
 
 pub type ProgressSender = mpsc::UnboundedSender<u64>;
 
@@ -41,8 +41,13 @@ pub struct Metadata {
 #[async_trait]
 pub trait ProtocolWorker: Send + Sync {
     /// Fetches a single segment of data.
-    async fn fetch_segment(&self, task_id: TaskId, segment: Segment, progress: Option<ProgressSender>) -> Result<PieceData>;
-    
+    async fn fetch_segment(
+        &self,
+        task_id: TaskId,
+        segment: Segment,
+        progress: Option<ProgressSender>,
+    ) -> Result<PieceData>;
+
     /// Returns the number of concurrent requests this worker can handle.
     fn available_capacity(&self) -> usize;
 }

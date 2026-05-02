@@ -1,7 +1,7 @@
 //! throttler: Implements a hierarchical Token Bucket for bandwidth control.
 
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 use tokio::sync::Semaphore;
 use tokio::time::{interval, Duration};
 
@@ -13,11 +13,11 @@ pub struct TokenBucket {
 
 impl TokenBucket {
     pub fn new(rate_per_sec: u64) -> Self {
-        let capacity = rate_per_sec; 
+        let capacity = rate_per_sec;
         let available = Arc::new(Semaphore::new(capacity as usize));
         let rate_atomic = Arc::new(AtomicU64::new(rate_per_sec));
         let capacity_atomic = Arc::new(AtomicU64::new(capacity));
-        
+
         let available_clone = available.clone();
         let rate_clone = rate_atomic.clone();
         let cap_clone = capacity_atomic.clone();
@@ -28,7 +28,7 @@ impl TokenBucket {
                 tick.tick().await;
                 let rate = rate_clone.load(Ordering::Relaxed);
                 let cap = cap_clone.load(Ordering::Relaxed);
-                
+
                 if rate == 0 {
                     // If unlimited, keep semaphore full
                     let current = available_clone.available_permits();

@@ -1,12 +1,12 @@
-use tokio::sync::{mpsc, oneshot};
-use tokio::fs::{self, OpenOptions, File};
-use tokio::io::{AsyncWriteExt, AsyncSeekExt, AsyncReadExt};
-use bytes::Bytes;
-use tracing::{info, debug, error};
-use std::collections::{HashMap, BTreeMap};
-use std::path::{PathBuf, Path};
-use crate::{Result, TaskId, Error};
 use crate::worker::Segment;
+use crate::{Error, Result, TaskId};
+use bytes::Bytes;
+use std::collections::{BTreeMap, HashMap};
+use std::path::{Path, PathBuf};
+use tokio::fs::{self, File, OpenOptions};
+use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt};
+use tokio::sync::{mpsc, oneshot};
+use tracing::{debug, error, info};
 
 /// Requests sent to the Storage Engine.
 #[derive(Debug)]
@@ -49,7 +49,7 @@ impl StorageEngine {
         request_rx: mpsc::Receiver<StorageRequest>,
         completion_tx: mpsc::Sender<TaskId>,
     ) -> Self {
-        Self { 
+        Self {
             request_rx,
             completion_tx,
             task_paths: HashMap::new(),
@@ -68,15 +68,23 @@ impl StorageEngine {
 
     pub async fn run(mut self) -> Result<()> {
         info!("Storage Engine started");
-        
+
         while let Some(req) = self.request_rx.recv().await {
             match req {
-                StorageRequest::Write { task_id, segment, data } => {
+                StorageRequest::Write {
+                    task_id,
+                    segment,
+                    data,
+                } => {
                     if let Err(e) = self.handle_write(task_id, segment, data).await {
                         error!(%task_id, error = %e, "Failed to write data");
                     }
                 }
-                StorageRequest::Read { task_id, segment, reply_tx } => {
+                StorageRequest::Read {
+                    task_id,
+                    segment,
+                    reply_tx,
+                } => {
                     let res = self.handle_read(task_id, segment).await;
                     let _ = reply_tx.send(res);
                 }
@@ -91,7 +99,7 @@ impl StorageEngine {
                 }
             }
         }
-        
+
         Ok(())
     }
 
@@ -105,12 +113,12 @@ impl StorageEngine {
 
     async fn handle_write(&mut self, id: TaskId, segment: Segment, data: Bytes) -> Result<()> {
         let next_offset = *self.next_offsets.get(&id).unwrap_or(&0);
-        
+
         if segment.offset == next_offset {
             // 1. Write the current piece
             self.write_to_disk(id, segment.offset, data).await?;
             let mut current_offset = next_offset + segment.length;
-            
+
             // 2. Extract any following pieces that are now sequential
             let mut to_flush = Vec::new();
             if let Some(pending) = self.pending_writes.get_mut(&id) {
@@ -141,7 +149,7 @@ impl StorageEngine {
         let file = self.get_or_open_part_file(id).await?;
         file.seek(std::io::SeekFrom::Start(offset)).await?;
         file.write_all(&data).await?;
-        // We don't flush every write to improve throughput; 
+        // We don't flush every write to improve throughput;
         // the OS or handle_complete will handle it.
         Ok(())
     }
@@ -158,29 +166,33 @@ impl StorageEngine {
     async fn handle_complete(&mut self, id: TaskId) -> Result<()> {
         // 1. Close the handle
         self.handles.remove(&id);
-        
+
         // 2. Perform atomic rename
-        let base_path = self.task_paths.get(&id)
+        let base_path = self
+            .task_paths
+            .get(&id)
             .ok_or_else(|| Error::Storage("Task path not registered".to_string()))?;
-        
+
         let part_path = get_part_path(base_path)?;
-        
+
         info!(%id, from = ?part_path, to = ?base_path, "Performing atomic completion rename");
         fs::rename(&part_path, base_path).await?;
-        
+
         // Notify Orchestrator
         let _ = self.completion_tx.send(id).await;
-        
+
         Ok(())
     }
 
     async fn get_or_open_part_file(&mut self, id: TaskId) -> Result<&mut File> {
         if !self.handles.contains_key(&id) {
-            let base_path = self.task_paths.get(&id)
+            let base_path = self
+                .task_paths
+                .get(&id)
                 .ok_or_else(|| Error::Storage("Task path not registered".to_string()))?;
-            
+
             let part_path = get_part_path(base_path)?;
-            
+
             if let Some(parent) = part_path.parent() {
                 fs::create_dir_all(parent).await?;
             }
@@ -191,17 +203,18 @@ impl StorageEngine {
                 .truncate(false)
                 .open(&part_path)
                 .await?;
-            
+
             self.handles.insert(id, file);
         }
-        
+
         Ok(self.handles.get_mut(&id).unwrap())
     }
 }
 
 fn get_part_path(base_path: &Path) -> Result<PathBuf> {
     let mut part_path = base_path.to_path_buf();
-    let mut filename = part_path.file_name()
+    let mut filename = part_path
+        .file_name()
         .ok_or_else(|| Error::Storage("Invalid filename".to_string()))?
         .to_os_string();
     filename.push(".part");
@@ -219,7 +232,7 @@ mod tests {
         let dir = tempdir().unwrap();
         let file_path = dir.path().join("final_file.bin");
         let _part_path = dir.path().join("final_file.bin.part");
-        
+
         let (request_tx, request_rx) = mpsc::channel(1);
         let (completion_tx, _completion_rx) = mpsc::channel(1);
         let mut storage = StorageEngine::new(request_rx, completion_tx);
@@ -231,14 +244,20 @@ mod tests {
         });
 
         let data = Bytes::from("atomic data");
-        request_tx.send(StorageRequest::Write {
-            task_id: id,
-            segment: Segment { offset: 0, length: data.len() as u64 },
-            data,
-        }).await.unwrap();
+        request_tx
+            .send(StorageRequest::Write {
+                task_id: id,
+                segment: Segment {
+                    offset: 0,
+                    length: data.len() as u64,
+                },
+                data,
+            })
+            .await
+            .unwrap();
 
         request_tx.send(StorageRequest::Complete(id)).await.unwrap();
-        
+
         tokio::time::sleep(std::time::Duration::from_millis(200)).await;
 
         assert!(file_path.exists());
@@ -250,7 +269,7 @@ mod tests {
     async fn test_storage_engine_sequential_aggregation() {
         let dir = tempdir().unwrap();
         let file_path = dir.path().join("seq_file.bin");
-        
+
         let (request_tx, request_rx) = mpsc::channel(10);
         let (completion_tx, _completion_rx) = mpsc::channel(1);
         let mut storage = StorageEngine::new(request_rx, completion_tx);
@@ -262,22 +281,34 @@ mod tests {
         });
 
         // 1. Send Piece 2 (Out of order)
-        request_tx.send(StorageRequest::Write {
-            task_id: id,
-            segment: Segment { offset: 10, length: 5 },
-            data: Bytes::from("world"),
-        }).await.unwrap();
+        request_tx
+            .send(StorageRequest::Write {
+                task_id: id,
+                segment: Segment {
+                    offset: 10,
+                    length: 5,
+                },
+                data: Bytes::from("world"),
+            })
+            .await
+            .unwrap();
 
         // 2. Send Piece 1 (Now it becomes sequential)
-        request_tx.send(StorageRequest::Write {
-            task_id: id,
-            segment: Segment { offset: 0, length: 10 },
-            data: Bytes::from("hello_seq_"),
-        }).await.unwrap();
+        request_tx
+            .send(StorageRequest::Write {
+                task_id: id,
+                segment: Segment {
+                    offset: 0,
+                    length: 10,
+                },
+                data: Bytes::from("hello_seq_"),
+            })
+            .await
+            .unwrap();
 
         // 3. Trigger completion
         request_tx.send(StorageRequest::Complete(id)).await.unwrap();
-        
+
         tokio::time::sleep(std::time::Duration::from_millis(200)).await;
 
         assert!(file_path.exists());

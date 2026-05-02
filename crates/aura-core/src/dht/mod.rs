@@ -1,15 +1,15 @@
+use self::protocol::KrpcMessage;
+use self::routing::{Node, NodeId, RoutingTable};
+use crate::{Error, Result};
 use std::collections::BTreeMap;
-use std::sync::Arc;
 use std::net::SocketAddr;
+use std::sync::Arc;
 use tokio::net::UdpSocket;
 use tokio::sync::{mpsc, Mutex};
 use tracing::info;
-use crate::{Result, Error};
-use self::routing::{NodeId, RoutingTable, Node};
-use self::protocol::KrpcMessage;
 
-pub mod routing;
 pub mod protocol;
+pub mod routing;
 
 pub enum DhtCommand {
     GetPeers {
@@ -32,8 +32,15 @@ pub struct DhtActor {
 }
 
 impl DhtActor {
-    pub async fn new(_addr: &str, my_id: NodeId, command_rx: mpsc::Receiver<DhtCommand>, local_addr: Option<std::net::IpAddr>, port: u16) -> Result<Self> {
-        let socket = crate::net_util::bind_udp_bound(port, None, local_addr).await
+    pub async fn new(
+        _addr: &str,
+        my_id: NodeId,
+        command_rx: mpsc::Receiver<DhtCommand>,
+        local_addr: Option<std::net::IpAddr>,
+        port: u16,
+    ) -> Result<Self> {
+        let socket = crate::net_util::bind_udp_bound(port, None, local_addr)
+            .await
             .map_err(|e| Error::Config(format!("Failed to bind DHT UDP socket: {}", e)))?;
         Ok(Self {
             my_id,
@@ -46,7 +53,7 @@ impl DhtActor {
 
     pub async fn run(mut self) -> Result<()> {
         info!("DHT Actor started");
-        
+
         // Bootstrap with some standard routers
         let bootstrap_nodes = vec![
             "router.bittorrent.com:6881",
@@ -95,7 +102,10 @@ impl DhtActor {
                 if let Some(query) = &msg.query {
                     if query == "ping" {
                         let mut r = BTreeMap::new();
-                        r.insert("id".to_string(), serde_bencode::value::Value::Bytes(self.my_id.to_vec()));
+                        r.insert(
+                            "id".to_string(),
+                            serde_bencode::value::Value::Bytes(self.my_id.to_vec()),
+                        );
                         let reply = KrpcMessage {
                             transaction_id: msg.transaction_id,
                             msg_type: "r".to_string(),
@@ -114,7 +124,7 @@ impl DhtActor {
                 if let Some(tx) = pending.remove(&msg.transaction_id) {
                     let _ = tx.send(msg.clone()).await;
                 }
-                
+
                 // Also update routing table if it's a valid response
                 if let Some(res) = &msg.response {
                     if let Some(serde_bencode::value::Value::Bytes(id_bytes)) = res.get("id") {
@@ -135,8 +145,11 @@ impl DhtActor {
     async fn send_ping(&self, addr: SocketAddr) -> Result<()> {
         let tid = vec![1, 2]; // Simple static TID for bootstrap
         let mut args = BTreeMap::new();
-        args.insert("id".to_string(), serde_bencode::value::Value::Bytes(self.my_id.to_vec()));
-        
+        args.insert(
+            "id".to_string(),
+            serde_bencode::value::Value::Bytes(self.my_id.to_vec()),
+        );
+
         let msg = KrpcMessage {
             transaction_id: tid,
             msg_type: "q".to_string(),
@@ -146,12 +159,18 @@ impl DhtActor {
             error: None,
         };
 
-        self.socket.send_to(&msg.encode()?, addr).await
+        self.socket
+            .send_to(&msg.encode()?, addr)
+            .await
             .map_err(|e| Error::Protocol(format!("Failed to send DHT ping: {}", e)))?;
         Ok(())
     }
 
-    async fn handle_get_peers(&self, _info_hash: [u8; 20], _reply_tx: mpsc::Sender<Vec<SocketAddr>>) -> Result<()> {
+    async fn handle_get_peers(
+        &self,
+        _info_hash: [u8; 20],
+        _reply_tx: mpsc::Sender<Vec<SocketAddr>>,
+    ) -> Result<()> {
         // Full iterative find_peers logic would go here
         // For now, we return empty to avoid blocking
         Ok(())

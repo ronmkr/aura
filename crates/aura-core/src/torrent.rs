@@ -1,8 +1,8 @@
 //! torrent: Parsing and handling of .torrent (metainfo) files.
 
+use crate::{Error, Result};
 use serde::{Deserialize, Serialize};
-use sha1::{Sha1, Digest};
-use crate::{Result, Error};
+use sha1::{Digest, Sha1};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct File {
@@ -102,7 +102,7 @@ mod tests {
         assert_eq!(decoded.announce, "http://tracker.com/announce");
         assert_eq!(decoded.info.name, "test.txt");
         assert_eq!(decoded.total_length(), 1024);
-        
+
         let hash = decoded.info_hash().unwrap();
         assert_eq!(hash.len(), 20);
     }

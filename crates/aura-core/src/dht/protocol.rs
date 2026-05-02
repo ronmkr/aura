@@ -1,8 +1,8 @@
+use super::routing::Node;
+use crate::{Error, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-use crate::{Result, Error};
-use super::routing::Node;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct KrpcMessage {
@@ -52,13 +52,16 @@ pub fn compact_nodes(nodes: &[Node]) -> Vec<u8> {
 pub fn parse_compact_nodes(data: &[u8]) -> Vec<Node> {
     let mut nodes = Vec::new();
     let chunk_size = 26; // 20 (id) + 4 (ip) + 2 (port) for IPv4. DHT spec mostly assumes IPv4 compact.
-    
+
     for chunk in data.chunks_exact(chunk_size) {
         let mut id = [0u8; 20];
         id.copy_from_slice(&chunk[..20]);
         let ip = Ipv4Addr::new(chunk[20], chunk[21], chunk[22], chunk[23]);
         let port = u16::from_be_bytes([chunk[24], chunk[25]]);
-        nodes.push(Node { id, addr: SocketAddr::new(IpAddr::V4(ip), port) });
+        nodes.push(Node {
+            id,
+            addr: SocketAddr::new(IpAddr::V4(ip), port),
+        });
     }
     nodes
 }
@@ -70,8 +73,11 @@ mod tests {
     #[test]
     fn test_krpc_serialization() {
         let mut args = BTreeMap::new();
-        args.insert("id".to_string(), serde_bencode::value::Value::Bytes(vec![0; 20]));
-        
+        args.insert(
+            "id".to_string(),
+            serde_bencode::value::Value::Bytes(vec![0; 20]),
+        );
+
         let msg = KrpcMessage {
             transaction_id: vec![1, 2, 3],
             msg_type: "q".to_string(),

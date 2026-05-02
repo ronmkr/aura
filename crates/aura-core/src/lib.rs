@@ -1,24 +1,24 @@
 //! Aura-core: The high-performance download engine.
-use std::fmt;
 use serde::{Deserialize, Serialize};
+use std::fmt;
 
-pub mod orchestrator;
-pub mod task;
-pub mod worker;
-pub mod storage;
-pub mod buffer_pool;
 pub mod bitfield;
-pub mod piece_picker;
+pub mod bt_task;
 pub mod bt_worker;
+pub mod buffer_pool;
+pub mod dht;
+pub mod glob;
+pub mod nat;
+pub mod net_util;
+pub mod orchestrator;
+pub mod peer_registry;
+pub mod piece_picker;
+pub mod storage;
+pub mod task;
+pub mod throttler;
 pub mod torrent;
 pub mod tracker;
-pub mod peer_registry;
-pub mod bt_task;
-pub mod throttler;
-pub mod dht;
-pub mod nat;
-pub mod glob;
-pub mod net_util;
+pub mod worker;
 
 pub mod config;
 

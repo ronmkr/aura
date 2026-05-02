@@ -72,7 +72,7 @@ impl PiecePicker {
         }
     }
 
-    /// Picks the next piece to download using the rarest-first strategy, 
+    /// Picks the next piece to download using the rarest-first strategy,
     /// considering only pieces that the specified peer has.
     pub fn pick_next(&self, my_bitfield: &Bitfield, peer_addr: &str) -> Option<usize> {
         let peer_bf = self.peer_bitfields.get(peer_addr)?;
@@ -114,36 +114,40 @@ mod tests {
     fn test_rarest_first_selection() {
         let mut picker = PiecePicker::new(5);
         let my_bf = Bitfield::new(5);
-        
+
         // Peer A has pieces 0, 1, 2
         let mut bf_a = Bitfield::new(5);
         bf_a.set(0, true);
         bf_a.set(1, true);
         bf_a.set(2, true);
         picker.add_peer_bitfield("1.1.1.1:80".to_string(), bf_a);
-        
+
         // Peer B has pieces 0, 3
         let mut bf_b = Bitfield::new(5);
         bf_b.set(0, true);
         bf_b.set(3, true);
         picker.add_peer_bitfield("2.2.2.2:80".to_string(), bf_b);
-        
+
         // Pieces availability:
         // 0: 2 peers
         // 1: 1 peer (Rare)
         // 2: 1 peer (Rare)
         // 3: 1 peer (Rare)
         // 4: 0 peers
-        
-        // Pick next piece. Since 1, 2, 3 are equally rare (1 peer), 
+
+        // Pick next piece. Since 1, 2, 3 are equally rare (1 peer),
         // but for Peer A only 1 or 2 are available.
-        let picked = picker.pick_next(&my_bf, "1.1.1.1:80").expect("Should pick a piece");
+        let picked = picker
+            .pick_next(&my_bf, "1.1.1.1:80")
+            .expect("Should pick a piece");
         assert!(picked == 1 || picked == 2);
-        
+
         // If I now have piece 1, it should pick 2 for Peer A
         let mut my_bf_updated = my_bf.clone();
         my_bf_updated.set(1, true);
-        let picked2 = picker.pick_next(&my_bf_updated, "1.1.1.1:80").expect("Should pick another piece");
+        let picked2 = picker
+            .pick_next(&my_bf_updated, "1.1.1.1:80")
+            .expect("Should pick another piece");
         assert_eq!(picked2, 2);
     }
 }

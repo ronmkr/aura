@@ -1,7 +1,7 @@
+use super::{Command, Event, Orchestrator};
+use crate::task::{DownloadPhase, MetaTask};
+use crate::{Error, Result, TaskId};
 use tracing::info;
-use crate::{Result, TaskId, Error};
-use crate::task::{MetaTask, DownloadPhase};
-use super::{Orchestrator, Command, Event};
 
 impl Orchestrator {
     pub(crate) async fn handle_command(&mut self, cmd: Command) -> Result<()> {
@@ -25,7 +25,8 @@ impl Orchestrator {
             }
             Command::ReloadConfig(new_config) => {
                 info!("Reloading configuration");
-                self.throttler.set_limit(new_config.bandwidth.global_download_limit);
+                self.throttler
+                    .set_limit(new_config.bandwidth.global_download_limit);
                 self.config.store(new_config);
             }
             Command::KillSwitch => {
@@ -45,9 +46,14 @@ impl Orchestrator {
         Ok(())
     }
 
-    pub(crate) async fn handle_add_task(&mut self, id: TaskId, name: String, sources: Vec<(String, crate::task::TaskType)>) -> Result<()> {
+    pub(crate) async fn handle_add_task(
+        &mut self,
+        id: TaskId,
+        name: String,
+        sources: Vec<(String, crate::task::TaskType)>,
+    ) -> Result<()> {
         info!(%id, %name, "Adding MetaTask with {} sources", sources.len());
-        
+
         let path = format!("{}.aura", name);
         let (mut meta_task, loaded_bitfield) = if let Ok(data) = tokio::fs::read(&path).await {
             match serde_json::from_slice::<crate::task::TaskState>(&data) {
@@ -72,12 +78,13 @@ impl Orchestrator {
                 meta_task.add_subtask(uri, ttype);
             }
         }
-        
+
         let token = tokio_util::sync::CancellationToken::new();
         self.cancellation_tokens.insert(id, token.clone());
 
         self.tasks.insert(id, meta_task);
-        self.start_task_loops_with_bitfield(id, token, loaded_bitfield).await?;
+        self.start_task_loops_with_bitfield(id, token, loaded_bitfield)
+            .await?;
 
         let _ = self.event_tx.send(Event::TaskAdded(id));
         Ok(())
@@ -88,7 +95,7 @@ impl Orchestrator {
             if task.phase != DownloadPhase::Paused && task.phase != DownloadPhase::Complete {
                 info!(%id, "Pausing task");
                 task.phase = DownloadPhase::Paused;
-                
+
                 if let Some(token) = self.cancellation_tokens.remove(&id) {
                     token.cancel();
                 }
@@ -116,8 +123,8 @@ impl Orchestrator {
                 task.phase = DownloadPhase::Downloading;
                 let token = tokio_util::sync::CancellationToken::new();
                 self.cancellation_tokens.insert(id, token.clone());
-                
-                // For resume, we don't reload bitfield from file here, 
+
+                // For resume, we don't reload bitfield from file here,
                 // we assume the in-memory one is correct or will be synced.
                 self.start_task_loops_with_bitfield(id, token, None).await?;
             }

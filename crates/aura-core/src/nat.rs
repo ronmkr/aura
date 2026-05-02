@@ -1,21 +1,18 @@
 //! nat: Automatic port mapping via UPnP and NAT-PMP/PCP.
 
-use std::net::{IpAddr, SocketAddr};
-use std::num::NonZeroU16;
-use tokio::sync::mpsc;
-use tracing::{info, warn, debug};
-use crate::{Result, Error};
+use crate::{Error, Result};
+use crab_nat::{InternetProtocol, PortMapping, PortMappingOptions};
 use igd_next::aio::tokio::search_gateway;
 use igd_next::SearchOptions;
 use local_ip_address::local_ip;
-use crab_nat::{InternetProtocol, PortMapping, PortMappingOptions};
+use std::net::{IpAddr, SocketAddr};
+use std::num::NonZeroU16;
+use tokio::sync::mpsc;
+use tracing::{debug, info, warn};
 
 #[derive(Debug)]
 pub enum NatCommand {
-    MapPort {
-        port: u16,
-        description: String,
-    },
+    MapPort { port: u16, description: String },
 }
 
 pub struct NatActor {
@@ -29,7 +26,7 @@ impl NatActor {
 
     pub async fn run(mut self) -> Result<()> {
         info!("NAT Traversal Actor started");
-        
+
         while let Some(cmd) = self.command_rx.recv().await {
             match cmd {
                 NatCommand::MapPort { port, description } => {
@@ -37,7 +34,7 @@ impl NatActor {
                 }
             }
         }
-        
+
         Ok(())
     }
 
@@ -65,36 +62,45 @@ impl NatActor {
     }
 
     async fn try_upnp(&self, port: u16, description: &str) -> Result<()> {
-        let local_ip = local_ip()
-            .map_err(|e| Error::Protocol(format!("Failed to get local IP: {}", e)))?;
+        let local_ip =
+            local_ip().map_err(|e| Error::Protocol(format!("Failed to get local IP: {}", e)))?;
 
-        let gateway = search_gateway(SearchOptions::default()).await
+        let gateway = search_gateway(SearchOptions::default())
+            .await
             .map_err(|e| Error::Protocol(format!("UPnP discovery failed: {}", e)))?;
-            
+
         let local_socket = SocketAddr::new(local_ip, port);
-        
-        gateway.add_port(igd_next::PortMappingProtocol::TCP, port, local_socket, 3600, description).await
+
+        gateway
+            .add_port(
+                igd_next::PortMappingProtocol::TCP,
+                port,
+                local_socket,
+                3600,
+                description,
+            )
+            .await
             .map_err(|e| Error::Protocol(format!("UPnP mapping failed: {}", e)))?;
-            
+
         Ok(())
     }
 
     async fn try_nat_pmp_pcp(&self, port: u16) -> Result<()> {
-        let local_ip = local_ip()
-            .map_err(|e| Error::Protocol(format!("Failed to get local IP: {}", e)))?;
-        
+        let local_ip =
+            local_ip().map_err(|e| Error::Protocol(format!("Failed to get local IP: {}", e)))?;
+
         // Try to get gateway from UPnP discovery if available
         let gateway = if let Ok(gw) = search_gateway(SearchOptions::default()).await {
             gw.addr.ip()
         } else {
-             // Fallback to .1 guess
-             if let IpAddr::V4(v4) = local_ip {
+            // Fallback to .1 guess
+            if let IpAddr::V4(v4) = local_ip {
                 let mut octets = v4.octets();
                 octets[3] = 1;
                 IpAddr::V4(std::net::Ipv4Addr::from(octets))
-             } else {
-                 return Err(Error::Protocol("NAT-PMP guess only for IPv4".to_string()));
-             }
+            } else {
+                return Err(Error::Protocol("NAT-PMP guess only for IPv4".to_string()));
+            }
         };
 
         let _mapping = PortMapping::new(
@@ -103,8 +109,10 @@ impl NatActor {
             InternetProtocol::Tcp,
             NonZeroU16::new(port).ok_or_else(|| Error::Protocol("Invalid port".to_string()))?,
             PortMappingOptions::default(),
-        ).await.map_err(|e| Error::Protocol(format!("NAT-PMP/PCP error: {:?}", e)))?;
-        
+        )
+        .await
+        .map_err(|e| Error::Protocol(format!("NAT-PMP/PCP error: {:?}", e)))?;
+
         Ok(())
     }
 }

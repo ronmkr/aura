@@ -1,24 +1,31 @@
+use super::{Peer, TrackerClient};
+use crate::torrent::Torrent;
+use crate::{Error, Result};
 use tokio::net::UdpSocket;
 use tracing::{debug, warn};
-use crate::{Result, Error};
-use crate::torrent::Torrent;
-use super::{TrackerClient, Peer};
 
 impl TrackerClient {
     pub(crate) async fn announce_udp(&self, url_str: &str, torrent: &Torrent) -> Result<Vec<Peer>> {
         let url = url::Url::parse(url_str)
             .map_err(|e| Error::Protocol(format!("Invalid UDP tracker URL: {}", e)))?;
-        let host = url.host_str().ok_or_else(|| Error::Protocol("Missing host in UDP tracker URL".to_string()))?;
-        let port = url.port().ok_or_else(|| Error::Protocol("Missing port in UDP tracker URL".to_string()))?;
+        let host = url
+            .host_str()
+            .ok_or_else(|| Error::Protocol("Missing host in UDP tracker URL".to_string()))?;
+        let port = url
+            .port()
+            .ok_or_else(|| Error::Protocol("Missing port in UDP tracker URL".to_string()))?;
 
-        let addrs = tokio::net::lookup_host(format!("{}:{}", host, port)).await
-            .map_err(|e| Error::Protocol(format!("Failed to resolve UDP tracker {}: {}", host, e)))?;
+        let addrs = tokio::net::lookup_host(format!("{}:{}", host, port))
+            .await
+            .map_err(|e| {
+                Error::Protocol(format!("Failed to resolve UDP tracker {}: {}", host, e))
+            })?;
 
         let mut last_error = Error::Protocol("All UDP attempts failed".to_string());
 
         for addr in addrs {
             debug!(url = %url_str, %addr, "Attempting UDP tracker announce");
-            
+
             let socket = match crate::net_util::bind_udp_bound(0, None, self.local_addr).await {
                 Ok(s) => s,
                 Err(e) => {
@@ -57,21 +64,28 @@ impl TrackerClient {
         connect_req.extend_from_slice(&0u32.to_be_bytes()); // Action 0: connect
         connect_req.extend_from_slice(&transaction_id.to_be_bytes());
 
-        socket.send(&connect_req).await
+        socket
+            .send(&connect_req)
+            .await
             .map_err(|e| Error::Protocol(format!("Failed to send UDP connect request: {}", e)))?;
 
         let mut buf = [0u8; 2048];
-        let len = tokio::time::timeout(std::time::Duration::from_secs(5), socket.recv(&mut buf)).await
+        let len = tokio::time::timeout(std::time::Duration::from_secs(5), socket.recv(&mut buf))
+            .await
             .map_err(|_| Error::Protocol("UDP connect timeout".to_string()))?
             .map_err(|e| Error::Protocol(format!("UDP recv error: {}", e)))?;
 
         if len < 16 {
-            return Err(Error::Protocol("UDP connect response too short".to_string()));
+            return Err(Error::Protocol(
+                "UDP connect response too short".to_string(),
+            ));
         }
 
         let action = u32::from_be_bytes([buf[0], buf[1], buf[2], buf[3]]);
         let res_tid = u32::from_be_bytes([buf[4], buf[5], buf[6], buf[7]]);
-        let connection_id = u64::from_be_bytes([buf[8], buf[9], buf[10], buf[11], buf[12], buf[13], buf[14], buf[15]]);
+        let connection_id = u64::from_be_bytes([
+            buf[8], buf[9], buf[10], buf[11], buf[12], buf[13], buf[14], buf[15],
+        ]);
 
         if action != 0 || res_tid != transaction_id {
             return Err(Error::Protocol("Invalid UDP connect response".to_string()));
@@ -94,20 +108,27 @@ impl TrackerClient {
         announce_req.extend_from_slice(&(-1i32).to_be_bytes()); // num_want -1: default
         announce_req.extend_from_slice(&(self.port).to_be_bytes());
 
-        socket.send(&announce_req).await
+        socket
+            .send(&announce_req)
+            .await
             .map_err(|e| Error::Protocol(format!("Failed to send UDP announce request: {}", e)))?;
 
-        let len = tokio::time::timeout(std::time::Duration::from_secs(5), socket.recv(&mut buf)).await
+        let len = tokio::time::timeout(std::time::Duration::from_secs(5), socket.recv(&mut buf))
+            .await
             .map_err(|_| Error::Protocol("UDP announce timeout".to_string()))?
             .map_err(|e| Error::Protocol(format!("UDP recv error: {}", e)))?;
 
         if len < 20 {
-            return Err(Error::Protocol("UDP announce response too short".to_string()));
+            return Err(Error::Protocol(
+                "UDP announce response too short".to_string(),
+            ));
         }
 
         let action = u32::from_be_bytes([buf[0], buf[1], buf[2], buf[3]]);
         if action != 1 {
-            return Err(Error::Protocol("Invalid UDP announce response action".to_string()));
+            return Err(Error::Protocol(
+                "Invalid UDP announce response action".to_string(),
+            ));
         }
 
         // Parse peers from response (starting at offset 20)

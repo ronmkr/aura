@@ -39,29 +39,32 @@ async fn main() -> Result<()> {
     // Bootstrap the engine
     let config = aura_core::Config::from_file("Aura.toml").unwrap_or_default();
     let (engine, orchestrator, mut storage) = Engine::new(config).await?;
-    
+
     // Inferred directory
     let current_dir = std::env::current_dir().unwrap();
 
     // Register and add all tasks
     for uri in &expanded_uris {
-        let name = url::Url::parse(uri).ok()
+        let name = url::Url::parse(uri)
+            .ok()
             .and_then(|u| u.path_segments()?.next_back()?.to_string().into())
             .filter(|s: &String| !s.is_empty())
             .unwrap_or_else(|| "download.bin".to_string());
-            
+
         let path = current_dir.join(&name);
         let id = TaskId(rand::random());
         storage.register_task(id, path);
-        
-        let ttype = if uri.ends_with(".torrent") { 
-            TaskType::BitTorrent 
+
+        let ttype = if uri.ends_with(".torrent") {
+            TaskType::BitTorrent
         } else if uri.starts_with("ftp://") || uri.starts_with("ftps://") {
             TaskType::Ftp
-        } else { 
-            TaskType::Http 
+        } else {
+            TaskType::Http
         };
-        engine.add_task_with_id(id, name, uri.clone(), 0, ttype).await?;
+        engine
+            .add_task_with_id(id, name, uri.clone(), 0, ttype)
+            .await?;
     }
 
     // Spawn the actors
@@ -70,7 +73,7 @@ async fn main() -> Result<()> {
             tracing::error!("Orchestrator error: {}", e);
         }
     });
-    
+
     tokio::spawn(async move {
         if let Err(e) = storage.run().await {
             tracing::error!("Storage Engine error: {}", e);
@@ -89,13 +92,20 @@ async fn main() -> Result<()> {
         match event {
             Event::TaskAdded(id) => {
                 let pb = mp.add(ProgressBar::new_spinner());
-                pb.set_style(ProgressStyle::default_spinner()
-                    .template("{spinner:.green} [{elapsed_precise}] {msg}")
-                    .expect("Failed to set spinner style"));
+                pb.set_style(
+                    ProgressStyle::default_spinner()
+                        .template("{spinner:.green} [{elapsed_precise}] {msg}")
+                        .expect("Failed to set spinner style"),
+                );
                 pb.set_message(format!("Initializing task {}", id));
                 bars.insert(id, pb);
             }
-            Event::MetadataResolved { id, total_length, name: matured_name, .. } => {
+            Event::MetadataResolved {
+                id,
+                total_length,
+                name: matured_name,
+                ..
+            } => {
                 if let Some(pb) = bars.get(&id) {
                     let display_name = matured_name.unwrap_or_else(|| format!("{}", id));
                     pb.set_length(total_length);
@@ -106,7 +116,11 @@ async fn main() -> Result<()> {
                     pb.set_message(format!("Downloading {}", display_name));
                 }
             }
-            Event::TaskProgress { id, completed_bytes, total_bytes } => {
+            Event::TaskProgress {
+                id,
+                completed_bytes,
+                total_bytes,
+            } => {
                 if let Some(pb) = bars.get(&id) {
                     if pb.length() != Some(total_bytes) {
                         pb.set_length(total_bytes);

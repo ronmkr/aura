@@ -12,7 +12,10 @@ use ratatui::{
     Terminal,
 };
 use serde_json::json;
-use std::{io, time::{Duration, Instant}};
+use std::{
+    io,
+    time::{Duration, Instant},
+};
 
 struct App {
     client: reqwest::Client,
@@ -39,7 +42,9 @@ impl App {
     }
 
     async fn tick(&mut self) -> Result<()> {
-        let res = self.client.post("http://localhost:6800/jsonrpc")
+        let res = self
+            .client
+            .post("http://localhost:6800/jsonrpc")
             .json(&json!({
                 "jsonrpc": "2.0",
                 "method": "aria2.tellActive",
@@ -123,7 +128,7 @@ fn ui(f: &mut ratatui::Frame, app: &App) {
         .style(normal_style)
         .height(1)
         .bottom_margin(1);
-    
+
     let rows = app.downloads.iter().map(|item| {
         let total = item.total_length.parse::<u64>().unwrap_or(0);
         let completed = item.completed_length.parse::<u64>().unwrap_or(0);
@@ -142,14 +147,21 @@ fn ui(f: &mut ratatui::Frame, app: &App) {
         Row::new(cells).height(1)
     });
 
-    let t = Table::new(rows, [
-        Constraint::Percentage(40),
-        Constraint::Percentage(20),
-        Constraint::Percentage(20),
-        Constraint::Percentage(20),
-    ])
+    let t = Table::new(
+        rows,
+        [
+            Constraint::Percentage(40),
+            Constraint::Percentage(20),
+            Constraint::Percentage(20),
+            Constraint::Percentage(20),
+        ],
+    )
     .header(header)
-    .block(Block::default().borders(Borders::ALL).title("Aura Downloads"))
+    .block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title("Aura Downloads"),
+    )
     .highlight_style(selected_style)
     .highlight_symbol(">> ");
 

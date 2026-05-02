@@ -1,5 +1,5 @@
-use crate::{Result, Error};
-use bytes::{Bytes, Buf, BufMut, BytesMut};
+use crate::{Error, Result};
+use bytes::{Buf, BufMut, Bytes, BytesMut};
 use tokio_util::codec::{Decoder, Encoder};
 
 pub const HANDSHAKE_LEN: usize = 68;
@@ -35,7 +35,7 @@ impl Handshake {
             return Err(Error::Protocol("Handshake too short".to_string()));
         }
         let pstr_len = data[0] as usize;
-        if pstr_len != PSTR.len() || &data[1..1+pstr_len] != PSTR {
+        if pstr_len != PSTR.len() || &data[1..1 + pstr_len] != PSTR {
             return Err(Error::Protocol("Invalid protocol string".to_string()));
         }
         let mut info_hash = [0; 20];
@@ -56,9 +56,21 @@ pub enum PeerMessage {
     NotInterested,
     Have(u32),
     Bitfield(Vec<u8>),
-    Request { index: u32, begin: u32, length: u32 },
-    Piece { index: u32, begin: u32, block: Bytes },
-    Cancel { index: u32, begin: u32, length: u32 },
+    Request {
+        index: u32,
+        begin: u32,
+        length: u32,
+    },
+    Piece {
+        index: u32,
+        begin: u32,
+        block: Bytes,
+    },
+    Cancel {
+        index: u32,
+        begin: u32,
+        length: u32,
+    },
 }
 
 impl PeerMessage {
@@ -94,21 +106,33 @@ impl PeerMessage {
                 buf.put_u8(5);
                 buf.extend_from_slice(bits);
             }
-            PeerMessage::Request { index, begin, length } => {
+            PeerMessage::Request {
+                index,
+                begin,
+                length,
+            } => {
                 buf.put_u32(13);
                 buf.put_u8(6);
                 buf.put_u32(*index);
                 buf.put_u32(*begin);
                 buf.put_u32(*length);
             }
-            PeerMessage::Piece { index, begin, block } => {
+            PeerMessage::Piece {
+                index,
+                begin,
+                block,
+            } => {
                 buf.put_u32(9 + block.len() as u32);
                 buf.put_u8(7);
                 buf.put_u32(*index);
                 buf.put_u32(*begin);
                 buf.extend_from_slice(block);
             }
-            PeerMessage::Cancel { index, begin, length } => {
+            PeerMessage::Cancel {
+                index,
+                begin,
+                length,
+            } => {
                 buf.put_u32(13);
                 buf.put_u8(8);
                 buf.put_u32(*index);
