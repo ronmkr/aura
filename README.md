@@ -50,10 +50,10 @@ Aura is built on a foundation of independent actors:
 2. **Storage Engine**: Manages high-speed asynchronous disk I/O, write aggregation, and atomic file completion.
 3. **Protocol Workers**: Lightweight, specialized actors for HTTP, BitTorrent, and FTP that handle protocol-specific logic and data retrieval.
 
-See [design.md](./design.md) for a deep dive into the system design and [CONTEXT.md](./CONTEXT.md) for our ubiquitous language.
+See [design.md](docs/project/design.md) for a deep dive into the system design and [CONTEXT.md](docs/project/CONTEXT.md) for our ubiquitous language.
 
 ## 🤝 Contributing
-Please read [CONTRIBUTING.md](./CONTRIBUTING.md) for our engineering standards and TDD workflow.
+Please read [CONTRIBUTING.md](docs/project/CONTRIBUTING.md) for our engineering standards and TDD workflow.
 
 ## 📜 License
 This project is licensed under the MIT License - see the LICENSE file for details.
