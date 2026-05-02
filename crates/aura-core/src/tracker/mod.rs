@@ -5,6 +5,7 @@ use crate::{Error, Result};
 use futures_util::future::join_all;
 use serde::{Deserialize, Serialize};
 use std::net::Ipv4Addr;
+use url::Url;
 
 pub mod udp;
 
@@ -106,21 +107,29 @@ impl TrackerClient {
 
     async fn announce_http(&self, url_str: &str, torrent: &Torrent) -> Result<Vec<Peer>> {
         let info_hash = torrent.info_hash()?;
-        let info_hash_str: String = info_hash.iter().map(|b| format!("%{:02x}", b)).collect();
-        let peer_id_str: String = self.peer_id.iter().map(|b| format!("%{:02x}", b)).collect();
+        let info_hash_encoded: String = info_hash.iter().map(|b| format!("%{:02x}", b)).collect();
+        let peer_id_encoded: String = self.peer_id.iter().map(|b| format!("%{:02x}", b)).collect();
 
-        let url = format!(
-            "{}?info_hash={}&peer_id={}&port={}&uploaded=0&downloaded=0&left={}&compact=1&event=started",
-            url_str,
-            info_hash_str,
-            peer_id_str,
+        let url = Url::parse(url_str)
+            .map_err(|e| Error::Protocol(format!("Invalid tracker URL: {}", e)))?;
+
+        let query = format!(
+            "info_hash={}&peer_id={}&port={}&uploaded=0&downloaded=0&left={}&compact=1&event=started",
+            info_hash_encoded,
+            peer_id_encoded,
             self.port,
             torrent.total_length()
         );
 
+        let final_url = if url.query().is_some() {
+            format!("{}&{}", url_str, query)
+        } else {
+            format!("{}?{}", url_str, query)
+        };
+
         let bytes = self
             .client
-            .get(&url)
+            .get(&final_url)
             .send()
             .await
             .map_err(|e| Error::Protocol(format!("Tracker request failed: {}", e)))?

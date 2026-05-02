@@ -11,6 +11,7 @@ use crate::{Result, TaskId};
 use arc_swap::ArcSwap;
 use rand::Rng;
 use std::collections::HashMap;
+use std::net::{IpAddr, Ipv4Addr};
 use std::sync::Arc;
 use tokio::sync::{broadcast, mpsc};
 use tokio_util::sync::CancellationToken;
@@ -82,8 +83,8 @@ pub struct Orchestrator {
     pub(crate) event_tx: broadcast::Sender<Event>,
     pub(crate) storage_tx: mpsc::Sender<StorageRequest>,
     pub(crate) storage_completion_rx: mpsc::Receiver<TaskId>,
-    pub(crate) subtask_tx: mpsc::UnboundedSender<SubTaskEvent>,
-    pub(crate) subtask_rx: mpsc::UnboundedReceiver<SubTaskEvent>,
+    pub(crate) subtask_tx: mpsc::Sender<SubTaskEvent>,
+    pub(crate) subtask_rx: mpsc::Receiver<SubTaskEvent>,
     pub(crate) dht_tx: mpsc::Sender<DhtCommand>,
     pub(crate) _nat_tx: mpsc::Sender<NatCommand>,
     pub(crate) peer_id: [u8; 20],
@@ -122,7 +123,7 @@ impl Orchestrator {
         config: Arc<ArcSwap<crate::Config>>,
     ) -> (Self, broadcast::Receiver<Event>) {
         let (event_tx, event_rx) = broadcast::channel(1024);
-        let (subtask_tx, subtask_rx) = mpsc::unbounded_channel();
+        let (subtask_tx, subtask_rx) = mpsc::channel(4096);
 
         let mut peer_id = [0u8; 20];
         peer_id[..8].copy_from_slice(b"-AR0001-");
@@ -158,7 +159,7 @@ impl Orchestrator {
         let local_addr = self.resolve_local_addr();
         let config_initial = self.config.load();
         let bind_addr = std::net::SocketAddr::new(
-            local_addr.unwrap_or("0.0.0.0".parse().unwrap()),
+            local_addr.unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
             config_initial.network.listen_port,
         );
 
@@ -186,20 +187,23 @@ impl Orchestrator {
                 interval.tick().await;
                 let config = config_monitor.load();
                 if let Some(ref iface) = config.network.interface {
-                    use local_ip_address::list_afinet_netifas;
-                    let is_up = list_afinet_netifas()
-                        .ok()
-                        .map(|ifas: Vec<(String, std::net::IpAddr)>| {
-                            ifas.into_iter().any(|(name, _)| name == *iface)
-                        })
-                        .unwrap_or(false);
+                    let iface_clone = iface.clone();
+                    let is_up = tokio::task::spawn_blocking(move || {
+                        use local_ip_address::list_afinet_netifas;
+                        list_afinet_netifas()
+                            .ok()
+                            .map(|ifas| ifas.into_iter().any(|(name, _)| name == iface_clone))
+                    })
+                    .await
+                    .unwrap_or(None)
+                    .unwrap_or(false);
 
                     if !is_up {
                         tracing::warn!(
                             "VPN Kill-switch triggered! Interface {} is down. Stopping all tasks.",
                             iface
                         );
-                        let _ = subtask_tx_monitor.send(SubTaskEvent::KillSwitch);
+                        let _ = subtask_tx_monitor.send(SubTaskEvent::KillSwitch).await;
                     }
                 }
             }

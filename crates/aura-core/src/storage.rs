@@ -207,7 +207,10 @@ impl StorageEngine {
             self.handles.insert(id, file);
         }
 
-        Ok(self.handles.get_mut(&id).unwrap())
+        Ok(self
+            .handles
+            .get_mut(&id)
+            .expect("File handle must exist after open/insert"))
     }
 }
 

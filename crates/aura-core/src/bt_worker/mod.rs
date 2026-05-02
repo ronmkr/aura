@@ -75,7 +75,7 @@ impl BtWorker {
         sub_id: TaskId,
         task: Arc<BtTask>,
         storage_tx: tokio::sync::mpsc::Sender<StorageRequest>,
-        subtask_tx: tokio::sync::mpsc::UnboundedSender<SubTaskEvent>,
+        subtask_tx: tokio::sync::mpsc::Sender<SubTaskEvent>,
         token: CancellationToken,
     ) -> Result<()> {
         let (stream, peer_id) = self.connect_and_handshake().await?;
@@ -95,7 +95,7 @@ impl BtWorker {
         _sub_id: TaskId,
         task: Arc<BtTask>,
         storage_tx: tokio::sync::mpsc::Sender<StorageRequest>,
-        subtask_tx: tokio::sync::mpsc::UnboundedSender<SubTaskEvent>,
+        subtask_tx: tokio::sync::mpsc::Sender<SubTaskEvent>,
         token: CancellationToken,
     ) -> Result<()> {
         let mut framed = Framed::new(stream, PeerCodec);
@@ -133,7 +133,7 @@ impl BtWorker {
                                     let mut picker = task.state.picker.lock().await;
                                     picker.add_peer_bitfield(peer_addr.clone(), bf.clone());
                                     drop(picker);
-                                    let _ = subtask_tx.send(SubTaskEvent::PeerBitfield(meta_id, self.peer_id, bf));
+                                    let _ = subtask_tx.send(SubTaskEvent::PeerBitfield(meta_id, self.peer_id, bf)).await;
 
                                     if !peer_choking {
                                         self.trigger_request(&mut framed, &task, piece_length, total_length, meta_id, storage_tx.clone(), subtask_tx.clone()).await?;
@@ -146,7 +146,7 @@ impl BtWorker {
                                     let mut picker = task.state.picker.lock().await;
                                     picker.add_peer_bitfield(peer_addr.clone(), bf);
                                     drop(picker);
-                                    let _ = subtask_tx.send(SubTaskEvent::PeerHave(meta_id, self.peer_id, idx));
+                                    let _ = subtask_tx.send(SubTaskEvent::PeerHave(meta_id, self.peer_id, idx)).await;
 
                                     if !peer_choking {
                                         self.trigger_request(&mut framed, &task, piece_length, total_length, meta_id, storage_tx.clone(), subtask_tx.clone()).await?;
@@ -159,7 +159,7 @@ impl BtWorker {
                                     self.piece_buffer[begin as usize..begin as usize + len].copy_from_slice(&block);
 
                                     self.bytes_received += len as u64;
-                                    let _ = subtask_tx.send(SubTaskEvent::Downloaded(meta_id, len as u64));
+                                    let _ = subtask_tx.send(SubTaskEvent::Downloaded(meta_id, len as u64)).await;
 
                                     if !peer_choking {
                                         self.trigger_request(&mut framed, &task, piece_length, total_length, meta_id, storage_tx.clone(), subtask_tx.clone()).await?;
@@ -204,7 +204,7 @@ impl BtWorker {
         total_length: u64,
         meta_id: TaskId,
         storage_tx: tokio::sync::mpsc::Sender<StorageRequest>,
-        subtask_tx: tokio::sync::mpsc::UnboundedSender<SubTaskEvent>,
+        subtask_tx: tokio::sync::mpsc::Sender<SubTaskEvent>,
     ) -> Result<()>
     where
         S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
