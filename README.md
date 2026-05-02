@@ -1,6 +1,9 @@
-# Aura: The High-Performance Rust Download Engine
+# Aura 🌌
 
-Aura is a high-performance, asynchronous download engine written in Rust. It is designed to be the spiritual successor to `aria2`, leveraging an actor-based architecture for extreme concurrency, safety, and protocol-agnostic orchestration.
+[![CI](https://github.com/ronmkr/aura/actions/workflows/ci.yml/badge.svg)](https://github.com/ronmkr/aura/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+**Aura** is a high-performance, asynchronous download engine written in Rust. It is the spiritual successor to `aria2`, reimagined for the modern era with an actor-based architecture, protocol-agnostic orchestration, and memory-safe concurrency.
 
 ## 🚀 Features
 
