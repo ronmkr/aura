@@ -107,14 +107,13 @@ impl Orchestrator {
                 let config = config_clone.load();
                 match ttype {
                     TaskType::Http => {
-                        let worker = HttpWorker::new(
-                            uri, 
-                            local_addr,
-                            Some(config.network.user_agent.clone()),
-                            Some(config.network.connect_timeout_secs),
-                            config.network.proxy.clone(),
-                            None,
-                        );
+                        let worker = crate::worker::WorkerBuilder::new(uri)
+                            .local_addr(local_addr)
+                            .user_agent(Some(config.network.user_agent.clone()))
+                            .connect_timeout(Some(config.network.connect_timeout_secs))
+                            .proxy(config.network.proxy.clone())
+                            .build_http();
+
                         match worker.resolve_metadata().await {
                             Ok(m) => {
                                 let _ = subtask_tx.send(SubTaskEvent::Matured(id, sub_id, m));
@@ -125,7 +124,10 @@ impl Orchestrator {
                         }
                     }
                     TaskType::Ftp => {
-                        let worker = crate::worker::FtpWorker::new(uri, local_addr);
+                        let worker = crate::worker::WorkerBuilder::new(uri)
+                            .local_addr(local_addr)
+                            .build_ftp();
+
                         match worker.resolve_metadata().await {
                             Ok(m) => {
                                 let _ = subtask_tx.send(SubTaskEvent::Matured(id, sub_id, m));
@@ -294,14 +296,12 @@ impl Orchestrator {
                     let config = config_clone.load();
                     match ttype {
                         TaskType::Http => {
-                            let worker = HttpWorker::new(
-                                uri, 
-                                local_addr,
-                                Some(config.network.user_agent.clone()),
-                                Some(config.network.connect_timeout_secs),
-                                config.network.proxy.clone(),
-                                None,
-                            );
+                            let worker = crate::worker::WorkerBuilder::new(uri)
+                                .local_addr(local_addr)
+                                .user_agent(Some(config.network.user_agent.clone()))
+                                .connect_timeout(Some(config.network.connect_timeout_secs))
+                                .proxy(config.network.proxy.clone())
+                                .build_http();
                             let segment = Segment { offset: range.start, length: range.length() };
                             
                             tokio::select! {
@@ -329,7 +329,9 @@ impl Orchestrator {
                         TaskType::BitTorrent => {
                         }
                         TaskType::Ftp => {
-                            let worker = crate::worker::FtpWorker::new(uri, local_addr);
+                            let worker = crate::worker::WorkerBuilder::new(uri)
+                                .local_addr(local_addr)
+                                .build_ftp();
                             let segment = Segment { offset: range.start, length: range.length() };
                             
                             tokio::select! {
