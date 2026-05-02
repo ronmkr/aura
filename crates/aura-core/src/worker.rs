@@ -35,14 +35,14 @@ use url::Url;
 /// A specialized worker for the FTP(S) protocol.
 pub struct FtpWorker {
     uri: String,
-    local_addr: Option<std::net::IpAddr>,
+    _local_addr: Option<std::net::IpAddr>,
 }
 
 impl FtpWorker {
     pub fn new(uri: String, local_addr: Option<std::net::IpAddr>) -> Self {
         Self {
             uri,
-            local_addr,
+            _local_addr: local_addr,
         }
     }
 
@@ -76,7 +76,7 @@ impl FtpWorker {
             .map_err(|e| Error::Protocol(format!("Failed to get FTP file size: {}", e)))?;
             
         let name = url.path_segments()
-            .and_then(|s| s.last())
+            .and_then(|mut s| s.next_back())
             .map(|s| s.to_string());
 
         let _ = ftp.quit().await;
@@ -459,7 +459,7 @@ mod tests {
             .mount(&server)
             .await;
 
-        let worker = HttpWorker::new(format!("{}/start", server.uri()));
+        let worker = HttpWorker::new(format!("{}/start", server.uri()), None);
         let result = worker.fetch_segment(TaskId(1), Segment { offset: 0, length: 11 }, None).await;
         
         assert!(result.is_ok(), "Worker should propagate referer and succeed");
@@ -471,7 +471,7 @@ mod tests {
         Mock::given(method("GET")).and(path("/a")).respond_with(ResponseTemplate::new(302).insert_header("Location", "/b")).mount(&server).await;
         Mock::given(method("GET")).and(path("/b")).respond_with(ResponseTemplate::new(302).insert_header("Location", "/a")).mount(&server).await;
 
-        let worker = HttpWorker::new(format!("{}/a", server.uri()));
+        let worker = HttpWorker::new(format!("{}/a", server.uri()), None);
         let result = worker.fetch_segment(TaskId(1), Segment { offset: 0, length: 10 }, None).await;
         match result {
             Err(Error::Protocol(msg)) => assert!(msg.to_lowercase().contains("redirect")),

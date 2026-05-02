@@ -122,7 +122,7 @@ impl MetaTask {
         
         // Generate granular ranges
         let actual_num_ranges = std::cmp::max(num_ranges, 32);
-        let granular_size = (self.total_length + actual_num_ranges as u64 - 1) / actual_num_ranges as u64;
+        let granular_size = self.total_length.div_ceil(actual_num_ranges as u64);
         
         for i in 0..actual_num_ranges {
             let start = i as u64 * granular_size;

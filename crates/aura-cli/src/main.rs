@@ -46,7 +46,7 @@ async fn main() -> Result<()> {
     // Register and add all tasks
     for uri in &expanded_uris {
         let name = url::Url::parse(uri).ok()
-            .and_then(|u| u.path_segments()?.last()?.to_string().into())
+            .and_then(|u| u.path_segments()?.next_back()?.to_string().into())
             .filter(|s: &String| !s.is_empty())
             .unwrap_or_else(|| "download.bin".to_string());
             
@@ -130,7 +130,6 @@ async fn main() -> Result<()> {
                     break;
                 }
             }
-            _ => {}
         }
     }
 

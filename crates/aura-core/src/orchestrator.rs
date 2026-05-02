@@ -68,12 +68,13 @@ pub struct Orchestrator {
     subtask_tx: mpsc::UnboundedSender<SubTaskEvent>,
     subtask_rx: mpsc::UnboundedReceiver<SubTaskEvent>,
     dht_tx: mpsc::Sender<DhtCommand>,
-    nat_tx: mpsc::Sender<NatCommand>,
+    _nat_tx: mpsc::Sender<NatCommand>,
     peer_id: [u8; 20],
     throttler: Arc<Throttler>,
     config: Arc<crate::Config>,
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn handle_incoming_peer(
     mut stream: tokio::net::TcpStream,
     addr: std::net::SocketAddr,
@@ -165,7 +166,7 @@ impl Orchestrator {
                 subtask_tx,
                 subtask_rx,
                 dht_tx,
-                nat_tx,
+                _nat_tx: nat_tx,
                 peer_id,
                 throttler,
                 config,

@@ -20,7 +20,7 @@ pub fn bind_socket(socket: &Socket, interface: Option<&str>, local_addr: Option<
     }
 
     #[cfg(any(target_os = "macos", target_os = "ios"))]
-    if let Some(iface) = interface {
+    if let Some(_iface) = interface {
         // macOS uses a different approach for interface binding
         // For now, we might need to resolve the interface to an IP
         // or use IP_BOUND_IF if we were using raw setsockopt.

@@ -85,11 +85,9 @@ impl TrackerClient {
         let mut all_peers = Vec::new();
         let mut success = false;
 
-        for res in results {
-            if let Ok(peers) = res {
-                all_peers.extend(peers);
-                success = true;
-            }
+        for peers in results.into_iter().flatten() {
+            all_peers.extend(peers);
+            success = true;
         }
 
         if success {
@@ -163,12 +161,12 @@ impl TrackerClient {
         };
 
         if let serde_bencode::value::Value::Dict(dict) = res_val {
-            if let Some(serde_bencode::value::Value::Bytes(reason)) = dict.get(&b"failure reason".to_vec()) {
+            if let Some(serde_bencode::value::Value::Bytes(reason)) = dict.get(b"failure reason".as_slice()) {
                 let reason_str = String::from_utf8_lossy(reason).to_string();
                 return Err(Error::Protocol(format!("Tracker reported failure: {}", reason_str)));
             }
 
-            if let Some(peers) = dict.get(&b"peers".to_vec()) {
+            if let Some(peers) = dict.get(b"peers".as_slice()) {
                 return self.parse_peers(peers.clone());
             }
         }
@@ -338,18 +336,18 @@ impl TrackerClient {
                 let mut peers = Vec::new();
                 for p in list {
                     if let serde_bencode::value::Value::Dict(dict) = p {
-                        let ip = if let Some(serde_bencode::value::Value::Bytes(b)) = dict.get(&b"ip".to_vec()) {
+                        let ip = if let Some(serde_bencode::value::Value::Bytes(b)) = dict.get(b"ip".as_slice()) {
                             String::from_utf8_lossy(b).to_string()
                         } else {
                             continue;
                         };
-                        let port = if let Some(serde_bencode::value::Value::Int(p)) = dict.get(&b"port".to_vec()) {
+                        let port = if let Some(serde_bencode::value::Value::Int(p)) = dict.get(b"port".as_slice()) {
                             *p as u16
                         } else {
                             continue;
                         };
                         peers.push(Peer {
-                            id: dict.get(&b"peer id".to_vec()).cloned(),
+                            id: dict.get(b"peer id".as_slice()).cloned(),
                             ip,
                             port,
                         });
@@ -385,7 +383,7 @@ mod tests {
 
     #[test]
     fn test_parse_compact_peers() {
-        let client = TrackerClient::new([0; 20], 6881);
+        let client = TrackerClient::new([0; 20], 6881, None);
         let bytes = vec![127, 0, 0, 1, 0x1a, 0xe1]; // 127.0.0.1:6881
         let peers = client.parse_compact_peers_raw(&bytes).unwrap();
         assert_eq!(peers.len(), 1);
@@ -395,7 +393,7 @@ mod tests {
 
     #[test]
     fn test_parse_non_compact_peers() {
-        let client = TrackerClient::new([0; 20], 6881);
+        let client = TrackerClient::new([0; 20], 6881, None);
         let mut peer_dict = std::collections::HashMap::new();
         peer_dict.insert(b"ip".to_vec(), serde_bencode::value::Value::Bytes(b"127.0.0.1".to_vec()));
         peer_dict.insert(b"port".to_vec(), serde_bencode::value::Value::Int(6881));
