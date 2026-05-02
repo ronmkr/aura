@@ -7,9 +7,11 @@ use tokio::sync::mpsc;
 
 pub mod http;
 pub mod ftp;
+pub mod builder;
 
 pub use http::HttpWorker;
 pub use ftp::FtpWorker;
+pub use builder::WorkerBuilder;
 
 pub type ProgressSender = mpsc::UnboundedSender<u64>;
 
