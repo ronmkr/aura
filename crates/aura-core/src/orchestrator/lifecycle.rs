@@ -78,7 +78,7 @@ impl Orchestrator {
             for sub in &meta_task.subtasks {
                 if let Some(bt) = self.bt_tasks.get(&sub.id) {
                     let bf = bt.state.bitfield.lock().await;
-                    bitfield = Some(bf.clone());
+                    bitfield = bf.clone();
                     break;
                 }
             }
@@ -167,15 +167,27 @@ impl Orchestrator {
                         let bt_task = if let Some(bt) = existing_bt {
                             bt
                         } else {
-                            match BtTask::from_file(id, &uri, dht_tx).await {
+                            let init_res = if uri.starts_with("magnet:") {
+                                match crate::magnet::Magnet::parse(&uri) {
+                                    Ok(m) => Ok(BtTask::from_magnet(id, m.info_hash, dht_tx)),
+                                    Err(e) => Err(e),
+                                }
+                            } else {
+                                BtTask::from_file(id, &uri, dht_tx).await
+                            };
+
+                            match init_res {
                                 Ok(t) => {
+                                    let t = t;
                                     if let Some(bf) = loaded_bf {
                                         let mut my_bf = t.state.bitfield.lock().await;
-                                        *my_bf = bf;
+                                        *my_bf = Some(bf.clone());
                                         let mut picker = t.state.picker.lock().await;
-                                        for i in 0..my_bf.len() {
-                                            if my_bf.get(i) {
-                                                picker.mark_completed(i);
+                                        if let Some(ref mut p) = *picker {
+                                            for i in 0..bf.len() {
+                                                if bf.get(i) {
+                                                    p.mark_completed(i);
+                                                }
                                             }
                                         }
                                     }
@@ -190,7 +202,7 @@ impl Orchestrator {
                             }
                         };
 
-                        let info_hash = bt_task.state.torrent.info_hash().unwrap_or([0; 20]);
+                        let info_hash = bt_task.state.info_hash;
                         let _ = subtask_tx
                             .send(SubTaskEvent::BtTaskRegistered(
                                 id,
@@ -200,15 +212,19 @@ impl Orchestrator {
                             ))
                             .await;
 
-                        let total_length = bt_task.state.torrent.total_length();
-                        let metadata = Metadata {
-                            final_uri: uri.clone(),
-                            total_length: Some(total_length),
-                            name: Some(bt_task.state.torrent.info.name.clone()),
-                        };
-                        let _ = subtask_tx
-                            .send(SubTaskEvent::Matured(id, sub_id, metadata))
-                            .await;
+                        let torrent_guard = bt_task.state.torrent.lock().await;
+                        if let Some(ref torrent) = *torrent_guard {
+                            let total_length = torrent.total_length();
+                            let metadata = Metadata {
+                                final_uri: uri.clone(),
+                                total_length: Some(total_length),
+                                name: Some(torrent.info.name.clone()),
+                            };
+                            let _ = subtask_tx
+                                .send(SubTaskEvent::Matured(id, sub_id, metadata))
+                                .await;
+                        }
+                        drop(torrent_guard);
 
                         // Start tracker loop
                         let tracker_task = bt_task.clone();
@@ -232,7 +248,6 @@ impl Orchestrator {
                         let peer_task = bt_task.clone();
                         let storage_tx_loop = storage_tx.clone();
                         let subtask_tx_loop = subtask_tx.clone();
-                        let info_hash = bt_task.state.torrent.info_hash().unwrap_or([0; 20]);
                         let t3 = token.clone();
                         let config_loop = config_clone.clone();
 

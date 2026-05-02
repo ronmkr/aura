@@ -10,10 +10,13 @@ use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
 use tokio_util::codec::Framed;
 use tokio_util::sync::CancellationToken;
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, warn};
 
 pub mod protocol;
-pub use protocol::{Handshake, PeerCodec, PeerId, PeerMessage, BLOCK_SIZE, HANDSHAKE_LEN};
+pub use protocol::{
+    ExtendedHandshake, Handshake, MetadataMessage, PeerCodec, PeerId, PeerMessage, BLOCK_SIZE,
+    HANDSHAKE_LEN,
+};
 
 pub struct BtWorker {
     pub peer_addr: String,
@@ -26,6 +29,8 @@ pub struct BtWorker {
     pub piece_buffer: BytesMut,
     pub local_addr: Option<std::net::IpAddr>,
     pub pipeline_size: usize,
+    pub metadata_buffer: Option<BytesMut>,
+    pub ut_metadata_id: Option<u8>,
 }
 
 impl BtWorker {
@@ -41,10 +46,12 @@ impl BtWorker {
             piece_buffer: BytesMut::new(),
             local_addr: None,
             pipeline_size: 10,
+            metadata_buffer: None,
+            ut_metadata_id: None,
         }
     }
 
-    async fn connect_and_handshake(&self) -> Result<(TcpStream, [u8; 20])> {
+    async fn connect_and_handshake(&self) -> Result<(TcpStream, [u8; 20], bool)> {
         debug!(addr = %self.peer_addr, "Connecting to peer...");
         let remote_addr: std::net::SocketAddr = self.peer_addr.parse().map_err(|e| {
             Error::Protocol(format!("Invalid peer address {}: {}", self.peer_addr, e))
@@ -66,7 +73,11 @@ impl BtWorker {
             return Err(Error::Protocol("Handshake info_hash mismatch".to_string()));
         }
 
-        Ok((stream, res_handshake.peer_id))
+        Ok((
+            stream,
+            res_handshake.peer_id,
+            res_handshake.extension_protocol,
+        ))
     }
 
     pub async fn run_loop(
@@ -78,36 +89,76 @@ impl BtWorker {
         subtask_tx: tokio::sync::mpsc::Sender<SubTaskEvent>,
         token: CancellationToken,
     ) -> Result<()> {
-        let (stream, peer_id) = self.connect_and_handshake().await?;
+        let (stream, peer_id, ext_support) = self.connect_and_handshake().await?;
         self.peer_id = peer_id;
 
-        self.run_loop_with_stream(
-            stream, _meta_id, sub_id, task, storage_tx, subtask_tx, token,
+        self.run_loop_with_stream_and_ext(
+            stream,
+            _meta_id,
+            sub_id,
+            task,
+            storage_tx,
+            subtask_tx,
+            token,
+            ext_support,
         )
         .await
     }
 
     #[allow(clippy::too_many_arguments)]
     pub async fn run_loop_with_stream(
-        mut self,
+        self,
         stream: TcpStream,
         meta_id: TaskId,
-        _sub_id: TaskId,
+        sub_id: TaskId,
         task: Arc<BtTask>,
         storage_tx: tokio::sync::mpsc::Sender<StorageRequest>,
         subtask_tx: tokio::sync::mpsc::Sender<SubTaskEvent>,
         token: CancellationToken,
     ) -> Result<()> {
+        // Default to no extension support if not specified (legacy path)
+        self.run_loop_with_stream_and_ext(
+            stream, meta_id, sub_id, task, storage_tx, subtask_tx, token, false,
+        )
+        .await
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    async fn run_loop_with_stream_and_ext(
+        mut self,
+        stream: TcpStream,
+        meta_id: TaskId,
+        sub_id: TaskId,
+        task: Arc<BtTask>,
+        storage_tx: tokio::sync::mpsc::Sender<StorageRequest>,
+        subtask_tx: tokio::sync::mpsc::Sender<SubTaskEvent>,
+        token: CancellationToken,
+        ext_support: bool,
+    ) -> Result<()> {
         let mut framed = Framed::new(stream, PeerCodec);
+
+        // If extension supported, send extended handshake
+        if ext_support {
+            let mut m = std::collections::HashMap::new();
+            m.insert("ut_metadata".to_string(), 1);
+            let ext_hs = ExtendedHandshake {
+                m: Some(m),
+                metadata_size: None,
+            };
+            let payload = serde_bencode::to_bytes(&ext_hs).unwrap();
+            framed
+                .send(PeerMessage::Extended {
+                    id: 0,
+                    payload: payload.into(),
+                })
+                .await?;
+        }
 
         // Initial state
         framed.send(PeerMessage::Interested).await?;
 
         let mut peer_choking = true;
         let peer_addr = self.peer_addr.clone();
-
-        let piece_length = task.state.torrent.info.piece_length;
-        let total_length = task.state.torrent.total_length();
 
         info!(addr = %peer_addr, "Entering main peer message loop");
 
@@ -124,32 +175,89 @@ impl BtWorker {
                                 PeerMessage::Unchoke => {
                                     peer_choking = false;
                                     debug!(addr = %peer_addr, "Peer unchoked us");
-                                    self.trigger_request(&mut framed, &task, piece_length, total_length, meta_id, storage_tx.clone(), subtask_tx.clone()).await?;
+                                    self.trigger_request(&mut framed, &task, meta_id, storage_tx.clone(), subtask_tx.clone()).await?;
                                 }
                                 PeerMessage::Bitfield(bits) => {
-                                    let bf = crate::bitfield::Bitfield::from_bytes(&bits, task.state.torrent.pieces_count());
+                                    let bf = crate::bitfield::Bitfield::from_bytes(&bits, task.state.torrent.lock().await.as_ref().map(|t| t.pieces_count()).unwrap_or(0));
                                     task.update_peer_state(&peer_addr, crate::peer_registry::ConnectionState::Handshaked).await;
                                     debug!(addr = %peer_addr, count = bf.count_set(), "Received bitfield");
                                     let mut picker = task.state.picker.lock().await;
-                                    picker.add_peer_bitfield(peer_addr.clone(), bf.clone());
+                                    if let Some(ref mut p) = *picker {
+                                        p.add_peer_bitfield(peer_addr.clone(), bf.clone());
+                                    }
                                     drop(picker);
                                     let _ = subtask_tx.send(SubTaskEvent::PeerBitfield(meta_id, self.peer_id, bf)).await;
 
                                     if !peer_choking {
-                                        self.trigger_request(&mut framed, &task, piece_length, total_length, meta_id, storage_tx.clone(), subtask_tx.clone()).await?;
+                                        self.trigger_request(&mut framed, &task, meta_id, storage_tx.clone(), subtask_tx.clone()).await?;
                                     }
                                 }
                                 PeerMessage::Have(idx) => {
-                                    let mut bf = crate::bitfield::Bitfield::new(task.state.torrent.pieces_count());
-                                    bf.set(idx as usize, true);
                                     debug!(addr = %peer_addr, %idx, "Received Have");
                                     let mut picker = task.state.picker.lock().await;
-                                    picker.add_peer_bitfield(peer_addr.clone(), bf);
+                                    if let Some(ref mut p) = *picker {
+                                        let mut bf = crate::bitfield::Bitfield::new(p.num_pieces);
+                                        bf.set(idx as usize, true);
+                                        p.add_peer_bitfield(peer_addr.clone(), bf);
+                                    }
                                     drop(picker);
                                     let _ = subtask_tx.send(SubTaskEvent::PeerHave(meta_id, self.peer_id, idx)).await;
 
                                     if !peer_choking {
-                                        self.trigger_request(&mut framed, &task, piece_length, total_length, meta_id, storage_tx.clone(), subtask_tx.clone()).await?;
+                                        self.trigger_request(&mut framed, &task, meta_id, storage_tx.clone(), subtask_tx.clone()).await?;
+                                    }
+                                }
+                                PeerMessage::Extended { id, payload } => {
+                                    if id == 0 {
+                                        // Extended handshake
+                                        if let Ok(hs) = serde_bencode::from_bytes::<ExtendedHandshake>(&payload) {
+                                            if let Some(m) = hs.m {
+                                                self.ut_metadata_id = m.get("ut_metadata").cloned();
+                                                if let (Some(size), Some(_)) = (hs.metadata_size, self.ut_metadata_id) {
+                                                    info!(%peer_addr, %size, "Metadata size discovered from peer");
+                                                    self.metadata_buffer = Some(BytesMut::zeroed(size));
+                                                    self.trigger_request(&mut framed, &task, meta_id, storage_tx.clone(), subtask_tx.clone()).await?;
+                                                }
+                                            }
+                                        }
+                                    } else if Some(id) == self.ut_metadata_id {
+                                        // Metadata message: [bencoded dict][data]
+                                        // Find the end of the bencoded dict
+                                        if let Some(pos) = payload.windows(2).position(|w| w == b"ee") {
+                                            let bencoded_len = pos + 2;
+                                            let bencoded = &payload[..bencoded_len];
+                                            let data = &payload[bencoded_len..];
+
+                                            if let Ok(msg) = serde_bencode::from_bytes::<MetadataMessage>(bencoded) {
+                                                if msg.msg_type == 1 { // Data
+                                                    if let Some(ref mut buf) = self.metadata_buffer {
+                                                        let start = msg.piece as usize * 16384;
+                                                        if start + data.len() <= buf.len() {
+                                                            buf[start..start + data.len()].copy_from_slice(data);
+
+                                                            // For now, assume single piece for metadata (very common)
+                                                            // Assemble full torrent
+                                                            let full_info_dict = buf.clone().freeze();
+                                                            let mut full_torrent_dict = std::collections::HashMap::new();
+                                                            full_torrent_dict.insert(b"info".to_vec(), serde_bencode::value::Value::Bytes(full_info_dict.to_vec()));
+                                                            full_torrent_dict.insert(b"announce".to_vec(), serde_bencode::value::Value::Bytes(b"http://aura-internal/".to_vec()));
+
+                                                            let torrent_bytes = serde_bencode::to_bytes(&serde_bencode::value::Value::Dict(full_torrent_dict)).unwrap();
+                                                            if let Ok(torrent) = crate::torrent::Torrent::from_bytes(&torrent_bytes) {
+                                                                if torrent.info_hash().unwrap() == self.info_hash {
+                                                                    info!(%peer_addr, "Metadata successfully received and verified");
+                                                                    let _ = subtask_tx.send(SubTaskEvent::MetadataReceived(meta_id, sub_id, torrent)).await;
+                                                                    // After metadata, we might transition to piece picking
+                                                                    self.trigger_request(&mut framed, &task, meta_id, storage_tx.clone(), subtask_tx.clone()).await?;
+                                                                } else {
+                                                                    warn!(%peer_addr, "Received metadata hash mismatch!");
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                                 PeerMessage::Piece { index, begin, block }
@@ -162,25 +270,7 @@ impl BtWorker {
                                     let _ = subtask_tx.send(SubTaskEvent::Downloaded(meta_id, len as u64)).await;
 
                                     if !peer_choking {
-                                        self.trigger_request(&mut framed, &task, piece_length, total_length, meta_id, storage_tx.clone(), subtask_tx.clone()).await?;
-                                    }
-                                }
-                                PeerMessage::Request { index, begin, length } => {
-                                    let (reply_tx, reply_rx) = tokio::sync::oneshot::channel();
-                                    let offset = index as u64 * piece_length + begin as u64;
-                                    let read_req = StorageRequest::Read {
-                                        task_id: meta_id,
-                                        segment: crate::worker::Segment { offset, length: length as u64 },
-                                        reply_tx,
-                                    };
-                                    if storage_tx.send(read_req).await.is_ok() {
-                                        if let Ok(Ok(data)) = reply_rx.await {
-                                            framed.send(PeerMessage::Piece {
-                                                index,
-                                                begin,
-                                                block: data,
-                                            }).await?;
-                                        }
+                                        self.trigger_request(&mut framed, &task, meta_id, storage_tx.clone(), subtask_tx.clone()).await?;
                                     }
                                 }
                                 _ => {}
@@ -200,8 +290,6 @@ impl BtWorker {
         &mut self,
         framed: &mut Framed<S, PeerCodec>,
         task: &BtTask,
-        piece_length: u64,
-        total_length: u64,
         meta_id: TaskId,
         storage_tx: tokio::sync::mpsc::Sender<StorageRequest>,
         subtask_tx: tokio::sync::mpsc::Sender<SubTaskEvent>,
@@ -209,10 +297,35 @@ impl BtWorker {
     where
         S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
     {
+        // 1. Check if we need metadata
+        if task.state.torrent.lock().await.is_none() {
+            if let Some(metadata_id) = self.ut_metadata_id {
+                debug!(addr = %self.peer_addr, "Requesting metadata piece 0");
+                let msg = MetadataMessage {
+                    msg_type: 0,
+                    piece: 0,
+                    total_size: None,
+                };
+                let payload = serde_bencode::to_bytes(&msg).unwrap();
+                framed
+                    .send(PeerMessage::Extended {
+                        id: metadata_id,
+                        payload: payload.into(),
+                    })
+                    .await?;
+            }
+            return Ok(());
+        }
+
+        let torrent_guard = task.state.torrent.lock().await;
+        let torrent = torrent_guard.as_ref().unwrap();
+        let piece_length = torrent.info.piece_length;
+        let total_length = torrent.total_length();
+
         let max_in_flight = self.pipeline_size as u64 * BLOCK_SIZE as u64;
 
         if let Some(piece_idx) = self.current_piece {
-            let piece_total_len = if piece_idx == task.state.torrent.pieces_count() - 1 {
+            let piece_total_len = if piece_idx == torrent.pieces_count() - 1 {
                 total_length - (piece_idx as u64 * piece_length)
             } else {
                 piece_length
@@ -224,8 +337,7 @@ impl BtWorker {
                 hasher.update(&self.piece_buffer);
                 let actual_hash: [u8; 20] = hasher.finalize().into();
 
-                let expected_hash =
-                    &task.state.torrent.info.pieces[piece_idx * 20..(piece_idx + 1) * 20];
+                let expected_hash = &torrent.info.pieces[piece_idx * 20..(piece_idx + 1) * 20];
 
                 if actual_hash == expected_hash {
                     info!(addr = %self.peer_addr, %piece_idx, "Piece download complete and verified");
@@ -240,14 +352,20 @@ impl BtWorker {
                         })
                         .await;
 
-                    let mut bf = task.state.bitfield.lock().await;
-                    bf.set(piece_idx, true);
-                    let mut picker = task.state.picker.lock().await;
-                    picker.mark_completed(piece_idx);
+                    let mut bf_guard = task.state.bitfield.lock().await;
+                    if let Some(ref mut bf) = *bf_guard {
+                        bf.set(piece_idx, true);
+                    }
+                    let mut picker_guard = task.state.picker.lock().await;
+                    if let Some(ref mut picker) = *picker_guard {
+                        picker.mark_completed(piece_idx);
+                    }
                 } else {
                     error!(addr = %self.peer_addr, %piece_idx, "Piece hash mismatch!");
-                    let mut picker = task.state.picker.lock().await;
-                    picker.release_piece(piece_idx);
+                    let mut picker_guard = task.state.picker.lock().await;
+                    if let Some(ref mut picker) = *picker_guard {
+                        picker.release_piece(piece_idx);
+                    }
                 }
 
                 self.current_piece = None;
@@ -255,15 +373,10 @@ impl BtWorker {
                 self.bytes_requested = 0;
                 self.piece_buffer.clear();
 
-                return Box::pin(self.trigger_request(
-                    framed,
-                    task,
-                    piece_length,
-                    total_length,
-                    meta_id,
-                    storage_tx,
-                    subtask_tx,
-                ))
+                drop(torrent_guard);
+                return Box::pin(
+                    self.trigger_request(framed, task, meta_id, storage_tx, subtask_tx),
+                )
                 .await;
             }
 
@@ -285,34 +398,32 @@ impl BtWorker {
                 self.bytes_requested += length as u64;
             }
         } else {
-            // Pick a new piece
-            let my_bf = task.state.bitfield.lock().await;
-            let picker = task.state.picker.lock().await;
-            if let Some(piece_idx) = picker.pick_next(&my_bf, &self.peer_addr) {
-                let piece_total_len = if piece_idx == task.state.torrent.pieces_count() - 1 {
-                    total_length - (piece_idx as u64 * piece_length)
-                } else {
-                    piece_length
-                };
+            // Try to pick a piece
+            let bf_guard = task.state.bitfield.lock().await;
+            let picker_guard = task.state.picker.lock().await;
 
-                info!(addr = %self.peer_addr, %piece_idx, "Starting piece download");
-                self.current_piece = Some(piece_idx);
-                self.bytes_received = 0;
-                self.bytes_requested = 0;
-                self.piece_buffer = BytesMut::zeroed(piece_total_len as usize);
+            if let (Some(bf), Some(picker)) = (bf_guard.as_ref(), picker_guard.as_ref()) {
+                if let Some(piece_idx) = picker.pick_next(bf, &self.peer_addr) {
+                    let piece_total_len = if piece_idx == torrent.pieces_count() - 1 {
+                        total_length - (piece_idx as u64 * piece_length)
+                    } else {
+                        piece_length
+                    };
 
-                drop(picker);
-                drop(my_bf);
-                return Box::pin(self.trigger_request(
-                    framed,
-                    task,
-                    piece_length,
-                    total_length,
-                    meta_id,
-                    storage_tx,
-                    subtask_tx,
-                ))
-                .await;
+                    info!(addr = %self.peer_addr, %piece_idx, "Starting piece download");
+                    self.current_piece = Some(piece_idx);
+                    self.bytes_received = 0;
+                    self.bytes_requested = 0;
+                    self.piece_buffer = BytesMut::zeroed(piece_total_len as usize);
+
+                    drop(picker_guard);
+                    drop(bf_guard);
+                    drop(torrent_guard);
+                    return Box::pin(
+                        self.trigger_request(framed, task, meta_id, storage_tx, subtask_tx),
+                    )
+                    .await;
+                }
             }
         }
 
@@ -333,7 +444,9 @@ mod tests {
         let handshake = Handshake::new(info_hash, peer_id);
         let serialized = handshake.serialize();
         let deserialized = Handshake::deserialize(&serialized).unwrap();
-        assert_eq!(handshake, deserialized);
+        assert_eq!(handshake.info_hash, deserialized.info_hash);
+        assert_eq!(handshake.peer_id, deserialized.peer_id);
+        assert!(deserialized.extension_protocol);
     }
 
     #[test]

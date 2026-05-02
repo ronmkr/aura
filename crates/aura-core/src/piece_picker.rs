@@ -8,7 +8,7 @@ pub type PeerId = [u8; 20];
 /// Manages piece selection logic, prioritizing the rarest pieces in the swarm.
 #[derive(Debug)]
 pub struct PiecePicker {
-    num_pieces: usize,
+    pub num_pieces: usize,
     /// Number of peers that have each piece.
     piece_counts: Vec<usize>,
     /// Tracks which pieces each peer has.

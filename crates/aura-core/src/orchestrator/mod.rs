@@ -43,6 +43,7 @@ pub enum Command {
 #[derive(Debug)]
 pub enum SubTaskEvent {
     Matured(TaskId, TaskId, Metadata),
+    MetadataReceived(TaskId, TaskId, crate::torrent::Torrent),
     RangeFinished(TaskId, TaskId, Range),
     Failed(TaskId, TaskId, String),
     Downloaded(TaskId, u64),

@@ -29,6 +29,7 @@ notify = "8.2.0"
 arc-swap = "1.9.1"
 serde_bytes = "0.11.19"
 percent-encoding = "2.3.2"
+hex = "0.4.3"
 
 [dev-dependencies]
 tempfile = "3"
