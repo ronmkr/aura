@@ -1,0 +1,25 @@
+# Aura Configuration File
+
+[network]
+# interface = "tun0"
+# local_addr = "192.168.1.100"
+listen_port = 6881
+dht_port = 6881
+rpc_port = 6800
+user_agent = "Aura/0.1.0"
+
+[bandwidth]
+# Global download limit in bytes per second (0 for unlimited)
+global_download_limit = 0
+global_upload_limit = 0
+per_task_download_limit = 0
+
+[seeding]
+enabled = true
+seed_ratio = 1.0
+seed_time_mins = 0
+
+[storage]
+download_dir = "."
+cache_size_mb = 16
+preallocate = true

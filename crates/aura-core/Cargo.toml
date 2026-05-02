@@ -24,6 +24,9 @@ local-ip-address = "0.6.12"
 regex = "1.12.3"
 socket2 = { version = "0.6.3", features = ["all"] }
 suppaftp = { version = "8.0.3", features = ["tokio", "tokio-async-native-tls"] }
+toml = "1.1.2"
+notify = "8.2.0"
+arc-swap = "1.9.1"
 
 [dev-dependencies]
 tempfile = "3"

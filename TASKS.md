@@ -48,7 +48,7 @@
 - [x] **URL Globbing & Batch Downloads**.
 - [x] **FTP Protocol Support**.
 - [x] **VPN Safety & Traffic Kill-switch** (ADR 0035).
-- [ ] **Dynamic TOML Configuration** (Aura.toml + Hot-reloading).
+- [x] **Dynamic TOML Configuration** (Aura.toml + Hot-reloading).
 - [ ] **Power Management** (OS-level sleep assertions).
 - [ ] **No-COW Allocator** (Btrfs/ZFS fragmentation prevention).
 - [ ] **Recursive Mirroring** (Wget-style site crawling).

@@ -5,6 +5,7 @@ use tokio::sync::{mpsc, broadcast};
 use tokio_util::sync::CancellationToken;
 use tracing::{info, debug, warn};
 use rand::Rng;
+use arc_swap::ArcSwap;
 use crate::{Result, TaskId, Error};
 use crate::task::{MetaTask, TaskType, Range, TaskState};
 use crate::storage::{StorageEngine, StorageRequest};
@@ -30,6 +31,7 @@ pub enum Command {
     Resume(TaskId),
     Remove(TaskId),
     ListActive(mpsc::Sender<Vec<MetaTask>>),
+    ReloadConfig(Arc<crate::Config>),
     KillSwitch,
     Shutdown,
 }
@@ -71,7 +73,7 @@ pub struct Orchestrator {
     _nat_tx: mpsc::Sender<NatCommand>,
     peer_id: [u8; 20],
     throttler: Arc<Throttler>,
-    config: Arc<crate::Config>,
+    config: Arc<ArcSwap<crate::Config>>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -118,11 +120,12 @@ async fn handle_incoming_peer(
 
 impl Orchestrator {
     fn resolve_local_addr(&self) -> Option<std::net::IpAddr> {
-        if let Some(addr) = self.config.network.local_addr {
+        let config = self.config.load();
+        if let Some(addr) = config.network.local_addr {
             return Some(addr);
         }
 
-        if let Some(ref iface) = self.config.network.interface {
+        if let Some(ref iface) = config.network.interface {
             use local_ip_address::list_afinet_netifas;
             if let Ok(ifas) = list_afinet_netifas() {
                 for (name, ip) in ifas {
@@ -142,7 +145,7 @@ impl Orchestrator {
         storage_completion_rx: mpsc::Receiver<TaskId>,
         dht_tx: mpsc::Sender<DhtCommand>,
         nat_tx: mpsc::Sender<NatCommand>,
-        config: Arc<crate::Config>,
+        config: Arc<ArcSwap<crate::Config>>,
     ) -> (Self, broadcast::Receiver<Event>) {
         let (event_tx, event_rx) = broadcast::channel(1024);
         let (subtask_tx, subtask_rx) = mpsc::unbounded_channel();
@@ -195,7 +198,8 @@ impl Orchestrator {
             let mut interval = tokio::time::interval(std::time::Duration::from_secs(2));
             loop {
                 interval.tick().await;
-                if let Some(ref iface) = config_monitor.network.interface {
+                let config = config_monitor.load();
+                if let Some(ref iface) = config.network.interface {
                     use local_ip_address::list_afinet_netifas;
                     let is_up = list_afinet_netifas().ok().map(|ifas: Vec<(String, std::net::IpAddr)>| {
                         ifas.into_iter().any(|(name, _)| name == *iface)
@@ -288,6 +292,11 @@ impl Orchestrator {
                         Command::ListActive(reply_tx) => {
                             let active: Vec<MetaTask> = self.tasks.values().cloned().collect();
                             let _ = reply_tx.send(active).await;
+                        }
+                        Command::ReloadConfig(new_config) => {
+                            info!("Reloading configuration");
+                            self.throttler.set_limit(new_config.bandwidth.global_download_limit);
+                            self.config.store(new_config);
                         }
                         Command::KillSwitch => {
                             let ids: Vec<TaskId> = self.tasks.keys().cloned().collect();
@@ -773,17 +782,18 @@ pub struct Engine {
 
 impl Engine {
     pub async fn new(config: crate::Config) -> Result<(Self, Orchestrator, StorageEngine)> {
-        let config = Arc::new(config);
+        let config = Arc::new(ArcSwap::from_pointee(config));
         let (command_tx, command_rx) = mpsc::channel(100);
         let (storage_tx, storage_rx) = mpsc::channel(100);
         let (completion_tx, completion_rx) = mpsc::channel(100);
         let (dht_tx, dht_rx) = mpsc::channel(100);
         let (nat_tx, nat_rx) = mpsc::channel(100);
         
+        let initial_config = config.load();
         let local_addr = {
-            if let Some(addr) = config.network.local_addr {
+            if let Some(addr) = initial_config.network.local_addr {
                 Some(addr)
-            } else if let Some(ref iface) = config.network.interface {
+            } else if let Some(ref iface) = initial_config.network.interface {
                 use local_ip_address::list_afinet_netifas;
                 list_afinet_netifas().ok().and_then(|ifas: Vec<(String, std::net::IpAddr)>| {
                     ifas.into_iter().find(|(name, _)| *name == *iface).map(|(_, ip)| ip)
@@ -815,13 +825,47 @@ impl Engine {
 
         // Request initial port mapping
         let _ = nat_tx_clone.send(NatCommand::MapPort {
-            port: 6881,
+            port: initial_config.network.listen_port,
             description: "Aura BitTorrent".to_string(),
         }).await;
 
         let storage = StorageEngine::new(storage_rx, completion_tx);
-        let (orchestrator, event_rx) = Orchestrator::new(command_rx, storage_tx, completion_rx, dht_tx, nat_tx, config);
+        let (orchestrator, event_rx) = Orchestrator::new(command_rx, storage_tx, completion_rx, dht_tx, nat_tx, config.clone());
         
+        // Setup config file watcher
+        let config_path = std::path::PathBuf::from("Aura.toml");
+        if config_path.exists() {
+            let command_tx_watcher = command_tx.clone();
+            let config_path_watcher = config_path.clone();
+            
+            tokio::spawn(async move {
+                use notify::{Watcher, RecursiveMode, EventKind};
+                let (tx, mut rx) = mpsc::channel(1);
+                
+                let mut watcher = notify::recommended_watcher(move |res: notify::Result<notify::Event>| {
+                    if let Ok(event) = res {
+                        if matches!(event.kind, EventKind::Modify(_)) {
+                            let _ = tx.blocking_send(());
+                        }
+                    }
+                }).expect("Failed to create config watcher");
+                
+                watcher.watch(&config_path_watcher, RecursiveMode::NonRecursive).expect("Failed to watch config");
+                
+                while rx.recv().await.is_some() {
+                    info!("Config file modified, reloading...");
+                    if let Ok(new_config) = crate::Config::from_file(&config_path_watcher) {
+                        let _ = command_tx_watcher.send(Command::ReloadConfig(Arc::new(new_config))).await;
+                    } else {
+                        warn!("Failed to reload modified config");
+                    }
+                }
+                
+                // Keep watcher alive as long as loop runs
+                drop(watcher);
+            });
+        }
+
         Ok((
             Self { command_tx, event_rx },
             orchestrator,
@@ -898,4 +942,10 @@ impl Engine {
             .map_err(|e| Error::Storage(e.to_string()))?;
         Ok(())
     }
+
+    pub async fn reload_config(&self, config: crate::Config) -> Result<()> {
+        self.command_tx.send(Command::ReloadConfig(Arc::new(config))).await
+            .map_err(|e| Error::Config(e.to_string()))?;
+        Ok(())
     }
+}
