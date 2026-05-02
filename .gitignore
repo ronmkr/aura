@@ -1,0 +1,25 @@
+# Rust build artifacts
+target/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Project-specific
+*.log
+.env
+
+# Aura session and data
+*.aura
+*.part
+downloads/
+out/
+
+# Crate-specific local config
+crates/**/local_config.toml

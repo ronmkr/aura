@@ -1,0 +1,15 @@
+[package]
+name = "aura-daemon"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+aura-core = { path = "../aura-core" }
+axum = "0.7"
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+rand = "0.8"
+tower-http = { version = "0.6", features = ["cors"] }
