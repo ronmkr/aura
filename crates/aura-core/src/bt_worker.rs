@@ -212,6 +212,7 @@ pub struct BtWorker {
     pub bytes_requested: u64,
     pub piece_buffer: BytesMut,
     pub local_addr: Option<std::net::IpAddr>,
+    pub pipeline_size: usize,
 }
 
 impl BtWorker {
@@ -226,6 +227,7 @@ impl BtWorker {
             bytes_requested: 0,
             piece_buffer: BytesMut::new(),
             local_addr: None,
+            pipeline_size: 10,
         }
     }
 
@@ -504,7 +506,7 @@ impl BtWorker {
     ) -> Result<()> 
     where S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin
     {
-        const MAX_IN_FLIGHT: u64 = 10 * BLOCK_SIZE as u64;
+        let max_in_flight = self.pipeline_size as u64 * BLOCK_SIZE as u64;
 
         if let Some(piece_idx) = self.current_piece {
             let piece_total_len = if piece_idx == task.state.torrent.pieces_count() - 1 {
@@ -552,7 +554,7 @@ impl BtWorker {
             }
 
             // Pipelining: fill up to MAX_IN_FLIGHT
-            while (self.bytes_requested - self.bytes_received) < MAX_IN_FLIGHT && self.bytes_requested < piece_total_len {
+            while (self.bytes_requested - self.bytes_received) < max_in_flight && self.bytes_requested < piece_total_len {
                 let length = std::cmp::min(BLOCK_SIZE, (piece_total_len - self.bytes_requested) as u32);
                 debug!(addr = %self.peer_addr, %piece_idx, begin = self.bytes_requested, %length, "Requesting next block (pipelined)");
                 

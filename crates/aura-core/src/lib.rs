@@ -25,8 +25,9 @@ pub mod net_util;
 pub struct Config {
     pub network: NetworkConfig,
     pub bandwidth: BandwidthConfig,
-    pub seeding: SeedingConfig,
+    pub bittorrent: BitTorrentConfig,
     pub storage: StorageConfig,
+    pub general: GeneralConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -37,7 +38,11 @@ pub struct NetworkConfig {
     pub listen_port: u16,
     pub dht_port: u16,
     pub rpc_port: u16,
+    pub rpc_secret: Option<String>,
     pub user_agent: String,
+    pub connect_timeout_secs: u64,
+    pub tcp_keepalive_secs: u64,
+    pub proxy: Option<String>,
 }
 
 impl Default for NetworkConfig {
@@ -48,7 +53,11 @@ impl Default for NetworkConfig {
             listen_port: 6881,
             dht_port: 6881,
             rpc_port: 6800,
+            rpc_secret: None,
             user_agent: "Aura/0.1.0".to_string(),
+            connect_timeout_secs: 30,
+            tcp_keepalive_secs: 60,
+            proxy: None,
         }
     }
 }
@@ -59,22 +68,38 @@ pub struct BandwidthConfig {
     pub global_download_limit: u64, // 0 for unlimited
     pub global_upload_limit: u64,
     pub per_task_download_limit: u64,
+    pub per_task_upload_limit: u64,
+    pub max_concurrent_downloads: usize,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
-pub struct SeedingConfig {
+pub struct BitTorrentConfig {
     pub enabled: bool,
+    pub max_peers_per_torrent: usize,
+    pub max_overall_peers: usize,
+    pub request_pipeline_size: usize,
+    pub dht_enabled: bool,
+    pub pex_enabled: bool,
+    pub lpd_enabled: bool,
     pub seed_ratio: f32,
     pub seed_time_mins: u32,
+    pub endgame_mode_enabled: bool,
 }
 
-impl Default for SeedingConfig {
+impl Default for BitTorrentConfig {
     fn default() -> Self {
         Self {
             enabled: true,
+            max_peers_per_torrent: 50,
+            max_overall_peers: 200,
+            request_pipeline_size: 10,
+            dht_enabled: true,
+            pex_enabled: true,
+            lpd_enabled: false,
             seed_ratio: 1.0,
             seed_time_mins: 0,
+            endgame_mode_enabled: true,
         }
     }
 }
@@ -85,6 +110,8 @@ pub struct StorageConfig {
     pub download_dir: String,
     pub cache_size_mb: u32,
     pub preallocate: bool,
+    pub allocation_mode: String, // "none", "prealloc", "falloc"
+    pub save_session_interval_secs: u64,
 }
 
 impl Default for StorageConfig {
@@ -93,6 +120,28 @@ impl Default for StorageConfig {
             download_dir: ".".to_string(),
             cache_size_mb: 16,
             preallocate: true,
+            allocation_mode: "falloc".to_string(),
+            save_session_interval_secs: 10,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct GeneralConfig {
+    pub log_level: String,
+    pub log_path: Option<String>,
+    pub check_integrity: bool,
+    pub event_poll_interval_ms: u64,
+}
+
+impl Default for GeneralConfig {
+    fn default() -> Self {
+        Self {
+            log_level: "info".to_string(),
+            log_path: None,
+            check_integrity: true,
+            event_poll_interval_ms: 500,
         }
     }
 }

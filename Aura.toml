@@ -1,25 +1,46 @@
-# Aura Configuration File
+# Aura: High-Performance Download Engine Configuration
 
 [network]
-# interface = "tun0"
-# local_addr = "192.168.1.100"
-listen_port = 6881
-dht_port = 6881
-rpc_port = 6800
-user_agent = "Aura/0.1.0"
+# interface = "tun0"                   # Bind to a specific network interface
+# local_addr = "192.168.1.100"         # Bind to a specific local IP address
+listen_port = 6881                     # Port for incoming BitTorrent connections
+dht_port = 6881                        # Port for DHT (UDP)
+rpc_port = 6800                        # Port for JSON-RPC 2.0 server
+# rpc_secret = "your_secret_here"      # Optional secret for RPC authentication
+user_agent = "Aura/0.1.0"              # Custom User-Agent string
+connect_timeout_secs = 30              # Connection timeout for all protocols
+tcp_keepalive_secs = 60                # TCP keepalive interval
+# proxy = "http://127.0.0.1:8080"      # Optional global proxy
 
 [bandwidth]
-# Global download limit in bytes per second (0 for unlimited)
-global_download_limit = 0
-global_upload_limit = 0
-per_task_download_limit = 0
+# All limits are in bytes per second. 0 means unlimited.
+global_download_limit = 0              # Total download speed cap
+global_upload_limit = 0                # Total upload speed cap
+per_task_download_limit = 0            # Per-download speed cap
+per_task_upload_limit = 0              # Per-download upload cap
+max_concurrent_downloads = 5           # Max active downloads (queued tasks stay in 'Waiting')
 
-[seeding]
-enabled = true
-seed_ratio = 1.0
-seed_time_mins = 0
+[bittorrent]
+enabled = true                         # Enable BitTorrent protocol
+max_peers_per_torrent = 50             # Max connections per torrent
+max_overall_peers = 200                # Total global peer limit
+request_pipeline_size = 10             # Number of in-flight requests per peer
+dht_enabled = true                     # Enable Distributed Hash Table
+pex_enabled = true                     # Enable Peer Exchange
+lpd_enabled = false                    # Enable Local Peer Discovery (Multicast)
+seed_ratio = 1.0                       # Default seed ratio target
+seed_time_mins = 0                     # Seed time limit (0 for infinite if ratio not met)
+endgame_mode_enabled = true            # Enable parallel fetching for final blocks
 
 [storage]
-download_dir = "."
-cache_size_mb = 16
-preallocate = true
+download_dir = "."                     # Default directory for finished files
+cache_size_mb = 16                     # In-memory write-back cache size
+preallocate = true                     # Pre-allocate disk space before starting
+allocation_mode = "falloc"             # "none", "prealloc" (zeros), "falloc" (sparse)
+save_session_interval_secs = 10        # Interval to sync .aura control files
+
+[general]
+log_level = "info"                     # "trace", "debug", "info", "warn", "error"
+# log_path = "aura.log"                # Optional path to log file
+check_integrity = true                 # Verify piece hashes during download
+event_poll_interval_ms = 500           # TUI/CLI UI update frequency

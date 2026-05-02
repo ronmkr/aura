@@ -152,15 +152,29 @@ pub struct Metadata {
 }
 
 impl HttpWorker {
-    pub fn new(uri: String, local_addr: Option<std::net::IpAddr>) -> Self {
+    pub fn new(
+        uri: String, 
+        local_addr: Option<std::net::IpAddr>,
+        user_agent: Option<String>,
+        connect_timeout: Option<u64>,
+        proxy: Option<String>,
+    ) -> Self {
         let cookie_jar = std::sync::Arc::new(reqwest::cookie::Jar::default());
         let mut builder = reqwest::Client::builder()
-            .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) Aura/0.1.0")
+            .user_agent(user_agent.unwrap_or_else(|| "Aura/0.1.0".to_string()))
             .cookie_provider(cookie_jar)
-            .redirect(reqwest::redirect::Policy::none());
+            .redirect(reqwest::redirect::Policy::none())
+            .connect_timeout(std::time::Duration::from_secs(connect_timeout.unwrap_or(30)))
+            .tcp_keepalive(std::time::Duration::from_secs(60));
 
         if let Some(addr) = local_addr {
             builder = builder.local_address(addr);
+        }
+
+        if let Some(p) = proxy {
+            if let Ok(proxy_obj) = reqwest::Proxy::all(p) {
+                builder = builder.proxy(proxy_obj);
+            }
         }
 
         let client = builder.build()
@@ -177,7 +191,7 @@ impl HttpWorker {
         let mut current_uri = self.uri.clone();
         let mut referer: Option<String> = None;
         let mut redirect_count = 0;
-        let max_redirects = 10;
+        let max_redirects = 20;
 
         loop {
             let mut request = self.client.get(&current_uri).header("Range", "bytes=0-0");
@@ -459,7 +473,7 @@ mod tests {
             .mount(&server)
             .await;
 
-        let worker = HttpWorker::new(format!("{}/start", server.uri()), None);
+        let worker = HttpWorker::new(format!("{}/start", server.uri()), None, None, None, None);
         let result = worker.fetch_segment(TaskId(1), Segment { offset: 0, length: 11 }, None).await;
         
         assert!(result.is_ok(), "Worker should propagate referer and succeed");
@@ -471,7 +485,7 @@ mod tests {
         Mock::given(method("GET")).and(path("/a")).respond_with(ResponseTemplate::new(302).insert_header("Location", "/b")).mount(&server).await;
         Mock::given(method("GET")).and(path("/b")).respond_with(ResponseTemplate::new(302).insert_header("Location", "/a")).mount(&server).await;
 
-        let worker = HttpWorker::new(format!("{}/a", server.uri()), None);
+        let worker = HttpWorker::new(format!("{}/a", server.uri()), None, None, None, None);
         let result = worker.fetch_segment(TaskId(1), Segment { offset: 0, length: 10 }, None).await;
         match result {
             Err(Error::Protocol(msg)) => assert!(msg.to_lowercase().contains("redirect")),
