@@ -55,7 +55,7 @@ impl BtTask {
             tokio::select! {
                 _ = token.cancelled() => break,
                 _ = async {
-                    let (tx, mut rx) = mpsc::unbounded_channel();
+                    let (tx, mut rx) = tokio::sync::mpsc::channel(1);
                     let cmd = crate::dht::DhtCommand::GetPeers {
                         info_hash,
                         reply_tx: tx,
@@ -66,7 +66,7 @@ impl BtTask {
                         return;
                     }
 
-                    while let Some(addrs) = rx.recv().await {
+                    if let Some(addrs) = rx.recv().await {
                         let mut peers = Vec::new();
                         for addr in addrs {
                             peers.push(Peer {

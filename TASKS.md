@@ -49,6 +49,8 @@
 - [x] **FTP Protocol Support**.
 - [x] **VPN Safety & Traffic Kill-switch** (ADR 0035).
 - [x] **Dynamic TOML Configuration** (Aura.toml + Hot-reloading).
+- [x] **Modular Architecture Refactor** (No file > 400 lines).
+- [ ] **VPN Native Integration** (OpenVPN/WireGuard support) (ADR 0038).
 - [ ] **Power Management** (OS-level sleep assertions).
 - [ ] **No-COW Allocator** (Btrfs/ZFS fragmentation prevention).
 - [ ] **Recursive Mirroring** (Wget-style site crawling).
