@@ -25,7 +25,7 @@
 - [x] **Request Pipelining** (High-speed concurrent requests).
 - [x] **DHT/PEX Actors** (Advanced peer discovery).
 - [x] **Seeding Mode**.
-- [ ] **Magnet Link Support** (BEP 9 Metadata Exchange).
+- [x] **Magnet Link Support** (BEP 9 Metadata Exchange).
 - [ ] **Local Peer Discovery (LPD)** (Multicast discovery).
 
 ## ✅ Milestone 4: Hyper-Scale (Aggregator) (Completed)

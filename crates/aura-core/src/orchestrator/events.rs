@@ -10,6 +10,10 @@ impl Orchestrator {
                 self.handle_subtask_matured(meta_id, sub_id, metadata)
                     .await?;
             }
+            SubTaskEvent::MetadataReceived(meta_id, sub_id, torrent) => {
+                self.handle_bt_metadata_received(meta_id, sub_id, torrent)
+                    .await?;
+            }
             SubTaskEvent::RangeFinished(meta_id, sub_id, range) => {
                 self.handle_range_finished(meta_id, sub_id, range).await?;
             }
@@ -43,6 +47,29 @@ impl Orchestrator {
                     let _ = self.handle_pause(id).await;
                 }
             }
+        }
+        Ok(())
+    }
+
+    pub(crate) async fn handle_bt_metadata_received(
+        &mut self,
+        meta_id: TaskId,
+        sub_id: TaskId,
+        torrent: crate::torrent::Torrent,
+    ) -> Result<()> {
+        if let Some(bt_task) = self.bt_tasks.get(&sub_id) {
+            bt_task.state.mature(torrent.clone()).await;
+
+            let metadata = crate::worker::Metadata {
+                final_uri: format!(
+                    "magnet:?xt=urn:btih:{}",
+                    hex::encode(bt_task.state.info_hash)
+                ),
+                total_length: Some(torrent.total_length()),
+                name: Some(torrent.info.name.clone()),
+            };
+            self.handle_subtask_matured(meta_id, sub_id, metadata)
+                .await?;
         }
         Ok(())
     }

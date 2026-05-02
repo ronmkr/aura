@@ -8,6 +8,7 @@ pub mod bt_worker;
 pub mod buffer_pool;
 pub mod dht;
 pub mod glob;
+pub mod magnet;
 pub mod nat;
 pub mod net_util;
 pub mod orchestrator;

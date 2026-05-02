@@ -1,10 +1,13 @@
 use crate::{Error, Result};
 use bytes::{Buf, BufMut, Bytes, BytesMut};
+use serde::{Deserialize, Serialize};
 use tokio_util::codec::{Decoder, Encoder};
 
 pub const HANDSHAKE_LEN: usize = 68;
 pub const PSTR: &[u8] = b"BitTorrent protocol";
 pub const BLOCK_SIZE: u32 = 16384; // 16KB standard block size
+
+pub const EXTENSION_BIT: usize = 20; // 20th bit in reserved bytes (counting from end)
 
 pub type PeerId = [u8; 20];
 
@@ -13,18 +16,29 @@ pub type PeerId = [u8; 20];
 pub struct Handshake {
     pub info_hash: [u8; 20],
     pub peer_id: [u8; 20],
+    pub extension_protocol: bool,
 }
 
 impl Handshake {
     pub fn new(info_hash: [u8; 20], peer_id: [u8; 20]) -> Self {
-        Self { info_hash, peer_id }
+        Self {
+            info_hash,
+            peer_id,
+            extension_protocol: true,
+        }
     }
 
     pub fn serialize(&self) -> Vec<u8> {
         let mut buf = Vec::with_capacity(HANDSHAKE_LEN);
         buf.push(PSTR.len() as u8);
         buf.extend_from_slice(PSTR);
-        buf.extend_from_slice(&[0; 8]); // Reserved bytes
+
+        let mut reserved = [0u8; 8];
+        if self.extension_protocol {
+            reserved[5] |= 0x10; // 20th bit (BEP 10)
+        }
+        buf.extend_from_slice(&reserved);
+
         buf.extend_from_slice(&self.info_hash);
         buf.extend_from_slice(&self.peer_id);
         buf
@@ -38,11 +52,19 @@ impl Handshake {
         if pstr_len != PSTR.len() || &data[1..1 + pstr_len] != PSTR {
             return Err(Error::Protocol("Invalid protocol string".to_string()));
         }
+
+        let reserved = &data[20..28];
+        let extension_protocol = (reserved[5] & 0x10) != 0;
+
         let mut info_hash = [0; 20];
         info_hash.copy_from_slice(&data[28..48]);
         let mut peer_id = [0; 20];
         peer_id.copy_from_slice(&data[48..68]);
-        Ok(Self { info_hash, peer_id })
+        Ok(Self {
+            info_hash,
+            peer_id,
+            extension_protocol,
+        })
     }
 }
 
@@ -71,6 +93,26 @@ pub enum PeerMessage {
         begin: u32,
         length: u32,
     },
+    Extended {
+        id: u8,
+        payload: Bytes,
+    },
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ExtendedHandshake {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub m: Option<std::collections::HashMap<String, u8>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata_size: Option<usize>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct MetadataMessage {
+    pub msg_type: u8, // 0: request, 1: data, 2: reject
+    pub piece: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub total_size: Option<usize>,
 }
 
 impl PeerMessage {
@@ -139,39 +181,52 @@ impl PeerMessage {
                 buf.put_u32(*begin);
                 buf.put_u32(*length);
             }
+            PeerMessage::Extended { id, payload } => {
+                buf.put_u32(2 + payload.len() as u32);
+                buf.put_u8(20);
+                buf.put_u8(*id);
+                buf.extend_from_slice(payload);
+            }
         }
         buf
     }
 
     pub fn deserialize(data: &[u8]) -> Result<Self> {
         let id = data[0];
-        let mut data = &data[1..];
+        let mut data_ref = &data[1..];
         match id {
             0 => Ok(PeerMessage::Choke),
             1 => Ok(PeerMessage::Unchoke),
             2 => Ok(PeerMessage::Interested),
             3 => Ok(PeerMessage::NotInterested),
-            4 => Ok(PeerMessage::Have(data.get_u32())),
-            5 => Ok(PeerMessage::Bitfield(data.to_vec())),
+            4 => Ok(PeerMessage::Have(data_ref.get_u32())),
+            5 => Ok(PeerMessage::Bitfield(data_ref.to_vec())),
             6 => Ok(PeerMessage::Request {
-                index: data.get_u32(),
-                begin: data.get_u32(),
-                length: data.get_u32(),
+                index: data_ref.get_u32(),
+                begin: data_ref.get_u32(),
+                length: data_ref.get_u32(),
             }),
             7 => {
-                let index = data.get_u32();
-                let begin = data.get_u32();
+                let index = data_ref.get_u32();
+                let begin = data_ref.get_u32();
                 Ok(PeerMessage::Piece {
                     index,
                     begin,
-                    block: Bytes::copy_from_slice(data),
+                    block: Bytes::copy_from_slice(data_ref),
                 })
             }
             8 => Ok(PeerMessage::Cancel {
-                index: data.get_u32(),
-                begin: data.get_u32(),
-                length: data.get_u32(),
+                index: data_ref.get_u32(),
+                begin: data_ref.get_u32(),
+                length: data_ref.get_u32(),
             }),
+            20 => {
+                let extended_id = data_ref.get_u8();
+                Ok(PeerMessage::Extended {
+                    id: extended_id,
+                    payload: Bytes::copy_from_slice(data_ref),
+                })
+            }
             _ => Err(Error::Protocol(format!("Unknown message ID: {}", id))),
         }
     }
