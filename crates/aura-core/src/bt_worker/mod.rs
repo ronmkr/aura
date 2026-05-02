@@ -152,17 +152,17 @@ impl BtWorker {
                                         self.trigger_request(&mut framed, &task, piece_length, total_length, meta_id, storage_tx.clone(), subtask_tx.clone()).await?;
                                     }
                                 }
-                                PeerMessage::Piece { index, begin, block } => {
-                                    if Some(index as usize) == self.current_piece {
-                                        let len = block.len();
-                                        self.piece_buffer[begin as usize..begin as usize + len].copy_from_slice(&block);
+                                PeerMessage::Piece { index, begin, block }
+                                    if Some(index as usize) == self.current_piece =>
+                                {
+                                    let len = block.len();
+                                    self.piece_buffer[begin as usize..begin as usize + len].copy_from_slice(&block);
 
-                                        self.bytes_received += len as u64;
-                                        let _ = subtask_tx.send(SubTaskEvent::Downloaded(meta_id, len as u64));
+                                    self.bytes_received += len as u64;
+                                    let _ = subtask_tx.send(SubTaskEvent::Downloaded(meta_id, len as u64));
 
-                                        if !peer_choking {
-                                            self.trigger_request(&mut framed, &task, piece_length, total_length, meta_id, storage_tx.clone(), subtask_tx.clone()).await?;
-                                        }
+                                    if !peer_choking {
+                                        self.trigger_request(&mut framed, &task, piece_length, total_length, meta_id, storage_tx.clone(), subtask_tx.clone()).await?;
                                     }
                                 }
                                 PeerMessage::Request { index, begin, length } => {
