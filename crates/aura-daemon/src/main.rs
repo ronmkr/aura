@@ -40,7 +40,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!("Starting Aura Daemon");
 
     // Bootstrap the engine
-    let config = aura_core::Config::default();
+    let config = aura_core::Config::from_file("Aura.toml").unwrap_or_default();
     let (engine, orchestrator, storage) = Engine::new(config).await.unwrap();
     let engine = Arc::new(engine);
 
