@@ -86,6 +86,7 @@ async fn handle_incoming_peer(
     my_peer_id: [u8; 20],
     cancellation_tokens: HashMap<TaskId, CancellationToken>,
     local_addr: Option<std::net::IpAddr>,
+    config: Arc<crate::Config>,
 ) -> Result<()> {
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
     use crate::bt_worker::HANDSHAKE_LEN;
@@ -108,6 +109,7 @@ async fn handle_incoming_peer(
 
             let mut worker = BtWorker::new(addr.to_string(), handshake.info_hash, handshake.peer_id, my_peer_id);
             worker.local_addr = local_addr;
+            worker.pipeline_size = config.bittorrent.request_pipeline_size;
             worker.run_loop_with_stream(stream, task.id, task.id, task.clone(), storage_tx, subtask_tx, token.clone()).await
         } else {
             Ok(())
@@ -182,13 +184,14 @@ impl Orchestrator {
         info!("Orchestrator started");
         
         let local_addr = self.resolve_local_addr();
-        let bind_addr = SocketAddr::new(local_addr.unwrap_or("0.0.0.0".parse().unwrap()), 6881);
+        let config_initial = self.config.load();
+        let bind_addr = SocketAddr::new(local_addr.unwrap_or("0.0.0.0".parse().unwrap()), config_initial.network.listen_port);
         
         let listener = tokio::net::TcpListener::bind(bind_addr).await
             .map_err(|e| Error::Config(format!("Failed to bind Peer Listener on {}: {}", bind_addr, e)))?;
         info!("Peer Listener listening on {}", bind_addr);
 
-        let mut save_interval = tokio::time::interval(std::time::Duration::from_secs(10));
+        let mut save_interval = tokio::time::interval(std::time::Duration::from_secs(config_initial.storage.save_session_interval_secs));
         
         // VPN Kill-switch Monitor
         let config_monitor = self.config.clone();
@@ -227,9 +230,11 @@ impl Orchestrator {
                     let subtask_tx = self.subtask_tx.clone();
                     let my_peer_id = self.peer_id;
                     let cancellation_tokens = self.cancellation_tokens.clone();
+                    let local_addr = self.resolve_local_addr();
+                    let config = self.config.load().clone();
 
                     tokio::spawn(async move {
-                        if let Err(e) = handle_incoming_peer(stream, addr, bt_registry, storage_tx, subtask_tx, my_peer_id, cancellation_tokens, local_addr).await {
+                        if let Err(e) = handle_incoming_peer(stream, addr, bt_registry, storage_tx, subtask_tx, my_peer_id, cancellation_tokens, local_addr, config).await {
                             debug!(?addr, error = %e, "Failed to handle incoming peer");
                         }
                     });
@@ -438,6 +443,7 @@ impl Orchestrator {
         let subtasks = meta_task.subtasks.clone();
         let my_peer_id = self.peer_id;
         let local_addr = self.resolve_local_addr();
+        let config_arc = self.config.clone();
 
         for sub_task in subtasks {
             let sub_id = sub_task.id;
@@ -448,14 +454,22 @@ impl Orchestrator {
             let dht_tx = self.dht_tx.clone();
             let token = token.clone();
             let loaded_bf = bitfield.clone();
+            let config_clone = config_arc.clone();
             
             // Try to reuse existing BT state
             let existing_bt = self.bt_tasks.get(&sub_id).cloned();
 
             tokio::spawn(async move {
+                let config = config_clone.load();
                 match ttype {
                     TaskType::Http => {
-                        let worker = HttpWorker::new(uri, local_addr);
+                        let worker = HttpWorker::new(
+                            uri, 
+                            local_addr,
+                            Some(config.network.user_agent.clone()),
+                            Some(config.network.connect_timeout_secs),
+                            config.network.proxy.clone(),
+                        );
                         match worker.resolve_metadata().await {
                             Ok(m) => {
                                 let _ = subtask_tx.send(SubTaskEvent::Matured(id, sub_id, m));
@@ -515,8 +529,10 @@ impl Orchestrator {
                         // Start tracker loop
                         let tracker_task = bt_task.clone();
                         let t1 = token.clone();
+                        let ua = config.network.user_agent.clone();
+                        let port = config.network.listen_port;
                         tokio::spawn(async move {
-                            let _ = tracker_task.run_tracker_loop(my_peer_id, 6881, t1, local_addr).await;
+                            let _ = tracker_task.run_tracker_loop(my_peer_id, port, t1, local_addr, Some(ua)).await;
                         });
 
                         // Start DHT loop
@@ -532,6 +548,7 @@ impl Orchestrator {
                         let subtask_tx_loop = subtask_tx.clone();
                         let info_hash = bt_task.state.torrent.info_hash().unwrap_or([0; 20]);
                         let t3 = token.clone();
+                        let config_loop = config_clone.clone();
 
                         use std::sync::atomic::{AtomicUsize, Ordering};
                         let active_workers = Arc::new(AtomicUsize::new(0));
@@ -539,7 +556,8 @@ impl Orchestrator {
                         tokio::spawn(async move {
                             loop {
                                 if t3.is_cancelled() { break; }
-                                if active_workers.load(Ordering::Relaxed) < 50 {
+                                let config = config_loop.load();
+                                if active_workers.load(Ordering::Relaxed) < config.bittorrent.max_peers_per_torrent {
                                     if let Some((maybe_piece_idx, peer)) = peer_task.pick_work().await {
                                         let addr = format!("{}:{}", peer.ip, peer.port);
                                         let peer_id = peer.id.and_then(|v| {
@@ -557,6 +575,7 @@ impl Orchestrator {
 
                                         let mut worker = BtWorker::new(addr.clone(), info_hash, peer_id, my_peer_id);
                                         worker.local_addr = local_addr;
+                                        worker.pipeline_size = config.bittorrent.request_pipeline_size;
                                         let s_tx = storage_tx_loop.clone();
                                         let sub_tx = subtask_tx_loop.clone();
                                         let peer_task_inner = peer_task.clone();
@@ -678,6 +697,7 @@ impl Orchestrator {
         }
 
         let local_addr = self.resolve_local_addr();
+        let config_arc = self.config.clone();
         let concurrency_per_subtask = 4;
 
         loop {
@@ -701,6 +721,7 @@ impl Orchestrator {
                 let subtask_tx = self.subtask_tx.clone();
                 let (progress_tx, mut progress_rx) = mpsc::unbounded_channel();
                 let token = token.clone();
+                let config_clone = config_arc.clone();
                 
                 let subtask_tx_progress = subtask_tx.clone();
                 tokio::spawn(async move {
@@ -710,9 +731,16 @@ impl Orchestrator {
                 });
 
                 tokio::spawn(async move {
+                    let config = config_clone.load();
                     match ttype {
                         TaskType::Http => {
-                            let worker = HttpWorker::new(uri, local_addr);
+                            let worker = HttpWorker::new(
+                                uri, 
+                                local_addr,
+                                Some(config.network.user_agent.clone()),
+                                Some(config.network.connect_timeout_secs),
+                                config.network.proxy.clone(),
+                            );
                             let segment = Segment { offset: range.start, length: range.length() };
                             
                             tokio::select! {
@@ -807,7 +835,7 @@ impl Engine {
         let mut dht_id = [0u8; 20];
         rand::thread_rng().fill(&mut dht_id);
         
-        let dht_actor = DhtActor::new("0.0.0.0:6881", dht_id, dht_rx, local_addr).await?;
+        let dht_actor = DhtActor::new("0.0.0.0:6881", dht_id, dht_rx, local_addr, initial_config.network.dht_port).await?;
         tokio::spawn(async move {
             if let Err(e) = dht_actor.run().await {
                 warn!("DHT Actor stopped: {}", e);

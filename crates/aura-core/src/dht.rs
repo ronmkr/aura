@@ -202,8 +202,8 @@ pub struct DhtActor {
 }
 
 impl DhtActor {
-    pub async fn new(_addr: &str, my_id: NodeId, command_rx: mpsc::Receiver<DhtCommand>, local_addr: Option<std::net::IpAddr>) -> Result<Self> {
-        let socket = crate::net_util::bind_udp_bound(6881, None, local_addr).await
+    pub async fn new(_addr: &str, my_id: NodeId, command_rx: mpsc::Receiver<DhtCommand>, local_addr: Option<std::net::IpAddr>, port: u16) -> Result<Self> {
+        let socket = crate::net_util::bind_udp_bound(port, None, local_addr).await
             .map_err(|e| Error::Config(format!("Failed to bind DHT UDP socket: {}", e)))?;
         Ok(Self {
             my_id,

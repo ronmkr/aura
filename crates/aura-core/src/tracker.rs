@@ -35,9 +35,10 @@ pub struct TrackerClient {
 }
 
 impl TrackerClient {
-    pub fn new(peer_id: [u8; 20], port: u16, local_addr: Option<std::net::IpAddr>) -> Self {
+    pub fn new(peer_id: [u8; 20], port: u16, local_addr: Option<std::net::IpAddr>, user_agent: Option<String>) -> Self {
         let mut headers = reqwest::header::HeaderMap::new();
-        headers.insert(reqwest::header::USER_AGENT, reqwest::header::HeaderValue::from_static("Aura/0.1.0"));
+        let ua = user_agent.unwrap_or_else(|| "Aura/0.1.0".to_string());
+        headers.insert(reqwest::header::USER_AGENT, reqwest::header::HeaderValue::from_str(&ua).unwrap_or_else(|_| reqwest::header::HeaderValue::from_static("Aura/0.1.0")));
         
         let mut builder = reqwest::Client::builder()
             .default_headers(headers);
@@ -383,7 +384,7 @@ mod tests {
 
     #[test]
     fn test_parse_compact_peers() {
-        let client = TrackerClient::new([0; 20], 6881, None);
+        let client = TrackerClient::new([0; 20], 6881, None, None);
         let bytes = vec![127, 0, 0, 1, 0x1a, 0xe1]; // 127.0.0.1:6881
         let peers = client.parse_compact_peers_raw(&bytes).unwrap();
         assert_eq!(peers.len(), 1);
@@ -393,7 +394,7 @@ mod tests {
 
     #[test]
     fn test_parse_non_compact_peers() {
-        let client = TrackerClient::new([0; 20], 6881, None);
+        let client = TrackerClient::new([0; 20], 6881, None, None);
         let mut peer_dict = std::collections::HashMap::new();
         peer_dict.insert(b"ip".to_vec(), serde_bencode::value::Value::Bytes(b"127.0.0.1".to_vec()));
         peer_dict.insert(b"port".to_vec(), serde_bencode::value::Value::Int(6881));
