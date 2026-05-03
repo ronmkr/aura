@@ -61,3 +61,13 @@ log_level = "info"                     # "trace", "debug", "info", "warn", "erro
 check_integrity = true                 # Perform piece hash verification (SHA-1)
 event_poll_interval_ms = 500           # Internal event loop sleep time
 daemon_mode = false                    # Start in background as a system service
+
+[general.theme]
+primary = "#0000FF"                    # Primary color (Borders, Headers)
+accent = "#00FFFF"                     # Accent color (Progress bars, Speed)
+highlight = "#FFFF00"                  # Highlight color (Active selection)
+background = "#000000"                 # Terminal background color
+foreground = "#FFFFFF"                 # Main text color
+success = "#00FF00"                    # Success status color
+error = "#FF0000"                      # Error status color
+warning = "#FFFF00"                    # Warning status color

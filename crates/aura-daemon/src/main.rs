@@ -79,6 +79,7 @@ async fn handle_jsonrpc(
         "aria2.pause" => handle_pause(&state.engine, payload.params).await,
         "aria2.unpause" => handle_unpause(&state.engine, payload.params).await,
         "aria2.remove" => handle_remove(&state.engine, payload.params).await,
+        "aura.getConfig" => handle_get_config(&state.engine).await,
         _ => Err(json!({ "code": -32601, "message": "Method not found" })),
     };
 
@@ -176,6 +177,14 @@ async fn handle_remove(engine: &Engine, params: Option<Value>) -> Result<Value, 
         .await
         .map_err(|e| json!({ "code": -32000, "message": e.to_string() }))?;
     Ok(json!("OK"))
+}
+
+async fn handle_get_config(engine: &Engine) -> Result<Value, Value> {
+    let config = engine
+        .tell_config()
+        .await
+        .map_err(|e| json!({ "code": -32000, "message": e.to_string() }))?;
+    Ok(json!(*config))
 }
 
 fn parse_gid(params: Option<Value>) -> Result<TaskId, Value> {

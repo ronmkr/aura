@@ -35,6 +35,7 @@ pub enum Command {
     Resume(TaskId),
     Remove(TaskId),
     ListActive(mpsc::Sender<Vec<MetaTask>>),
+    GetConfig(mpsc::Sender<Arc<crate::Config>>),
     ReloadConfig(Arc<crate::Config>),
     KillSwitch,
     Shutdown,
