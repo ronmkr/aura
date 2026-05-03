@@ -23,6 +23,10 @@ impl Orchestrator {
                 let active: Vec<MetaTask> = self.tasks.values().cloned().collect();
                 let _ = reply_tx.send(active).await;
             }
+            Command::GetConfig(reply_tx) => {
+                let config = self.config.load().clone();
+                let _ = reply_tx.send(config).await;
+            }
             Command::ReloadConfig(new_config) => {
                 info!("Reloading configuration");
                 self.throttler

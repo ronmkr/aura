@@ -3,37 +3,38 @@ name: Aura Design System
 description: Structured design tokens and visual intent for the Aura high-performance download engine (CLI/TUI/Daemon).
 tokens:
   color:
-    brand:
-      galactic-blue:
-        value: '#0000FF' # Color::Blue in TUI
-        description: Primary brand color used for surfaces and backgrounds.
-      nebula-cyan:
-        value: '#00FFFF' # Color::Cyan in CLI
-        description: Accent color for active progress and speed indicators.
-      star-yellow:
-        value: '#FFFF00' # Color::Yellow in TUI
-        description: Highlight color for headers and important identifiers.
     status:
-      success-green:
-        value: '#00FF00' # .green in CLI
+      success:
+        value: '#00FF00'
         description: Indicates active, healthy, or completed states.
-      error-red:
-        value: '#FF0000' # .red in CLI
-        description: Alerts the user to failed tasks or critical system errors.
-      waiting-gray:
-        value: '#808080' # Color::Gray
+      error:
+        value: '#FF0000'
+        description: Alerts the user to critical system errors.
+      warning:
+        value: '#FFFF00'
+        description: Alerts for non-critical issues (e.g., retries).
+      waiting:
+        value: '#808080'
         description: For queued or inactive task states.
-    ui:
-      background:
-        value: '{color.brand.galactic-blue}'
-      foreground:
-        value: '#FFFFFF'
-      header-text:
-        value: '{color.brand.star-yellow}'
-      progress-bar-fill:
-        value: '{color.brand.nebula-cyan}'
-      progress-bar-track:
-        value: '{color.brand.galactic-blue}'
+  themes:
+    galactic (default):
+      primary: '#0000FF' # Galactic Blue
+      accent: '#00FFFF'  # Nebula Cyan
+      highlight: '#FFFF00' # Star Yellow
+      background: '#000000'
+      foreground: '#FFFFFF'
+    matrix:
+      primary: '#003B00'
+      accent: '#00FF41'
+      highlight: '#008F11'
+      background: '#000000'
+      foreground: '#00FF41'
+    classic:
+      primary: '#FFFFFF'
+      accent: '#808080'
+      highlight: '#FFFFFF'
+      background: '#000000'
+      foreground: '#FFFFFF'
   typography:
     family:
       base:
@@ -41,72 +42,71 @@ tokens:
         description: Fixed-width system font for consistent terminal alignment.
     size:
       base:
-        value: '1ch' # 1 character cell
+        value: '1ch'
   spacing:
     base:
-      value: '1' # 1 cell
+      value: '1'
     margin:
       header-bottom:
         value: '{spacing.base}'
   motion:
     spinner:
       duration:
-        value: '100ms' # enable_steady_tick interval
+        value: '100ms'
       sequence:
         value: ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
-  radii:
-    none:
-      value: '0' # Terminal grid is orthogonal
-  elevation:
-    shadow:
-      none:
-        value: 'none'
 ---
 
 # Aura 🌌 Design System
 
-Aura is designed to feel fast, modern, and atmospheric. As a spiritual successor to `aria2`, it transitions from a "utility tool" to a "command center" for data transport.
+Aura is designed to feel fast, modern, and atmospheric. It uses a **Token-based Theming Engine** to allow users to customize their cockpit.
 
 ## 🎨 Visual Identity: The Galactic Vibe
 
-The visual language of Aura is inspired by the vastness and precision of space. We use high-contrast ANSI colors to ensure readability across all terminal emulators while maintaining a distinctive "galactic" aesthetic.
+The default visual language is "Galactic". It uses high-contrast ANSI colors to ensure readability across all terminal emulators while maintaining a distinctive "precision" aesthetic.
 
-- **Nebula Cyan**: Represents the flow of data. It is the color of the stars moving past a cockpit at warp speed.
-- **Star Yellow**: Highlights the structure. Like planetary markers, it guides the user's eye to headers and critical metadata.
-- **Galactic Blue**: The vacuum of space. It provides a deep, stable background for the Pilot (TUI) to operate within.
+- **Nebula Cyan**: represents the flow of data.
+- **Star Yellow**: highlights the structure and critical metadata.
+- **Galactic Blue**: provide a deep, stable frame for the Pilot (TUI).
 
-## 🎭 Personas
+## 🎭 Theming Architecture
 
-### The Sprinter (CLI)
-The CLI design is **functional minimalism**. It prioritizes density and high-frequency updates.
-- **Spinners**: Used during the "uncertainty" phase (metadata resolution).
-- **Dual-tone Bars**: Cyan-on-Blue progress bars provide a high-contrast visualization of completion.
-- **Metadata**: Contextual information like `bytes_per_sec` and `ETA` are displayed in-line to avoid clutter.
+Aura supports full palette customization via `Aura.toml`. A theme is a collection of hex color mappings for the UI components.
 
-### The Pilot (TUI)
-The TUI is an **interactive cockpit**. It uses `ratatui` to build a persistent management interface.
-- **Chromeless Headers**: Headers use bold background colors rather than borders to maximize horizontal space.
-- **Selection**: Uses color inversion (Reversed) and a directional glyph (`>> `) to indicate the active focus without needing complex cursor management.
-- **Grids**: Standard 1-cell margins provide enough breathing room to prevent "wall of text" syndrome while maintaining data density.
+### Customizing Your Cockpit
+In your `Aura.toml`, you can define a custom theme:
+
+```toml
+[general.theme]
+primary = "#0000FF"                    # Borders, Headers
+accent = "#00FFFF"                     # Progress bars, Active Text
+highlight = "#FFFF00"                  # Active Selection, Titles
+background = "#000000"                 # TUI Background
+foreground = "#FFFFFF"                 # General Text
+success = "#00FF00"                    # Completed/Healthy tasks
+error = "#FF0000"                      # Failed tasks
+warning = "#FFFF00"                    # Retrying tasks
+```
+
+### Example Palettes
+1.  **Galactic (Default)**: Deep blues and cyans for a high-tech space feel.
+2.  **Matrix**: Shades of neon green on black for a retro-hacker aesthetic.
+3.  **Classic**: High-contrast grayscale for maximum accessibility.
 
 ## 🧱 Components
 
 ### Progress Indicators
-Progress is the heartbeat of Aura.
-1. **The Pulse (Spinner)**: A fast, 100ms rhythmic animation indicating background activity.
-2. **The Stream (Bar)**: A `#>-` character-based bar that grows from left to right, representing the sequential filling of the local "Smart Buffer".
+1.  **The Pulse (Spinner)**: A fast, 100ms rhythmic animation.
+2.  **The Stream (Bar)**: A `#>-` character-based bar.
 
 ### The Status Board (Table)
-Tables are the primary data structure for the TUI.
-- **Headers**: Fixed at the top with a high-contrast background to anchor the view.
-- **Rows**: Strictly 1 character high to allow managing 50+ concurrent swarms on a single screen.
+- **Headers**: Fixed at the top with a high-contrast background.
+- **Selection**: Uses color inversion (Reversed) and the `>> ` glyph.
 
 ## 📐 Spacing & Layout
-Aura follows the **Orthogonal Grid** of the terminal. All layout decisions are based on character cells.
-- **Horizontal Split**: 40/20/20/20 percentage-based layout for the Task Board to ensure filenames have primacy.
-- **Vertical Rhythm**: Headers are separated from data by a single-cell bottom margin to provide visual "air".
+- **Horizontal Split**: 40/20/20/20 layout for the Task Board.
+- **Vertical Rhythm**: 1-cell margins between panels.
 
 ## ⌨️ Interaction
-The interface is designed for **muscle memory**.
-- **Keyboard Primary**: Single-character hotkeys (`a`, `p`, `r`, `d`, `q`) allow for rapid orchestration without leaving the home row.
-- **Zero-Latency Feedback**: UI ticks at 500ms intervals to ensure the dashboard feels "live" and responsive to the underlying actor engine.
+- **Hotkeys**: `a` (Add), `p` (Pause), `r` (Resume), `d` (Delete), `q` (Quit).
+- **Update Frequency**: 500ms UI ticks.

@@ -19,12 +19,65 @@ use std::{
     time::{Duration, Instant},
 };
 
-// Galactic Design Tokens
+// Default Theme Tokens (fallback)
 const GALACTIC_BLUE: Color = Color::Rgb(0, 0, 255);
 const NEBULA_CYAN: Color = Color::Rgb(0, 255, 255);
 const STAR_YELLOW: Color = Color::Rgb(255, 255, 0);
-const SUCCESS_GREEN: Color = Color::Rgb(0, 255, 0);
-const ERROR_RED: Color = Color::Rgb(255, 0, 0);
+
+#[allow(dead_code)]
+struct Theme {
+    primary: Color,
+    accent: Color,
+    highlight: Color,
+    background: Color,
+    foreground: Color,
+    success: Color,
+    error: Color,
+    warning: Color,
+}
+
+impl Default for Theme {
+    fn default() -> Self {
+        Self {
+            primary: GALACTIC_BLUE,
+            accent: NEBULA_CYAN,
+            highlight: STAR_YELLOW,
+            background: Color::Black,
+            foreground: Color::White,
+            success: Color::Green,
+            error: Color::Red,
+            warning: Color::Yellow,
+        }
+    }
+}
+
+impl Theme {
+    fn from_config(config: &serde_json::Value) -> Self {
+        let theme_json = &config["general"]["theme"];
+        Self {
+            primary: parse_hex(theme_json["primary"].as_str()).unwrap_or(GALACTIC_BLUE),
+            accent: parse_hex(theme_json["accent"].as_str()).unwrap_or(NEBULA_CYAN),
+            highlight: parse_hex(theme_json["highlight"].as_str()).unwrap_or(STAR_YELLOW),
+            background: parse_hex(theme_json["background"].as_str()).unwrap_or(Color::Black),
+            foreground: parse_hex(theme_json["foreground"].as_str()).unwrap_or(Color::White),
+            success: parse_hex(theme_json["success"].as_str()).unwrap_or(Color::Green),
+            error: parse_hex(theme_json["error"].as_str()).unwrap_or(Color::Red),
+            warning: parse_hex(theme_json["warning"].as_str()).unwrap_or(Color::Yellow),
+        }
+    }
+}
+
+fn parse_hex(hex: Option<&str>) -> Option<Color> {
+    let hex = hex?;
+    let hex = hex.trim_start_matches('#');
+    if hex.len() != 6 {
+        return None;
+    }
+    let r = u8::from_str_radix(&hex[0..2], 16).ok()?;
+    let g = u8::from_str_radix(&hex[2..4], 16).ok()?;
+    let b = u8::from_str_radix(&hex[4..6], 16).ok()?;
+    Some(Color::Rgb(r, g, b))
+}
 
 struct App {
     client: reqwest::Client,
@@ -32,6 +85,7 @@ struct App {
     table_state: TableState,
     should_quit: bool,
     error_msg: Option<String>,
+    theme: Theme,
 }
 
 #[derive(Debug, serde::Deserialize, Clone)]
@@ -55,7 +109,29 @@ impl App {
             table_state,
             should_quit: false,
             error_msg: None,
+            theme: Theme::default(),
         }
+    }
+
+    async fn fetch_theme(&mut self) -> Result<()> {
+        let res = self
+            .client
+            .post("http://localhost:6800/jsonrpc")
+            .json(&json!({
+                "jsonrpc": "2.0",
+                "method": "aura.getConfig",
+                "id": "tui-theme"
+            }))
+            .send()
+            .await;
+
+        if let Ok(response) = res {
+            let body: serde_json::Value = response.json().await?;
+            if let Some(result) = body.get("result") {
+                self.theme = Theme::from_config(result);
+            }
+        }
+        Ok(())
     }
 
     async fn tick(&mut self) -> Result<()> {
@@ -161,6 +237,8 @@ async fn main() -> Result<()> {
     let mut terminal = Terminal::new(backend)?;
 
     let mut app = App::new();
+    let _ = app.fetch_theme().await; // Initial theme fetch
+
     let res = run_loop(&mut terminal, &mut app).await;
 
     disable_raw_mode()?;
@@ -233,7 +311,7 @@ fn draw_ui(f: &mut ratatui::Frame, app: &mut App) {
     draw_header(f, chunks[0], app);
     draw_task_list(f, chunks[1], app);
     draw_details(f, chunks[2], app);
-    draw_footer(f, chunks[3]);
+    draw_footer(f, chunks[3], app);
 
     if let Some(ref err) = app.error_msg {
         let area = centered_rect(60, 20, f.size());
@@ -242,7 +320,7 @@ fn draw_ui(f: &mut ratatui::Frame, app: &mut App) {
                 Block::default()
                     .borders(Borders::ALL)
                     .title(" CRITICAL ERROR ")
-                    .fg(ERROR_RED),
+                    .fg(app.theme.error),
             )
             .wrap(ratatui::widgets::Wrap { trim: true });
         f.render_widget(ratatui::widgets::Clear, area);
@@ -256,22 +334,25 @@ fn draw_header(f: &mut ratatui::Frame, area: Rect, app: &App) {
         Span::styled(
             " AURA ",
             Style::default()
-                .fg(Color::Black)
-                .bg(STAR_YELLOW)
+                .fg(app.theme.background)
+                .bg(app.theme.highlight)
                 .add_modifier(Modifier::BOLD),
         ),
-        Span::styled(" 🌌 Galactic Pilot ", Style::default().fg(STAR_YELLOW)),
+        Span::styled(
+            " 🌌 Galactic Pilot ",
+            Style::default().fg(app.theme.highlight),
+        ),
         Span::raw(" | "),
         Span::styled(
             format!(" Tasks: {} ", total_active),
-            Style::default().fg(NEBULA_CYAN),
+            Style::default().fg(app.theme.accent),
         ),
     ]);
 
     let header = Paragraph::new(title).block(
         Block::default()
             .borders(Borders::ALL)
-            .border_style(Style::default().fg(GALACTIC_BLUE)),
+            .border_style(Style::default().fg(app.theme.primary)),
     );
     f.render_widget(header, area);
 }
@@ -279,10 +360,10 @@ fn draw_header(f: &mut ratatui::Frame, area: Rect, app: &App) {
 fn draw_task_list(f: &mut ratatui::Frame, area: Rect, app: &mut App) {
     let selected_style = Style::default()
         .add_modifier(Modifier::REVERSED)
-        .fg(NEBULA_CYAN);
+        .fg(app.theme.accent);
     let header_style = Style::default()
-        .fg(STAR_YELLOW)
-        .bg(GALACTIC_BLUE)
+        .fg(app.theme.highlight)
+        .bg(app.theme.primary)
         .add_modifier(Modifier::BOLD);
 
     let header_cells = ["ID", "Name", "Status", "Progress", "Size"]
@@ -300,10 +381,10 @@ fn draw_task_list(f: &mut ratatui::Frame, area: Rect, app: &mut App) {
         };
 
         let status_style = match item.status.as_str() {
-            "downloading" => Style::default().fg(SUCCESS_GREEN),
+            "downloading" => Style::default().fg(app.theme.success),
             "paused" => Style::default().fg(Color::Gray),
-            "error" => Style::default().fg(ERROR_RED),
-            _ => Style::default().fg(Color::White),
+            "error" => Style::default().fg(app.theme.error),
+            _ => Style::default().fg(app.theme.foreground),
         };
 
         let cells = vec![
@@ -331,7 +412,7 @@ fn draw_task_list(f: &mut ratatui::Frame, area: Rect, app: &mut App) {
         Block::default()
             .borders(Borders::ALL)
             .title(" Active Swarms ")
-            .border_style(Style::default().fg(GALACTIC_BLUE)),
+            .border_style(Style::default().fg(app.theme.primary)),
     )
     .highlight_style(selected_style)
     .highlight_symbol(">> ");
@@ -356,16 +437,16 @@ fn draw_details(f: &mut ratatui::Frame, area: Rect, app: &App) {
 
         let details = vec![
             Line::from(vec![
-                Span::styled("Name: ", Style::default().fg(STAR_YELLOW)),
+                Span::styled("Name: ", Style::default().fg(app.theme.highlight)),
                 Span::raw(&dl.name),
             ]),
             Line::from(vec![
-                Span::styled("GID:  ", Style::default().fg(STAR_YELLOW)),
+                Span::styled("GID:  ", Style::default().fg(app.theme.highlight)),
                 Span::raw(&dl.gid),
             ]),
             Line::from(vec![
-                Span::styled("Phase: ", Style::default().fg(STAR_YELLOW)),
-                Span::styled(&dl.status, Style::default().fg(NEBULA_CYAN)),
+                Span::styled("Phase: ", Style::default().fg(app.theme.highlight)),
+                Span::styled(&dl.status, Style::default().fg(app.theme.accent)),
             ]),
         ];
 
@@ -375,7 +456,7 @@ fn draw_details(f: &mut ratatui::Frame, area: Rect, app: &App) {
         let gauge_area = Rect::new(area.x + 2, area.y + 4, area.width - 4, 1);
         let gauge = Gauge::default()
             .block(Block::default())
-            .gauge_style(Style::default().fg(NEBULA_CYAN).bg(GALACTIC_BLUE))
+            .gauge_style(Style::default().fg(app.theme.accent).bg(app.theme.primary))
             .ratio(progress)
             .label(format!("{:.1}%", progress * 100.0));
         f.render_widget(gauge, gauge_area);
@@ -389,20 +470,32 @@ fn draw_details(f: &mut ratatui::Frame, area: Rect, app: &App) {
         Block::default()
             .borders(Borders::ALL)
             .title(" Telemetry Dashboard ")
-            .border_style(Style::default().fg(GALACTIC_BLUE)),
+            .border_style(Style::default().fg(app.theme.primary)),
     );
     f.render_widget(p, area);
 }
 
-fn draw_footer(f: &mut ratatui::Frame, area: Rect) {
+fn draw_footer(f: &mut ratatui::Frame, area: Rect, app: &App) {
     let keys = vec![
-        Span::styled(" (q) ", Style::default().fg(Color::Black).bg(Color::Gray)),
+        Span::styled(
+            " (q) ",
+            Style::default().fg(app.theme.background).bg(Color::Gray),
+        ),
         Span::raw(" Quit "),
-        Span::styled(" (p) ", Style::default().fg(Color::Black).bg(Color::Gray)),
+        Span::styled(
+            " (p) ",
+            Style::default().fg(app.theme.background).bg(Color::Gray),
+        ),
         Span::raw(" Pause "),
-        Span::styled(" (r) ", Style::default().fg(Color::Black).bg(Color::Gray)),
+        Span::styled(
+            " (r) ",
+            Style::default().fg(app.theme.background).bg(Color::Gray),
+        ),
         Span::raw(" Resume "),
-        Span::styled(" (↑↓) ", Style::default().fg(Color::Black).bg(Color::Gray)),
+        Span::styled(
+            " (↑↓) ",
+            Style::default().fg(app.theme.background).bg(Color::Gray),
+        ),
         Span::raw(" Navigate "),
     ];
     let p = Paragraph::new(Line::from(keys));

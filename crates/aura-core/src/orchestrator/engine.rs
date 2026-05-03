@@ -258,4 +258,15 @@ impl Engine {
             .map_err(|e| Error::Config(e.to_string()))?;
         Ok(())
     }
+
+    pub async fn tell_config(&self) -> Result<Arc<crate::Config>> {
+        let (tx, mut rx) = mpsc::channel(1);
+        self.command_tx
+            .send(Command::GetConfig(tx))
+            .await
+            .map_err(|e| Error::Config(e.to_string()))?;
+        rx.recv()
+            .await
+            .ok_or_else(|| Error::Config("Engine shut down".to_string()))
+    }
 }

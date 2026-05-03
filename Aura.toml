@@ -44,3 +44,13 @@ log_level = "info"                     # "trace", "debug", "info", "warn", "erro
 # log_path = "aura.log"                # Optional path to log file
 check_integrity = true                 # Verify piece hashes during download
 event_poll_interval_ms = 500           # TUI/CLI UI update frequency
+
+[general.theme]
+primary = "#0000FF"
+accent = "#00FFFF"
+highlight = "#FFFF00"
+background = "#000000"
+foreground = "#FFFFFF"
+success = "#00FF00"
+error = "#FF0000"
+warning = "#FFFF00"
