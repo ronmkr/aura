@@ -41,6 +41,11 @@ pub enum Command {
     Shutdown,
 }
 
+#[derive(Debug, Clone)]
+pub enum WorkerCommand {
+    CancelPiece(usize),
+}
+
 #[derive(Debug)]
 pub enum SubTaskEvent {
     Matured(TaskId, TaskId, Metadata),
@@ -50,7 +55,14 @@ pub enum SubTaskEvent {
     Downloaded(TaskId, u64),
     PeerBitfield(TaskId, PeerId, Bitfield),
     PeerHave(TaskId, PeerId, u32),
-    BtTaskRegistered(TaskId, TaskId, [u8; 20], Arc<BtTask>),
+    PieceVerified(TaskId, TaskId, usize),
+    BtTaskRegistered(
+        TaskId,
+        TaskId,
+        [u8; 20],
+        Arc<BtTask>,
+        tokio::sync::broadcast::Sender<WorkerCommand>,
+    ),
     KillSwitch,
 }
 
@@ -80,6 +92,7 @@ pub struct Orchestrator {
     pub(crate) tasks: HashMap<TaskId, MetaTask>,
     pub(crate) bt_registry: HashMap<[u8; 20], Arc<BtTask>>,
     pub(crate) bt_tasks: HashMap<TaskId, Arc<BtTask>>, // Key: sub_id
+    pub(crate) worker_command_txs: HashMap<TaskId, tokio::sync::broadcast::Sender<WorkerCommand>>, // Key: sub_id
     pub(crate) cancellation_tokens: HashMap<TaskId, CancellationToken>,
     pub(crate) command_rx: mpsc::Receiver<Command>,
     pub(crate) event_tx: broadcast::Sender<Event>,
@@ -138,6 +151,7 @@ impl Orchestrator {
                 tasks: HashMap::new(),
                 bt_registry: HashMap::new(),
                 bt_tasks: HashMap::new(),
+                worker_command_txs: HashMap::new(),
                 cancellation_tokens: HashMap::new(),
                 command_rx,
                 event_tx,
@@ -221,6 +235,7 @@ impl Orchestrator {
                 }
                 Ok((stream, addr)) = listener.accept() => {
                     let bt_registry = self.bt_registry.clone();
+                    let worker_command_txs = self.worker_command_txs.clone();
                     let storage_tx = self.storage_tx.clone();
                     let subtask_tx = self.subtask_tx.clone();
                     let my_peer_id = self.peer_id;
@@ -229,7 +244,7 @@ impl Orchestrator {
                     let config = self.config.load().clone();
 
                     tokio::spawn(async move {
-                        if let Err(e) = lifecycle::handle_incoming_peer(stream, addr, bt_registry, storage_tx, subtask_tx, my_peer_id, cancellation_tokens, local_addr, config).await {
+                        if let Err(e) = lifecycle::handle_incoming_peer(stream, addr, bt_registry, worker_command_txs, storage_tx, subtask_tx, my_peer_id, cancellation_tokens, local_addr, config).await {
                             tracing::debug!(?addr, error = %e, "Failed to handle incoming peer");
                         }
                     });

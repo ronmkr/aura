@@ -1,4 +1,4 @@
-use super::{Event, Orchestrator, SubTaskEvent};
+use super::{Event, Orchestrator, SubTaskEvent, WorkerCommand};
 use crate::task::DownloadPhase;
 use crate::{Result, TaskId};
 use tracing::{debug, info};
@@ -37,9 +37,16 @@ impl Orchestrator {
             SubTaskEvent::PeerHave(meta_id, peer_id, idx) => {
                 debug!(%meta_id, ?peer_id, idx, "Peer reported piece availability");
             }
-            SubTaskEvent::BtTaskRegistered(_meta_id, sub_id, info_hash, task) => {
+            SubTaskEvent::PieceVerified(meta_id, sub_id, piece_idx) => {
+                debug!(%meta_id, %sub_id, piece_idx, "Broadcasting cancellation for verified piece");
+                if let Some(tx) = self.worker_command_txs.get(&sub_id) {
+                    let _ = tx.send(WorkerCommand::CancelPiece(piece_idx));
+                }
+            }
+            SubTaskEvent::BtTaskRegistered(_meta_id, sub_id, info_hash, task, worker_cmd_tx) => {
                 self.bt_registry.insert(info_hash, task.clone());
                 self.bt_tasks.insert(sub_id, task);
+                self.worker_command_txs.insert(sub_id, worker_cmd_tx);
             }
             SubTaskEvent::KillSwitch => {
                 let ids: Vec<TaskId> = self.tasks.keys().cloned().collect();
