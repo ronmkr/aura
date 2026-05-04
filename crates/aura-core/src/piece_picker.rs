@@ -75,6 +75,10 @@ impl PiecePicker {
     /// Picks the next piece to download using the rarest-first strategy,
     /// considering only pieces that the specified peer has.
     pub fn pick_next(&self, my_bitfield: &Bitfield, peer_addr: &str) -> Option<usize> {
+        if self.is_endgame(my_bitfield) {
+            return self.pick_next_endgame(my_bitfield, peer_addr);
+        }
+
         let peer_bf = self.peer_bitfields.get(peer_addr)?;
 
         let mut rarest_pieces = Vec::new();
@@ -104,6 +108,31 @@ impl PiecePicker {
             rarest_pieces.choose(&mut rand::thread_rng()).copied()
         }
     }
+
+    /// Determines if the task is in "Endgame Mode".
+    pub fn is_endgame(&self, my_bitfield: &Bitfield) -> bool {
+        let remaining = self.num_pieces - my_bitfield.count_set();
+        // Endgame triggers when very few pieces are left (e.g., < 3 or < 1%)
+        if remaining == 0 {
+            return false;
+        }
+        remaining <= 3 || (remaining as f32 / self.num_pieces as f32) < 0.01
+    }
+
+    /// Picks a piece even if it's already in progress (redundant fetching).
+    pub fn pick_next_endgame(&self, my_bitfield: &Bitfield, peer_addr: &str) -> Option<usize> {
+        let peer_bf = self.peer_bitfields.get(peer_addr)?;
+
+        let mut available = Vec::new();
+        for i in 0..self.num_pieces {
+            if !my_bitfield.get(i) && peer_bf.get(i) {
+                available.push(i);
+            }
+        }
+
+        use rand::seq::SliceRandom;
+        available.choose(&mut rand::thread_rng()).copied()
+    }
 }
 
 #[cfg(test)]
@@ -112,18 +141,18 @@ mod tests {
 
     #[test]
     fn test_rarest_first_selection() {
-        let mut picker = PiecePicker::new(5);
-        let my_bf = Bitfield::new(5);
+        let mut picker = PiecePicker::new(10);
+        let my_bf = Bitfield::new(10);
 
         // Peer A has pieces 0, 1, 2
-        let mut bf_a = Bitfield::new(5);
+        let mut bf_a = Bitfield::new(10);
         bf_a.set(0, true);
         bf_a.set(1, true);
         bf_a.set(2, true);
         picker.add_peer_bitfield("1.1.1.1:80".to_string(), bf_a);
 
         // Peer B has pieces 0, 3
-        let mut bf_b = Bitfield::new(5);
+        let mut bf_b = Bitfield::new(10);
         bf_b.set(0, true);
         bf_b.set(3, true);
         picker.add_peer_bitfield("2.2.2.2:80".to_string(), bf_b);
@@ -149,5 +178,27 @@ mod tests {
             .pick_next(&my_bf_updated, "1.1.1.1:80")
             .expect("Should pick another piece");
         assert_eq!(picked2, 2);
+    }
+
+    #[test]
+    fn test_endgame_mode_trigger() {
+        let mut picker = PiecePicker::new(2);
+        let my_bf = Bitfield::new(2);
+        let mut peer_bf = Bitfield::new(2);
+        peer_bf.set(0, true);
+        peer_bf.set(1, true);
+        picker.add_peer_bitfield("peer1".to_string(), peer_bf);
+
+        // Mark all pieces as in progress
+        picker.mark_in_progress(0);
+        picker.mark_in_progress(1);
+
+        // Standard pick SHOULD now return a piece because we are in endgame (2/2 pieces)
+        let picked = picker.pick_next(&my_bf, "peer1");
+        assert!(picked.is_some());
+
+        // Also verify explicitly calling pick_next_endgame
+        let picked_explicit = picker.pick_next_endgame(&my_bf, "peer1");
+        assert!(picked_explicit.is_some());
     }
 }

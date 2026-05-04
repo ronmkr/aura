@@ -1,4 +1,4 @@
-use super::{Orchestrator, SubTaskEvent};
+use super::{Orchestrator, SubTaskEvent, WorkerCommand};
 use crate::bitfield::Bitfield;
 use crate::bt_task::BtTask;
 use crate::bt_worker::BtWorker;
@@ -17,6 +17,10 @@ pub(crate) async fn handle_incoming_peer(
     mut stream: TcpStream,
     addr: std::net::SocketAddr,
     bt_registry: std::collections::HashMap<[u8; 20], Arc<BtTask>>,
+    worker_command_txs: std::collections::HashMap<
+        TaskId,
+        tokio::sync::broadcast::Sender<WorkerCommand>,
+    >,
     storage_tx: mpsc::Sender<StorageRequest>,
     subtask_tx: mpsc::Sender<SubTaskEvent>,
     my_peer_id: [u8; 20],
@@ -51,6 +55,17 @@ pub(crate) async fn handle_incoming_peer(
             );
             worker.local_addr = local_addr;
             worker.pipeline_size = config.bittorrent.request_pipeline_size;
+
+            // SubId in bt_tasks/worker_command_txs is task.id for simple single-torrent tasks
+            // In more complex ones it might be different, but for now we use task.id
+            let w_cmd_rx = if let Some(tx) = worker_command_txs.get(&task.id) {
+                tx.subscribe()
+            } else {
+                // Fallback to a dummy channel if not found (shouldn't happen for valid tasks)
+                let (dummy_tx, _) = tokio::sync::broadcast::channel::<WorkerCommand>(1);
+                dummy_tx.subscribe()
+            };
+
             worker
                 .run_loop_with_stream(
                     stream,
@@ -59,6 +74,7 @@ pub(crate) async fn handle_incoming_peer(
                     task.clone(),
                     storage_tx,
                     subtask_tx,
+                    w_cmd_rx,
                     token.clone(),
                 )
                 .await
@@ -202,6 +218,8 @@ impl Orchestrator {
                             }
                         };
 
+                        let (worker_cmd_tx, _) = tokio::sync::broadcast::channel(1024);
+
                         let info_hash = bt_task.state.info_hash;
                         let _ = subtask_tx
                             .send(SubTaskEvent::BtTaskRegistered(
@@ -209,6 +227,7 @@ impl Orchestrator {
                                 sub_id,
                                 info_hash,
                                 bt_task.clone(),
+                                worker_cmd_tx.clone(),
                             ))
                             .await;
 
@@ -306,6 +325,7 @@ impl Orchestrator {
                                         let peer_task_inner = peer_task.clone();
                                         let active_counter = active_workers.clone();
                                         let t4 = t3.clone();
+                                        let w_cmd_rx = worker_cmd_tx.subscribe();
 
                                         active_counter.fetch_add(1, Ordering::Relaxed);
                                         tokio::spawn(async move {
@@ -316,6 +336,7 @@ impl Orchestrator {
                                                     peer_task_inner,
                                                     s_tx,
                                                     sub_tx,
+                                                    w_cmd_rx,
                                                     t4,
                                                 )
                                                 .await
