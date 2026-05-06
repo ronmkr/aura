@@ -5,7 +5,7 @@ use tracing::{info, warn};
 
 /// Manages system power assertions to prevent sleep during active downloads.
 pub struct PowerManager {
-    no_sleep: NoSleep,
+    no_sleep: Option<NoSleep>,
     assertion: Option<Result<(), nosleep::Error>>,
     is_active: bool,
 }
@@ -13,12 +13,19 @@ pub struct PowerManager {
 impl PowerManager {
     /// Creates a new PowerManager.
     pub fn new() -> Self {
+        let no_sleep = match NoSleep::new() {
+            Ok(ns) => Some(ns),
+            Err(e) => {
+                warn!(
+                    "Failed to initialize PowerManager: {}. Sleep prevention will be disabled.",
+                    e
+                );
+                None
+            }
+        };
+
         Self {
-            no_sleep: NoSleep::new().unwrap_or_else(|e| {
-                warn!("Failed to initialize PowerManager: {}", e);
-                // Fallback to a second attempt or handle gracefully if OS not supported
-                NoSleep::new().expect("Power management must be supported or handled gracefully")
-            }),
+            no_sleep,
             assertion: None,
             is_active: false,
         }
@@ -35,23 +42,27 @@ impl PowerManager {
     }
 
     fn require_awake(&mut self) {
-        if self.assertion.is_none() {
-            info!("Preventing system sleep due to active downloads");
-            let res = self.no_sleep.start(NoSleepType::PreventUserIdleSystemSleep);
-            if let Err(ref e) = res {
-                warn!("Failed to start sleep prevention: {}", e);
+        if let Some(ref mut no_sleep) = self.no_sleep {
+            if self.assertion.is_none() {
+                info!("Preventing system sleep due to active downloads");
+                let res = no_sleep.start(NoSleepType::PreventUserIdleSystemSleep);
+                if let Err(ref e) = res {
+                    warn!("Failed to start sleep prevention: {}", e);
+                }
+                self.assertion = Some(res);
             }
-            self.assertion = Some(res);
         }
     }
 
     fn allow_sleep(&mut self) {
-        if self.assertion.is_some() {
-            info!("Releasing system sleep prevention");
-            if let Err(e) = self.no_sleep.stop() {
-                warn!("Failed to stop sleep prevention: {}", e);
+        if let Some(ref mut no_sleep) = self.no_sleep {
+            if self.assertion.is_some() {
+                info!("Releasing system sleep prevention");
+                if let Err(e) = no_sleep.stop() {
+                    warn!("Failed to stop sleep prevention: {}", e);
+                }
+                self.assertion = None;
             }
-            self.assertion = None;
         }
     }
 }
@@ -74,8 +85,11 @@ mod tests {
 
         manager.set_active(true);
         assert!(manager.is_active);
-        // Note: assertion might be Err if not supported, but we check if it's Some
-        assert!(manager.assertion.is_some());
+
+        // If supported, assertion should be Some
+        if manager.no_sleep.is_some() {
+            assert!(manager.assertion.is_some());
+        }
 
         manager.set_active(true); // Redundant call
         assert!(manager.is_active);
