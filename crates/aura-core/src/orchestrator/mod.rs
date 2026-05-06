@@ -45,6 +45,7 @@ pub enum Command {
 #[derive(Debug, Clone)]
 pub enum WorkerCommand {
     CancelPiece(usize),
+    RequestPiece(usize),
 }
 
 #[derive(Debug)]

@@ -81,6 +81,12 @@ impl super::BtWorker {
                 piece_length
             };
 
+            // Ensure buffer is initialized if it was set via RequestPiece (Endgame)
+            if self.piece_buffer.is_empty() {
+                self.piece_buffer = self.pool.acquire();
+                self.piece_buffer.resize(piece_total_len as usize, 0);
+            }
+
             if self.bytes_received >= piece_total_len {
                 // Piece complete, verify hash
                 let mut hasher = Sha1::new();

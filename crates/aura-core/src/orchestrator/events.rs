@@ -39,8 +39,34 @@ impl Orchestrator {
             }
             SubTaskEvent::PieceVerified(meta_id, sub_id, piece_idx) => {
                 debug!(%meta_id, %sub_id, piece_idx, "Broadcasting cancellation for verified piece");
-                if let Some(tx) = self.worker_command_txs.get(&sub_id) {
-                    let _ = tx.send(WorkerCommand::CancelPiece(piece_idx));
+                if let Some(bt_task) = self.bt_tasks.get(&sub_id) {
+                    if let Some(tx) = self.worker_command_txs.get(&sub_id) {
+                        let _ = tx.send(WorkerCommand::CancelPiece(piece_idx));
+                    }
+
+                    // Endgame coordination: if we are in endgame, we might want to assign
+                    // this newly available worker capacity to other pending pieces.
+                    let bf_guard = bt_task.state.bitfield.lock().await;
+                    let picker_guard = bt_task.state.picker.lock().await;
+                    if let (Some(bf), Some(picker)) = (bf_guard.as_ref(), picker_guard.as_ref()) {
+                        if picker.is_endgame(bf) {
+                            let mut pending_pieces = Vec::new();
+                            for i in 0..bf.len() {
+                                if !bf.get(i) {
+                                    pending_pieces.push(i);
+                                }
+                            }
+
+                            if !pending_pieces.is_empty() {
+                                debug!(%meta_id, pending = %pending_pieces.len(), "Endgame: broadcasting redundant requests");
+                                if let Some(tx) = self.worker_command_txs.get(&sub_id) {
+                                    for &piece_idx in &pending_pieces {
+                                        let _ = tx.send(WorkerCommand::RequestPiece(piece_idx));
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
             SubTaskEvent::BtTaskRegistered(_meta_id, sub_id, info_hash, task, worker_cmd_tx) => {
