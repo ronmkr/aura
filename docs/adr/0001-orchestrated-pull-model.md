@@ -1,7 +1,7 @@
 # ADR 0001: Orchestrated Pull Model for Work Assignment
 
 ## Status
-Accepted
+Implemented
 
 ## Context
 In `Aura`, the system must distribute piece requests across multiple protocols (HTTP, BitTorrent) and workers efficiently. We need a communication pattern that supports backpressure, centralized strategy (like "Rarest First"), and "Work Stealing" (re-assigning slow pieces).
@@ -20,3 +20,11 @@ We will use an **Orchestrated Pull** model.
 ## Consequences
 - **Pros**: Clear backpressure, centralized scheduling logic, easier implementation of Work Stealing.
 - **Cons**: Adds one round-trip of message latency (request for work) before fetching starts.
+
+## Implementation
+- **Primary File**: `crates/aura-core/src/orchestrator/mod.rs`
+- **Logic**: Orchestrator listens for `SubTaskEvent` and assigns pieces via the `PiecePicker`.
+
+## Verification
+- **Unit Test**: `crates/aura-core/src/piece_picker.rs` (Tests piece selection strategy).
+- **Integration Test**: `crates/aura-core/src/bt_worker/tests.rs` (Simulates worker requesting work).

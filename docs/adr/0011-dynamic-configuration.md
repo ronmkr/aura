@@ -1,7 +1,7 @@
 # ADR 0011: Dynamic Configuration and Hot-reloading
 
 ## Status
-Accepted
+Implemented
 
 ## Context
 `aria2` supports hundreds of options, but they are mostly static once the process starts. In `Aura`, we want to support dynamic configuration changes (e.g., changing bandwidth limits or adding a proxy) without restarting the service.
@@ -19,3 +19,10 @@ Accepted
 ## Consequences
 - **Pros**: Better developer and user experience, immediate feedback for configuration changes.
 - **Cons**: Requires thread-safe access to configuration (e.g., `Arc<Config>` or `arc_swap`), which adds slight overhead.
+
+## Implementation
+- **Primary File**: `crates/aura-core/src/orchestrator/engine.rs`
+- **Logic**: Uses `notify` crate to watch `Aura.toml` and updates `ArcSwap<Config>` inside the `Engine`.
+
+## Verification
+- **Test**: `crates/aura-core/src/config.rs` (Validates TOML parsing and default overrides).
