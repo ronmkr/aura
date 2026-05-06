@@ -2,6 +2,8 @@
 
 The Rust-based successor to aria2, focusing on high-performance, asynchronous download orchestration using an actor-based architecture.
 
+> **Architecture**: See the [Architectural Map](ARCHITECTURE.md) for Mermaid diagrams and component interaction details.
+
 ## Glossary
 
 ### User & Orchestration
