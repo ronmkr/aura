@@ -54,10 +54,12 @@ pub struct MetaTask {
     pub name: String,
     pub total_length: u64,
     pub completed_length: u64,
+    pub uploaded_length: u64,
     pub phase: DownloadPhase,
     pub subtasks: Vec<SubTask>,
     pub pending_ranges: Vec<Range>,
     pub in_flight_ranges: Vec<(TaskId, Range)>, // (SubTaskID, Range)
+    pub seeding_start_time: Option<chrono::DateTime<chrono::Utc>>,
 }
 
 use crate::bitfield::Bitfield;
@@ -70,9 +72,11 @@ pub struct TaskState {
     pub phase: DownloadPhase,
     pub total_length: u64,
     pub completed_length: u64,
+    pub uploaded_length: u64,
     pub subtasks: Vec<SubTask>,
     pub pending_ranges: Vec<Range>,
     pub bitfield: Option<Bitfield>,
+    pub seeding_start_time: Option<chrono::DateTime<chrono::Utc>>,
 }
 
 impl MetaTask {
@@ -83,9 +87,11 @@ impl MetaTask {
             phase: self.phase,
             total_length: self.total_length,
             completed_length: self.completed_length,
+            uploaded_length: self.uploaded_length,
             subtasks: self.subtasks.clone(),
             pending_ranges: self.pending_ranges.clone(),
             bitfield,
+            seeding_start_time: self.seeding_start_time,
         }
     }
 
@@ -96,9 +102,11 @@ impl MetaTask {
             phase: state.phase,
             total_length: state.total_length,
             completed_length: state.completed_length,
+            uploaded_length: state.uploaded_length,
             subtasks: state.subtasks,
             pending_ranges: state.pending_ranges,
             in_flight_ranges: Vec::new(),
+            seeding_start_time: state.seeding_start_time,
         }
     }
 
@@ -108,10 +116,12 @@ impl MetaTask {
             name,
             total_length,
             completed_length: 0,
+            uploaded_length: 0,
             phase: DownloadPhase::Downloading,
             subtasks: Vec::new(),
             pending_ranges: Vec::new(),
             in_flight_ranges: Vec::new(),
+            seeding_start_time: None,
         }
     }
 

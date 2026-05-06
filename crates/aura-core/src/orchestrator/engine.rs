@@ -210,7 +210,7 @@ impl Engine {
         Ok(())
     }
 
-    pub async fn unpause(&self, id: TaskId) -> Result<()> {
+    pub async fn resume(&self, id: TaskId) -> Result<()> {
         self.command_tx
             .send(Command::Resume(id))
             .await

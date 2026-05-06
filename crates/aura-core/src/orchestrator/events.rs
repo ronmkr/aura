@@ -27,6 +27,18 @@ impl Orchestrator {
                     let _ = self.event_tx.send(Event::TaskProgress {
                         id: meta_id,
                         completed_bytes: task.completed_length,
+                        uploaded_bytes: task.uploaded_length,
+                        total_bytes: task.total_length,
+                    });
+                }
+            }
+            SubTaskEvent::Uploaded(meta_id, bytes) => {
+                if let Some(task) = self.tasks.get_mut(&meta_id) {
+                    task.uploaded_length += bytes;
+                    let _ = self.event_tx.send(Event::TaskProgress {
+                        id: meta_id,
+                        completed_bytes: task.completed_length,
+                        uploaded_bytes: task.uploaded_length,
                         total_bytes: task.total_length,
                     });
                 }
@@ -158,8 +170,11 @@ impl Orchestrator {
             meta_task.mark_range_complete(sub_id, range);
 
             if meta_task.is_complete() {
-                info!(%meta_id, "All ranges complete for MetaTask");
+                info!(%meta_id, "All ranges complete for MetaTask, entering seeding phase");
                 meta_task.phase = DownloadPhase::Complete;
+                if meta_task.seeding_start_time.is_none() {
+                    meta_task.seeding_start_time = Some(chrono::Utc::now());
+                }
             }
         }
 
@@ -172,6 +187,7 @@ impl Orchestrator {
             let _ = self.event_tx.send(Event::TaskProgress {
                 id,
                 completed_bytes: task.total_length,
+                uploaded_bytes: task.uploaded_length,
                 total_bytes: task.total_length,
             });
         }

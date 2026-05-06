@@ -119,6 +119,7 @@ async fn main() -> Result<()> {
             Event::TaskProgress {
                 id,
                 completed_bytes,
+                uploaded_bytes,
                 total_bytes,
             } => {
                 if let Some(pb) = bars.get(&id) {
@@ -126,6 +127,9 @@ async fn main() -> Result<()> {
                         pb.set_length(total_bytes);
                     }
                     pb.set_position(completed_bytes);
+                    if uploaded_bytes > 0 {
+                        pb.set_message(format!("UP: {}", bytesize::ByteSize::b(uploaded_bytes)));
+                    }
                 }
             }
             Event::TaskCompleted(id) => {
