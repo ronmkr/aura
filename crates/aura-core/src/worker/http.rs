@@ -1,4 +1,5 @@
 use super::{Metadata, PieceData, ProgressSender, ProtocolWorker, Segment};
+use crate::buffer_pool::BufferPool;
 use crate::{Error, Result, TaskId};
 use async_trait::async_trait;
 use bytes::BytesMut;
@@ -9,6 +10,7 @@ pub struct HttpWorker {
     client: reqwest::Client,
     uri: String,
     referer: Option<String>,
+    pool: Option<BufferPool>,
 }
 
 impl HttpWorker {
@@ -19,6 +21,7 @@ impl HttpWorker {
         connect_timeout: Option<u64>,
         proxy: Option<String>,
         referer: Option<String>,
+        pool: Option<BufferPool>,
     ) -> Self {
         let cookie_jar = std::sync::Arc::new(reqwest::cookie::Jar::default());
         let mut builder = reqwest::Client::builder()
@@ -46,6 +49,7 @@ impl HttpWorker {
             client,
             uri,
             referer,
+            pool,
         }
     }
 
@@ -147,7 +151,12 @@ impl ProtocolWorker for HttpWorker {
             )));
         }
 
-        let mut buffer = BytesMut::with_capacity(segment.length as usize);
+        let mut buffer = if let Some(ref p) = self.pool {
+            p.acquire()
+        } else {
+            BytesMut::with_capacity(segment.length as usize)
+        };
+
         let mut stream = response.bytes_stream();
 
         while let Some(chunk_res) = stream.next().await {
@@ -160,7 +169,7 @@ impl ProtocolWorker for HttpWorker {
 
         Ok(PieceData {
             segment,
-            data: buffer.freeze(),
+            data: buffer,
         })
     }
 
@@ -201,6 +210,7 @@ mod tests {
             None,
             None,
             None,
+            None,
         );
         let metadata = worker
             .resolve_metadata()
@@ -214,6 +224,7 @@ mod tests {
             None,
             None,
             Some(format!("{}/start", server.uri())),
+            None,
         );
         let result = worker_final
             .fetch_segment(
@@ -243,7 +254,15 @@ mod tests {
             .mount(&server)
             .await;
 
-        let worker = HttpWorker::new(format!("{}/a", server.uri()), None, None, None, None, None);
+        let worker = HttpWorker::new(
+            format!("{}/a", server.uri()),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        );
         let result = worker.resolve_metadata().await;
         match result {
             Err(Error::Protocol(msg)) => assert!(msg.to_lowercase().contains("redirect")),

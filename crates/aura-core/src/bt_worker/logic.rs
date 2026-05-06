@@ -3,7 +3,6 @@ use crate::bt_task::BtTask;
 use crate::orchestrator::SubTaskEvent;
 use crate::storage::StorageRequest;
 use crate::{Error, Result, TaskId};
-use bytes::BytesMut;
 use futures_util::SinkExt;
 use sha1::{Digest, Sha1};
 use tokio_util::codec::Framed;
@@ -92,6 +91,10 @@ impl super::BtWorker {
 
                 if actual_hash == expected_hash {
                     info!(addr = %self.peer_addr, %piece_idx, "Piece download complete and verified");
+
+                    let finished_data =
+                        std::mem::replace(&mut self.piece_buffer, self.pool.acquire());
+
                     let _ = storage_tx
                         .send(StorageRequest::Write {
                             task_id: meta_id,
@@ -99,7 +102,7 @@ impl super::BtWorker {
                                 offset: piece_idx as u64 * piece_length,
                                 length: piece_total_len,
                             },
-                            data: self.piece_buffer.clone().freeze(),
+                            data: finished_data,
                         })
                         .await;
 
@@ -170,7 +173,8 @@ impl super::BtWorker {
                     self.current_piece = Some(piece_idx);
                     self.bytes_received = 0;
                     self.bytes_requested = 0;
-                    self.piece_buffer = BytesMut::zeroed(piece_total_len as usize);
+                    self.piece_buffer = self.pool.acquire();
+                    self.piece_buffer.resize(piece_total_len as usize, 0);
 
                     drop(picker_guard);
                     drop(bf_guard);

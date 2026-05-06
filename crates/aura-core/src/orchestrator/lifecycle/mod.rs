@@ -67,6 +67,7 @@ impl Orchestrator {
             let token_clone = token.clone();
             let loaded_bf = bitfield.clone();
             let config_clone = config_arc.clone();
+            let pool = self.pool.clone();
 
             let existing_bt = self.bt_tasks.get(&sub_id).cloned();
 
@@ -79,6 +80,7 @@ impl Orchestrator {
                             .user_agent(Some(config.network.user_agent.clone()))
                             .connect_timeout(Some(config.network.connect_timeout_secs))
                             .proxy(config.network.proxy.clone())
+                            .with_pool(pool.clone())
                             .build_http();
                         match worker.resolve_metadata().await {
                             Ok(m) => {
@@ -94,6 +96,7 @@ impl Orchestrator {
                     TaskType::Ftp => {
                         let worker = crate::worker::WorkerBuilder::new(uri)
                             .local_addr(local_addr)
+                            .with_pool(pool.clone())
                             .build_ftp();
                         match worker.resolve_metadata().await {
                             Ok(m) => {
@@ -203,6 +206,7 @@ impl Orchestrator {
                         let subtask_tx_loop = subtask_tx.clone();
                         let t3 = token_clone.clone();
                         let config_loop = config_clone.clone();
+                        let pool_loop = pool.clone();
 
                         use std::sync::atomic::{AtomicUsize, Ordering};
                         let active_workers = Arc::new(AtomicUsize::new(0));
@@ -250,6 +254,7 @@ impl Orchestrator {
                                             info_hash,
                                             peer_id,
                                             my_peer_id,
+                                            pool_loop.clone(),
                                         );
                                         worker.local_addr = local_addr;
                                         worker.pipeline_size =

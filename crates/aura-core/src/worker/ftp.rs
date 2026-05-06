@@ -1,4 +1,5 @@
 use super::{Metadata, PieceData, ProgressSender, ProtocolWorker, Segment};
+use crate::buffer_pool::BufferPool;
 use crate::{Error, Result, TaskId};
 use async_trait::async_trait;
 use bytes::BytesMut;
@@ -11,13 +12,19 @@ use url::Url;
 pub struct FtpWorker {
     uri: String,
     _local_addr: Option<std::net::IpAddr>,
+    pool: Option<BufferPool>,
 }
 
 impl FtpWorker {
-    pub fn new(uri: String, local_addr: Option<std::net::IpAddr>) -> Self {
+    pub fn new(
+        uri: String,
+        local_addr: Option<std::net::IpAddr>,
+        pool: Option<BufferPool>,
+    ) -> Self {
         Self {
             uri,
             _local_addr: local_addr,
+            pool,
         }
     }
 
@@ -102,7 +109,11 @@ impl ProtocolWorker for FtpWorker {
             .await
             .map_err(|e| Error::Protocol(format!("FTP RETR failed: {}", e)))?;
 
-        let mut buffer = BytesMut::with_capacity(segment.length as usize);
+        let mut buffer = if let Some(ref p) = self.pool {
+            p.acquire()
+        } else {
+            BytesMut::with_capacity(segment.length as usize)
+        };
         let mut total_read = 0;
 
         while total_read < segment.length {
@@ -130,7 +141,7 @@ impl ProtocolWorker for FtpWorker {
 
         Ok(PieceData {
             segment,
-            data: buffer.freeze(),
+            data: buffer,
         })
     }
 

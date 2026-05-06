@@ -33,7 +33,7 @@ fn bench_storage_sequential_write(c: &mut Criterion) {
                     offset,
                     length: 1024 * 1024,
                 },
-                data: data.clone(),
+                data: data.clone().into(),
             };
             offset += 1024 * 1024;
             let tx = request_tx.clone();
@@ -79,7 +79,7 @@ fn bench_storage_random_write_aggregated(c: &mut Criterion) {
                     offset,
                     length: 16 * 1024,
                 },
-                data: data.clone(),
+                data: data.clone().into(),
             };
             i += 1;
             let tx = request_tx.clone();
