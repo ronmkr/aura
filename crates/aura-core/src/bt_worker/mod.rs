@@ -292,6 +292,56 @@ impl BtWorker {
                                         }
                                     }
                                 }
+                                PeerMessage::Request {
+                                    index,
+                                    begin,
+                                    length,
+                                } => {
+                                    let has_piece = {
+                                        let bf_guard = task.state.bitfield.lock().await;
+                                        bf_guard
+                                            .as_ref()
+                                            .map(|bf| bf.get(index as usize))
+                                            .unwrap_or(false)
+                                    };
+
+                                    if has_piece {
+                                        let (reply_tx, reply_rx) = tokio::sync::oneshot::channel();
+                                        let _ = storage_tx
+                                            .send(StorageRequest::Read {
+                                                task_id: meta_id,
+                                                segment: crate::worker::Segment {
+                                                    offset: index as u64
+                                                        * task
+                                                            .state
+                                                            .torrent
+                                                            .lock()
+                                                            .await
+                                                            .as_ref()
+                                                            .unwrap()
+                                                            .info
+                                                            .piece_length
+                                                        + begin as u64,
+                                                    length: length as u64,
+                                                },
+                                                reply_tx,
+                                            })
+                                            .await;
+
+                                        if let Ok(Ok(data)) = reply_rx.await {
+                                            framed
+                                                .send(PeerMessage::Piece {
+                                                    index,
+                                                    begin,
+                                                    block: data,
+                                                })
+                                                .await?;
+                                            let _ = subtask_tx
+                                                .send(SubTaskEvent::Uploaded(meta_id, length as u64))
+                                                .await;
+                                        }
+                                    }
+                                }
                                 PeerMessage::Piece { index, begin, block }
                                     if Some(index as usize) == self.current_piece =>
                                 {

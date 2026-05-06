@@ -170,7 +170,7 @@ async fn handle_pause(engine: &Engine, params: Option<Value>) -> Result<Value, V
 async fn handle_unpause(engine: &Engine, params: Option<Value>) -> Result<Value, Value> {
     let gid = parse_gid(params)?;
     engine
-        .unpause(gid)
+        .resume(gid)
         .await
         .map_err(|e| json!({ "code": -32000, "message": e.to_string() }))?;
     Ok(json!("OK"))
