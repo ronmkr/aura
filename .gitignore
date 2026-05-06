@@ -1,22 +1,33 @@
 # Rust build artifacts
 target/
-# IDE files
+Cargo.lock.bak
+# IDE and Editor files
 .vscode/
 .idea/
 *.swp
 *.swo
-.gemini
+.helix/
+# Gemini and dev-specific
+.gemini/
 aura-dev.skill
-# OS files
+# OS-generated files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
-# Project-specific
+# Project-specific logs and environment
 *.log
 .env
+.env.*
 # Aura session and data
 *.aura
 *.part
 downloads/
 out/
-# Crate-specific local config
+# Crate-specific local configuration
 crates/**/local_config.toml
+# Proptest regression files (unless you want to track them)
+proptest-regressions/
