@@ -246,6 +246,6 @@ This table maps architectural concepts to their primary implementation files in 
 
 ---
 
-> **Note**: This map is current as of Milestone 2. As the project matures, new mappings will be added for Merkle Tree stores and End-game mode logic.
+> **Note**: This map is current as of Milestone 2. As the project matures, new mappings will be added for Merkle Tree stores and End-game mode logic. See the [ROADMAP.md](../../ROADMAP.md) for full status.
 
 

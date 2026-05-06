@@ -9,7 +9,7 @@ use crate::throttler::Throttler;
 use crate::worker::Metadata;
 use crate::{Result, TaskId};
 use arc_swap::ArcSwap;
-use rand::Rng;
+use rand::RngExt;
 use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr};
 use std::sync::Arc;
@@ -155,7 +155,7 @@ impl Orchestrator {
 
         let mut peer_id = [0u8; 20];
         peer_id[..8].copy_from_slice(b"-AR0001-");
-        rand::thread_rng().fill(&mut peer_id[8..]);
+        rand::rng().fill(&mut peer_id[8..]);
 
         let throttler = Arc::new(Throttler::new(0));
 

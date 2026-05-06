@@ -104,8 +104,8 @@ impl PiecePicker {
         if rarest_pieces.is_empty() {
             None
         } else {
-            use rand::seq::SliceRandom;
-            rarest_pieces.choose(&mut rand::thread_rng()).copied()
+            use rand::prelude::IndexedRandom;
+            rarest_pieces.choose(&mut rand::rng()).copied()
         }
     }
 
@@ -130,8 +130,8 @@ impl PiecePicker {
             }
         }
 
-        use rand::seq::SliceRandom;
-        available.choose(&mut rand::thread_rng()).copied()
+        use rand::prelude::IndexedRandom;
+        available.choose(&mut rand::rng()).copied()
     }
 }
 

@@ -61,6 +61,37 @@ tokens:
 
 Aura is designed to feel fast, modern, and atmospheric. It uses a **Token-based Theming Engine** to allow users to customize their cockpit.
 
+## 🎭 The Three Personas
+
+Aura adapts its interface based on the user's current mission.
+
+### 1. The Sprinter (CLI)
+- **Goal**: High-speed, one-off downloads.
+- **Visuals**: Minimalist. Single progress bar per file, total speed summary.
+- **Workflow**: `Aura-cli <URI>`.
+
+### 2. The Pilot (TUI)
+- **Goal**: Interactive mission control.
+- **Framework**: Ratatui.
+- **Layout**:
+    - **Header**: Global throughput (Up/Down), Active tasks count, NAT status.
+    - **Main Area**: Scrollable list of tasks with interactive selection.
+    - **Sidebar/Panel**: Detailed metadata for selected task (Mirrors, Peer map, Bitfield visualization).
+    - **Footer**: Keybindings (a: add, p: pause, r: resume, d: delete, q: quit).
+- **Theming**: CSS-like theme provider in `Aura.toml`.
+- **Remote Mode**: Can "Attach" to a remote `Aura-daemon`.
+
+### 3. The Ghost (Headless / Web)
+- **Goal**: Persistent service for Docker, NAS, or Seedboxes.
+- **RPC Server**: Built on Axum/Tokio (JSON-RPC 2.0 and WebSockets).
+- **Compatibility**: Standardized to allow existing `aria2` frontends (like **AriaNg**) to connect with minimal adaptation.
+
+## 🧠 Core Engine Mandates
+- **Actor Integrity**: Strict decoupling via type-safe channels.
+- **TDD First**: Every component must be developed using Red-Green-Refactor.
+- **Zero-Copy**: Optimize for minimal memory movements via the `Buffer Pool`.
+- **Atomic Completion**: Writing to `.part` files ensures no partial files are exposed.
+
 ## 🎨 Visual Identity: The Galactic Vibe
 
 The default visual language is "Galactic". It uses high-contrast ANSI colors to ensure readability across all terminal emulators while maintaining a distinctive "precision" aesthetic.

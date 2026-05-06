@@ -3,7 +3,7 @@ use crate::storage::StorageEngine;
 use crate::task::{MetaTask, TaskType};
 use crate::{Error, Result, TaskId};
 use arc_swap::ArcSwap;
-use rand::Rng;
+use rand::RngExt;
 use std::sync::Arc;
 use tokio::sync::{broadcast, mpsc};
 use tracing::{info, warn};
@@ -44,7 +44,7 @@ impl Engine {
 
         use crate::dht::DhtActor;
         let mut dht_id = [0u8; 20];
-        rand::thread_rng().fill(&mut dht_id);
+        rand::rng().fill(&mut dht_id);
 
         let dht_actor = DhtActor::new(
             "0.0.0.0:6881",

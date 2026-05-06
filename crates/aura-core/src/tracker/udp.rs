@@ -54,8 +54,8 @@ impl TrackerClient {
     }
 
     async fn do_udp_announce(&self, socket: &UdpSocket, torrent: &Torrent) -> Result<Vec<Peer>> {
-        use rand::Rng;
-        let transaction_id: u32 = rand::thread_rng().gen();
+        use rand::RngExt;
+        let transaction_id: u32 = rand::rng().random();
         let connection_id: u64 = 0x41727101980; // Protocol ID
 
         // 1. Connect Request
@@ -104,7 +104,7 @@ impl TrackerClient {
         announce_req.extend_from_slice(&0u64.to_be_bytes()); // uploaded
         announce_req.extend_from_slice(&0u32.to_be_bytes()); // event 0: none
         announce_req.extend_from_slice(&0u32.to_be_bytes()); // ip 0: default
-        announce_req.extend_from_slice(&rand::thread_rng().gen::<u32>().to_be_bytes()); // key
+        announce_req.extend_from_slice(&rand::rng().random::<u32>().to_be_bytes()); // key
         announce_req.extend_from_slice(&(-1i32).to_be_bytes()); // num_want -1: default
         announce_req.extend_from_slice(&(self.port).to_be_bytes());
 

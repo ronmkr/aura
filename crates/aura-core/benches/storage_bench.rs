@@ -3,7 +3,6 @@ use aura_core::worker::Segment;
 use aura_core::TaskId;
 use bytes::Bytes;
 use criterion::{criterion_group, criterion_main, Criterion};
-use std::path::PathBuf;
 use tempfile::tempdir;
 use tokio::runtime::Runtime;
 use tokio::sync::mpsc;
@@ -63,7 +62,7 @@ fn bench_storage_random_write_aggregated(c: &mut Criterion) {
     let data = Bytes::from(vec![0u8; 16 * 1024]); // 16KB chunk (typical for BT)
 
     // We'll send them out of order to trigger aggregation
-    let mut offsets: Vec<u64> = (0..100).map(|i| i * 16 * 1024).collect();
+    let offsets: Vec<u64> = (0..100).map(|i| i * 16 * 1024).collect();
 
     let mut i = 0;
     c.bench_function("storage_random_write_16kb", |b| {
