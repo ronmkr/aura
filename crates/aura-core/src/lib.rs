@@ -57,6 +57,15 @@ pub enum Error {
 
     #[error("Configuration error: {0}")]
     Config(String),
+
+    #[error("Worker error: {0}")]
+    Worker(String),
+
+    #[error("Task error for {0}: {1}")]
+    Task(TaskId, String),
+
+    #[error("Engine error: {0}")]
+    Engine(String),
 }
 
 /// A specialized Result type for Aura operations.

@@ -158,10 +158,9 @@ impl Engine {
         &self,
         name: String,
         uri: String,
-        _length: u64,
         task_type: TaskType,
     ) -> Result<crate::api::TaskHandle> {
-        let id = TaskId(rand::random());
+        let id = TaskId(rand::rng().random());
         self.add_task_with_sources(id, name, vec![(uri, task_type)])
             .await
     }
@@ -171,7 +170,6 @@ impl Engine {
         id: TaskId,
         name: String,
         uri: String,
-        _length: u64,
         task_type: TaskType,
     ) -> Result<crate::api::TaskHandle> {
         self.add_task_with_sources(id, name, vec![(uri, task_type)])
@@ -187,7 +185,7 @@ impl Engine {
         self.command_tx
             .send(Command::AddTask { id, name, sources })
             .await
-            .map_err(|e| Error::Storage(e.to_string()))?;
+            .map_err(|e| Error::Engine(format!("Failed to send AddTask command: {}", e)))?;
         Ok(crate::api::TaskHandle::new(id, self.clone()))
     }
 
@@ -196,17 +194,17 @@ impl Engine {
         self.command_tx
             .send(Command::ListActive(tx))
             .await
-            .map_err(|e| Error::Storage(e.to_string()))?;
+            .map_err(|e| Error::Engine(format!("Failed to send ListActive command: {}", e)))?;
         rx.recv()
             .await
-            .ok_or_else(|| Error::Storage("Engine shut down".to_string()))
+            .ok_or_else(|| Error::Engine("Engine shut down".to_string()))
     }
 
     pub async fn pause(&self, id: TaskId) -> Result<()> {
         self.command_tx
             .send(Command::Pause(id))
             .await
-            .map_err(|e| Error::Storage(e.to_string()))?;
+            .map_err(|e| Error::Engine(format!("Failed to send Pause command: {}", e)))?;
         Ok(())
     }
 
@@ -214,27 +212,31 @@ impl Engine {
         self.command_tx
             .send(Command::Resume(id))
             .await
-            .map_err(|e| Error::Storage(e.to_string()))?;
+            .map_err(|e| Error::Engine(format!("Failed to send Resume command: {}", e)))?;
         Ok(())
     }
 
     pub async fn load_tasks_from_dir(&self, dir: &str) -> Result<()> {
         let mut entries = tokio::fs::read_dir(dir)
             .await
-            .map_err(|e| Error::Storage(format!("Failed to read dir: {}", e)))?;
+            .map_err(|e| Error::Engine(format!("Failed to read dir {}: {}", dir, e)))?;
 
         while let Some(entry) = entries
             .next_entry()
             .await
-            .map_err(|e| Error::Storage(e.to_string()))?
+            .map_err(|e| Error::Engine(format!("Failed to read next entry in {}: {}", dir, e)))?
         {
             let path = entry.path();
             if path.extension().and_then(|s| s.to_str()) == Some("aura") {
-                let data = tokio::fs::read(&path)
-                    .await
-                    .map_err(|e| Error::Storage(e.to_string()))?;
-                let state: crate::task::TaskState =
-                    serde_json::from_slice(&data).map_err(|e| Error::Storage(e.to_string()))?;
+                let data = tokio::fs::read(&path).await.map_err(|e| {
+                    Error::Engine(format!("Failed to read control file {:?}: {}", path, e))
+                })?;
+                let state: crate::task::TaskState = serde_json::from_slice(&data).map_err(|e| {
+                    Error::Engine(format!(
+                        "Failed to deserialize task state from {:?}: {}",
+                        path, e
+                    ))
+                })?;
 
                 info!("Found persisted task: {}", state.name);
                 // For now we just add it back with original sources
@@ -254,7 +256,7 @@ impl Engine {
         self.command_tx
             .send(Command::Remove(id))
             .await
-            .map_err(|e| Error::Storage(e.to_string()))?;
+            .map_err(|e| Error::Engine(format!("Failed to send Remove command: {}", e)))?;
         Ok(())
     }
 
@@ -262,7 +264,7 @@ impl Engine {
         self.command_tx
             .send(Command::Shutdown)
             .await
-            .map_err(|e| Error::Storage(e.to_string()))?;
+            .map_err(|e| Error::Engine(format!("Failed to send Shutdown command: {}", e)))?;
         Ok(())
     }
 
@@ -270,7 +272,7 @@ impl Engine {
         self.command_tx
             .send(Command::ReloadConfig(Arc::new(config)))
             .await
-            .map_err(|e| Error::Config(e.to_string()))?;
+            .map_err(|e| Error::Engine(format!("Failed to send ReloadConfig command: {}", e)))?;
         Ok(())
     }
 
@@ -279,9 +281,9 @@ impl Engine {
         self.command_tx
             .send(Command::GetConfig(tx))
             .await
-            .map_err(|e| Error::Config(e.to_string()))?;
+            .map_err(|e| Error::Engine(format!("Failed to send GetConfig command: {}", e)))?;
         rx.recv()
             .await
-            .ok_or_else(|| Error::Config("Engine shut down".to_string()))
+            .ok_or_else(|| Error::Engine("Engine shut down".to_string()))
     }
 }

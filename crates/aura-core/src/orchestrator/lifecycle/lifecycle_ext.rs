@@ -34,14 +34,14 @@ impl Orchestrator {
             let meta_task = self
                 .tasks
                 .get_mut(&meta_id)
-                .ok_or_else(|| Error::Config("Task not found".to_string()))?;
+                .ok_or(Error::TaskNotFound(meta_id))?;
 
             let (uri, ttype, current_concurrency) = {
                 let sub_task = meta_task
                     .subtasks
                     .iter()
                     .find(|s| s.id == sub_id)
-                    .ok_or_else(|| Error::Config("Subtask not found".to_string()))?;
+                    .ok_or_else(|| Error::Task(meta_id, "Subtask not found".to_string()))?;
                 (
                     sub_task.uri.clone(),
                     sub_task.task_type.clone(),

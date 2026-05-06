@@ -61,7 +61,6 @@ pub enum SubTaskEvent {
     PieceVerified(TaskId, TaskId, usize),
     BtTaskRegistered(
         TaskId,
-        TaskId,
         [u8; 20],
         Arc<BtTask>,
         tokio::sync::broadcast::Sender<WorkerCommand>,

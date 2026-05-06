@@ -101,10 +101,7 @@ impl StorageEngine {
 
     pub(crate) async fn get_or_open_part_file(&mut self, id: TaskId) -> Result<&mut File> {
         if !self.handles.contains_key(&id) {
-            let base_path = self
-                .task_paths
-                .get(&id)
-                .ok_or_else(|| Error::Storage("Task path not registered".to_string()))?;
+            let base_path = self.task_paths.get(&id).ok_or(Error::TaskNotFound(id))?;
 
             let part_path = get_part_path(base_path)?;
 

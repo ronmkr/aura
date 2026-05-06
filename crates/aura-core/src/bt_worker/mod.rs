@@ -97,7 +97,7 @@ impl BtWorker {
     #[allow(clippy::too_many_arguments)]
     pub async fn run_loop(
         mut self,
-        _meta_id: TaskId,
+        meta_id: TaskId,
         sub_id: TaskId,
         task: Arc<BtTask>,
         storage_tx: tokio::sync::mpsc::Sender<StorageRequest>,
@@ -110,7 +110,7 @@ impl BtWorker {
 
         self.run_loop_with_stream_and_ext(
             stream,
-            _meta_id,
+            meta_id,
             sub_id,
             task,
             storage_tx,
