@@ -152,8 +152,9 @@ impl BtWorker {
                 m: Some(m),
                 metadata_size: None,
             };
-            let payload = serde_bencode::to_bytes(&ext_hs)
-                .map_err(|e| Error::Protocol(format!("Failed to encode extended handshake: {}", e)))?;
+            let payload = serde_bencode::to_bytes(&ext_hs).map_err(|e| {
+                Error::Protocol(format!("Failed to encode extended handshake: {}", e))
+            })?;
             framed
                 .send(PeerMessage::Extended {
                     id: 0,
