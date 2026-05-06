@@ -192,7 +192,7 @@ graph TD
     Workers["Protocol Workers"] -- "Zero-Copy Write" --> Agg
     Agg -- "Sort & Align" --> BP
     BP -- "Contiguous Flush" --> Part
-    Journal -.-> "Resume State" .-> Agg
+    Journal -. "Resume State" .-> Agg
     Part -- "Integrity OK" --> Final
     Final -- "Hash Tree" --> Merkle
 ```
