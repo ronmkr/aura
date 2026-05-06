@@ -61,7 +61,7 @@
 - [x] `GEMINI.md` (Engineering Mandates).
 - [x] `design.md` (System Design & Visuals).
 - [x] `CONTEXT.md` (Ubiquitous Language).
-- [ ] `CONTRIBUTING.md`.
-- [ ] `.github/workflows/ci.yml`.
+- [x] `CONTRIBUTING.md`.
+- [x] `.github/workflows/ci.yml`.
 - [ ] Automated Benchmarking Suite.
 - [ ] Comprehensive Integration Tests.
