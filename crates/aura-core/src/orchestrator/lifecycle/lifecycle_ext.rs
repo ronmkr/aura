@@ -57,7 +57,7 @@ impl Orchestrator {
                 let storage_tx = self.storage_tx.clone();
                 let subtask_tx = self.subtask_tx.clone();
                 let (progress_tx, mut progress_rx) = mpsc::unbounded_channel::<u64>();
-                let token = token.clone();
+                let token_clone = token.clone();
                 let config_clone = config_arc.clone();
 
                 let subtask_tx_progress = subtask_tx.clone();
@@ -85,7 +85,7 @@ impl Orchestrator {
                             };
 
                             tokio::select! {
-                                _ = token.cancelled() => {
+                                _ = token_clone.cancelled() => {
                                 }
                                 res = worker.fetch_segment(meta_id, segment, Some(progress_tx)) => {
                                     match res {
@@ -116,7 +116,7 @@ impl Orchestrator {
                             };
 
                             tokio::select! {
-                                _ = token.cancelled() => {
+                                _ = token_clone.cancelled() => {
                                 }
                                 res = worker.fetch_segment(meta_id, segment, Some(progress_tx)) => {
                                     match res {

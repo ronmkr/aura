@@ -17,7 +17,7 @@ use tracing::{debug, info};
 impl Orchestrator {
     pub(crate) async fn save_task(&self, id: TaskId) -> Result<()> {
         if let Some(meta_task) = self.tasks.get(&id) {
-            let mut bitfield = None;
+            let mut bitfield: Option<Bitfield> = None;
             for sub in &meta_task.subtasks {
                 if let Some(bt) = self.bt_tasks.get(&sub.id) {
                     let bf = bt.state.bitfield.lock().await;
@@ -64,7 +64,7 @@ impl Orchestrator {
             let storage_tx = self.storage_tx.clone();
             let dht_tx = self.dht_tx.clone();
             let lpd_tx = self.lpd_tx.clone();
-            let token = token.clone();
+            let token_clone = token.clone();
             let loaded_bf = bitfield.clone();
             let config_clone = config_arc.clone();
 
@@ -123,7 +123,6 @@ impl Orchestrator {
 
                             match init_res {
                                 Ok(t) => {
-                                    let t = t;
                                     if let Some(bf) = loaded_bf {
                                         let mut my_bf = t.state.bitfield.lock().await;
                                         *my_bf = Some(bf.clone());
@@ -175,7 +174,7 @@ impl Orchestrator {
                         drop(torrent_guard);
 
                         let tracker_task = bt_task.clone();
-                        let t1 = token.clone();
+                        let t1 = token_clone.clone();
                         let ua = config.network.user_agent.clone();
                         let port = config.network.listen_port;
                         tokio::spawn(async move {
@@ -185,14 +184,14 @@ impl Orchestrator {
                         });
 
                         let dht_task = bt_task.clone();
-                        let t2 = token.clone();
+                        let t2 = token_clone.clone();
                         tokio::spawn(async move {
                             let _ = dht_task.run_dht_loop(t2).await;
                         });
 
                         if config.bittorrent.lpd_enabled {
                             let lpd_task = bt_task.clone();
-                            let t5 = token.clone();
+                            let t5 = token_clone.clone();
                             let port = config.network.listen_port;
                             tokio::spawn(async move {
                                 let _ = lpd_task.run_lpd_loop(port, t5).await;
@@ -200,9 +199,9 @@ impl Orchestrator {
                         }
 
                         let peer_task = bt_task.clone();
-                        let s_tx = storage_tx.clone();
-                        let s_tx_progress = subtask_tx.clone();
-                        let t3 = token.clone();
+                        let storage_tx_loop = storage_tx.clone();
+                        let subtask_tx_loop = subtask_tx.clone();
+                        let t3 = token_clone.clone();
                         let config_loop = config_clone.clone();
 
                         use std::sync::atomic::{AtomicUsize, Ordering};
@@ -255,8 +254,8 @@ impl Orchestrator {
                                         worker.local_addr = local_addr;
                                         worker.pipeline_size =
                                             config.bittorrent.request_pipeline_size;
-                                        let s_tx_inner = s_tx.clone();
-                                        let sub_tx = s_tx_progress.clone();
+                                        let s_tx_inner = storage_tx_loop.clone();
+                                        let sub_tx = subtask_tx_loop.clone();
                                         let peer_task_inner = peer_task.clone();
                                         let active_counter = active_workers.clone();
                                         let t4 = t3.clone();

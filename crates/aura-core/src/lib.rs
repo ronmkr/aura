@@ -16,6 +16,7 @@ pub mod net_util;
 pub mod orchestrator;
 pub mod peer_registry;
 pub mod piece_picker;
+pub mod power;
 pub mod storage;
 pub mod task;
 pub mod throttler;
