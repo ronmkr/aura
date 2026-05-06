@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Discussions
+    url: https://github.com/ronmkr/aura/discussions
+    about: Please ask questions and share ideas here.
+  - name: 🛡️ Security Policy
+    url: https://github.com/ronmkr/aura/security/policy
+    about: Report security vulnerabilities here.
+  - name: 📖 Documentation
+    url: https://github.com/ronmkr/aura#readme
+    about: Read the project documentation.
