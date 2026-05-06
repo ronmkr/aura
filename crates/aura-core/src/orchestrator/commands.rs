@@ -44,7 +44,7 @@ impl Orchestrator {
                 // We return Err to break the loop in run() or just a special signal
                 // For now, run() will see the end of command_rx if we drop it,
                 // but explicit shutdown is better.
-                return Err(Error::Storage("Shutting down".to_string()));
+                return Err(Error::Engine("Shutting down".to_string()));
             }
         }
         Ok(())

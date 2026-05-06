@@ -81,7 +81,7 @@ impl Orchestrator {
                     }
                 }
             }
-            SubTaskEvent::BtTaskRegistered(_meta_id, sub_id, info_hash, task, worker_cmd_tx) => {
+            SubTaskEvent::BtTaskRegistered(sub_id, info_hash, task, worker_cmd_tx) => {
                 self.bt_registry.insert(info_hash, task.clone());
                 self.bt_tasks.insert(sub_id, task);
                 self.worker_command_txs.insert(sub_id, worker_cmd_tx);

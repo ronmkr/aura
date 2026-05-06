@@ -32,10 +32,13 @@ impl Orchestrator {
             info!(%id, path = ?path, "Saving control file");
 
             let data = serde_json::to_vec_pretty(&state)
-                .map_err(|e| Error::Storage(format!("Failed to serialize task state: {}", e)))?;
+                .map_err(|e| Error::Task(id, format!("Failed to serialize task state: {}", e)))?;
 
             tokio::fs::write(&path, data).await.map_err(|e| {
-                Error::Storage(format!("Failed to write control file {}: {}", filename, e))
+                Error::Task(
+                    id,
+                    format!("Failed to write control file {}: {}", filename, e),
+                )
             })?;
         }
         Ok(())
@@ -154,7 +157,6 @@ impl Orchestrator {
                         let info_hash = bt_task.state.info_hash;
                         let _ = subtask_tx
                             .send(SubTaskEvent::BtTaskRegistered(
-                                id,
                                 sub_id,
                                 info_hash,
                                 bt_task.clone(),

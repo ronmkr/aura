@@ -45,17 +45,17 @@ impl FtpWorker {
 
         let mut ftp_stream = AsyncFtpStream::connect(format!("{}:{}", host, port))
             .await
-            .map_err(|e| Error::Protocol(format!("Failed to connect to FTP: {}", e)))?;
+            .map_err(|e| Error::Worker(format!("Failed to connect to FTP: {}", e)))?;
 
         ftp_stream
             .login(user, pass)
             .await
-            .map_err(|e| Error::Protocol(format!("FTP login failed: {}", e)))?;
+            .map_err(|e| Error::Worker(format!("FTP login failed: {}", e)))?;
 
         ftp_stream
             .transfer_type(FileType::Binary)
             .await
-            .map_err(|e| Error::Protocol(format!("Failed to set FTP binary mode: {}", e)))?;
+            .map_err(|e| Error::Worker(format!("Failed to set FTP binary mode: {}", e)))?;
 
         Ok(ftp_stream)
     }
@@ -69,7 +69,7 @@ impl FtpWorker {
         let size = ftp
             .size(path)
             .await
-            .map_err(|e| Error::Protocol(format!("Failed to get FTP file size: {}", e)))?;
+            .map_err(|e| Error::Worker(format!("Failed to get FTP file size: {}", e)))?;
 
         let name = url
             .path_segments()
@@ -102,12 +102,12 @@ impl ProtocolWorker for FtpWorker {
         // Set restart point for range-based download
         ftp.resume_transfer(segment.offset as usize)
             .await
-            .map_err(|e| Error::Protocol(format!("FTP REST failed: {}", e)))?;
+            .map_err(|e| Error::Worker(format!("FTP REST failed: {}", e)))?;
 
         let mut reader = ftp
             .retr_as_stream(path)
             .await
-            .map_err(|e| Error::Protocol(format!("FTP RETR failed: {}", e)))?;
+            .map_err(|e| Error::Worker(format!("FTP RETR failed: {}", e)))?;
 
         let mut buffer = if let Some(ref p) = self.pool {
             p.acquire()
@@ -122,7 +122,7 @@ impl ProtocolWorker for FtpWorker {
             let n = reader
                 .read(&mut chunk)
                 .await
-                .map_err(|e| Error::Protocol(format!("FTP read error: {}", e)))?;
+                .map_err(|e| Error::Worker(format!("FTP read error: {}", e)))?;
 
             if n == 0 {
                 break;

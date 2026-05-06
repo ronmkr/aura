@@ -142,7 +142,7 @@ impl ProtocolWorker for HttpWorker {
         let response = request
             .send()
             .await
-            .map_err(|e| Error::Protocol(format!("HTTP request failed: {}", e)))?;
+            .map_err(|e| Error::Worker(format!("HTTP request failed: {}", e)))?;
 
         if !response.status().is_success() {
             return Err(Error::Protocol(format!(

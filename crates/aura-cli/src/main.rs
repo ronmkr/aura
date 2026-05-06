@@ -63,7 +63,7 @@ async fn main() -> Result<()> {
             TaskType::Http
         };
         engine
-            .add_task_with_id(id, name, uri.clone(), 0, ttype)
+            .add_task_with_id(id, name, uri.clone(), ttype)
             .await?;
     }
 
