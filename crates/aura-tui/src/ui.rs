@@ -18,7 +18,7 @@ pub fn draw_ui(f: &mut ratatui::Frame, app: &mut App) {
             ]
             .as_ref(),
         )
-        .split(f.size());
+        .split(f.area());
 
     // 1. Draw Header
     let header = Paragraph::new(Line::from(vec![
@@ -95,7 +95,7 @@ pub fn draw_ui(f: &mut ratatui::Frame, app: &mut App) {
     )
     .header(header)
     .block(Block::default().borders(Borders::ALL).title(" Downloads "))
-    .highlight_style(
+    .row_highlight_style(
         Style::default()
             .add_modifier(Modifier::REVERSED)
             .fg(app.theme.accent),
