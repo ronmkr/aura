@@ -1,3 +1,4 @@
+use crate::buffer_pool::BufferPool;
 use crate::worker::ftp::FtpWorker;
 use crate::worker::http::HttpWorker;
 use std::net::IpAddr;
@@ -10,6 +11,7 @@ pub struct WorkerBuilder {
     connect_timeout: Option<u64>,
     proxy: Option<String>,
     referer: Option<String>,
+    pool: Option<BufferPool>,
 }
 
 impl WorkerBuilder {
@@ -21,6 +23,7 @@ impl WorkerBuilder {
             connect_timeout: None,
             proxy: None,
             referer: None,
+            pool: None,
         }
     }
 
@@ -49,6 +52,11 @@ impl WorkerBuilder {
         self
     }
 
+    pub fn with_pool(mut self, pool: BufferPool) -> Self {
+        self.pool = Some(pool);
+        self
+    }
+
     pub fn build_http(self) -> HttpWorker {
         HttpWorker::new(
             self.uri,
@@ -57,10 +65,11 @@ impl WorkerBuilder {
             self.connect_timeout,
             self.proxy,
             self.referer,
+            self.pool,
         )
     }
 
     pub fn build_ftp(self) -> FtpWorker {
-        FtpWorker::new(self.uri, self.local_addr)
+        FtpWorker::new(self.uri, self.local_addr, self.pool)
     }
 }

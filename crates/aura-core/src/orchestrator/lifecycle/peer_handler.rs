@@ -24,6 +24,7 @@ pub async fn handle_incoming_peer(
     cancellation_tokens: std::collections::HashMap<TaskId, CancellationToken>,
     local_addr: Option<std::net::IpAddr>,
     config: Arc<crate::Config>,
+    pool: crate::buffer_pool::BufferPool,
 ) -> Result<()> {
     use crate::bt_worker::Handshake;
     use crate::bt_worker::HANDSHAKE_LEN;
@@ -49,6 +50,7 @@ pub async fn handle_incoming_peer(
                 handshake.info_hash,
                 handshake.peer_id,
                 my_peer_id,
+                pool.clone(),
             );
             worker.local_addr = local_addr;
             worker.pipeline_size = config.bittorrent.request_pipeline_size;

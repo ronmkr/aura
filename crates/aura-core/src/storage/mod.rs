@@ -3,7 +3,7 @@ pub mod ops;
 use crate::buffer_pool::BufferPool;
 use crate::worker::Segment;
 use crate::{Error, Result, TaskId};
-use bytes::Bytes;
+use bytes::{Bytes, BytesMut};
 use ops::get_part_path;
 use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
@@ -16,7 +16,7 @@ pub enum StorageRequest {
     Write {
         task_id: TaskId,
         segment: Segment,
-        data: Bytes,
+        data: BytesMut,
     },
     Read {
         task_id: TaskId,
@@ -31,9 +31,9 @@ pub struct StorageEngine {
     pub(crate) completion_tx: mpsc::Sender<TaskId>,
     pub(crate) task_paths: HashMap<TaskId, PathBuf>,
     pub(crate) handles: HashMap<TaskId, File>,
-    pub(crate) pending_writes: HashMap<TaskId, BTreeMap<u64, Bytes>>,
+    pub(crate) pending_writes: HashMap<TaskId, BTreeMap<u64, BytesMut>>,
     pub(crate) next_offsets: HashMap<TaskId, u64>,
-    pub(crate) _pool: BufferPool,
+    pub(crate) pool: BufferPool,
 }
 
 impl StorageEngine {
@@ -41,6 +41,7 @@ impl StorageEngine {
         request_rx: mpsc::Receiver<StorageRequest>,
         completion_tx: mpsc::Sender<TaskId>,
     ) -> Self {
+        let pool = BufferPool::new(1024 * 1024, 10);
         Self {
             request_rx,
             completion_tx,
@@ -48,8 +49,12 @@ impl StorageEngine {
             handles: HashMap::new(),
             pending_writes: HashMap::new(),
             next_offsets: HashMap::new(),
-            _pool: BufferPool::new(1024 * 1024, 10),
+            pool: pool.clone(),
         }
+    }
+
+    pub fn get_pool(&self) -> BufferPool {
+        self.pool.clone()
     }
 
     pub fn register_task(&mut self, id: TaskId, path: PathBuf) {
@@ -151,7 +156,7 @@ mod tests {
                     offset: 0,
                     length: data.len() as u64,
                 },
-                data,
+                data: data.into(),
             })
             .await
             .unwrap();
@@ -186,7 +191,7 @@ mod tests {
                     offset: 10,
                     length: 5,
                 },
-                data: Bytes::from("world"),
+                data: Bytes::from("world").into(),
             })
             .await
             .unwrap();
@@ -198,7 +203,7 @@ mod tests {
                     offset: 0,
                     length: 10,
                 },
-                data: Bytes::from("hello_seq_"),
+                data: Bytes::from("hello_seq_").into(),
             })
             .await
             .unwrap();

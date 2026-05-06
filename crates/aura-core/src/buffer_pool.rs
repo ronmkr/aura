@@ -2,10 +2,11 @@ use bytes::BytesMut;
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 
-/// A pool of reusable memory buffers to minimize allocations.
+#[derive(Clone)]
 pub struct BufferPool {
     chunk_size: usize,
     available: Arc<Mutex<VecDeque<BytesMut>>>,
+    max_pool_size: usize,
 }
 
 impl BufferPool {
@@ -17,6 +18,7 @@ impl BufferPool {
         Self {
             chunk_size,
             available: Arc::new(Mutex::new(available)),
+            max_pool_size: 100, // Default limit
         }
     }
 
@@ -32,8 +34,7 @@ impl BufferPool {
     pub fn release(&self, mut buffer: BytesMut) {
         buffer.clear();
         let mut guard = self.available.lock().unwrap();
-        if guard.len() < 100 {
-            // Limit pool growth
+        if guard.len() < self.max_pool_size {
             guard.push_back(buffer);
         }
     }

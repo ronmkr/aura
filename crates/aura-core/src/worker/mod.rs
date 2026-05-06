@@ -2,7 +2,7 @@
 
 use crate::{Result, TaskId};
 use async_trait::async_trait;
-use bytes::Bytes;
+use bytes::BytesMut;
 use tokio::sync::mpsc;
 
 pub mod builder;
@@ -26,7 +26,7 @@ pub struct Segment {
 #[derive(Debug, Clone)]
 pub struct PieceData {
     pub segment: Segment,
-    pub data: Bytes,
+    pub data: BytesMut,
 }
 
 /// Metadata discovered about a resource (size, filename, etc.).

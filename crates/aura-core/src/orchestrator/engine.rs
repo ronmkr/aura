@@ -86,6 +86,7 @@ impl Engine {
             lpd_tx.clone(),
             nat_tx,
             config.clone(),
+            storage.get_pool(),
         );
 
         use crate::lpd::LpdActor;

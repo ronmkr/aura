@@ -1,6 +1,7 @@
 use crate::bitfield::Bitfield;
 use crate::bt_task::BtTask;
 use crate::bt_worker::PeerId;
+use crate::buffer_pool::BufferPool;
 use crate::dht::DhtCommand;
 use crate::nat::NatCommand;
 use crate::storage::StorageRequest;
@@ -108,6 +109,7 @@ pub struct Orchestrator {
     pub(crate) throttler: Arc<Throttler>,
     pub(crate) config: Arc<ArcSwap<crate::Config>>,
     pub(crate) power_manager: crate::power::PowerManager,
+    pub(crate) pool: BufferPool,
 }
 
 impl Orchestrator {
@@ -149,6 +151,7 @@ impl Orchestrator {
         lpd_tx: mpsc::Sender<crate::lpd::LpdCommand>,
         nat_tx: mpsc::Sender<NatCommand>,
         config: Arc<ArcSwap<crate::Config>>,
+        pool: BufferPool,
     ) -> (Self, broadcast::Sender<Event>) {
         let (event_tx, _event_rx) = broadcast::channel(1024);
         let (subtask_tx, subtask_rx) = mpsc::channel(4096);
@@ -179,6 +182,7 @@ impl Orchestrator {
                 throttler,
                 config,
                 power_manager: crate::power::PowerManager::new(),
+                pool,
             },
             event_tx,
         )
@@ -257,9 +261,10 @@ impl Orchestrator {
                     let cancellation_tokens = self.cancellation_tokens.clone();
                     let local_addr = self.resolve_local_addr();
                     let config = self.config.load().clone();
+                    let pool = self.pool.clone();
 
                     tokio::spawn(async move {
-                        if let Err(e) = lifecycle::handle_incoming_peer(stream, addr, bt_registry, worker_command_txs, storage_tx, subtask_tx, my_peer_id, cancellation_tokens, local_addr, config).await {
+                        if let Err(e) = lifecycle::handle_incoming_peer(stream, addr, bt_registry, worker_command_txs, storage_tx, subtask_tx, my_peer_id, cancellation_tokens, local_addr, config, pool).await {
                             tracing::debug!(?addr, error = %e, "Failed to handle incoming peer");
                         }
                     });

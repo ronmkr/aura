@@ -22,6 +22,8 @@ pub use protocol::{
     HANDSHAKE_LEN,
 };
 
+use crate::buffer_pool::BufferPool;
+
 pub struct BtWorker {
     pub peer_addr: String,
     pub info_hash: [u8; 20],
@@ -35,10 +37,17 @@ pub struct BtWorker {
     pub pipeline_size: usize,
     pub metadata_buffer: Option<BytesMut>,
     pub ut_metadata_id: Option<u8>,
+    pub pool: BufferPool,
 }
 
 impl BtWorker {
-    pub fn new(peer_addr: String, info_hash: [u8; 20], peer_id: [u8; 20], my_id: [u8; 20]) -> Self {
+    pub fn new(
+        peer_addr: String,
+        info_hash: [u8; 20],
+        peer_id: [u8; 20],
+        my_id: [u8; 20],
+        pool: BufferPool,
+    ) -> Self {
         Self {
             peer_addr,
             info_hash,
@@ -52,6 +61,7 @@ impl BtWorker {
             pipeline_size: 10,
             metadata_buffer: None,
             ut_metadata_id: None,
+            pool,
         }
     }
 

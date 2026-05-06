@@ -2,7 +2,7 @@ use super::StorageEngine;
 use crate::worker::Segment;
 use crate::Error;
 use crate::{Result, TaskId};
-use bytes::Bytes;
+use bytes::{Bytes, BytesMut};
 use std::path::{Path, PathBuf};
 use tokio::fs;
 use tracing::{debug, info};
@@ -22,25 +22,31 @@ impl StorageEngine {
         &mut self,
         id: TaskId,
         segment: Segment,
-        data: Bytes,
+        data: BytesMut,
     ) -> Result<()> {
         let next_offset = *self.next_offsets.get(&id).unwrap_or(&0);
 
         if segment.offset == next_offset {
-            self.write_to_disk(id, segment.offset, data).await?;
-            let mut current_offset = next_offset + segment.length;
+            let current_data = data;
+            self.write_to_disk(id, segment.offset, &current_data)
+                .await?;
+            let len = current_data.len() as u64;
+            self.pool.release(current_data);
+
+            let mut current_offset = next_offset + len;
 
             let mut to_flush = Vec::new();
             if let Some(pending) = self.pending_writes.get_mut(&id) {
-                while let Some(data) = pending.remove(&current_offset) {
-                    let len = data.len() as u64;
-                    to_flush.push((current_offset, data));
-                    current_offset += len;
+                while let Some(p_data) = pending.remove(&current_offset) {
+                    let p_len = p_data.len() as u64;
+                    to_flush.push((current_offset, p_data));
+                    current_offset += p_len;
                 }
             }
 
-            for (offset, data) in to_flush {
-                self.write_to_disk(id, offset, data).await?;
+            for (offset, p_data) in to_flush {
+                self.write_to_disk(id, offset, &p_data).await?;
+                self.pool.release(p_data);
             }
 
             self.next_offsets.insert(id, current_offset);
@@ -57,20 +63,21 @@ impl StorageEngine {
         &mut self,
         id: TaskId,
         offset: u64,
-        data: Bytes,
+        data: &[u8],
     ) -> Result<()> {
         let file = self.get_or_open_part_file(id).await?;
         use tokio::io::AsyncSeekExt;
         use tokio::io::AsyncWriteExt;
         file.seek(std::io::SeekFrom::Start(offset)).await?;
-        file.write_all(&data).await?;
+        file.write_all(data).await?;
         Ok(())
     }
 
     pub(crate) async fn flush_all_pending(&mut self, id: TaskId) -> Result<()> {
         if let Some(pending) = self.pending_writes.remove(&id) {
             for (offset, data) in pending {
-                self.write_to_disk(id, offset, data).await?;
+                self.write_to_disk(id, offset, &data).await?;
+                self.pool.release(data);
             }
         }
         Ok(())
