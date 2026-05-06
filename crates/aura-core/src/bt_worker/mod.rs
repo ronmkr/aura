@@ -195,6 +195,16 @@ impl BtWorker {
                                 self.trigger_request(&mut framed, &task, meta_id, sub_id, storage_tx.clone(), subtask_tx.clone()).await?;
                             }
                         }
+                        WorkerCommand::RequestPiece(piece_idx) => {
+                            if self.current_piece.is_none() {
+                                debug!(addr = %peer_addr, %piece_idx, "Received forced piece request (Endgame)");
+                                self.current_piece = Some(piece_idx);
+                                self.bytes_received = 0;
+                                self.bytes_requested = 0;
+                                // Initialization of piece_buffer and fetching logic is handled in trigger_request
+                                self.trigger_request(&mut framed, &task, meta_id, sub_id, storage_tx.clone(), subtask_tx.clone()).await?;
+                            }
+                        }
                     }
                 }
                 msg_res = framed.next() => {
