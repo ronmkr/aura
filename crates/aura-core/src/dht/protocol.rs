@@ -66,6 +66,24 @@ pub fn parse_compact_nodes(data: &[u8]) -> Vec<Node> {
     nodes
 }
 
+pub fn compact_peer(addr: &SocketAddr) -> Vec<u8> {
+    let mut compact = Vec::with_capacity(6);
+    if let SocketAddr::V4(v4) = addr {
+        compact.extend_from_slice(&v4.ip().octets());
+        compact.extend_from_slice(&v4.port().to_be_bytes());
+    }
+    compact
+}
+
+pub fn parse_compact_peer(data: &[u8]) -> Option<SocketAddr> {
+    if data.len() < 6 {
+        return None;
+    }
+    let ip = Ipv4Addr::new(data[0], data[1], data[2], data[3]);
+    let port = u16::from_be_bytes([data[4], data[5]]);
+    Some(SocketAddr::new(IpAddr::V4(ip), port))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
