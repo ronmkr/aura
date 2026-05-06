@@ -107,6 +107,7 @@ pub struct Orchestrator {
     pub(crate) peer_id: [u8; 20],
     pub(crate) throttler: Arc<Throttler>,
     pub(crate) config: Arc<ArcSwap<crate::Config>>,
+    pub(crate) power_manager: crate::power::PowerManager,
 }
 
 impl Orchestrator {
@@ -128,6 +129,15 @@ impl Orchestrator {
         }
 
         None
+    }
+
+    pub(crate) fn update_power_management(&mut self) {
+        use crate::task::DownloadPhase;
+        let is_active = self
+            .tasks
+            .values()
+            .any(|t| t.phase == DownloadPhase::Downloading);
+        self.power_manager.set_active(is_active);
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -168,6 +178,7 @@ impl Orchestrator {
                 peer_id,
                 throttler,
                 config,
+                power_manager: crate::power::PowerManager::new(),
             },
             event_tx,
         )
@@ -257,16 +268,19 @@ impl Orchestrator {
                     if let Err(e) = self.handle_subtask_event(event).await {
                         tracing::error!("Event handle error: {}", e);
                     }
+                    self.update_power_management();
                 }
                 Some(cmd) = self.command_rx.recv() => {
                     if let Err(e) = self.handle_command(cmd).await {
                         tracing::error!("Command handle error: {}", e);
                     }
+                    self.update_power_management();
                 }
                 Some(id) = self.storage_completion_rx.recv() => {
                     if let Err(e) = self.handle_storage_completion(id).await {
                         tracing::error!("Storage completion error: {}", e);
                     }
+                    self.update_power_management();
                 }
             }
         }

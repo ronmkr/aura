@@ -2,7 +2,7 @@ use super::protocol::{MetadataMessage, PeerCodec, PeerMessage, BLOCK_SIZE};
 use crate::bt_task::BtTask;
 use crate::orchestrator::SubTaskEvent;
 use crate::storage::StorageRequest;
-use crate::{Result, TaskId};
+use crate::{Error, Result, TaskId};
 use bytes::BytesMut;
 use futures_util::SinkExt;
 use sha1::{Digest, Sha1};
@@ -23,27 +23,31 @@ impl super::BtWorker {
     where
         S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
     {
-        // 1. Check if we need metadata
-        if task.state.torrent.lock().await.is_none() {
-            if let Some(metadata_id) = self.ut_metadata_id {
-                debug!(addr = %self.peer_addr, "Requesting metadata piece 0");
-                let msg = MetadataMessage {
-                    msg_type: 0,
-                    piece: 0,
-                    total_size: None,
-                };
-                let payload = serde_bencode::to_bytes(&msg).unwrap();
-                framed
-                    .send(PeerMessage::Extended {
-                        id: metadata_id,
-                        payload: payload.into(),
-                    })
-                    .await?;
+        let torrent_guard = task.state.torrent.lock().await;
+        let torrent = match torrent_guard.as_ref() {
+            Some(t) => t,
+            None => {
+                if let Some(metadata_id) = self.ut_metadata_id {
+                    debug!(addr = %self.peer_addr, "Requesting metadata piece 0");
+                    let msg = MetadataMessage {
+                        msg_type: 0,
+                        piece: 0,
+                        total_size: None,
+                    };
+                    let payload = serde_bencode::to_bytes(&msg).map_err(|e| {
+                        Error::Protocol(format!("Failed to encode metadata request: {}", e))
+                    })?;
+                    framed
+                        .send(PeerMessage::Extended {
+                            id: metadata_id,
+                            payload: payload.into(),
+                        })
+                        .await?;
+                }
+                return Ok(());
             }
-            return Ok(());
-        }
+        };
 
-        // 2. Check if current piece was finished by someone else
         if let Some(piece_idx) = self.current_piece {
             let finished = {
                 let bf_guard = task.state.bitfield.lock().await;
@@ -58,6 +62,7 @@ impl super::BtWorker {
                 self.bytes_received = 0;
                 self.bytes_requested = 0;
                 self.piece_buffer.clear();
+                drop(torrent_guard);
                 return Box::pin(
                     self.trigger_request(framed, task, meta_id, sub_id, storage_tx, subtask_tx),
                 )
@@ -65,8 +70,6 @@ impl super::BtWorker {
             }
         }
 
-        let torrent_guard = task.state.torrent.lock().await;
-        let torrent = torrent_guard.as_ref().unwrap();
         let piece_length = torrent.info.piece_length;
         let total_length = torrent.total_length();
 

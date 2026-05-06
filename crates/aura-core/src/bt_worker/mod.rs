@@ -152,7 +152,9 @@ impl BtWorker {
                 m: Some(m),
                 metadata_size: None,
             };
-            let payload = serde_bencode::to_bytes(&ext_hs).unwrap();
+            let payload = serde_bencode::to_bytes(&ext_hs).map_err(|e| {
+                Error::Protocol(format!("Failed to encode extended handshake: {}", e))
+            })?;
             framed
                 .send(PeerMessage::Extended {
                     id: 0,
@@ -253,11 +255,14 @@ impl BtWorker {
                                                             let mut full_torrent_dict = std::collections::HashMap::new();
                                                             full_torrent_dict.insert(b"info".to_vec(), serde_bencode::value::Value::Bytes(full_info_dict.to_vec()));
                                                             full_torrent_dict.insert(b"announce".to_vec(), serde_bencode::value::Value::Bytes(b"http://aura-internal/".to_vec()));
-                                                            let torrent_bytes = serde_bencode::to_bytes(&serde_bencode::value::Value::Dict(full_torrent_dict)).unwrap();
-                                                            if let Ok(torrent) = crate::torrent::Torrent::from_bytes(&torrent_bytes) {
-                                                                if torrent.info_hash().unwrap() == self.info_hash {
-                                                                    let _ = subtask_tx.send(SubTaskEvent::MetadataReceived(meta_id, sub_id, torrent)).await;
-                                                                    self.trigger_request(&mut framed, &task, meta_id, sub_id, storage_tx.clone(), subtask_tx.clone()).await?;
+                                                            if let Ok(torrent_bytes) = serde_bencode::to_bytes(&serde_bencode::value::Value::Dict(full_torrent_dict)) {
+                                                                if let Ok(torrent) = crate::torrent::Torrent::from_bytes(&torrent_bytes) {
+                                                                    if let Ok(hash) = torrent.info_hash() {
+                                                                        if hash == self.info_hash {
+                                                                            let _ = subtask_tx.send(SubTaskEvent::MetadataReceived(meta_id, sub_id, torrent)).await;
+                                                                            self.trigger_request(&mut framed, &task, meta_id, sub_id, storage_tx.clone(), subtask_tx.clone()).await?;
+                                                                        }
+                                                                    }
                                                                 }
                                                             }
                                                         }
