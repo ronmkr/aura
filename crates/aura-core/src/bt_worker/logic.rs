@@ -34,8 +34,9 @@ impl super::BtWorker {
                         piece: 0,
                         total_size: None,
                     };
-                    let payload = serde_bencode::to_bytes(&msg)
-                        .map_err(|e| Error::Protocol(format!("Failed to encode metadata request: {}", e)))?;
+                    let payload = serde_bencode::to_bytes(&msg).map_err(|e| {
+                        Error::Protocol(format!("Failed to encode metadata request: {}", e))
+                    })?;
                     framed
                         .send(PeerMessage::Extended {
                             id: metadata_id,
