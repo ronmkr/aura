@@ -96,7 +96,9 @@ impl super::BtWorker {
                     hasher.update(&self.piece_buffer);
                     let actual_hash: [u8; 32] = hasher.finalize().into();
 
-                    if let Ok(expected_hash) = torrent.piece_hash_v2(piece_idx) {
+                    if let Ok(expected_hash) =
+                        torrent.piece_hash_v2(piece_idx, Some(&task.state.db))
+                    {
                         actual_hash == expected_hash
                     } else if let Ok(expected_hash1) = torrent.piece_hash_v1(piece_idx) {
                         // Fallback to v1 hash if v2 piece hash lookup fails (e.g., hybrid padding)

@@ -112,6 +112,7 @@ pub struct Orchestrator {
     pub(crate) config: Arc<ArcSwap<crate::Config>>,
     pub(crate) power_manager: crate::power::PowerManager,
     pub(crate) pool: BufferPool,
+    pub(crate) db: sled::Db,
 }
 
 impl Orchestrator {
@@ -154,6 +155,7 @@ impl Orchestrator {
         nat_tx: mpsc::Sender<NatCommand>,
         config: Arc<ArcSwap<crate::Config>>,
         pool: BufferPool,
+        db: sled::Db,
     ) -> (Self, broadcast::Sender<Event>) {
         let (event_tx, _event_rx) = broadcast::channel(1024);
         let (subtask_tx, subtask_rx) = mpsc::channel(4096);
@@ -185,6 +187,7 @@ impl Orchestrator {
                 config,
                 power_manager: crate::power::PowerManager::new(),
                 pool,
+                db,
             },
             event_tx,
         )

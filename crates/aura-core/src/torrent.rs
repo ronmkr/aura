@@ -176,7 +176,7 @@ impl Torrent {
         Ok(hash)
     }
 
-    pub fn piece_hash_v2(&self, index: usize) -> Result<[u8; 32]> {
+    pub fn piece_hash_v2(&self, index: usize, db: Option<&sled::Db>) -> Result<[u8; 32]> {
         if self.info.meta_version != Some(2) {
             return Err(Error::Protocol("Not a v2 torrent".to_string()));
         }
@@ -212,25 +212,46 @@ impl Torrent {
                     return Ok(hash);
                 } else {
                     // Look up in piece_layers
-                    let layers = self
-                        .piece_layers
-                        .as_ref()
-                        .ok_or_else(|| Error::Protocol("Missing piece layers".to_string()))?;
-                    if let serde_bencode::value::Value::Dict(dict) = layers {
-                        let layer = dict.get(root.as_slice()).ok_or_else(|| {
-                            Error::Protocol("Missing piece layer for file".to_string())
-                        })?;
-                        if let serde_bencode::value::Value::Bytes(layer_bytes) = layer {
-                            let start = file_piece_idx * 32;
-                            if start + 32 > layer_bytes.len() {
-                                return Err(Error::Protocol("Piece layer too short".to_string()));
-                            }
-                            let mut hash = [0u8; 32];
-                            hash.copy_from_slice(&layer_bytes[start..start + 32]);
-                            return Ok(hash);
+                    let layer_bytes = if let Some(db) = db {
+                        if let Some(bytes) = db
+                            .get(root.as_slice())
+                            .map_err(|e| Error::Storage(e.to_string()))?
+                        {
+                            bytes.to_vec()
+                        } else {
+                            return Err(Error::Protocol(
+                                "Missing piece layer in DB for file".to_string(),
+                            ));
                         }
+                    } else {
+                        // Fallback to in-memory piece_layers
+                        let layers = self
+                            .piece_layers
+                            .as_ref()
+                            .ok_or_else(|| Error::Protocol("Missing piece layers".to_string()))?;
+                        if let serde_bencode::value::Value::Dict(dict) = layers {
+                            let layer = dict.get(root.as_slice()).ok_or_else(|| {
+                                Error::Protocol("Missing piece layer for file".to_string())
+                            })?;
+                            if let serde_bencode::value::Value::Bytes(layer_bytes) = layer {
+                                layer_bytes.clone()
+                            } else {
+                                return Err(Error::Protocol(
+                                    "Invalid piece layers format".to_string(),
+                                ));
+                            }
+                        } else {
+                            return Err(Error::Protocol("Invalid piece layers format".to_string()));
+                        }
+                    };
+
+                    let start = file_piece_idx * 32;
+                    if start + 32 > layer_bytes.len() {
+                        return Err(Error::Protocol("Piece layer too short".to_string()));
                     }
-                    return Err(Error::Protocol("Invalid piece layers format".to_string()));
+                    let mut hash = [0u8; 32];
+                    hash.copy_from_slice(&layer_bytes[start..start + 32]);
+                    return Ok(hash);
                 }
             }
 

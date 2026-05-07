@@ -14,7 +14,7 @@ fn bench_storage_sequential_write(c: &mut Criterion) {
 
     let (request_tx, request_rx) = mpsc::channel(100);
     let (completion_tx, _completion_rx) = mpsc::channel(100);
-    let mut storage = StorageEngine::new(request_rx, completion_tx);
+    let mut storage = StorageEngine::new(request_rx, completion_tx, None);
     let id = TaskId(1);
     storage.register_task(id, file_path);
 
@@ -51,7 +51,7 @@ fn bench_storage_random_write_aggregated(c: &mut Criterion) {
 
     let (request_tx, request_rx) = mpsc::channel(1000);
     let (completion_tx, _completion_rx) = mpsc::channel(1000);
-    let mut storage = StorageEngine::new(request_rx, completion_tx);
+    let mut storage = StorageEngine::new(request_rx, completion_tx, None);
     let id = TaskId(2);
     storage.register_task(id, file_path);
 

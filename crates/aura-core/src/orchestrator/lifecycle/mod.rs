@@ -71,6 +71,7 @@ impl Orchestrator {
             let loaded_bf = bitfield.clone();
             let config_clone = config_arc.clone();
             let pool = self.pool.clone();
+            let db = self.db.clone();
 
             let existing_bt = self.bt_tasks.get(&sub_id).cloned();
 
@@ -118,13 +119,17 @@ impl Orchestrator {
                         } else {
                             let init_res = if uri.starts_with("magnet:") {
                                 match crate::magnet::Magnet::parse(&uri) {
-                                    Ok(m) => {
-                                        Ok(BtTask::from_magnet(id, m.info_hash, dht_tx, lpd_tx))
-                                    }
+                                    Ok(m) => Ok(BtTask::from_magnet(
+                                        id,
+                                        m.info_hash,
+                                        dht_tx,
+                                        lpd_tx,
+                                        db.clone(),
+                                    )),
                                     Err(e) => Err(e),
                                 }
                             } else {
-                                BtTask::from_file(id, &uri, dht_tx, lpd_tx).await
+                                BtTask::from_file(id, &uri, dht_tx, lpd_tx, db.clone()).await
                             };
 
                             match init_res {

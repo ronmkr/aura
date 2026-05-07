@@ -77,7 +77,11 @@ impl Engine {
             })
             .await;
 
-        let storage = StorageEngine::new(storage_rx, completion_tx);
+        let db_path = std::env::current_dir()
+            .unwrap_or_default()
+            .join(".aura")
+            .join("metadata.db");
+        let storage = StorageEngine::new(storage_rx, completion_tx, Some(db_path));
         let (orchestrator, event_tx) = Orchestrator::new(
             command_rx,
             storage_tx,
@@ -87,6 +91,7 @@ impl Engine {
             nat_tx,
             config.clone(),
             storage.get_pool(),
+            storage.get_db(),
         );
 
         use crate::lpd::LpdActor;
