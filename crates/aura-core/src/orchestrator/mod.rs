@@ -8,7 +8,7 @@ use crate::storage::StorageRequest;
 use crate::task::{MetaTask, Range};
 use crate::throttler::Throttler;
 use crate::worker::Metadata;
-use crate::{Result, TaskId};
+use crate::{InfoHash, Result, TaskId};
 use arc_swap::ArcSwap;
 use rand::RngExt;
 use std::collections::HashMap;
@@ -51,7 +51,7 @@ pub enum WorkerCommand {
 #[derive(Debug)]
 pub enum SubTaskEvent {
     Matured(TaskId, TaskId, Metadata),
-    MetadataReceived(TaskId, TaskId, crate::torrent::Torrent),
+    MetadataReceived(TaskId, TaskId, Box<crate::torrent::Torrent>),
     RangeFinished(TaskId, TaskId, Range),
     Failed(TaskId, TaskId, String),
     Downloaded(TaskId, u64),
@@ -61,11 +61,11 @@ pub enum SubTaskEvent {
     PieceVerified(TaskId, TaskId, usize),
     BtTaskRegistered(
         TaskId,
-        [u8; 20],
+        InfoHash,
         Arc<BtTask>,
         tokio::sync::broadcast::Sender<WorkerCommand>,
     ),
-    LpdPeerDiscovered([u8; 20], crate::tracker::Peer),
+    LpdPeerDiscovered(InfoHash, crate::tracker::Peer),
     KillSwitch,
 }
 
@@ -94,7 +94,7 @@ pub enum Event {
 
 pub struct Orchestrator {
     pub(crate) tasks: HashMap<TaskId, MetaTask>,
-    pub(crate) bt_registry: HashMap<[u8; 20], Arc<BtTask>>,
+    pub(crate) bt_registry: HashMap<InfoHash, Arc<BtTask>>,
     pub(crate) bt_tasks: HashMap<TaskId, Arc<BtTask>>, // Key: sub_id
     pub(crate) worker_command_txs: HashMap<TaskId, tokio::sync::broadcast::Sender<WorkerCommand>>, // Key: sub_id
     pub(crate) cancellation_tokens: HashMap<TaskId, CancellationToken>,
@@ -188,46 +188,6 @@ impl Orchestrator {
             },
             event_tx,
         )
-    }
-
-    pub(crate) async fn check_seed_limits(&mut self) {
-        let config = self.config.load();
-        let target_ratio = config.bittorrent.seed_ratio;
-        let target_time = config.bittorrent.seed_time_mins as i64;
-
-        let mut to_pause = Vec::new();
-        for (id, task) in &self.tasks {
-            if task.phase == crate::task::DownloadPhase::Complete {
-                // Check Ratio
-                if target_ratio > 0.0 {
-                    let current_ratio = if task.completed_length > 0 {
-                        task.uploaded_length as f64 / task.completed_length as f64
-                    } else {
-                        0.0
-                    };
-                    if current_ratio >= target_ratio as f64 {
-                        tracing::info!(%id, current_ratio, target_ratio, "Seed ratio reached, pausing task");
-                        to_pause.push(*id);
-                        continue;
-                    }
-                }
-
-                // Check Time
-                if target_time > 0 {
-                    if let Some(start_time) = task.seeding_start_time {
-                        let elapsed = chrono::Utc::now() - start_time;
-                        if elapsed.num_minutes() >= target_time {
-                            tracing::info!(%id, elapsed_mins = elapsed.num_minutes(), target_time, "Seed time limit reached, pausing task");
-                            to_pause.push(*id);
-                        }
-                    }
-                }
-            }
-        }
-
-        for id in to_pause {
-            let _ = self.handle_pause(id).await;
-        }
     }
 
     pub async fn run(mut self) -> Result<()> {

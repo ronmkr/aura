@@ -5,6 +5,7 @@ use crate::storage::StorageRequest;
 use crate::{Error, Result, TaskId};
 use futures_util::SinkExt;
 use sha1::{Digest, Sha1};
+use sha2::Sha256;
 use tokio_util::codec::Framed;
 use tracing::{debug, error, info};
 
@@ -89,13 +90,36 @@ impl super::BtWorker {
 
             if self.bytes_received >= piece_total_len {
                 // Piece complete, verify hash
-                let mut hasher = Sha1::new();
-                hasher.update(&self.piece_buffer);
-                let actual_hash: [u8; 20] = hasher.finalize().into();
+                let is_verified = if torrent.info_hash_v2().unwrap_or(None).is_some() {
+                    // v2 or Hybrid: use SHA-256
+                    let mut hasher = Sha256::new();
+                    hasher.update(&self.piece_buffer);
+                    let actual_hash: [u8; 32] = hasher.finalize().into();
 
-                let expected_hash = &torrent.info.pieces[piece_idx * 20..(piece_idx + 1) * 20];
+                    if let Ok(expected_hash) = torrent.piece_hash_v2(piece_idx) {
+                        actual_hash == expected_hash
+                    } else if let Ok(expected_hash1) = torrent.piece_hash_v1(piece_idx) {
+                        // Fallback to v1 hash if v2 piece hash lookup fails (e.g., hybrid padding)
+                        let mut hasher1 = Sha1::new();
+                        hasher1.update(&self.piece_buffer);
+                        let actual_hash1: [u8; 20] = hasher1.finalize().into();
+                        actual_hash1 == expected_hash1
+                    } else {
+                        false
+                    }
+                } else {
+                    // v1-only
+                    if let Ok(expected_hash) = torrent.piece_hash_v1(piece_idx) {
+                        let mut hasher = Sha1::new();
+                        hasher.update(&self.piece_buffer);
+                        let actual_hash: [u8; 20] = hasher.finalize().into();
+                        actual_hash == expected_hash
+                    } else {
+                        false
+                    }
+                };
 
-                if actual_hash == expected_hash {
+                if is_verified {
                     info!(addr = %self.peer_addr, %piece_idx, "Piece download complete and verified");
 
                     let finished_data =

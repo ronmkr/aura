@@ -92,7 +92,16 @@ impl TrackerClient {
         }
 
         // 2. Announce Request
-        let info_hash = torrent.info_hash()?;
+        let info_hash = if let Some(h2) = torrent.info_hash_v2()? {
+            let mut truncated = [0u8; 20];
+            truncated.copy_from_slice(&h2[..20]);
+            truncated
+        } else {
+            torrent
+                .info_hash_v1()?
+                .ok_or_else(|| Error::Protocol("No info hash available".to_string()))?
+        };
+
         let mut announce_req = Vec::with_capacity(98);
         announce_req.extend_from_slice(&connection_id.to_be_bytes());
         announce_req.extend_from_slice(&1u32.to_be_bytes()); // Action 1: announce

@@ -1,4 +1,5 @@
 use super::{Command, Event, Orchestrator};
+use crate::dht::DhtActor;
 use crate::storage::StorageEngine;
 use crate::task::{MetaTask, TaskType};
 use crate::{Error, Result, TaskId};
@@ -42,11 +43,10 @@ impl Engine {
             }
         };
 
-        use crate::dht::DhtActor;
         let mut dht_id = [0u8; 20];
         rand::rng().fill(&mut dht_id);
 
-        let dht_actor = DhtActor::new(
+        let dht_actor: DhtActor = DhtActor::new(
             "0.0.0.0:6881",
             dht_id,
             dht_rx,
