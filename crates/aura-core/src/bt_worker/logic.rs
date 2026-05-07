@@ -5,6 +5,7 @@ use crate::storage::StorageRequest;
 use crate::{Error, Result, TaskId};
 use futures_util::SinkExt;
 use sha1::{Digest, Sha1};
+use sha2::Sha256;
 use tokio_util::codec::Framed;
 use tracing::{debug, error, info};
 
@@ -89,13 +90,36 @@ impl super::BtWorker {
 
             if self.bytes_received >= piece_total_len {
                 // Piece complete, verify hash
-                let mut hasher = Sha1::new();
-                hasher.update(&self.piece_buffer);
-                let actual_hash: [u8; 20] = hasher.finalize().into();
+                let is_verified = if let Some(_h2) = torrent.info_hash_v2().unwrap_or(None) {
+                    // v2 or Hybrid: use SHA-256 if we have piece layers or root
+                    // For now, we'll try SHA-1 if available as fallback, or implement full v2 verification
+                    let mut hasher = Sha256::new();
+                    hasher.update(&self.piece_buffer);
+                    let _actual_hash: [u8; 32] = hasher.finalize().into();
 
-                let expected_hash = &torrent.info.pieces[piece_idx * 20..(piece_idx + 1) * 20];
+                    // TODO: Implement proper Merkle tree lookup.
+                    // For now, we compare with v1 hash if available to maintain functionality.
+                    if let Some(pieces) = &torrent.info.pieces {
+                        let mut hasher1 = Sha1::new();
+                        hasher1.update(&self.piece_buffer);
+                        let actual_hash1: [u8; 20] = hasher1.finalize().into();
+                        let expected_hash1 = &pieces[piece_idx * 20..(piece_idx + 1) * 20];
+                        actual_hash1 == expected_hash1
+                    } else {
+                        // v2-only: requires piece layers
+                        false
+                    }
+                } else {
+                    // v1-only
+                    let mut hasher = Sha1::new();
+                    hasher.update(&self.piece_buffer);
+                    let actual_hash: [u8; 20] = hasher.finalize().into();
+                    let pieces = torrent.info.pieces.as_ref().unwrap();
+                    let expected_hash = &pieces[piece_idx * 20..(piece_idx + 1) * 20];
+                    actual_hash == expected_hash
+                };
 
-                if actual_hash == expected_hash {
+                if is_verified {
                     info!(addr = %self.peer_addr, %piece_idx, "Piece download complete and verified");
 
                     let finished_data =

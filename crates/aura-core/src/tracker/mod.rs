@@ -106,7 +106,16 @@ impl TrackerClient {
     }
 
     async fn announce_http(&self, url_str: &str, torrent: &Torrent) -> Result<Vec<Peer>> {
-        let info_hash = torrent.info_hash()?;
+        let info_hash = if let Some(h2) = torrent.info_hash_v2()? {
+            let mut truncated = [0u8; 20];
+            truncated.copy_from_slice(&h2[..20]);
+            truncated
+        } else {
+            torrent
+                .info_hash_v1()?
+                .ok_or_else(|| Error::Protocol("No info hash available".to_string()))?
+        };
+
         let info_hash_encoded: String = info_hash.iter().map(|b| format!("%{:02x}", b)).collect();
         let peer_id_encoded: String = self.peer_id.iter().map(|b| format!("%{:02x}", b)).collect();
 

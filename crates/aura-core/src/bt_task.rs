@@ -5,14 +5,14 @@ use crate::peer_registry::PeerRegistry;
 use crate::piece_picker::PiecePicker;
 use crate::torrent::Torrent;
 use crate::tracker::{Peer, TrackerClient};
-use crate::{Error, Result, TaskId};
+use crate::{Error, InfoHash, Result, TaskId};
 use std::sync::Arc;
 use tokio::sync::{mpsc, Mutex};
 use tracing::{debug, info, warn};
 
 #[derive(Debug)]
 pub struct BtTaskState {
-    pub info_hash: [u8; 20],
+    pub info_hash: InfoHash,
     pub torrent: Mutex<Option<Torrent>>,
     pub bitfield: Mutex<Option<Bitfield>>,
     pub picker: Mutex<Option<PiecePicker>>,
@@ -22,7 +22,11 @@ pub struct BtTaskState {
 impl BtTaskState {
     pub fn new(torrent: Torrent) -> Self {
         let num_pieces = torrent.pieces_count();
-        let info_hash = torrent.info_hash().unwrap_or([0; 20]);
+        let info_hash = if let Some(h2) = torrent.info_hash_v2().unwrap_or(None) {
+            InfoHash::V2(h2)
+        } else {
+            InfoHash::V1(torrent.info_hash_v1().unwrap_or(None).unwrap_or([0; 20]))
+        };
         Self {
             info_hash,
             torrent: Mutex::new(Some(torrent)),
@@ -32,7 +36,7 @@ impl BtTaskState {
         }
     }
 
-    pub fn new_magnet(info_hash: [u8; 20]) -> Self {
+    pub fn new_magnet(info_hash: InfoHash) -> Self {
         Self {
             info_hash,
             torrent: Mutex::new(None),
@@ -79,7 +83,7 @@ impl BtTask {
 
     pub fn from_magnet(
         id: TaskId,
-        info_hash: [u8; 20],
+        info_hash: InfoHash,
         dht_tx: mpsc::Sender<crate::dht::DhtCommand>,
         lpd_tx: mpsc::Sender<crate::lpd::LpdCommand>,
     ) -> Self {
@@ -111,9 +115,10 @@ impl BtTask {
                     if let Some(addrs) = rx.recv().await {
                         let mut peers = Vec::new();
                         for addr in addrs {
+                            let ip: std::net::IpAddr = addr.ip();
                             peers.push(Peer {
                                 id: None,
-                                ip: addr.ip().to_string(),
+                                ip: ip.to_string(),
                                 port: addr.port(),
                             });
                         }
@@ -153,14 +158,15 @@ impl BtTask {
         loop {
             tokio::select! {
                 _ = token.cancelled() => {
-                    let _ = self.lpd_tx.send(crate::lpd::LpdCommand::Remove { info_hash }).await;
+                    let _ = self
+                        .lpd_tx
+                        .send(crate::lpd::LpdCommand::Remove {
+                            info_hash,
+                        })
+                        .await;
                     break;
                 }
                 _ = tokio::time::sleep(std::time::Duration::from_secs(300)) => {
-                    // LpdActor handles periodic broadcast, but we re-announce just in case
-                    // or to keep it active if LpdActor is simple.
-                    // Actually, LpdActor in our implementation handles periodic broadcast for all active hashes.
-                    // So we just need to make sure it's added.
                 }
             }
         }
@@ -197,10 +203,6 @@ impl BtTask {
                         }
                     }
                 }
-            } else {
-                // If we don't have a torrent yet, we can't announce to trackers (mostly)
-                // Actually some trackers allow info_hash only, but our TrackerClient uses torrent.
-                // For now, we rely on DHT for magnet links.
             }
 
             tokio::select! {

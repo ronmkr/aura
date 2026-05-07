@@ -1,11 +1,11 @@
 //! magnet: Parsing and handling of BitTorrent Magnet URIs.
 
-use crate::{Error, Result};
+use crate::{Error, InfoHash, Result};
 use url::Url;
 
 #[derive(Debug, Clone)]
 pub struct Magnet {
-    pub info_hash: [u8; 20],
+    pub info_hash: InfoHash,
     pub trackers: Vec<String>,
     pub name: Option<String>,
 }
@@ -27,15 +27,21 @@ impl Magnet {
             match key.as_ref() {
                 "xt" => {
                     if let Some(hash_hex) = value.strip_prefix("urn:btih:") {
-                        if hash_hex.len() == 40 {
-                            let mut hash = [0u8; 20];
-                            for i in 0..20 {
-                                hash[i] = u8::from_str_radix(&hash_hex[i * 2..i * 2 + 2], 16)
-                                    .map_err(|_| {
-                                        Error::Protocol("Invalid hex in info_hash".to_string())
-                                    })?;
+                        if let Ok(h) = hex::decode(hash_hex) {
+                            if h.len() == 20 {
+                                let mut hash = [0u8; 20];
+                                hash.copy_from_slice(&h);
+                                info_hash = Some(InfoHash::V1(hash));
                             }
-                            info_hash = Some(hash);
+                        }
+                    } else if let Some(hash_hex) = value.strip_prefix("urn:btmh:1220") {
+                        // Multi-hash for SHA-256 is 1220 (0x12: sha256, 0x20: length 32)
+                        if let Ok(h) = hex::decode(hash_hex) {
+                            if h.len() == 32 {
+                                let mut hash = [0u8; 32];
+                                hash.copy_from_slice(&h);
+                                info_hash = Some(InfoHash::V2(hash));
+                            }
                         }
                     }
                 }
@@ -49,8 +55,9 @@ impl Magnet {
             }
         }
 
-        let info_hash = info_hash
-            .ok_or_else(|| Error::Protocol("Missing xt (info_hash) in magnet URI".to_string()))?;
+        let info_hash = info_hash.ok_or_else(|| {
+            Error::Protocol("Missing or unsupported xt in magnet URI".to_string())
+        })?;
 
         Ok(Self {
             info_hash,
@@ -72,6 +79,6 @@ mod tests {
         assert_eq!(magnet.name, Some("Ubuntu".to_string()));
         assert_eq!(magnet.trackers.len(), 1);
         assert_eq!(magnet.trackers[0], "http://tracker.com/announce");
-        assert_eq!(magnet.info_hash[0], 0xd2);
+        assert_eq!(magnet.info_hash.to_vec()[0], 0xd2);
     }
 }

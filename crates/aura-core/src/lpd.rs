@@ -1,7 +1,7 @@
 //! lpd: Local Peer Discovery (BEP 14) implementation.
 
 use crate::tracker::Peer;
-use crate::{Error, Result};
+use crate::{Error, InfoHash, Result};
 use std::collections::HashSet;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4};
 use tokio::net::UdpSocket;
@@ -13,15 +13,15 @@ const LPD_PORT: u16 = 6771;
 
 #[derive(Debug, Clone)]
 pub enum LpdCommand {
-    Announce { info_hash: [u8; 20], port: u16 },
-    Remove { info_hash: [u8; 20] },
+    Announce { info_hash: InfoHash, port: u16 },
+    Remove { info_hash: InfoHash },
 }
 
 pub struct LpdActor {
     command_rx: mpsc::Receiver<LpdCommand>,
     event_tx: mpsc::Sender<crate::orchestrator::SubTaskEvent>,
     socket: UdpSocket,
-    active_hashes: HashSet<([u8; 20], u16)>, // (info_hash, listen_port)
+    active_hashes: HashSet<(InfoHash, u16)>, // (info_hash, listen_port)
     cookie: String,
 }
 
@@ -98,8 +98,8 @@ impl LpdActor {
         }
     }
 
-    async fn send_announce(&self, info_hash: [u8; 20], port: u16) {
-        let info_hash_hex = hex::encode(info_hash);
+    async fn send_announce(&self, info_hash: InfoHash, port: u16) {
+        let info_hash_hex = hex::encode(info_hash.to_vec());
         let message = format!(
             "BT-SEARCH * HTTP/1.1\r\n\
              Host: 239.192.152.143:6771\r\n\
@@ -127,7 +127,7 @@ impl LpdActor {
         }
     }
 
-    fn parse_packet(&self, data: &[u8], addr: SocketAddr) -> Option<([u8; 20], Peer)> {
+    fn parse_packet(&self, data: &[u8], addr: SocketAddr) -> Option<(InfoHash, Peer)> {
         let text = String::from_utf8_lossy(data);
         if !text.starts_with("BT-SEARCH") {
             return None;
@@ -150,7 +150,11 @@ impl LpdActor {
                         if h.len() == 20 {
                             let mut hash = [0u8; 20];
                             hash.copy_from_slice(&h);
-                            info_hash = Some(hash);
+                            info_hash = Some(InfoHash::V1(hash));
+                        } else if h.len() == 32 {
+                            let mut hash = [0u8; 32];
+                            hash.copy_from_slice(&h);
+                            info_hash = Some(InfoHash::V2(hash));
                         }
                     }
                 }
@@ -212,7 +216,7 @@ mod tests {
             cookie: "my-cookie".to_string(),
         };
 
-        let info_hash = [1u8; 20];
+        let info_hash = InfoHash::V1([1u8; 20]);
         let mut actor = actor;
         actor.active_hashes.insert((info_hash, 6881));
 
@@ -247,7 +251,7 @@ mod tests {
             cookie: "my-cookie".to_string(),
         };
 
-        let info_hash = [1u8; 20];
+        let info_hash = InfoHash::V1([1u8; 20]);
         let mut actor = actor;
         actor.active_hashes.insert((info_hash, 6881));
 

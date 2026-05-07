@@ -1,6 +1,6 @@
 use self::protocol::KrpcMessage;
 use self::routing::{Node, NodeId, RoutingTable};
-use crate::{Error, Result};
+use crate::{Error, InfoHash, Result};
 use std::collections::BTreeMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -13,11 +13,11 @@ pub mod routing;
 
 pub enum DhtCommand {
     GetPeers {
-        info_hash: [u8; 20],
+        info_hash: InfoHash,
         reply_tx: mpsc::Sender<Vec<SocketAddr>>,
     },
     Announce {
-        info_hash: [u8; 20],
+        info_hash: InfoHash,
         port: u16,
     },
 }
@@ -30,7 +30,7 @@ pub struct DhtActor {
     // Map transaction_id -> sender for replies
     pending_queries: Arc<Mutex<BTreeMap<Vec<u8>, mpsc::Sender<KrpcMessage>>>>,
     // info_hash -> Vec<PeerAddr>
-    peers: Arc<Mutex<BTreeMap<[u8; 20], Vec<SocketAddr>>>>,
+    peers: Arc<Mutex<BTreeMap<InfoHash, Vec<SocketAddr>>>>,
     // RemoteAddr -> Token (for announce_peer)
     tokens: Arc<Mutex<BTreeMap<SocketAddr, Vec<u8>>>>,
 }
@@ -123,7 +123,11 @@ impl DhtActor {
                             if b.len() == 20 {
                                 let mut h = [0u8; 20];
                                 h.copy_from_slice(b);
-                                Some(h)
+                                Some(InfoHash::V1(h))
+                            } else if b.len() == 32 {
+                                let mut h = [0u8; 32];
+                                h.copy_from_slice(b);
+                                Some(InfoHash::V2(h))
                             } else {
                                 None
                             }
@@ -160,7 +164,7 @@ impl DhtActor {
                                 );
                             } else {
                                 let rt = self.routing_table.lock().await;
-                                let closest = rt.get_closest_nodes(&h, 8);
+                                let closest = rt.get_closest_nodes(&h.for_handshake(), 8);
                                 r.insert(
                                     "nodes".to_string(),
                                     serde_bencode::value::Value::Bytes(protocol::compact_nodes(
@@ -175,9 +179,19 @@ impl DhtActor {
                         if let Some(serde_bencode::value::Value::Bytes(b)) =
                             args.and_then(|a| a.get("info_hash"))
                         {
-                            if b.len() == 20 {
+                            let info_hash = if b.len() == 20 {
                                 let mut h = [0u8; 20];
                                 h.copy_from_slice(b);
+                                Some(InfoHash::V1(h))
+                            } else if b.len() == 32 {
+                                let mut h = [0u8; 32];
+                                h.copy_from_slice(b);
+                                Some(InfoHash::V2(h))
+                            } else {
+                                None
+                            };
+
+                            if let Some(h) = info_hash {
                                 let port = if let Some(serde_bencode::value::Value::Int(p)) =
                                     args.and_then(|a| a.get("port"))
                                 {
@@ -315,12 +329,12 @@ impl DhtActor {
 
     async fn handle_get_peers(
         &self,
-        info_hash: [u8; 20],
+        info_hash: InfoHash,
         reply_tx: mpsc::Sender<Vec<SocketAddr>>,
     ) -> Result<()> {
         let mut closest_nodes = {
             let rt = self.routing_table.lock().await;
-            rt.get_closest_nodes(&info_hash, 8)
+            rt.get_closest_nodes(&info_hash.for_handshake(), 8)
         };
 
         let mut discovered_peers = Vec::new();
@@ -388,9 +402,9 @@ impl DhtActor {
         Ok(())
     }
 
-    async fn handle_announce(&self, info_hash: [u8; 20], port: u16) -> Result<()> {
+    async fn handle_announce(&self, info_hash: InfoHash, port: u16) -> Result<()> {
         let rt = self.routing_table.lock().await;
-        let closest = rt.get_closest_nodes(&info_hash, 8);
+        let closest = rt.get_closest_nodes(&info_hash.for_handshake(), 8);
         drop(rt);
 
         for node in closest {

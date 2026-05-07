@@ -11,7 +11,7 @@ impl Orchestrator {
                     .await?;
             }
             SubTaskEvent::MetadataReceived(meta_id, sub_id, torrent) => {
-                self.handle_bt_metadata_received(meta_id, sub_id, torrent)
+                self.handle_bt_metadata_received(meta_id, sub_id, *torrent)
                     .await?;
             }
             SubTaskEvent::RangeFinished(meta_id, sub_id, range) => {
@@ -112,10 +112,7 @@ impl Orchestrator {
             bt_task.state.mature(torrent.clone()).await;
 
             let metadata = crate::worker::Metadata {
-                final_uri: format!(
-                    "magnet:?xt=urn:btih:{}",
-                    hex::encode(bt_task.state.info_hash)
-                ),
+                final_uri: format!("magnet:?xt={}", bt_task.state.info_hash.to_magnet_urn()),
                 total_length: Some(torrent.total_length()),
                 name: Some(torrent.info.name.clone()),
             };

@@ -40,6 +40,57 @@ impl fmt::Display for TaskId {
     }
 }
 
+/// BitTorrent Info Hash (supports v1 20-byte and v2 32-byte).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, PartialOrd, Ord)]
+pub enum InfoHash {
+    V1([u8; 20]),
+    V2([u8; 32]),
+}
+
+impl InfoHash {
+    pub fn as_v1(&self) -> Option<[u8; 20]> {
+        match self {
+            InfoHash::V1(h) => Some(*h),
+            _ => None,
+        }
+    }
+
+    /// Returns a 20-byte hash for the handshake.
+    /// For v1, it's the 20-byte SHA-1 hash.
+    /// For v2, it's the FIRST 20 bytes of the SHA-256 hash (as per BEP 52).
+    pub fn for_handshake(&self) -> [u8; 20] {
+        match self {
+            InfoHash::V1(h) => *h,
+            InfoHash::V2(h) => {
+                let mut truncated = [0u8; 20];
+                truncated.copy_from_slice(&h[..20]);
+                truncated
+            }
+        }
+    }
+
+    pub fn to_vec(&self) -> Vec<u8> {
+        match self {
+            InfoHash::V1(h) => h.to_vec(),
+            InfoHash::V2(h) => h.to_vec(),
+        }
+    }
+
+    pub fn to_magnet_urn(&self) -> String {
+        match self {
+            InfoHash::V1(h) => format!("urn:btih:{}", hex::encode(h)),
+            InfoHash::V2(h) => format!("urn:btmh:1220{}", hex::encode(h)),
+        }
+    }
+
+    pub fn matches_handshake(&self, handshake_hash: &[u8; 20]) -> bool {
+        match self {
+            InfoHash::V1(h) => h == handshake_hash,
+            InfoHash::V2(h) => &h[..20] == handshake_hash,
+        }
+    }
+}
+
 /// Core error types for the Aura engine.
 #[derive(thiserror::Error, Debug)]
 pub enum Error {

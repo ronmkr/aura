@@ -2,7 +2,7 @@ use crate::bt_task::BtTask;
 use crate::bt_worker::BtWorker;
 use crate::orchestrator::{SubTaskEvent, WorkerCommand};
 use crate::storage::StorageRequest;
-use crate::{Result, TaskId};
+use crate::{InfoHash, Result, TaskId};
 use std::sync::Arc;
 use tokio::net::TcpStream;
 use tokio::sync::mpsc;
@@ -13,7 +13,7 @@ use tracing::{debug, info};
 pub async fn handle_incoming_peer(
     mut stream: TcpStream,
     addr: std::net::SocketAddr,
-    bt_registry: std::collections::HashMap<[u8; 20], Arc<BtTask>>,
+    bt_registry: std::collections::HashMap<InfoHash, Arc<BtTask>>,
     worker_command_txs: std::collections::HashMap<
         TaskId,
         tokio::sync::broadcast::Sender<WorkerCommand>,
@@ -34,7 +34,16 @@ pub async fn handle_incoming_peer(
     stream.read_exact(&mut buf).await?;
     let handshake = Handshake::deserialize(&buf)?;
 
-    if let Some(task) = bt_registry.get(&handshake.info_hash) {
+    // Find the task by matching the 20-byte hash from handshake
+    let mut task_found = None;
+    for (info_hash, bt_task) in &bt_registry {
+        if info_hash.matches_handshake(&handshake.info_hash) {
+            task_found = Some((*info_hash, bt_task.clone()));
+            break;
+        }
+    }
+
+    if let Some((target_info_hash, task)) = task_found {
         if let Some(token) = cancellation_tokens.get(&task.id) {
             if token.is_cancelled() {
                 return Ok(());
@@ -47,7 +56,7 @@ pub async fn handle_incoming_peer(
 
             let mut worker = BtWorker::new(
                 addr.to_string(),
-                handshake.info_hash,
+                target_info_hash,
                 handshake.peer_id,
                 my_peer_id,
                 pool.clone(),

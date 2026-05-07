@@ -1,7 +1,7 @@
 use crate::bt_task::BtTask;
 use crate::orchestrator::{SubTaskEvent, WorkerCommand};
 use crate::storage::StorageRequest;
-use crate::{Error, Result, TaskId};
+use crate::{Error, InfoHash, Result, TaskId};
 use bytes::BytesMut;
 use futures_util::{SinkExt, StreamExt};
 use std::sync::Arc;
@@ -26,7 +26,7 @@ use crate::buffer_pool::BufferPool;
 
 pub struct BtWorker {
     pub peer_addr: String,
-    pub info_hash: [u8; 20],
+    pub info_hash: InfoHash,
     pub peer_id: [u8; 20],
     pub my_id: [u8; 20],
     pub current_piece: Option<usize>,
@@ -43,7 +43,7 @@ pub struct BtWorker {
 impl BtWorker {
     pub fn new(
         peer_addr: String,
-        info_hash: [u8; 20],
+        info_hash: InfoHash,
         peer_id: [u8; 20],
         my_id: [u8; 20],
         pool: BufferPool,
@@ -75,7 +75,7 @@ impl BtWorker {
             crate::net_util::connect_tcp_bound(remote_addr, None, self.local_addr).await?;
 
         debug!(addr = %self.peer_addr, "Sending handshake...");
-        let handshake = Handshake::new(self.info_hash, self.my_id);
+        let handshake = Handshake::new(self.info_hash.for_handshake(), self.my_id);
         stream.write_all(&handshake.serialize()).await?;
 
         let mut buf = [0u8; HANDSHAKE_LEN];
@@ -83,7 +83,7 @@ impl BtWorker {
         stream.read_exact(&mut buf).await?;
         let res_handshake = Handshake::deserialize(&buf)?;
 
-        if res_handshake.info_hash != self.info_hash {
+        if res_handshake.info_hash != self.info_hash.for_handshake() {
             return Err(Error::Protocol("Handshake info_hash mismatch".to_string()));
         }
 
@@ -277,9 +277,9 @@ impl BtWorker {
                                                             full_torrent_dict.insert(b"announce".to_vec(), serde_bencode::value::Value::Bytes(b"http://aura-internal/".to_vec()));
                                                             if let Ok(torrent_bytes) = serde_bencode::to_bytes(&serde_bencode::value::Value::Dict(full_torrent_dict)) {
                                                                 if let Ok(torrent) = crate::torrent::Torrent::from_bytes(&torrent_bytes) {
-                                                                    if let Ok(hash) = torrent.info_hash() {
-                                                                        if hash == self.info_hash {
-                                                                            let _ = subtask_tx.send(SubTaskEvent::MetadataReceived(meta_id, sub_id, torrent)).await;
+                                                                    if let Ok(Some(hash)) = torrent.info_hash_v1() {
+                                                                        if self.info_hash.matches_handshake(&hash) {
+                                                                            let _ = subtask_tx.send(SubTaskEvent::MetadataReceived(meta_id, sub_id, Box::new(torrent))).await;
                                                                             self.trigger_request(&mut framed, &task, meta_id, sub_id, storage_tx.clone(), subtask_tx.clone()).await?;
                                                                         }
                                                                     }
