@@ -76,11 +76,9 @@ impl super::BtWorker {
         let max_in_flight = self.pipeline_size as u64 * BLOCK_SIZE as u64;
 
         if let Some(piece_idx) = self.current_piece {
-            let piece_total_len = if piece_idx == torrent.pieces_count() - 1 {
-                total_length - (piece_idx as u64 * piece_length)
-            } else {
-                piece_length
-            };
+            let piece_total_len = torrent
+                .piece_actual_length(piece_idx)
+                .unwrap_or(piece_length);
 
             // Ensure buffer is initialized if it was set via RequestPiece (Endgame)
             if self.piece_buffer.is_empty() {
@@ -127,11 +125,15 @@ impl super::BtWorker {
                     let finished_data =
                         std::mem::replace(&mut self.piece_buffer, self.pool.acquire());
 
+                    let offset = torrent
+                        .piece_align_offset(piece_idx)
+                        .unwrap_or(piece_idx as u64 * piece_length);
+
                     let _ = storage_tx
                         .send(StorageRequest::Write {
                             task_id: meta_id,
                             segment: crate::worker::Segment {
-                                offset: piece_idx as u64 * piece_length,
+                                offset,
                                 length: piece_total_len,
                             },
                             data: finished_data,

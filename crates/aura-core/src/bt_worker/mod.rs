@@ -311,17 +311,13 @@ impl BtWorker {
                                             .send(StorageRequest::Read {
                                                 task_id: meta_id,
                                                 segment: crate::worker::Segment {
-                                                    offset: index as u64
-                                                        * task
-                                                            .state
-                                                            .torrent
-                                                            .lock()
-                                                            .await
-                                                            .as_ref()
-                                                            .unwrap()
-                                                            .info
-                                                            .piece_length
-                                                        + begin as u64,
+                                                    offset: {
+                                                        let torrent_guard = task.state.torrent.lock().await;
+                                                        let torrent = torrent_guard.as_ref().unwrap();
+                                                        let base_offset = torrent.piece_align_offset(index as usize)
+                                                            .unwrap_or(index as u64 * torrent.info.piece_length);
+                                                        base_offset + begin as u64
+                                                    },
                                                     length: length as u64,
                                                 },
                                                 reply_tx,
