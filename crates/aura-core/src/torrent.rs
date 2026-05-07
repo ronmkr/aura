@@ -143,9 +143,16 @@ impl Torrent {
         } else if self.info.meta_version == Some(2) {
             let piece_len = self.info.piece_length as usize;
             if let Some(files) = self.flatten_v2_files() {
-                files.iter().map(|f| {
-                    if f.length == 0 { 0 } else { (f.length as usize).div_ceil(piece_len) }
-                }).sum()
+                files
+                    .iter()
+                    .map(|f| {
+                        if f.length == 0 {
+                            0
+                        } else {
+                            (f.length as usize).div_ceil(piece_len)
+                        }
+                    })
+                    .sum()
             } else {
                 0
             }
@@ -175,7 +182,9 @@ impl Torrent {
         }
 
         let piece_len = self.info.piece_length as usize;
-        let files = self.flatten_v2_files().ok_or_else(|| Error::Protocol("No v2 files found".to_string()))?;
+        let files = self
+            .flatten_v2_files()
+            .ok_or_else(|| Error::Protocol("No v2 files found".to_string()))?;
 
         let mut current_piece_offset = 0;
         for file in files {
@@ -187,8 +196,11 @@ impl Torrent {
 
             if index >= current_piece_offset && index < current_piece_offset + file_pieces {
                 let file_piece_idx = index - current_piece_offset;
-                
-                let root = file.pieces_root.as_ref().ok_or_else(|| Error::Protocol("Missing pieces root".to_string()))?;
+
+                let root = file
+                    .pieces_root
+                    .as_ref()
+                    .ok_or_else(|| Error::Protocol("Missing pieces root".to_string()))?;
                 if root.len() != 32 {
                     return Err(Error::Protocol("Invalid pieces root length".to_string()));
                 }
@@ -200,9 +212,14 @@ impl Torrent {
                     return Ok(hash);
                 } else {
                     // Look up in piece_layers
-                    let layers = self.piece_layers.as_ref().ok_or_else(|| Error::Protocol("Missing piece layers".to_string()))?;
+                    let layers = self
+                        .piece_layers
+                        .as_ref()
+                        .ok_or_else(|| Error::Protocol("Missing piece layers".to_string()))?;
                     if let serde_bencode::value::Value::Dict(dict) = layers {
-                        let layer = dict.get(root.as_slice()).ok_or_else(|| Error::Protocol("Missing piece layer for file".to_string()))?;
+                        let layer = dict.get(root.as_slice()).ok_or_else(|| {
+                            Error::Protocol("Missing piece layer for file".to_string())
+                        })?;
                         if let serde_bencode::value::Value::Bytes(layer_bytes) = layer {
                             let start = file_piece_idx * 32;
                             if start + 32 > layer_bytes.len() {
@@ -220,7 +237,9 @@ impl Torrent {
             current_piece_offset += file_pieces;
         }
 
-        Err(Error::Protocol("Piece index out of range for v2".to_string()))
+        Err(Error::Protocol(
+            "Piece index out of range for v2".to_string(),
+        ))
     }
 }
 
@@ -313,13 +332,26 @@ mod tests {
         let v2_files = torrent.flatten_v2_files().unwrap();
         assert_eq!(v2_files.len(), 2);
 
-        let f1 = v2_files.iter().find(|f| f.path.last().unwrap() == "file1.txt").unwrap();
+        let f1 = v2_files
+            .iter()
+            .find(|f| f.path.last().unwrap() == "file1.txt")
+            .unwrap();
         assert_eq!(f1.path, vec!["dir1".to_string(), "file1.txt".to_string()]);
         assert_eq!(f1.length, 100);
         assert_eq!(f1.pieces_root.as_ref().unwrap(), &vec![1; 32]);
 
-        let f2 = v2_files.iter().find(|f| f.path.last().unwrap() == "file2.txt").unwrap();
-        assert_eq!(f2.path, vec!["dir1".to_string(), "dir2".to_string(), "file2.txt".to_string()]);
+        let f2 = v2_files
+            .iter()
+            .find(|f| f.path.last().unwrap() == "file2.txt")
+            .unwrap();
+        assert_eq!(
+            f2.path,
+            vec![
+                "dir1".to_string(),
+                "dir2".to_string(),
+                "file2.txt".to_string()
+            ]
+        );
         assert_eq!(f2.length, 200);
         assert_eq!(f2.pieces_root.as_ref().unwrap(), &vec![2; 32]);
     }
