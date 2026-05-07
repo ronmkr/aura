@@ -4,7 +4,6 @@ use crate::{Error, Result};
 use serde::{Deserialize, Serialize};
 use sha1::{Digest as Sha1Digest, Sha1};
 use sha2::Sha256;
-use std::collections::BTreeMap;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct File {
@@ -46,7 +45,7 @@ pub struct Torrent {
     #[serde(rename = "creation date", skip_serializing_if = "Option::is_none")]
     pub creation_date: Option<u64>,
     #[serde(rename = "piece layers", skip_serializing_if = "Option::is_none")]
-    pub piece_layers: Option<BTreeMap<String, Vec<u8>>>,
+    pub piece_layers: Option<serde_bencode::value::Value>,
 }
 
 impl Torrent {
@@ -139,7 +138,20 @@ impl Torrent {
     }
 
     pub fn pieces_count(&self) -> usize {
-        self.info.pieces.as_ref().map(|p| p.len() / 20).unwrap_or(0)
+        if let Some(pieces) = &self.info.pieces {
+            pieces.len() / 20
+        } else if self.info.meta_version == Some(2) {
+            let piece_len = self.info.piece_length as usize;
+            if let Some(files) = self.flatten_v2_files() {
+                files.iter().map(|f| {
+                    if f.length == 0 { 0 } else { (f.length as usize).div_ceil(piece_len) }
+                }).sum()
+            } else {
+                0
+            }
+        } else {
+            0
+        }
     }
 
     pub fn piece_hash_v1(&self, index: usize) -> Result<[u8; 20]> {
@@ -155,6 +167,60 @@ impl Torrent {
         let mut hash = [0u8; 20];
         hash.copy_from_slice(&pieces[start..start + 20]);
         Ok(hash)
+    }
+
+    pub fn piece_hash_v2(&self, index: usize) -> Result<[u8; 32]> {
+        if self.info.meta_version != Some(2) {
+            return Err(Error::Protocol("Not a v2 torrent".to_string()));
+        }
+
+        let piece_len = self.info.piece_length as usize;
+        let files = self.flatten_v2_files().ok_or_else(|| Error::Protocol("No v2 files found".to_string()))?;
+
+        let mut current_piece_offset = 0;
+        for file in files {
+            let file_pieces = if file.length == 0 {
+                0
+            } else {
+                (file.length as usize).div_ceil(piece_len)
+            };
+
+            if index >= current_piece_offset && index < current_piece_offset + file_pieces {
+                let file_piece_idx = index - current_piece_offset;
+                
+                let root = file.pieces_root.as_ref().ok_or_else(|| Error::Protocol("Missing pieces root".to_string()))?;
+                if root.len() != 32 {
+                    return Err(Error::Protocol("Invalid pieces root length".to_string()));
+                }
+
+                if file_pieces == 1 {
+                    // For single-piece files, the root IS the piece hash
+                    let mut hash = [0u8; 32];
+                    hash.copy_from_slice(root);
+                    return Ok(hash);
+                } else {
+                    // Look up in piece_layers
+                    let layers = self.piece_layers.as_ref().ok_or_else(|| Error::Protocol("Missing piece layers".to_string()))?;
+                    if let serde_bencode::value::Value::Dict(dict) = layers {
+                        let layer = dict.get(root.as_slice()).ok_or_else(|| Error::Protocol("Missing piece layer for file".to_string()))?;
+                        if let serde_bencode::value::Value::Bytes(layer_bytes) = layer {
+                            let start = file_piece_idx * 32;
+                            if start + 32 > layer_bytes.len() {
+                                return Err(Error::Protocol("Piece layer too short".to_string()));
+                            }
+                            let mut hash = [0u8; 32];
+                            hash.copy_from_slice(&layer_bytes[start..start + 32]);
+                            return Ok(hash);
+                        }
+                    }
+                    return Err(Error::Protocol("Invalid piece layers format".to_string()));
+                }
+            }
+
+            current_piece_offset += file_pieces;
+        }
+
+        Err(Error::Protocol("Piece index out of range for v2".to_string()))
     }
 }
 

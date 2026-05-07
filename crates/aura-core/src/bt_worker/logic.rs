@@ -90,33 +90,33 @@ impl super::BtWorker {
 
             if self.bytes_received >= piece_total_len {
                 // Piece complete, verify hash
-                let is_verified = if let Some(_h2) = torrent.info_hash_v2().unwrap_or(None) {
-                    // v2 or Hybrid: use SHA-256 if we have piece layers or root
-                    // For now, we'll try SHA-1 if available as fallback, or implement full v2 verification
+                let is_verified = if torrent.info_hash_v2().unwrap_or(None).is_some() {
+                    // v2 or Hybrid: use SHA-256
                     let mut hasher = Sha256::new();
                     hasher.update(&self.piece_buffer);
-                    let _actual_hash: [u8; 32] = hasher.finalize().into();
+                    let actual_hash: [u8; 32] = hasher.finalize().into();
 
-                    // TODO: Implement proper Merkle tree lookup.
-                    // For now, we compare with v1 hash if available to maintain functionality.
-                    if let Some(pieces) = &torrent.info.pieces {
+                    if let Ok(expected_hash) = torrent.piece_hash_v2(piece_idx) {
+                        actual_hash == expected_hash
+                    } else if let Ok(expected_hash1) = torrent.piece_hash_v1(piece_idx) {
+                        // Fallback to v1 hash if v2 piece hash lookup fails (e.g., hybrid padding)
                         let mut hasher1 = Sha1::new();
                         hasher1.update(&self.piece_buffer);
                         let actual_hash1: [u8; 20] = hasher1.finalize().into();
-                        let expected_hash1 = &pieces[piece_idx * 20..(piece_idx + 1) * 20];
                         actual_hash1 == expected_hash1
                     } else {
-                        // v2-only: requires piece layers
                         false
                     }
                 } else {
                     // v1-only
-                    let mut hasher = Sha1::new();
-                    hasher.update(&self.piece_buffer);
-                    let actual_hash: [u8; 20] = hasher.finalize().into();
-                    let pieces = torrent.info.pieces.as_ref().unwrap();
-                    let expected_hash = &pieces[piece_idx * 20..(piece_idx + 1) * 20];
-                    actual_hash == expected_hash
+                    if let Ok(expected_hash) = torrent.piece_hash_v1(piece_idx) {
+                        let mut hasher = Sha1::new();
+                        hasher.update(&self.piece_buffer);
+                        let actual_hash: [u8; 20] = hasher.finalize().into();
+                        actual_hash == expected_hash
+                    } else {
+                        false
+                    }
                 };
 
                 if is_verified {
