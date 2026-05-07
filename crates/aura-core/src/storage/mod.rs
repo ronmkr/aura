@@ -23,6 +23,10 @@ pub enum StorageRequest {
         segment: Segment,
         reply_tx: oneshot::Sender<Result<Bytes>>,
     },
+    StoreV2Metadata {
+        // pieces_root (32 bytes) -> piece_layers (concatenated 32-byte hashes)
+        layers: HashMap<[u8; 32], Vec<u8>>,
+    },
     Complete(TaskId),
 }
 
@@ -34,14 +38,26 @@ pub struct StorageEngine {
     pub(crate) pending_writes: HashMap<TaskId, BTreeMap<u64, BytesMut>>,
     pub(crate) next_offsets: HashMap<TaskId, u64>,
     pub(crate) pool: BufferPool,
+    pub(crate) db: sled::Db,
 }
 
 impl StorageEngine {
     pub fn new(
         request_rx: mpsc::Receiver<StorageRequest>,
         completion_tx: mpsc::Sender<TaskId>,
+        db_path: Option<PathBuf>,
     ) -> Self {
         let pool = BufferPool::new(1024 * 1024, 10);
+
+        let db = if let Some(path) = db_path {
+            sled::open(&path).expect("Failed to open metadata database")
+        } else {
+            sled::Config::new()
+                .temporary(true)
+                .open()
+                .expect("Failed to open temp database")
+        };
+
         Self {
             request_rx,
             completion_tx,
@@ -50,11 +66,16 @@ impl StorageEngine {
             pending_writes: HashMap::new(),
             next_offsets: HashMap::new(),
             pool: pool.clone(),
+            db,
         }
     }
 
     pub fn get_pool(&self) -> BufferPool {
         self.pool.clone()
+    }
+
+    pub fn get_db(&self) -> sled::Db {
+        self.db.clone()
     }
 
     pub fn register_task(&mut self, id: TaskId, path: PathBuf) {
@@ -84,6 +105,14 @@ impl StorageEngine {
                 } => {
                     let res = self.handle_read(task_id, segment).await;
                     let _ = reply_tx.send(res);
+                }
+                StorageRequest::StoreV2Metadata { layers } => {
+                    for (root, data) in layers {
+                        if let Err(e) = self.db.insert(root, data) {
+                            error!(?root, error = %e, "Failed to store v2 piece layers");
+                        }
+                    }
+                    let _ = self.db.flush();
                 }
                 StorageRequest::Complete(task_id) => {
                     if let Err(e) = self.flush_all_pending(task_id).await {
@@ -137,7 +166,7 @@ mod tests {
         let file_path = dir.path().join("final_file.bin");
         let (request_tx, request_rx) = mpsc::channel(1);
         let (completion_tx, _completion_rx) = mpsc::channel(1);
-        let mut storage = StorageEngine::new(request_rx, completion_tx);
+        let mut storage = StorageEngine::new(request_rx, completion_tx, None);
         let id = TaskId(100);
         storage.register_task(id, file_path.clone());
 
@@ -173,7 +202,7 @@ mod tests {
 
         let (request_tx, request_rx) = mpsc::channel(10);
         let (completion_tx, _completion_rx) = mpsc::channel(1);
-        let mut storage = StorageEngine::new(request_rx, completion_tx);
+        let mut storage = StorageEngine::new(request_rx, completion_tx, None);
         let id = TaskId(200);
         storage.register_task(id, file_path.clone());
 

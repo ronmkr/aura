@@ -17,10 +17,11 @@ pub struct BtTaskState {
     pub bitfield: Mutex<Option<Bitfield>>,
     pub picker: Mutex<Option<PiecePicker>>,
     pub registry: Mutex<PeerRegistry>,
+    pub db: sled::Db,
 }
 
 impl BtTaskState {
-    pub fn new(torrent: Torrent) -> Self {
+    pub fn new(torrent: Torrent, db: sled::Db) -> Self {
         let num_pieces = torrent.pieces_count();
         let info_hash = if let Some(h2) = torrent.info_hash_v2().unwrap_or(None) {
             InfoHash::V2(h2)
@@ -33,21 +34,36 @@ impl BtTaskState {
             bitfield: Mutex::new(Some(Bitfield::new(num_pieces))),
             picker: Mutex::new(Some(PiecePicker::new(num_pieces))),
             registry: Mutex::new(PeerRegistry::new()),
+            db,
         }
     }
 
-    pub fn new_magnet(info_hash: InfoHash) -> Self {
+    pub fn new_magnet(info_hash: InfoHash, db: sled::Db) -> Self {
         Self {
             info_hash,
             torrent: Mutex::new(None),
             bitfield: Mutex::new(None),
             picker: Mutex::new(None),
             registry: Mutex::new(PeerRegistry::new()),
+            db,
         }
     }
 
     pub async fn mature(&self, torrent: Torrent) {
         let num_pieces = torrent.pieces_count();
+
+        // If v2, persist piece layers to DB
+        if torrent.info.meta_version == Some(2) {
+            if let Some(serde_bencode::value::Value::Dict(dict)) = &torrent.piece_layers {
+                for (root, hashes) in dict {
+                    if let serde_bencode::value::Value::Bytes(hash_bytes) = hashes {
+                        let _ = self.db.insert(root, hash_bytes.clone());
+                    }
+                }
+                let _ = self.db.flush();
+            }
+        }
+
         *self.torrent.lock().await = Some(torrent);
         *self.bitfield.lock().await = Some(Bitfield::new(num_pieces));
         *self.picker.lock().await = Some(PiecePicker::new(num_pieces));
@@ -68,6 +84,7 @@ impl BtTask {
         path: &str,
         dht_tx: mpsc::Sender<crate::dht::DhtCommand>,
         lpd_tx: mpsc::Sender<crate::lpd::LpdCommand>,
+        db: sled::Db,
     ) -> Result<Self> {
         let data = tokio::fs::read(path)
             .await
@@ -75,7 +92,7 @@ impl BtTask {
         let torrent = Torrent::from_bytes(&data)?;
         Ok(Self {
             id,
-            state: Arc::new(BtTaskState::new(torrent)),
+            state: Arc::new(BtTaskState::new(torrent, db)),
             dht_tx,
             lpd_tx,
         })
@@ -86,10 +103,11 @@ impl BtTask {
         info_hash: InfoHash,
         dht_tx: mpsc::Sender<crate::dht::DhtCommand>,
         lpd_tx: mpsc::Sender<crate::lpd::LpdCommand>,
+        db: sled::Db,
     ) -> Self {
         Self {
             id,
-            state: Arc::new(BtTaskState::new_magnet(info_hash)),
+            state: Arc::new(BtTaskState::new_magnet(info_hash, db)),
             dht_tx,
             lpd_tx,
         }
