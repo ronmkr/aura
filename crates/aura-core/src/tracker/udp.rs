@@ -6,6 +6,11 @@ use tracing::{debug, warn};
 
 impl TrackerClient {
     pub(crate) async fn announce_udp(&self, url_str: &str, torrent: &Torrent) -> Result<Vec<Peer>> {
+        if let Some(ref p) = self.proxy {
+            if p.starts_with("socks5://") {
+                warn!("UDP trackers do not yet support SOCKS5 proxying; attempting direct connection for {}", url_str);
+            }
+        }
         let url = url::Url::parse(url_str)
             .map_err(|e| Error::Protocol(format!("Invalid UDP tracker URL: {}", e)))?;
         let host = url

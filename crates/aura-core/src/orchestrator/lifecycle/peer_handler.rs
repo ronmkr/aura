@@ -60,6 +60,7 @@ pub async fn handle_incoming_peer(
                 handshake.peer_id,
                 my_peer_id,
                 pool.clone(),
+                config.network.proxy.clone(),
             );
             worker.local_addr = local_addr;
             worker.pipeline_size = config.bittorrent.request_pipeline_size;
