@@ -187,9 +187,17 @@ impl Orchestrator {
                         let t1 = token_clone.clone();
                         let ua = config.network.user_agent.clone();
                         let port = config.network.listen_port;
+                        let proxy_conf = config.network.proxy.clone();
                         tokio::spawn(async move {
                             let _ = tracker_task
-                                .run_tracker_loop(my_peer_id, port, t1, local_addr, Some(ua))
+                                .run_tracker_loop(
+                                    my_peer_id,
+                                    port,
+                                    t1,
+                                    local_addr,
+                                    Some(ua),
+                                    proxy_conf,
+                                )
                                 .await;
                         });
 
@@ -262,6 +270,7 @@ impl Orchestrator {
                                             peer_id,
                                             my_peer_id,
                                             pool_loop.clone(),
+                                            config.network.proxy.clone(),
                                         );
                                         worker.local_addr = local_addr;
                                         worker.pipeline_size =

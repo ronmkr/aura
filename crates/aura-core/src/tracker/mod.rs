@@ -22,6 +22,7 @@ pub struct TrackerClient {
     pub(crate) port: u16,
     pub(crate) local_addr: Option<std::net::IpAddr>,
     pub(crate) _user_agent: Option<String>,
+    pub(crate) proxy: Option<String>,
 }
 
 impl TrackerClient {
@@ -30,6 +31,7 @@ impl TrackerClient {
         port: u16,
         local_addr: Option<std::net::IpAddr>,
         user_agent: Option<String>,
+        proxy: Option<String>,
     ) -> Self {
         let mut headers = reqwest::header::HeaderMap::new();
         let ua = user_agent
@@ -47,12 +49,19 @@ impl TrackerClient {
             builder = builder.local_address(addr);
         }
 
+        if let Some(ref p) = proxy {
+            if let Ok(proxy_obj) = reqwest::Proxy::all(p) {
+                builder = builder.proxy(proxy_obj);
+            }
+        }
+
         Self {
             client: builder.build().unwrap_or_else(|_| reqwest::Client::new()),
             peer_id,
             port,
             local_addr,
             _user_agent: user_agent,
+            proxy,
         }
     }
 
@@ -225,7 +234,7 @@ mod tests {
 
     #[test]
     fn test_parse_compact_peers() {
-        let client = TrackerClient::new([0; 20], 6881, None, None);
+        let client = TrackerClient::new([0; 20], 6881, None, None, None);
         let bytes = vec![127, 0, 0, 1, 0x1a, 0xe1]; // 127.0.0.1:6881
         let peers = client.parse_compact_peers_raw(&bytes).unwrap();
         assert_eq!(peers.len(), 1);
@@ -235,7 +244,7 @@ mod tests {
 
     #[test]
     fn test_parse_non_compact_peers() {
-        let client = TrackerClient::new([0; 20], 6881, None, None);
+        let client = TrackerClient::new([0; 20], 6881, None, None, None);
 
         use std::collections::HashMap;
         let mut peer_dict = HashMap::new();

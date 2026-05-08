@@ -37,17 +37,44 @@ pub fn bind_socket(
     Ok(())
 }
 
-/// Creates a bound TCP stream.
+/// Creates a bound TCP stream, optionally routed through a SOCKS5 proxy.
 pub async fn connect_tcp_bound(
     remote_addr: SocketAddr,
     interface: Option<&str>,
     local_addr: Option<IpAddr>,
+    proxy: Option<&str>,
 ) -> Result<TcpStream> {
-    let domain = if remote_addr.is_ipv4() {
+    let target_for_socket = if let Some(p) = proxy {
+        if let Some(proxy_addr) = p.strip_prefix("socks5://") {
+            // Resolve proxy address to determine socket domain
+            tokio::net::lookup_host(proxy_addr)
+                .await
+                .map_err(|e| {
+                    Error::Config(format!(
+                        "Failed to resolve proxy address {}: {}",
+                        proxy_addr, e
+                    ))
+                })?
+                .next()
+                .ok_or_else(|| {
+                    Error::Config(format!("Could not resolve proxy address: {}", proxy_addr))
+                })?
+        } else {
+            return Err(Error::Config(format!(
+                "Unsupported proxy scheme for TCP: {}",
+                p
+            )));
+        }
+    } else {
+        remote_addr
+    };
+
+    let domain = if target_for_socket.is_ipv4() {
         Domain::IPV4
     } else {
         Domain::IPV6
     };
+
     let socket = Socket::new(domain, Type::STREAM, Some(Protocol::TCP))
         .map_err(|e| Error::Config(format!("Failed to create TCP socket: {}", e)))?;
 
@@ -58,9 +85,20 @@ pub async fn connect_tcp_bound(
         .set_nonblocking(true)
         .map_err(|e| Error::Config(format!("Failed to set non-blocking: {}", e)))?;
 
-    let stream = TcpStream::connect(remote_addr)
-        .await
-        .map_err(|e| Error::Protocol(format!("Failed to connect to {}: {}", remote_addr, e)))?;
+    let stream = TcpStream::connect(target_for_socket).await.map_err(|e| {
+        Error::Protocol(format!("Failed to connect to {}: {}", target_for_socket, e))
+    })?;
+
+    if let Some(p) = proxy {
+        if p.starts_with("socks5://") {
+            tracing::debug!("Negotiating SOCKS5 proxy connection to {}", remote_addr);
+            let socks_stream =
+                tokio_socks::tcp::Socks5Stream::connect_with_socket(stream, remote_addr)
+                    .await
+                    .map_err(|e| Error::Protocol(format!("SOCKS5 negotiation failed: {}", e)))?;
+            return Ok(socks_stream.into_inner());
+        }
+    }
 
     Ok(stream)
 }

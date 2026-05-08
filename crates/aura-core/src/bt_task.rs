@@ -198,8 +198,9 @@ impl BtTask {
         token: tokio_util::sync::CancellationToken,
         local_addr: Option<std::net::IpAddr>,
         user_agent: Option<String>,
+        proxy: Option<String>,
     ) -> Result<()> {
-        let tracker = TrackerClient::new(my_id, port, local_addr, user_agent);
+        let tracker = TrackerClient::new(my_id, port, local_addr, user_agent, proxy);
         info!(%self.id, "Starting tracker announce");
 
         loop {

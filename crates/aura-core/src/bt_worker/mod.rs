@@ -38,6 +38,7 @@ pub struct BtWorker {
     pub metadata_buffer: Option<BytesMut>,
     pub ut_metadata_id: Option<u8>,
     pub pool: BufferPool,
+    pub proxy: Option<String>,
 }
 
 impl BtWorker {
@@ -47,6 +48,7 @@ impl BtWorker {
         peer_id: [u8; 20],
         my_id: [u8; 20],
         pool: BufferPool,
+        proxy: Option<String>,
     ) -> Self {
         Self {
             peer_addr,
@@ -62,6 +64,7 @@ impl BtWorker {
             metadata_buffer: None,
             ut_metadata_id: None,
             pool,
+            proxy,
         }
     }
 
@@ -71,8 +74,13 @@ impl BtWorker {
             Error::Protocol(format!("Invalid peer address {}: {}", self.peer_addr, e))
         })?;
 
-        let mut stream =
-            crate::net_util::connect_tcp_bound(remote_addr, None, self.local_addr).await?;
+        let mut stream = crate::net_util::connect_tcp_bound(
+            remote_addr,
+            None,
+            self.local_addr,
+            self.proxy.as_deref(),
+        )
+        .await?;
 
         debug!(addr = %self.peer_addr, "Sending handshake...");
         let handshake = Handshake::new(self.info_hash.for_handshake(), self.my_id);
