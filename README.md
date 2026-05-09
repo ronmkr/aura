@@ -8,7 +8,7 @@
 ## 🚀 Features
 
 - **Actor-based Orchestration**: Built on Tokio for massive concurrency and clean decoupling between protocols and storage.
-- **Multi-source Aggregation**: Download a single file from multiple sources (HTTP, BitTorrent, FTP) simultaneously with adaptive racing and work stealing.
+- **Multi-source Aggregation**: Download a single file from multiple sources (HTTP, BitTorrent, FTP) simultaneously *(Adaptive racing and work stealing planned)*.
 - **BitTorrent Excellence**: Full support for Trackers (UDP/HTTP), DHT (Kademlia), Seeding, Pipelined Requests, and SHA-1 Hash Verification.
 - **FTP Support**: Support for FTP(S) with range-based segment fetching and authentication.
 - **Persistent Progress**: State is saved to `.aura` control files, allowing for seamless resumption after restarts.
@@ -57,3 +57,4 @@ Please read [CONTRIBUTING.md](CONTRIBUTING.md) for our engineering standards and
 
 ## 📜 License
 This project is licensed under the MIT License - see the LICENSE file for details.
+

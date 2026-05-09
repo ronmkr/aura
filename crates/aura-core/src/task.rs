@@ -44,6 +44,9 @@ pub struct SubTask {
     pub completed_length: u64,
     pub active: bool,
     pub phase: DownloadPhase,
+    pub target_concurrency: usize,
+    pub recent_bytes_downloaded: u64,
+    pub ewma_throughput: f64,
 }
 
 /// The high-level representation of a logical download operation.
@@ -157,11 +160,15 @@ impl MetaTask {
             completed_length: 0,
             active: true,
             phase: DownloadPhase::MetadataExchange,
+            target_concurrency: 4, // Initial default
+            recent_bytes_downloaded: 0,
+            ewma_throughput: 0.0,
         });
         sub_id
     }
 
     pub fn pick_range_for_subtask(&mut self, sub_id: TaskId) -> Option<Range> {
+        // 1. Try to pick from pending ranges first
         if let Some(range) = self.pending_ranges.pop() {
             self.in_flight_ranges.push((sub_id, range));
             if let Some(sub) = self.subtasks.iter_mut().find(|s| s.id == sub_id) {
@@ -169,6 +176,51 @@ impl MetaTask {
             }
             return Some(range);
         }
+
+        // 2. Work Stealing / Racing (ADR 0005)
+        // If no pending ranges, look for "lagging" in-flight ranges to race against.
+        // A range is lagging if its assigned subtask's throughput is significantly below average.
+        let avg_throughput = {
+            let active_subs: Vec<_> = self
+                .subtasks
+                .iter()
+                .filter(|s| s.ewma_throughput > 0.0)
+                .collect();
+            if active_subs.is_empty() {
+                0.0
+            } else {
+                active_subs.iter().map(|s| s.ewma_throughput).sum::<f64>()
+                    / active_subs.len() as f64
+            }
+        };
+
+        if avg_throughput > 0.0 {
+            let mut candidates = Vec::new();
+            for (assigned_sub_id, range) in &self.in_flight_ranges {
+                // Don't race against yourself
+                if *assigned_sub_id == sub_id {
+                    continue;
+                }
+
+                if let Some(other_sub) = self.subtasks.iter().find(|s| s.id == *assigned_sub_id) {
+                    // Race if the other subtask is 3x slower than average
+                    if other_sub.ewma_throughput < (avg_throughput / 3.0) {
+                        candidates.push((*assigned_sub_id, *range));
+                    }
+                }
+            }
+
+            if let Some((_other_id, range)) = candidates.first() {
+                let range = *range;
+                self.in_flight_ranges.push((sub_id, range));
+                if let Some(sub) = self.subtasks.iter_mut().find(|s| s.id == sub_id) {
+                    sub.assigned_ranges.push(range);
+                }
+                tracing::info!(%sub_id, ?range, "Racing/Stealing range from slow source");
+                return Some(range);
+            }
+        }
+
         None
     }
 

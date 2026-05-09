@@ -39,6 +39,7 @@ pub struct BtWorker {
     pub ut_metadata_id: Option<u8>,
     pub pool: BufferPool,
     pub proxy: Option<String>,
+    pub throttler: Arc<crate::throttler::Throttler>,
 }
 
 impl BtWorker {
@@ -49,6 +50,7 @@ impl BtWorker {
         my_id: [u8; 20],
         pool: BufferPool,
         proxy: Option<String>,
+        throttler: Arc<crate::throttler::Throttler>,
     ) -> Self {
         Self {
             peer_addr,
@@ -65,6 +67,7 @@ impl BtWorker {
             ut_metadata_id: None,
             pool,
             proxy,
+            throttler,
         }
     }
 
@@ -350,9 +353,12 @@ impl BtWorker {
                                     if Some(index as usize) == self.current_piece =>
                                 {
                                     let len = block.len();
+                                    // Admission Control: Wait for bandwidth tokens before processing the piece block
+                                    self.throttler.acquire_download(meta_id, len as u64).await;
+
                                     self.piece_buffer[begin as usize..begin as usize + len].copy_from_slice(&block);
                                     self.bytes_received += len as u64;
-                                    let _ = subtask_tx.send(SubTaskEvent::Downloaded(meta_id, len as u64)).await;
+                                    let _ = subtask_tx.send(SubTaskEvent::Downloaded(meta_id, sub_id, len as u64)).await;
 
                                     if !peer_choking {
                                         self.trigger_request(&mut framed, &task, meta_id, sub_id, storage_tx.clone(), subtask_tx.clone()).await?;

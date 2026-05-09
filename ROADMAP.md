@@ -63,5 +63,5 @@
 - [x] `CONTEXT.md` (Ubiquitous Language).
 - [x] `CONTRIBUTING.md`.
 - [x] `.github/workflows/ci.yml`.
-- [ ] Automated Benchmarking Suite.
+- [x] Automated Benchmarking Suite.
 - [ ] Comprehensive Integration Tests.

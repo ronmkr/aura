@@ -20,10 +20,12 @@ impl Orchestrator {
             SubTaskEvent::Failed(meta_id, sub_id, err) => {
                 info!(%meta_id, %sub_id, %err, "Subtask failed");
             }
-            SubTaskEvent::Downloaded(meta_id, bytes) => {
-                self.throttler.consume_download(bytes).await;
+            SubTaskEvent::Downloaded(meta_id, sub_id, bytes) => {
                 if let Some(task) = self.tasks.get_mut(&meta_id) {
                     task.completed_length += bytes;
+                    if let Some(sub) = task.subtasks.iter_mut().find(|s| s.id == sub_id) {
+                        sub.recent_bytes_downloaded += bytes;
+                    }
                     let _ = self.event_tx.send(Event::TaskProgress {
                         id: meta_id,
                         completed_bytes: task.completed_length,
@@ -164,6 +166,24 @@ impl Orchestrator {
         range: crate::task::Range,
     ) -> Result<()> {
         if let Some(meta_task) = self.tasks.get_mut(&meta_id) {
+            // Racing coordination: check if other subtasks were also working on this range
+            let racing_sub_ids: Vec<TaskId> = meta_task
+                .in_flight_ranges
+                .iter()
+                .filter(|(sid, r)| *r == range && *sid != sub_id)
+                .map(|(sid, _)| *sid)
+                .collect();
+
+            if !racing_sub_ids.is_empty() {
+                debug!(%meta_id, ?range, racing = racing_sub_ids.len(), "Range finished; canceling racing workers");
+                for racing_sid in racing_sub_ids {
+                    // For non-BT tasks, we rely on the in_flight_ranges cleanup and next loop check.
+                    if let Some(sub) = meta_task.subtasks.iter_mut().find(|s| s.id == racing_sid) {
+                        sub.assigned_ranges.retain(|r| *r != range);
+                    }
+                }
+            }
+
             meta_task.mark_range_complete(sub_id, range);
 
             if meta_task.is_complete() {

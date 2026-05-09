@@ -24,8 +24,6 @@ impl Orchestrator {
 
         let local_addr = self.resolve_local_addr();
         let config_arc = self.config.clone();
-        let concurrency_per_subtask = 4;
-
         loop {
             if token.is_cancelled() {
                 break;
@@ -36,7 +34,7 @@ impl Orchestrator {
                 .get_mut(&meta_id)
                 .ok_or(Error::TaskNotFound(meta_id))?;
 
-            let (uri, ttype, current_concurrency) = {
+            let (uri, ttype, current_concurrency, target_concurrency) = {
                 let sub_task = meta_task
                     .subtasks
                     .iter()
@@ -46,10 +44,11 @@ impl Orchestrator {
                     sub_task.uri.clone(),
                     sub_task.task_type.clone(),
                     sub_task.assigned_ranges.len(),
+                    sub_task.target_concurrency,
                 )
             };
 
-            if current_concurrency >= concurrency_per_subtask {
+            if current_concurrency >= target_concurrency {
                 break;
             }
 
@@ -59,12 +58,13 @@ impl Orchestrator {
                 let (progress_tx, mut progress_rx) = mpsc::unbounded_channel::<u64>();
                 let token_clone = token.clone();
                 let config_clone = config_arc.clone();
+                let throttler_clone = self.throttler.clone();
 
                 let subtask_tx_progress = subtask_tx.clone();
                 tokio::spawn(async move {
                     while let Some(bytes) = progress_rx.recv().await {
                         let _ = subtask_tx_progress
-                            .send(SubTaskEvent::Downloaded(meta_id, bytes))
+                            .send(SubTaskEvent::Downloaded(meta_id, sub_id, bytes))
                             .await;
                     }
                 });
@@ -87,7 +87,7 @@ impl Orchestrator {
                             tokio::select! {
                                 _ = token_clone.cancelled() => {
                                 }
-                                res = worker.fetch_segment(meta_id, segment, Some(progress_tx)) => {
+                                res = worker.fetch_segment(meta_id, segment, Some(progress_tx), throttler_clone.clone()) => {
                                     match res {
                                         Ok(piece) => {
                                             let _ = storage_tx.send(StorageRequest::Write {
@@ -118,7 +118,7 @@ impl Orchestrator {
                             tokio::select! {
                                 _ = token_clone.cancelled() => {
                                 }
-                                res = worker.fetch_segment(meta_id, segment, Some(progress_tx)) => {
+                                res = worker.fetch_segment(meta_id, segment, Some(progress_tx), throttler_clone.clone()) => {
                                     match res {
                                         Ok(piece) => {
                                             let _ = storage_tx.send(StorageRequest::Write {

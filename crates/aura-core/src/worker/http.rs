@@ -124,9 +124,10 @@ impl HttpWorker {
 impl ProtocolWorker for HttpWorker {
     async fn fetch_segment(
         &self,
-        _task_id: TaskId,
+        task_id: TaskId,
         segment: Segment,
         progress: Option<ProgressSender>,
+        throttler: std::sync::Arc<crate::throttler::Throttler>,
     ) -> Result<PieceData> {
         let range_header = format!(
             "bytes={}-{}",
@@ -161,9 +162,14 @@ impl ProtocolWorker for HttpWorker {
 
         while let Some(chunk_res) = stream.next().await {
             let chunk = chunk_res.map_err(|e| Error::Protocol(format!("Stream error: {}", e)))?;
+            let chunk_len = chunk.len() as u64;
+
+            // Admission Control: Wait for bandwidth tokens before processing the chunk
+            throttler.acquire_download(task_id, chunk_len).await;
+
             buffer.extend_from_slice(&chunk);
             if let Some(ref p_tx) = progress {
-                let _ = p_tx.send(chunk.len() as u64);
+                let _ = p_tx.send(chunk_len);
             }
         }
 
@@ -226,6 +232,7 @@ mod tests {
             Some(format!("{}/start", server.uri())),
             None,
         );
+        let throttler = std::sync::Arc::new(crate::throttler::Throttler::new(0, 0));
         let result = worker_final
             .fetch_segment(
                 TaskId(1),
@@ -234,6 +241,7 @@ mod tests {
                     length: 11,
                 },
                 None,
+                throttler,
             )
             .await;
 

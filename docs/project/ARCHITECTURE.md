@@ -91,7 +91,7 @@ flowchart TD
 ### 5. System Integration
 - **NAT Traversal**: Automatic port mapping via UPnP/NAT-PMP.
 - **Power Management**: Prevents the OS from entering sleep mode while active downloads are in progress.
-- **VPN Kill-switch**: Ensures traffic only flows through authorized network interfaces.
+- **VPN Kill-switch**: *(Planned)* Ensures traffic only flows through authorized network interfaces.
 
 ## 🔄 Core Data Flow (Download)
 

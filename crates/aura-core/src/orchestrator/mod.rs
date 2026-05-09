@@ -54,7 +54,7 @@ pub enum SubTaskEvent {
     MetadataReceived(TaskId, TaskId, Box<crate::torrent::Torrent>),
     RangeFinished(TaskId, TaskId, Range),
     Failed(TaskId, TaskId, String),
-    Downloaded(TaskId, u64),
+    Downloaded(TaskId, TaskId, u64),
     Uploaded(TaskId, u64),
     PeerBitfield(TaskId, PeerId, Bitfield),
     PeerHave(TaskId, PeerId, u32),
@@ -109,6 +109,7 @@ pub struct Orchestrator {
     pub(crate) _nat_tx: mpsc::Sender<NatCommand>,
     pub(crate) peer_id: [u8; 20],
     pub(crate) throttler: Arc<Throttler>,
+    pub(crate) vpn_provider: Option<Arc<dyn crate::vpn::VpnProvider>>,
     pub(crate) config: Arc<ArcSwap<crate::Config>>,
     pub(crate) power_manager: crate::power::PowerManager,
     pub(crate) pool: BufferPool,
@@ -164,7 +165,17 @@ impl Orchestrator {
         peer_id[..8].copy_from_slice(b"-AR0001-");
         rand::rng().fill(&mut peer_id[8..]);
 
-        let throttler = Arc::new(Throttler::new(0));
+        let initial_config = config.load();
+        let throttler = Arc::new(Throttler::new(
+            initial_config.bandwidth.global_download_limit,
+            initial_config.bandwidth.global_upload_limit,
+        ));
+
+        let vpn_provider: Option<Arc<dyn crate::vpn::VpnProvider>> =
+            initial_config.network.interface.as_ref().map(|iface| {
+                Arc::new(crate::vpn::InterfaceMonitor::new(iface.clone()))
+                    as Arc<dyn crate::vpn::VpnProvider>
+            });
 
         (
             Self {
@@ -184,6 +195,7 @@ impl Orchestrator {
                 _nat_tx: nat_tx,
                 peer_id,
                 throttler,
+                vpn_provider,
                 config,
                 power_manager: crate::power::PowerManager::new(),
                 pool,
@@ -191,6 +203,69 @@ impl Orchestrator {
             },
             event_tx,
         )
+    }
+
+    pub(crate) async fn perform_adaptive_scaling(&mut self) {
+        let config = self.config.load();
+        let max_concurrency = config.bandwidth.max_connections_per_task;
+
+        // EWMA factor
+        let alpha = 0.3;
+
+        let mut to_dispatch = Vec::new();
+
+        for task in self.tasks.values_mut() {
+            if task.phase != crate::task::DownloadPhase::Downloading {
+                continue;
+            }
+
+            for sub_task in task.subtasks.iter_mut() {
+                if !sub_task.active {
+                    continue;
+                }
+
+                // Calculate throughput for the last second
+                let current_throughput = sub_task.recent_bytes_downloaded as f64;
+                sub_task.recent_bytes_downloaded = 0;
+
+                // Update EWMA
+                if sub_task.ewma_throughput == 0.0 {
+                    sub_task.ewma_throughput = current_throughput;
+                } else {
+                    sub_task.ewma_throughput =
+                        (alpha * current_throughput) + ((1.0 - alpha) * sub_task.ewma_throughput);
+                }
+
+                // Adaptive Scaling Logic
+                // If throughput per connection is low (< 256 KB/s) and we haven't reached max_concurrency, scale up.
+                let throughput_per_connection = if sub_task.target_concurrency > 0 {
+                    sub_task.ewma_throughput / sub_task.target_concurrency as f64
+                } else {
+                    0.0
+                };
+
+                if throughput_per_connection < 256.0 * 1024.0
+                    && sub_task.target_concurrency < max_concurrency
+                {
+                    sub_task.target_concurrency =
+                        (sub_task.target_concurrency + 1).min(max_concurrency);
+                    tracing::debug!(
+                        meta_id = %task.id,
+                        sub_id = %sub_task.id,
+                        target = %sub_task.target_concurrency,
+                        throughput = %sub_task.ewma_throughput,
+                        "Scaling up subtask concurrency due to low throughput"
+                    );
+
+                    to_dispatch.push((task.id, sub_task.id));
+                }
+            }
+        }
+
+        for (meta_id, sub_id) in to_dispatch {
+            // Re-dispatch to spawn new workers immediately
+            let _ = self.dispatch_next_ranges(meta_id, sub_id).await;
+        }
     }
 
     pub async fn run(mut self) -> Result<()> {
@@ -216,34 +291,28 @@ impl Orchestrator {
         let mut save_interval = tokio::time::interval(std::time::Duration::from_secs(
             config_initial.storage.save_session_interval_secs,
         ));
+        let mut scaling_interval = tokio::time::interval(std::time::Duration::from_secs(1));
 
         // VPN Kill-switch Monitor
-        let config_monitor = self.config.clone();
+        let vpn_provider_monitor = self.vpn_provider.clone();
         let subtask_tx_monitor = self.subtask_tx.clone();
 
         tokio::spawn(async move {
-            let mut interval = tokio::time::interval(std::time::Duration::from_secs(2));
-            loop {
-                interval.tick().await;
-                let config = config_monitor.load();
-                if let Some(ref iface) = config.network.interface {
-                    let iface_clone = iface.clone();
-                    let is_up = tokio::task::spawn_blocking(move || {
-                        use local_ip_address::list_afinet_netifas;
-                        list_afinet_netifas()
-                            .ok()
-                            .map(|ifas| ifas.into_iter().any(|(name, _)| name == iface_clone))
-                    })
-                    .await
-                    .unwrap_or(None)
-                    .unwrap_or(false);
-
-                    if !is_up {
-                        tracing::warn!(
-                            "VPN Kill-switch triggered! Interface {} is down. Stopping all tasks.",
-                            iface
-                        );
-                        let _ = subtask_tx_monitor.send(SubTaskEvent::KillSwitch).await;
+            if let Some(vpn) = vpn_provider_monitor {
+                let mut interval = tokio::time::interval(std::time::Duration::from_secs(2));
+                loop {
+                    interval.tick().await;
+                    match vpn.status().await {
+                        Ok(crate::vpn::VpnStatus::Disconnected)
+                        | Ok(crate::vpn::VpnStatus::Error(_)) => {
+                            tracing::warn!(
+                                provider = %vpn.name(),
+                                interface = ?vpn.interface(),
+                                "VPN Kill-switch triggered! Connection lost. Stopping all tasks."
+                            );
+                            let _ = subtask_tx_monitor.send(SubTaskEvent::KillSwitch).await;
+                        }
+                        _ => {}
                     }
                 }
             }
@@ -251,6 +320,9 @@ impl Orchestrator {
 
         loop {
             tokio::select! {
+                _ = scaling_interval.tick() => {
+                    self.perform_adaptive_scaling().await;
+                }
                 _ = save_interval.tick() => {
                     self.check_seed_limits().await;
                     let ids: Vec<TaskId> = self.tasks.keys().cloned().collect();
@@ -268,9 +340,10 @@ impl Orchestrator {
                     let local_addr = self.resolve_local_addr();
                     let config = self.config.load().clone();
                     let pool = self.pool.clone();
+                    let throttler = self.throttler.clone();
 
                     tokio::spawn(async move {
-                        if let Err(e) = lifecycle::handle_incoming_peer(stream, addr, bt_registry, worker_command_txs, storage_tx, subtask_tx, my_peer_id, cancellation_tokens, local_addr, config, pool).await {
+                        if let Err(e) = lifecycle::handle_incoming_peer(stream, addr, bt_registry, worker_command_txs, storage_tx, subtask_tx, my_peer_id, cancellation_tokens, local_addr, config, pool, throttler).await {
                             tracing::debug!(?addr, error = %e, "Failed to handle incoming peer");
                         }
                     });
