@@ -4,6 +4,8 @@
 - [Installation](./installation.md)
 - [Getting Started](./usage.md)
 - [Configuration](./configuration.md)
+- [CLI Reference](./cli-reference.md)
+- [TUI Guide](./tui-guide.md)
 
 ---
 
@@ -21,3 +23,11 @@
 - [Architecture](./advanced/architecture.md)
 - [BDD Testing Suite](./advanced/testing.md)
 - [ADR Index](./advanced/adr-index.md)
+
+---
+
+# Help & Resources
+
+- [Troubleshooting](./troubleshooting.md)
+- [FAQ](./faq.md)
+- [Glossary](./glossary.md)
