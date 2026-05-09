@@ -61,18 +61,21 @@ impl Orchestrator {
     ) -> Result<()> {
         info!(%id, %name, "Adding MetaTask with {} sources", sources.len());
 
-        let path = format!("{}.aura", name);
-        let (mut meta_task, loaded_bitfield) = if let Ok(data) = tokio::fs::read(&path).await {
+        let config = self.config.load();
+        let download_dir = &config.storage.download_dir;
+        let control_path = std::path::Path::new(download_dir).join(format!("{}.aura", name));
+
+        let (mut meta_task, loaded_bitfield) = if let Ok(data) = std::fs::read(&control_path) {
             match serde_json::from_slice::<crate::task::TaskState>(&data) {
                 Ok(state) => {
-                    info!(%id, "Resuming task from control file {}", path);
+                    info!(%id, "Resuming task from control file {:?}", control_path);
                     let bitfield = state.bitfield.clone();
                     let mut mt = MetaTask::from_state(state);
                     mt.id = id; // Update to the new ID
                     (mt, bitfield)
                 }
                 Err(e) => {
-                    tracing::warn!(%id, "Failed to parse control file {}: {}. Starting fresh.", path, e);
+                    tracing::warn!(%id, "Failed to parse control file {:?}: {}. Starting fresh.", control_path, e);
                     (MetaTask::new(id, name, 0), None)
                 }
             }
@@ -89,14 +92,13 @@ impl Orchestrator {
                                 if meta_task.name == "unnamed" || meta_task.name.is_empty() {
                                     meta_task.name = file.name.clone();
                                     // Update storage engine with the real name
-                                    let path = std::env::current_dir()
-                                        .unwrap_or_default()
-                                        .join(&file.name);
+                                    let path = std::path::Path::new(download_dir).join(&file.name);
                                     let _ = self
                                         .storage_tx
                                         .send(crate::storage::StorageRequest::RegisterTask {
                                             task_id: id,
                                             path,
+                                            total_length: file.size.unwrap_or(0),
                                         })
                                         .await;
                                 }
@@ -111,6 +113,7 @@ impl Orchestrator {
                                         "ftp" => crate::task::TaskType::Ftp,
                                         _ => crate::task::TaskType::Http,
                                     };
+                                    tracing::debug!(uri = %res.uri, protocol = %res.protocol, resolved = ?res_ttype, "Adding Metalink subtask");
                                     meta_task.add_subtask(res.uri, res_ttype);
                                 }
                             }
@@ -166,6 +169,7 @@ impl Orchestrator {
                 });
             }
         }
+        let _ = self.save_task(id).await;
         Ok(())
     }
 

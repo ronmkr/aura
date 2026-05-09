@@ -76,7 +76,7 @@ async fn main() -> Result<()> {
         let path = current_dir.join(&name);
         let id = TaskId(rand::rng().random());
         if !is_metadata {
-            storage.register_task(id, path);
+            storage.register_task(id, path, 0);
         }
 
         let ttype = if uri.ends_with(".torrent") || (is_local_file && uri.ends_with(".torrent")) {

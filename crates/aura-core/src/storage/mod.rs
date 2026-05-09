@@ -10,11 +10,13 @@ use std::path::PathBuf;
 use tokio::fs::{self, File, OpenOptions};
 use tokio::sync::{mpsc, oneshot};
 use tracing::{error, info};
+
 #[derive(Debug)]
 pub enum StorageRequest {
     RegisterTask {
         task_id: TaskId,
         path: PathBuf,
+        total_length: u64,
     },
     Write {
         task_id: TaskId,
@@ -81,18 +83,34 @@ impl StorageEngine {
         self.db.clone()
     }
 
-    pub fn register_task(&mut self, id: TaskId, path: PathBuf) {
+    pub fn register_task(&mut self, id: TaskId, path: PathBuf, _total_length: u64) {
         self.task_paths.insert(id, path);
-        self.next_offsets.insert(id, 0);
-        self.pending_writes.insert(id, BTreeMap::new());
+        self.next_offsets.entry(id).or_insert(0);
+        self.pending_writes.entry(id).or_default();
     }
+
+    pub(crate) async fn preallocate_task(&mut self, id: TaskId, length: u64) -> Result<()> {
+        if length == 0 {
+            return Ok(());
+        }
+        let file = self.get_or_open_part_file(id).await?;
+        file.set_len(length).await.map_err(Error::from)
+    }
+
     pub async fn run(mut self) -> Result<()> {
         info!("Storage Engine started");
 
         while let Some(req) = self.request_rx.recv().await {
             match req {
-                StorageRequest::RegisterTask { task_id, path } => {
-                    self.register_task(task_id, path);
+                StorageRequest::RegisterTask {
+                    task_id,
+                    path,
+                    total_length,
+                } => {
+                    self.register_task(task_id, path, total_length);
+                    if let Err(e) = self.preallocate_task(task_id, total_length).await {
+                        error!(%task_id, error = %e, "Failed to pre-allocate file");
+                    }
                 }
                 StorageRequest::Write {
                     task_id,
@@ -136,7 +154,6 @@ impl StorageEngine {
     pub(crate) async fn get_or_open_part_file(&mut self, id: TaskId) -> Result<&mut File> {
         if !self.handles.contains_key(&id) {
             let base_path = self.task_paths.get(&id).ok_or(Error::TaskNotFound(id))?;
-
             let part_path = get_part_path(base_path)?;
 
             if let Some(parent) = part_path.parent() {
@@ -145,6 +162,7 @@ impl StorageEngine {
 
             let file = OpenOptions::new()
                 .write(true)
+                .read(true)
                 .create(true)
                 .truncate(false)
                 .open(&part_path)
@@ -173,7 +191,7 @@ mod tests {
         let (completion_tx, _completion_rx) = mpsc::channel(1);
         let mut storage = StorageEngine::new(request_rx, completion_tx, None);
         let id = TaskId(100);
-        storage.register_task(id, file_path.clone());
+        storage.register_task(id, file_path.clone(), 0);
 
         tokio::spawn(async move {
             storage.run().await.unwrap();
@@ -209,7 +227,7 @@ mod tests {
         let (completion_tx, _completion_rx) = mpsc::channel(1);
         let mut storage = StorageEngine::new(request_rx, completion_tx, None);
         let id = TaskId(200);
-        storage.register_task(id, file_path.clone());
+        storage.register_task(id, file_path.clone(), 0);
 
         tokio::spawn(async move {
             storage.run().await.unwrap();

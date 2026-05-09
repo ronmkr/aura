@@ -44,6 +44,8 @@ wiremock = "0.6"
 tracing-subscriber = "0.3"
 proptest = "1.6"
 criterion = { version = "0.5", features = ["async_tokio"] }
+cucumber = "0.23.0"
+futures = "0.3.32"
 
 [[bench]]
 name = "storage_bench"
@@ -51,4 +53,8 @@ harness = false
 
 [[bench]]
 name = "buffer_bench"
+harness = false
+
+[[test]]
+name = "cucumber"
 harness = false

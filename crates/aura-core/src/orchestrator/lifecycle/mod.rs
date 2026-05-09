@@ -28,7 +28,9 @@ impl Orchestrator {
 
             let state = meta_task.to_state(bitfield);
             let filename = format!("{}.aura", meta_task.name);
-            let path = std::env::current_dir().unwrap_or_default().join(&filename);
+            let config = self.config.load();
+            let download_dir = std::path::PathBuf::from(&config.storage.download_dir);
+            let path = download_dir.join(&filename);
             info!(%id, path = ?path, "Saving control file");
 
             let data = serde_json::to_vec_pretty(&state)
