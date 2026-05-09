@@ -181,11 +181,16 @@ impl MetaTask {
         // If no pending ranges, look for "lagging" in-flight ranges to race against.
         // A range is lagging if its assigned subtask's throughput is significantly below average.
         let avg_throughput = {
-            let active_subs: Vec<_> = self.subtasks.iter().filter(|s| s.ewma_throughput > 0.0).collect();
+            let active_subs: Vec<_> = self
+                .subtasks
+                .iter()
+                .filter(|s| s.ewma_throughput > 0.0)
+                .collect();
             if active_subs.is_empty() {
                 0.0
             } else {
-                active_subs.iter().map(|s| s.ewma_throughput).sum::<f64>() / active_subs.len() as f64
+                active_subs.iter().map(|s| s.ewma_throughput).sum::<f64>()
+                    / active_subs.len() as f64
             }
         };
 

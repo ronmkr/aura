@@ -303,7 +303,8 @@ impl Orchestrator {
                 loop {
                     interval.tick().await;
                     match vpn.status().await {
-                        Ok(crate::vpn::VpnStatus::Disconnected) | Ok(crate::vpn::VpnStatus::Error(_)) => {
+                        Ok(crate::vpn::VpnStatus::Disconnected)
+                        | Ok(crate::vpn::VpnStatus::Error(_)) => {
                             tracing::warn!(
                                 provider = %vpn.name(),
                                 interface = ?vpn.interface(),

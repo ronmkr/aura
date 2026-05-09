@@ -127,7 +127,7 @@ impl Throttler {
 
     pub async fn acquire_download(&self, id: TaskId, amount: u64) {
         // Hierarchical acquisition: Global -> Task
-        // Note: Global should be acquired first to ensure we don't exceed global bandwidth 
+        // Note: Global should be acquired first to ensure we don't exceed global bandwidth
         // while waiting for task-level tokens.
         self.global_download.acquire(amount).await;
 

@@ -90,7 +90,13 @@ impl Orchestrator {
         self.cancellation_tokens.insert(id, token.clone());
 
         let config = self.config.load();
-        self.throttler.register_task(id, config.bandwidth.per_task_download_limit, config.bandwidth.per_task_upload_limit).await;
+        self.throttler
+            .register_task(
+                id,
+                config.bandwidth.per_task_download_limit,
+                config.bandwidth.per_task_upload_limit,
+            )
+            .await;
 
         self.tasks.insert(id, meta_task);
         self.start_task_loops_with_bitfield(id, token, loaded_bitfield)
