@@ -18,4 +18,4 @@ This document defines the foundational mandates for Gemini CLI when working on t
 - **TDD Workflow**: Always follow the Red-Green-Refactor cycle. A task is not started until a failing test (RED) exists, and not finished until the test passes (GREEN) and the code is idiomatic (REFACTOR).
 - **Branch Protection**: All changes must be submitted via **Pull Requests** to the `main` branch. Direct pushes to `main` are prohibited.
 - **Validation**: Every implementation task is incomplete without comprehensive unit tests and behavioral verification.
-- **Documentation**: Update `CONTEXT.md` for new domain terms and maintain the ADR sequence in `docs/adr/`. All project documentation must reside in `docs/project/`.
+- **Documentation**: Update `CONTEXT.md` for new domain terms and maintain the ADR sequence in `aura-docs/adr/`. All project documentation must reside in `aura-docs/project/`.

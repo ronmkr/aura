@@ -1,0 +1,10 @@
+[book]
+authors = ["ronmkr"]
+language = "en"
+multilingual = false
+src = "src"
+title = "Aura User Manual"
+
+[output.html]
+git-repository-url = "https://github.com/ronmkr/aura"
+edit-url-template = "https://github.com/ronmkr/aura/edit/main/aura-docs/manual/{path}"
