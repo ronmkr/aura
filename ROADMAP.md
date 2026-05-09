@@ -50,10 +50,16 @@
 - [x] **URL Globbing & Batch Downloads**.
 - [x] **FTP Protocol Support**.
 - [x] **VPN Safety & Traffic Kill-switch** (ADR 0035).
+- [ ] **Metalink Support (V3/V4)** (Issue #33) - **[PRIORITY: HIGH]**.
 - [x] **Dynamic TOML Configuration** (Aura.toml + Hot-reloading).
 - [x] **Modular Architecture Refactor** (No file > 400 lines).
 - [ ] **VPN Native Integration** (OpenVPN/WireGuard support) (ADR 0038).
 - [x] **Power Management** (OS-level sleep assertions).
+
+## 🚀 Milestone 7: Industrial Hardening (Proposed)
+- [ ] **Advanced Disk I/O Scheduling** (Deadline-based sorted writes) (ADR 0022).
+- [ ] **Unified Credential Provider** (Netrc/Cookie management) (ADR 0014).
+- [ ] **Multi-tenancy & Quotas** (Resource isolation) (ADR 0032).
 - [ ] **No-COW Allocator** (Btrfs/ZFS fragmentation prevention).
 - [ ] **Recursive Mirroring** (Wget-style site crawling).
 
