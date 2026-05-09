@@ -17,6 +17,7 @@ impl Orchestrator {
             }
             Command::Remove(id) => {
                 let _ = self.handle_pause(id).await;
+                self.throttler.unregister_task(id).await;
                 self.tasks.remove(&id);
             }
             Command::ListActive(reply_tx) => {
@@ -30,7 +31,9 @@ impl Orchestrator {
             Command::ReloadConfig(new_config) => {
                 info!("Reloading configuration");
                 self.throttler
-                    .set_limit(new_config.bandwidth.global_download_limit);
+                    .set_global_download_limit(new_config.bandwidth.global_download_limit);
+                self.throttler
+                    .set_global_upload_limit(new_config.bandwidth.global_upload_limit);
                 self.config.store(new_config);
             }
             Command::KillSwitch => {
@@ -85,6 +88,9 @@ impl Orchestrator {
 
         let token = tokio_util::sync::CancellationToken::new();
         self.cancellation_tokens.insert(id, token.clone());
+
+        let config = self.config.load();
+        self.throttler.register_task(id, config.bandwidth.per_task_download_limit, config.bandwidth.per_task_upload_limit).await;
 
         self.tasks.insert(id, meta_task);
         self.start_task_loops_with_bitfield(id, token, loaded_bitfield)

@@ -1,8 +1,9 @@
 //! throttler: Implements a hierarchical Token Bucket for bandwidth control.
 
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
-use tokio::sync::Semaphore;
+use tokio::sync::{RwLock, Semaphore};
 use tokio::time::{interval, Duration};
 
 pub struct TokenBucket {
@@ -13,10 +14,15 @@ pub struct TokenBucket {
 
 impl TokenBucket {
     pub fn new(rate_per_sec: u64) -> Self {
-        let capacity = rate_per_sec;
-        let available = Arc::new(Semaphore::new(capacity as usize));
+        // Initial capacity is either the rate or a sensible default for unlimited (1GB)
+        let initial_cap = if rate_per_sec == 0 {
+            1_000_000_000
+        } else {
+            rate_per_sec
+        };
+        let available = Arc::new(Semaphore::new(initial_cap as usize));
         let rate_atomic = Arc::new(AtomicU64::new(rate_per_sec));
-        let capacity_atomic = Arc::new(AtomicU64::new(capacity));
+        let capacity_atomic = Arc::new(AtomicU64::new(initial_cap));
 
         let available_clone = available.clone();
         let rate_clone = rate_atomic.clone();
@@ -42,7 +48,9 @@ impl TokenBucket {
                 let current = available_clone.available_permits();
                 if current < cap as usize {
                     let to_add = std::cmp::min(refill_amount as usize, cap as usize - current);
-                    available_clone.add_permits(to_add);
+                    if to_add > 0 {
+                        available_clone.add_permits(to_add);
+                    }
                 }
             }
         });
@@ -56,7 +64,12 @@ impl TokenBucket {
 
     pub fn set_rate(&self, new_rate: u64) {
         self.rate_per_sec.store(new_rate, Ordering::Relaxed);
-        self.capacity.store(new_rate, Ordering::Relaxed);
+        let cap = if new_rate == 0 {
+            1_000_000_000
+        } else {
+            new_rate
+        };
+        self.capacity.store(cap, Ordering::Relaxed);
     }
 
     pub async fn acquire(&self, amount: u64) {
@@ -71,22 +84,73 @@ impl TokenBucket {
     }
 }
 
+use crate::TaskId;
+
 pub struct Throttler {
     global_download: TokenBucket,
+    global_upload: TokenBucket,
+    task_download: Arc<RwLock<HashMap<TaskId, Arc<TokenBucket>>>>,
+    task_upload: Arc<RwLock<HashMap<TaskId, Arc<TokenBucket>>>>,
 }
 
 impl Throttler {
-    pub fn new(global_download_rate: u64) -> Self {
+    pub fn new(global_download_rate: u64, global_upload_rate: u64) -> Self {
         Self {
             global_download: TokenBucket::new(global_download_rate),
+            global_upload: TokenBucket::new(global_upload_rate),
+            task_download: Arc::new(RwLock::new(HashMap::new())),
+            task_upload: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
-    pub fn set_limit(&self, new_rate: u64) {
+    pub fn set_global_download_limit(&self, new_rate: u64) {
         self.global_download.set_rate(new_rate);
     }
 
-    pub async fn consume_download(&self, amount: u64) {
+    pub fn set_global_upload_limit(&self, new_rate: u64) {
+        self.global_upload.set_rate(new_rate);
+    }
+
+    pub async fn register_task(&self, id: TaskId, dl_limit: u64, ul_limit: u64) {
+        let mut dl = self.task_download.write().await;
+        dl.insert(id, Arc::new(TokenBucket::new(dl_limit)));
+        let mut ul = self.task_upload.write().await;
+        ul.insert(id, Arc::new(TokenBucket::new(ul_limit)));
+    }
+
+    pub async fn unregister_task(&self, id: TaskId) {
+        let mut dl = self.task_download.write().await;
+        dl.remove(&id);
+        let mut ul = self.task_upload.write().await;
+        ul.remove(&id);
+    }
+
+    pub async fn acquire_download(&self, id: TaskId, amount: u64) {
+        // Hierarchical acquisition: Global -> Task
+        // Note: Global should be acquired first to ensure we don't exceed global bandwidth 
+        // while waiting for task-level tokens.
         self.global_download.acquire(amount).await;
+
+        let task_bucket = {
+            let read = self.task_download.read().await;
+            read.get(&id).cloned()
+        };
+
+        if let Some(bucket) = task_bucket {
+            bucket.acquire(amount).await;
+        }
+    }
+
+    pub async fn acquire_upload(&self, id: TaskId, amount: u64) {
+        self.global_upload.acquire(amount).await;
+
+        let task_bucket = {
+            let read = self.task_upload.read().await;
+            read.get(&id).cloned()
+        };
+
+        if let Some(bucket) = task_bucket {
+            bucket.acquire(amount).await;
+        }
     }
 }

@@ -90,9 +90,10 @@ impl FtpWorker {
 impl ProtocolWorker for FtpWorker {
     async fn fetch_segment(
         &self,
-        _task_id: TaskId,
+        task_id: TaskId,
         segment: Segment,
         progress: Option<ProgressSender>,
+        throttler: std::sync::Arc<crate::throttler::Throttler>,
     ) -> Result<PieceData> {
         let mut ftp: AsyncFtpStream = self.connect().await?;
         let url = Url::parse(&self.uri)
@@ -118,6 +119,10 @@ impl ProtocolWorker for FtpWorker {
 
         while total_read < segment.length {
             let to_read = std::cmp::min(16384, segment.length - total_read);
+
+            // Admission Control: Wait for bandwidth tokens before reading
+            throttler.acquire_download(task_id, to_read).await;
+
             let mut chunk = vec![0u8; to_read as usize];
             let n = reader
                 .read(&mut chunk)

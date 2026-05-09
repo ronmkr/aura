@@ -109,6 +109,7 @@ pub struct Orchestrator {
     pub(crate) _nat_tx: mpsc::Sender<NatCommand>,
     pub(crate) peer_id: [u8; 20],
     pub(crate) throttler: Arc<Throttler>,
+    pub(crate) vpn_provider: Option<Arc<dyn crate::vpn::VpnProvider>>,
     pub(crate) config: Arc<ArcSwap<crate::Config>>,
     pub(crate) power_manager: crate::power::PowerManager,
     pub(crate) pool: BufferPool,
@@ -164,7 +165,17 @@ impl Orchestrator {
         peer_id[..8].copy_from_slice(b"-AR0001-");
         rand::rng().fill(&mut peer_id[8..]);
 
-        let throttler = Arc::new(Throttler::new(0));
+        let initial_config = config.load();
+        let throttler = Arc::new(Throttler::new(
+            initial_config.bandwidth.global_download_limit,
+            initial_config.bandwidth.global_upload_limit,
+        ));
+
+        let vpn_provider: Option<Arc<dyn crate::vpn::VpnProvider>> =
+            initial_config.network.interface.as_ref().map(|iface| {
+                Arc::new(crate::vpn::InterfaceMonitor::new(iface.clone()))
+                    as Arc<dyn crate::vpn::VpnProvider>
+            });
 
         (
             Self {
@@ -184,6 +195,7 @@ impl Orchestrator {
                 _nat_tx: nat_tx,
                 peer_id,
                 throttler,
+                vpn_provider,
                 config,
                 power_manager: crate::power::PowerManager::new(),
                 pool,
@@ -282,32 +294,24 @@ impl Orchestrator {
         let mut scaling_interval = tokio::time::interval(std::time::Duration::from_secs(1));
 
         // VPN Kill-switch Monitor
-        let config_monitor = self.config.clone();
+        let vpn_provider_monitor = self.vpn_provider.clone();
         let subtask_tx_monitor = self.subtask_tx.clone();
 
         tokio::spawn(async move {
-            let mut interval = tokio::time::interval(std::time::Duration::from_secs(2));
-            loop {
-                interval.tick().await;
-                let config = config_monitor.load();
-                if let Some(ref iface) = config.network.interface {
-                    let iface_clone = iface.clone();
-                    let is_up = tokio::task::spawn_blocking(move || {
-                        use local_ip_address::list_afinet_netifas;
-                        list_afinet_netifas()
-                            .ok()
-                            .map(|ifas| ifas.into_iter().any(|(name, _)| name == iface_clone))
-                    })
-                    .await
-                    .unwrap_or(None)
-                    .unwrap_or(false);
-
-                    if !is_up {
-                        tracing::warn!(
-                            "VPN Kill-switch triggered! Interface {} is down. Stopping all tasks.",
-                            iface
-                        );
-                        let _ = subtask_tx_monitor.send(SubTaskEvent::KillSwitch).await;
+            if let Some(vpn) = vpn_provider_monitor {
+                let mut interval = tokio::time::interval(std::time::Duration::from_secs(2));
+                loop {
+                    interval.tick().await;
+                    match vpn.status().await {
+                        Ok(crate::vpn::VpnStatus::Disconnected) | Ok(crate::vpn::VpnStatus::Error(_)) => {
+                            tracing::warn!(
+                                provider = %vpn.name(),
+                                interface = ?vpn.interface(),
+                                "VPN Kill-switch triggered! Connection lost. Stopping all tasks."
+                            );
+                            let _ = subtask_tx_monitor.send(SubTaskEvent::KillSwitch).await;
+                        }
+                        _ => {}
                     }
                 }
             }
@@ -335,9 +339,10 @@ impl Orchestrator {
                     let local_addr = self.resolve_local_addr();
                     let config = self.config.load().clone();
                     let pool = self.pool.clone();
+                    let throttler = self.throttler.clone();
 
                     tokio::spawn(async move {
-                        if let Err(e) = lifecycle::handle_incoming_peer(stream, addr, bt_registry, worker_command_txs, storage_tx, subtask_tx, my_peer_id, cancellation_tokens, local_addr, config, pool).await {
+                        if let Err(e) = lifecycle::handle_incoming_peer(stream, addr, bt_registry, worker_command_txs, storage_tx, subtask_tx, my_peer_id, cancellation_tokens, local_addr, config, pool, throttler).await {
                             tracing::debug!(?addr, error = %e, "Failed to handle incoming peer");
                         }
                     });

@@ -25,6 +25,7 @@ pub async fn handle_incoming_peer(
     local_addr: Option<std::net::IpAddr>,
     config: Arc<crate::Config>,
     pool: crate::buffer_pool::BufferPool,
+    throttler: Arc<crate::throttler::Throttler>,
 ) -> Result<()> {
     use crate::bt_worker::Handshake;
     use crate::bt_worker::HANDSHAKE_LEN;
@@ -61,6 +62,7 @@ pub async fn handle_incoming_peer(
                 my_peer_id,
                 pool.clone(),
                 config.network.proxy.clone(),
+                throttler,
             );
             worker.local_addr = local_addr;
             worker.pipeline_size = config.bittorrent.request_pipeline_size;

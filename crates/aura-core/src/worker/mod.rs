@@ -37,6 +37,9 @@ pub struct Metadata {
     pub name: Option<String>,
 }
 
+use crate::throttler::Throttler;
+use std::sync::Arc;
+
 /// The core trait for all protocol-specific downloaders.
 #[async_trait]
 pub trait ProtocolWorker: Send + Sync {
@@ -46,6 +49,7 @@ pub trait ProtocolWorker: Send + Sync {
         task_id: TaskId,
         segment: Segment,
         progress: Option<ProgressSender>,
+        throttler: Arc<Throttler>,
     ) -> Result<PieceData>;
 
     /// Returns the number of concurrent requests this worker can handle.

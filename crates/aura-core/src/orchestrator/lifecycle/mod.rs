@@ -58,6 +58,7 @@ impl Orchestrator {
         let my_peer_id = self.peer_id;
         let local_addr = self.resolve_local_addr();
         let config_arc = self.config.clone();
+        let throttler_arc = self.throttler.clone();
 
         for sub_task in subtasks {
             let sub_id = sub_task.id;
@@ -72,6 +73,7 @@ impl Orchestrator {
             let config_clone = config_arc.clone();
             let pool = self.pool.clone();
             let db = self.db.clone();
+            let throttler_clone = throttler_arc.clone();
 
             let existing_bt = self.bt_tasks.get(&sub_id).cloned();
 
@@ -271,6 +273,7 @@ impl Orchestrator {
                                             my_peer_id,
                                             pool_loop.clone(),
                                             config.network.proxy.clone(),
+                                            throttler_clone.clone(),
                                         );
                                         worker.local_addr = local_addr;
                                         worker.pipeline_size =

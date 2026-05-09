@@ -58,6 +58,7 @@ impl Orchestrator {
                 let (progress_tx, mut progress_rx) = mpsc::unbounded_channel::<u64>();
                 let token_clone = token.clone();
                 let config_clone = config_arc.clone();
+                let throttler_clone = self.throttler.clone();
 
                 let subtask_tx_progress = subtask_tx.clone();
                 tokio::spawn(async move {
@@ -86,7 +87,7 @@ impl Orchestrator {
                             tokio::select! {
                                 _ = token_clone.cancelled() => {
                                 }
-                                res = worker.fetch_segment(meta_id, segment, Some(progress_tx)) => {
+                                res = worker.fetch_segment(meta_id, segment, Some(progress_tx), throttler_clone.clone()) => {
                                     match res {
                                         Ok(piece) => {
                                             let _ = storage_tx.send(StorageRequest::Write {
@@ -117,7 +118,7 @@ impl Orchestrator {
                             tokio::select! {
                                 _ = token_clone.cancelled() => {
                                 }
-                                res = worker.fetch_segment(meta_id, segment, Some(progress_tx)) => {
+                                res = worker.fetch_segment(meta_id, segment, Some(progress_tx), throttler_clone.clone()) => {
                                     match res {
                                         Ok(piece) => {
                                             let _ = storage_tx.send(StorageRequest::Write {
