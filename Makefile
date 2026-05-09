@@ -1,0 +1,67 @@
+# Aura 🌌 Makefile
+
+.PHONY: all build test check fmt clippy clean docs run-cli run-daemon run-tui
+
+# Default: build everything
+all: build
+
+# --- Compilation ---
+
+build:
+	cargo build --workspace
+
+release:
+	cargo build --workspace --release
+
+# --- Quality Control (The Green Loop) ---
+
+check:
+	cargo check --workspace
+
+fmt:
+	cargo fmt --all
+
+fmt-check:
+	cargo fmt --all -- --check
+
+clippy:
+	cargo clippy --workspace -- -D warnings
+
+test:
+	cargo test --workspace
+
+test-cucumber:
+	cd aura-core && cargo test --test cucumber
+
+# The strict mandate for every commit
+green-loop: fmt check test clippy fmt-check
+
+# --- Documentation ---
+
+# Build the User Manual (requires mdbook)
+docs:
+	cd aura-docs/manual && mdbook build
+
+# Serve the manual locally
+docs-serve:
+	cd aura-docs/manual && mdbook serve
+
+# --- Execution ---
+
+# Run the CLI (Usage: make run-cli ARGS="https://example.com/file")
+run-cli:
+	cargo run -p aura-cli -- $(ARGS)
+
+# Run the background daemon
+run-daemon:
+	cargo run -p aura-daemon
+
+# Run the TUI dashboard
+run-tui:
+	cargo run -p aura-tui
+
+# --- Cleanup ---
+
+clean:
+	cargo clean
+	rm -rf aura-docs/manual/book

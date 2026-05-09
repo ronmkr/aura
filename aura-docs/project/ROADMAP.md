@@ -46,13 +46,13 @@
 - [x] **Pause/Resume Support** (Stopping and restarting downloads).
 - [x] **Task Persistence** (Control files for session recovery).
 - [x] **NAT Traversal** (UPnP/NAT-PMP for seeding).
-- [ ] **BitTorrent v2** (Merkle-tree based integrity).
+- [x] **BitTorrent v2** (Merkle-tree based integrity).
 - [x] **URL Globbing & Batch Downloads**.
 - [x] **FTP Protocol Support**.
-- [x] **VPN Safety & Traffic Kill-switch** (ADR 0035).
-- [ ] **Metalink Support (V3/V4)** (Issue #33) - **[PRIORITY: HIGH]**.
+- [x] **VPN Safety & Traffic Kill-switch** (ADR 0038).
+- [x] **Metalink Support (V3/V4)** (Issue #33) - **[PRIORITY: HIGH]**.
 - [x] **Dynamic TOML Configuration** (Aura.toml + Hot-reloading).
-- [x] **Modular Architecture Refactor** (No file > 400 lines).
+- [ ] **Modular Architecture Refactor** (No file > 400 lines) - **[PENDING: torrent.rs, dht/mod.rs]**.
 - [ ] **VPN Native Integration** (OpenVPN/WireGuard support) (ADR 0038).
 - [x] **Power Management** (OS-level sleep assertions).
 
@@ -70,4 +70,4 @@
 - [x] `CONTRIBUTING.md`.
 - [x] `.github/workflows/ci.yml`.
 - [x] Automated Benchmarking Suite.
-- [ ] Comprehensive Integration Tests.
+- [x] Comprehensive Integration Tests.

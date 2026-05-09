@@ -17,7 +17,7 @@ cargo fmt && cargo check && cargo test && cargo clippy -- -D warnings && cargo f
 ## 🛠️ Workflows
 
 ### 1. Feature Implementation & Bug Fixing (TDD)
-1.  **Analyze**: Read the relevant ADR in `docs/adr/` to understand the technical mandate.
+1.  **Analyze**: Read the relevant ADR in `aura-docs/adr/` to understand the technical mandate.
 2.  **RED**: Write a failing test in `#[cfg(test)]` or `tests/`.
 3.  **GREEN**: Implement the minimal logic to pass the test.
 4.  **REFACTOR**: Apply Rust Specialist principles (no unwraps, minimal cloning, idiomatic iterators).
@@ -31,9 +31,9 @@ Always verify changes against actual network resources:
 -   **VPN/Interface**: Test binding with dummy interfaces if possible.
 
 ### 3. Documentation & ADR Sync
--   **Update ADRs**: If an architectural decision changes, update the relevant file in `docs/adr/`.
--   **Update TASKS**: Mark items as `[x]` in `docs/project/TASKS.md` after completion.
--   **Ubiquitous Language**: Add new domain terms to `docs/project/CONTEXT.md`.
+-   **Update ADRs**: If an architectural decision changes, update the relevant file in `aura-docs/adr/`.
+-   **Update TASKS**: Mark items as `[x]` in `aura-docs/project/TASKS.md` after completion.
+-   **Ubiquitous Language**: Add new domain terms to `aura-docs/project/CONTEXT.md`.
 
 ## 🧠 Rust Specialist Principles
 -   **Safety**: No `unwrap()` or `expect()` in production paths. Use `thiserror`.
@@ -44,4 +44,4 @@ Always verify changes against actual network resources:
 
 ## 📦 Bundled Resources
 -   **Scripts**: Use `aura-dev/scripts/verify_download.sh` for low-level protocol debugging.
--   **References**: Refer to `docs/project/GEMINI.md` forFOUNDATIONAL mandates.
+-   **References**: Refer to `aura-docs/project/GEMINI.md` forFOUNDATIONAL mandates.

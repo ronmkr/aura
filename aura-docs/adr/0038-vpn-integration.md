@@ -1,7 +1,7 @@
 # ADR 0038: Native VPN Integration (OpenVPN, WireGuard)
 
 ## Status
-Accepted
+Partially Implemented
 
 ## Context
 Privacy is a core mandate for `Aura`. While we have implemented an "Active Kill-switch" (ADR 0035/0034) that halts traffic if an interface drops, users currently have to manage the VPN connection itself (OpenVPN, WireGuard) outside of Aura. For a "set-and-forget" experience, Aura should be able to monitor, verify, and potentially trigger VPN connections.
@@ -13,6 +13,12 @@ Privacy is a core mandate for `Aura`. While we have implemented an "Active Kill-
     *   **OpenVPN**: Interact via the Management Interface (TCP/Telnet).
 3.  **Mandatory Tunnel Enforcement**: If a VPN profile is configured, the `Orchestrator` will refuse to start any `ProtocolWorker` until the `VpnProvider` confirms the tunnel is secure.
 4.  **Auto-Reconnect**: Aura will attempt to trigger the VPN client's reconnect mechanism if the kill-switch is triggered.
+
+## Implementation Status (Audit 2026-05-09)
+- **Active Kill-switch**: **Implemented** in `aura-core/src/orchestrator/mod.rs`. It monitors interface status via the `VpnProvider` trait and sends a `KillSwitch` event to all subtasks if the interface drops.
+- **VPN Provider Abstraction**: **Implemented** in `aura-core/src/vpn/mod.rs`.
+- **Interface Monitor**: **Implemented** in `aura-core/src/vpn/mod.rs`.
+- **Native Controllers (WireGuard/OpenVPN)**: **Pending** (Tracked in Issue #42).
 
 ## Consequences
 - **Pros**: Unmatched privacy automation; Aura becomes the first major download engine with native WireGuard/OpenVPN awareness.

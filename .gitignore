@@ -31,7 +31,7 @@ out/
 **/local_config.toml
 # Proptest regression files (unless you want to track them)
 proptest-regressions/
-docs/project/prompts
+aura-docs/project/prompts
 
 # Local analysis files
 metadata.json

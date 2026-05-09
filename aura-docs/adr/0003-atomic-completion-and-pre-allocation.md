@@ -1,7 +1,7 @@
 # ADR 0003: Atomic Completion and Pre-allocation Strategy
 
 ## Status
-Accepted
+Partially Implemented
 
 ## Context
 Users should not see partially downloaded or corrupt files in their destination folders. Additionally, long-running downloads should not fail due to disk exhaustion after significant time/bandwidth has already been invested.
@@ -10,6 +10,11 @@ Users should not see partially downloaded or corrupt files in their destination 
 1. **Atomic Completion**: The **Storage Engine** will append a `.part` suffix (e.g., `.aura-part`) to all active downloads. Only upon 100% verification will the file be renamed to its final target name.
 2. **Control Files**: Progress and metadata will be stored in a companion `.aria2` or `.json` file to allow resumption.
 3. **Pre-allocation**: By default, the system will attempt to pre-allocate the full file size using platform-specific calls (e.g., `fallocate` on Linux) to guarantee space and reduce fragmentation.
+
+## Implementation Status (Audit 2026-05-09)
+- **Atomic Completion**: **Implemented** in `aura-core/src/storage/mod.rs` and `aura-core/src/storage/ops.rs`. Files are created with `.part` extension and renamed on completion.
+- **Control Files**: **Implemented** in `aura-core/src/orchestrator/lifecycle/mod.rs`. State is saved to `.aura` files.
+- **Pre-allocation**: **Partially Implemented**. Current implementation in `aura-core/src/storage/mod.rs` uses sparse files via `tokio::fs::File::set_len`. Full block allocation via `fallocate` is **Pending** (Tracked in Issue #92).
 
 ## Alternatives Considered
 - **Direct-to-Final Writing**: Writing directly to the target filename. *Rejected:* Risk of users opening incomplete/corrupt files.
