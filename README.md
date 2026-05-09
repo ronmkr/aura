@@ -8,13 +8,19 @@
 ## 🚀 Features
 
 - **Actor-based Orchestration**: Built on Tokio for massive concurrency and clean decoupling between protocols and storage.
-- **Multi-source Aggregation**: Download a single file from multiple sources (HTTP, BitTorrent, FTP) simultaneously *(Adaptive racing and work stealing planned)*.
-- **BitTorrent Excellence**: Full support for Trackers (UDP/HTTP), DHT (Kademlia), Seeding, Pipelined Requests, and SHA-1 Hash Verification.
+- **Multi-source Aggregation**: Download a single file from multiple sources (HTTP, BitTorrent, FTP) simultaneously with **Adaptive Racing** and **Work Stealing** (ADR 0005).
+- **BitTorrent Excellence**: Full support for BitTorrent v1 & v2 (BEP 52), Trackers (UDP/HTTP), DHT (Kademlia), Seeding, Pipelined Requests, and SHA-256 Merkle verification.
 - **FTP Support**: Support for FTP(S) with range-based segment fetching and authentication.
 - **Persistent Progress**: State is saved to `.aura` control files, allowing for seamless resumption after restarts.
 - **Advanced Networking**: Built-in NAT Traversal (UPnP, NAT-PMP/PCP) and VPN Kill-switch protection.
 - **Powerful CLI**: Supports URL globbing (ranges and sets) for easy batch processing.
 - **Multiple Personas**: Includes a high-speed CLI, a themeable Ratatui TUI, and a headless daemon controllable via JSON-RPC 2.0.
+
+## 📖 Documentation
+
+- **[Aura User Manual](aura-docs/manual/src/introduction.md)**: The comprehensive guide to using Aura, covering CLI, TUI, and advanced features.
+- **[Architecture Deep Dive](aura-docs/project/ARCHITECTURE.md)**: Detailed mapping of our actor model and data flows.
+- **[ADR Index](aura-docs/manual/src/advanced/adr-index.md)**: The "why" behind our technical decisions.
 
 ## 🛠️ Getting Started
 
@@ -50,7 +56,7 @@ Aura is built on a foundation of independent actors:
 2. **Storage Engine**: Manages high-speed asynchronous disk I/O, write aggregation, and atomic file completion.
 3. **Protocol Workers**: Lightweight, specialized actors for HTTP, BitTorrent, and FTP that handle protocol-specific logic and data retrieval.
 
-See [ARCHITECTURE.md](docs/project/ARCHITECTURE.md) for a deep dive into the system design and [CONTEXT.md](docs/project/CONTEXT.md) for our ubiquitous language.
+See [ARCHITECTURE.md](aura-docs/project/ARCHITECTURE.md) for a deep dive into the system design and [CONTEXT.md](aura-docs/project/CONTEXT.md) for our ubiquitous language.
 
 ## 🤝 Contributing
 Please read [CONTRIBUTING.md](CONTRIBUTING.md) for our engineering standards and TDD workflow.
