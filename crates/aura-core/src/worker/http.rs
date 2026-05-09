@@ -232,6 +232,7 @@ mod tests {
             Some(format!("{}/start", server.uri())),
             None,
         );
+        let throttler = std::sync::Arc::new(crate::throttler::Throttler::new(0, 0));
         let result = worker_final
             .fetch_segment(
                 TaskId(1),
@@ -240,6 +241,7 @@ mod tests {
                     length: 11,
                 },
                 None,
+                throttler,
             )
             .await;
 
