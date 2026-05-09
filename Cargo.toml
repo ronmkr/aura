@@ -1,9 +1,9 @@
 [workspace]
 members = [
-    "crates/aura-core",
-    "crates/aura-cli",
-    "crates/aura-tui",
-    "crates/aura-daemon",
+    "aura-core",
+    "aura-cli",
+    "aura-tui",
+    "aura-daemon",
 ]
 resolver = "2"
 

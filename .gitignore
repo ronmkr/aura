@@ -28,7 +28,7 @@ Thumbs.db
 downloads/
 out/
 # Crate-specific local configuration
-crates/**/local_config.toml
+**/local_config.toml
 # Proptest regression files (unless you want to track them)
 proptest-regressions/
 docs/project/prompts

@@ -22,9 +22,9 @@ We will use an **Orchestrated Pull** model.
 - **Cons**: Adds one round-trip of message latency (request for work) before fetching starts.
 
 ## Implementation
-- **Primary File**: `crates/aura-core/src/orchestrator/mod.rs`
+- **Primary File**: `aura-core/src/orchestrator/mod.rs`
 - **Logic**: Orchestrator listens for `SubTaskEvent` and assigns pieces via the `PiecePicker`.
 
 ## Verification
-- **Unit Test**: `crates/aura-core/src/piece_picker.rs` (Tests piece selection strategy).
-- **Integration Test**: `crates/aura-core/src/bt_worker/tests.rs` (Simulates worker requesting work).
+- **Unit Test**: `aura-core/src/piece_picker.rs` (Tests piece selection strategy).
+- **Integration Test**: `aura-core/src/bt_worker/tests.rs` (Simulates worker requesting work).
