@@ -10,9 +10,12 @@ use std::path::PathBuf;
 use tokio::fs::{self, File, OpenOptions};
 use tokio::sync::{mpsc, oneshot};
 use tracing::{error, info};
-
 #[derive(Debug)]
 pub enum StorageRequest {
+    RegisterTask {
+        task_id: TaskId,
+        path: PathBuf,
+    },
     Write {
         task_id: TaskId,
         segment: Segment,
@@ -83,12 +86,14 @@ impl StorageEngine {
         self.next_offsets.insert(id, 0);
         self.pending_writes.insert(id, BTreeMap::new());
     }
-
     pub async fn run(mut self) -> Result<()> {
         info!("Storage Engine started");
 
         while let Some(req) = self.request_rx.recv().await {
             match req {
+                StorageRequest::RegisterTask { task_id, path } => {
+                    self.register_task(task_id, path);
+                }
                 StorageRequest::Write {
                     task_id,
                     segment,

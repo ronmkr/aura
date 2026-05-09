@@ -88,6 +88,17 @@ impl Orchestrator {
                             for file in ml.files {
                                 if meta_task.name == "unnamed" || meta_task.name.is_empty() {
                                     meta_task.name = file.name.clone();
+                                    // Update storage engine with the real name
+                                    let path = std::env::current_dir()
+                                        .unwrap_or_default()
+                                        .join(&file.name);
+                                    let _ = self
+                                        .storage_tx
+                                        .send(crate::storage::StorageRequest::RegisterTask {
+                                            task_id: id,
+                                            path,
+                                        })
+                                        .await;
                                 }
                                 if meta_task.total_length == 0 {
                                     if let Some(size) = file.size {

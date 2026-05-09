@@ -130,14 +130,32 @@ impl Orchestrator {
         sub_id: TaskId,
         metadata: crate::worker::Metadata,
     ) -> Result<()> {
-        let mut initialized = false;
         if let Some(meta_task) = self.tasks.get_mut(&meta_id) {
+            // Update name if currently unnamed
+            if (meta_task.name == "unnamed" || meta_task.name.is_empty()) && metadata.name.is_some()
+            {
+                let new_name = metadata.name.clone().unwrap();
+                info!(%meta_id, %new_name, "Updating task name from metadata");
+                meta_task.name = new_name;
+
+                // Update storage engine
+                let path = std::env::current_dir()
+                    .unwrap_or_default()
+                    .join(&meta_task.name);
+                let _ = self
+                    .storage_tx
+                    .send(crate::storage::StorageRequest::RegisterTask {
+                        task_id: meta_id,
+                        path,
+                    })
+                    .await;
+            }
+
             if meta_task.total_length == 0 {
                 if let Some(len) = metadata.total_length {
                     info!(%meta_id, %len, "Metadata matured: task initialized");
                     meta_task.total_length = len;
                     meta_task.generate_ranges(16); // Default 16 segments
-                    initialized = true;
                 }
             }
 
@@ -146,13 +164,24 @@ impl Orchestrator {
             }
         }
 
-        if initialized {
-            let meta_task = self.tasks.get(&meta_id).expect("Task must exist");
+        let (should_notify, final_uri, total_length, name) =
+            if let Some(meta_task) = self.tasks.get(&meta_id) {
+                (
+                    meta_task.total_length > 0,
+                    metadata.final_uri,
+                    meta_task.total_length,
+                    metadata.name,
+                )
+            } else {
+                (false, String::new(), 0, None)
+            };
+
+        if should_notify {
             let _ = self.event_tx.send(Event::MetadataResolved {
                 id: meta_id,
-                final_uri: metadata.final_uri,
-                total_length: meta_task.total_length,
-                name: metadata.name,
+                final_uri,
+                total_length,
+                name,
             });
         }
 
@@ -165,6 +194,7 @@ impl Orchestrator {
         sub_id: TaskId,
         range: crate::task::Range,
     ) -> Result<()> {
+        let mut completed = false;
         if let Some(meta_task) = self.tasks.get_mut(&meta_id) {
             // Racing coordination: check if other subtasks were also working on this range
             let racing_sub_ids: Vec<TaskId> = meta_task
@@ -192,7 +222,15 @@ impl Orchestrator {
                 if meta_task.seeding_start_time.is_none() {
                     meta_task.seeding_start_time = Some(chrono::Utc::now());
                 }
+                completed = true;
             }
+        }
+
+        if completed {
+            let _ = self
+                .storage_tx
+                .send(crate::storage::StorageRequest::Complete(meta_id))
+                .await;
         }
 
         self.dispatch_next_ranges(meta_id, sub_id).await
