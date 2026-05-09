@@ -11,7 +11,7 @@ This skill transforms Gemini CLI into an **Expert Rust Specialist** for the Aura
 Every code change MUST finish with a successful execution of the "Green Loop". You are NOT finished until this passes with zero warnings:
 
 ```bash
-cargo fmt && cargo check && cargo test && cargo clippy -- -D warnings && cargo fmt --check
+make green-loop
 ```
 
 ## 🛠️ Workflows
@@ -22,15 +22,18 @@ cargo fmt && cargo check && cargo test && cargo clippy -- -D warnings && cargo f
 3.  **GREEN**: Implement the minimal logic to pass the test.
 4.  **REFACTOR**: Apply Rust Specialist principles (no unwraps, minimal cloning, idiomatic iterators).
 5.  **Audit**: Ensure the file is under **400 lines**. If not, decompose into sub-modules.
-6.  **Verify**: Run the "Green Loop".
+6.  **Verify**: Run `make green-loop`.
 
 ### 2. Real-World Scenario Testing
 Always verify changes against actual network resources:
--   **CLI**: `cargo run -p aura-cli -- "URL"`
+-   **CLI**: `make run-cli ARGS="URL"`
+-   **Daemon**: `make run-daemon`
+-   **Dashboard**: `make run-tui`
 -   **Control Files**: Verify `.aura` files are created/deleted correctly.
 -   **VPN/Interface**: Test binding with dummy interfaces if possible.
 
 ### 3. Documentation & ADR Sync
+-   **Build Manual**: Run `make docs` to verify the mdBook manual builds correctly.
 -   **Update ADRs**: If an architectural decision changes, update the relevant file in `aura-docs/adr/`.
 -   **Update TASKS**: Mark items as `[x]` in `aura-docs/project/TASKS.md` after completion.
 -   **Ubiquitous Language**: Add new domain terms to `aura-docs/project/CONTEXT.md`.
