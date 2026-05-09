@@ -352,7 +352,7 @@ impl BtWorker {
                                     let len = block.len();
                                     self.piece_buffer[begin as usize..begin as usize + len].copy_from_slice(&block);
                                     self.bytes_received += len as u64;
-                                    let _ = subtask_tx.send(SubTaskEvent::Downloaded(meta_id, len as u64)).await;
+                                    let _ = subtask_tx.send(SubTaskEvent::Downloaded(meta_id, sub_id, len as u64)).await;
 
                                     if !peer_choking {
                                         self.trigger_request(&mut framed, &task, meta_id, sub_id, storage_tx.clone(), subtask_tx.clone()).await?;

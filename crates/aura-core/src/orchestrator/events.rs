@@ -20,10 +20,13 @@ impl Orchestrator {
             SubTaskEvent::Failed(meta_id, sub_id, err) => {
                 info!(%meta_id, %sub_id, %err, "Subtask failed");
             }
-            SubTaskEvent::Downloaded(meta_id, bytes) => {
+            SubTaskEvent::Downloaded(meta_id, sub_id, bytes) => {
                 self.throttler.consume_download(bytes).await;
                 if let Some(task) = self.tasks.get_mut(&meta_id) {
                     task.completed_length += bytes;
+                    if let Some(sub) = task.subtasks.iter_mut().find(|s| s.id == sub_id) {
+                        sub.recent_bytes_downloaded += bytes;
+                    }
                     let _ = self.event_tx.send(Event::TaskProgress {
                         id: meta_id,
                         completed_bytes: task.completed_length,

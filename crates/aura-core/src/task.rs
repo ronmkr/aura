@@ -44,6 +44,9 @@ pub struct SubTask {
     pub completed_length: u64,
     pub active: bool,
     pub phase: DownloadPhase,
+    pub target_concurrency: usize,
+    pub recent_bytes_downloaded: u64,
+    pub ewma_throughput: f64,
 }
 
 /// The high-level representation of a logical download operation.
@@ -157,6 +160,9 @@ impl MetaTask {
             completed_length: 0,
             active: true,
             phase: DownloadPhase::MetadataExchange,
+            target_concurrency: 4, // Initial default
+            recent_bytes_downloaded: 0,
+            ewma_throughput: 0.0,
         });
         sub_id
     }
