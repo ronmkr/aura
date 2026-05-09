@@ -12,5 +12,4 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 rand = { version = "0.10", features = ["std", "std_rng", "thread_rng"] }
 indicatif = "0.17"
 url = "2"
-reqwest = { version = "0.12", features = ["json"] }
 bytesize = "2.3.1"
