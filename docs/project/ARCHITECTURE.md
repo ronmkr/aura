@@ -225,24 +225,24 @@ This table maps architectural concepts to their primary implementation files in 
 
 | Component | Category | File Path |
 | :--- | :--- | :--- |
-| **Persona Switcher** | Orchestration | `crates/aura-cli/src/main.rs` |
-| **The Pilot (TUI)** | Interface | `crates/aura-tui/src/app.rs`, `ui.rs` |
-| **Aura Daemon** | Persistent | `crates/aura-daemon/src/main.rs` |
-| **Engine Core** | Orchestration | `crates/aura-core/src/orchestrator/engine.rs` |
-| **Task Orchestrator** | Orchestration | `crates/aura-core/src/orchestrator/mod.rs` |
-| **Sequential Aggregator** | Storage | `crates/aura-core/src/storage/mod.rs` |
-| **Storage Ops** | Storage | `crates/aura-core/src/storage/ops.rs` |
-| **Buffer Pool** | Memory | `crates/aura-core/src/buffer_pool.rs` |
-| **HTTP Worker** | Protocol | `crates/aura-core/src/worker/http.rs` |
-| **FTP Worker** | Protocol | `crates/aura-core/src/worker/ftp.rs` |
-| **BitTorrent Logic** | Protocol | `crates/aura-core/src/bt_worker/logic.rs` |
-| **Piece Picker** | Strategy | `crates/aura-core/src/piece_picker.rs` |
-| **Peer Registry** | Strategy | `crates/aura-core/src/peer_registry.rs` |
-| **DHT Node** | Discovery | `crates/aura-core/src/dht/mod.rs` |
-| **Tracker Client** | Discovery | `crates/aura-core/src/tracker/mod.rs` |
-| **Power Manager** | System | `crates/aura-core/src/power.rs` |
-| **NAT Traversal** | Network | `crates/aura-core/src/nat.rs` |
-| **LPD** | Discovery | `crates/aura-core/src/lpd.rs` |
+| **Persona Switcher** | Orchestration | `aura-cli/src/main.rs` |
+| **The Pilot (TUI)** | Interface | `aura-tui/src/app.rs`, `ui.rs` |
+| **Aura Daemon** | Persistent | `aura-daemon/src/main.rs` |
+| **Engine Core** | Orchestration | `aura-core/src/orchestrator/engine.rs` |
+| **Task Orchestrator** | Orchestration | `aura-core/src/orchestrator/mod.rs` |
+| **Sequential Aggregator** | Storage | `aura-core/src/storage/mod.rs` |
+| **Storage Ops** | Storage | `aura-core/src/storage/ops.rs` |
+| **Buffer Pool** | Memory | `aura-core/src/buffer_pool.rs` |
+| **HTTP Worker** | Protocol | `aura-core/src/worker/http.rs` |
+| **FTP Worker** | Protocol | `aura-core/src/worker/ftp.rs` |
+| **BitTorrent Logic** | Protocol | `aura-core/src/bt_worker/logic.rs` |
+| **Piece Picker** | Strategy | `aura-core/src/piece_picker.rs` |
+| **Peer Registry** | Strategy | `aura-core/src/peer_registry.rs` |
+| **DHT Node** | Discovery | `aura-core/src/dht/mod.rs` |
+| **Tracker Client** | Discovery | `aura-core/src/tracker/mod.rs` |
+| **Power Manager** | System | `aura-core/src/power.rs` |
+| **NAT Traversal** | Network | `aura-core/src/nat.rs` |
+| **LPD** | Discovery | `aura-core/src/lpd.rs` |
 
 ---
 

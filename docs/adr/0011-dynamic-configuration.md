@@ -21,8 +21,8 @@ Implemented
 - **Cons**: Requires thread-safe access to configuration (e.g., `Arc<Config>` or `arc_swap`), which adds slight overhead.
 
 ## Implementation
-- **Primary File**: `crates/aura-core/src/orchestrator/engine.rs`
+- **Primary File**: `aura-core/src/orchestrator/engine.rs`
 - **Logic**: Uses `notify` crate to watch `Aura.toml` and updates `ArcSwap<Config>` inside the `Engine`.
 
 ## Verification
-- **Test**: `crates/aura-core/src/config.rs` (Validates TOML parsing and default overrides).
+- **Test**: `aura-core/src/config.rs` (Validates TOML parsing and default overrides).
