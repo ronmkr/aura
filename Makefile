@@ -42,6 +42,13 @@ green-loop: fmt check test clippy fmt-check
 docs:
 	cd aura-docs/manual && mdbook build
 
+# Build the Rust API documentation
+docs-api:
+	cargo doc --workspace --no-deps --document-private-items
+
+# Build both Manual and API docs
+docs-all: docs docs-api
+
 # Serve the manual locally
 docs-serve:
 	cd aura-docs/manual && mdbook serve

@@ -21,6 +21,7 @@
 # Developer Documentation
 
 - [Architecture](./advanced/architecture.md)
+- [API Documentation (rustdoc)](./advanced/api-docs.md)
 - [BDD Testing Suite](./advanced/testing.md)
 - [ADR Index](./advanced/adr-index.md)
 
