@@ -11,6 +11,7 @@ pub mod dht;
 pub mod glob;
 pub mod lpd;
 pub mod magnet;
+pub mod metalink;
 pub mod nat;
 pub mod net_util;
 pub mod orchestrator;
