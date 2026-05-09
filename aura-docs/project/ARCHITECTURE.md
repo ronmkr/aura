@@ -91,7 +91,7 @@ flowchart TD
 ### 5. System Integration
 - **NAT Traversal**: Automatic port mapping via UPnP/NAT-PMP.
 - **Power Management**: Prevents the OS from entering sleep mode while active downloads are in progress.
-- **VPN Kill-switch**: *(Planned)* Ensures traffic only flows through authorized network interfaces.
+- **VPN Kill-switch**: Ensures traffic only flows through authorized network interfaces.
 
 ## 🔄 Core Data Flow (Download)
 
@@ -246,6 +246,6 @@ This table maps architectural concepts to their primary implementation files in 
 
 ---
 
-> **Note**: This map is current as of Milestone 2. As the project matures, new mappings will be added for Merkle Tree stores and End-game mode logic. See the [ROADMAP.md](../../ROADMAP.md) for full status.
+> **Note**: This map is current as of Milestone 6. As the project matures, new mappings will be added for Merkle Tree stores and End-game mode logic. See the [ROADMAP.md](ROADMAP.md) for full status.
 
 

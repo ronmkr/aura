@@ -83,6 +83,12 @@ The categorization of failures into **Worker Error**, **Task Error**, and **Engi
 #### Global Token Bucket Throttler
 A centralized rate-limiting component that independently controls global, per-tenant, and per-task speeds.
 
+#### EWMA (Exponential Weighted Moving Average)
+A statistical measure used by the **Orchestrator** to track the throughput of connections. It gives more weight to recent data points, allowing Aura to react quickly to network changes for scaling and racing.
+
+#### Global Potential
+The sum of the estimated capacities of all known sources for a specific file. Aura scales connections until actual throughput matches the global potential.
+
 #### URL Globber
 A pre-processor that expands pattern-based URIs (e.g., `[1-100]`) into a batch of individual tasks.
 
@@ -169,6 +175,12 @@ A persistent temporary store in the **Storage Engine** that saves partial, unver
 
 #### Journaled State Store
 A robust implementation of state persistence that uses an atomic "write-then-swap" strategy to prevent metadata corruption.
+
+#### Sourced Model
+An architectural pattern where a single **Download Task** (MetaTask) can aggregate data from multiple independent **Protocol Workers** (Subtasks).
+
+#### Metalink
+An XML-based standard for describing file mirrors and hashes. Aura uses Metalinks to automatically discover mirror sources and orchestrate multi-protocol downloads.
 
 #### Boundary Splitter
 A logic component that handles **Pieces** spanning multiple physical files.
