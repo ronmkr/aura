@@ -35,12 +35,13 @@ impl Metalink {
         let mut buf = Vec::new();
         let mut current_file: Option<MetalinkFile> = None;
         let mut current_tag = String::new();
+        let mut current_protocol = String::new();
 
         loop {
             match reader.read_event_into(&mut buf) {
                 Ok(quick_xml::events::Event::Start(ref e)) => {
                     current_tag = String::from_utf8_lossy(e.name().as_ref()).to_string();
-                    if current_tag.as_str() == "file" {
+                    if current_tag == "file" {
                         let mut name = String::new();
                         for attr in e.attributes().flatten() {
                             if attr.key.as_ref() == b"name" {
@@ -53,20 +54,40 @@ impl Metalink {
                             hash: None,
                             resources: Vec::new(),
                         });
+                    } else if current_tag == "url" {
+                        current_protocol = "http".to_string(); // Default
+                        for attr in e.attributes().flatten() {
+                            let key = String::from_utf8_lossy(attr.key.as_ref());
+                            if key == "protocol" {
+                                current_protocol = String::from_utf8_lossy(&attr.value).to_string();
+                            }
+                        }
                     }
                 }
                 Ok(quick_xml::events::Event::Text(ref e)) => {
                     let text = String::from_utf8_lossy(e.as_ref()).to_string();
+                    if text.is_empty() {
+                        continue;
+                    }
+
                     if let Some(ref mut file) = current_file {
                         match current_tag.as_str() {
                             "size" => file.size = text.parse().ok(),
                             "hash" => file.hash = Some(text),
                             "url" => {
+                                let proto = if text.trim().starts_with("ftp://") {
+                                    "ftp".to_string()
+                                } else {
+                                    current_protocol.trim().to_string()
+                                };
+                                eprintln!("DEBUG: parsed url={} proto={}", text, proto);
                                 file.resources.push(MetalinkResource {
-                                    uri: text,
+                                    uri: text.trim().to_string(),
                                     priority: 0,
-                                    protocol: "http".to_string(),
+                                    protocol: proto,
                                 });
+                                // Reset tag to avoid double-adding if there's trailing whitespace
+                                current_tag = String::new();
                             }
                             _ => {}
                         }
@@ -79,6 +100,7 @@ impl Metalink {
                             files.push(f);
                         }
                     }
+                    current_tag = String::new();
                 }
                 Ok(quick_xml::events::Event::Eof) => break,
                 Err(e) => return Err(Error::Protocol(format!("Metalink XML error: {}", e))),
@@ -104,8 +126,8 @@ mod tests {
             <file name="example.zip">
               <size>12345</size>
               <resources>
-                <url>http://mirror1.com/example.zip</url>
-                <url>http://mirror2.com/example.zip</url>
+                <url protocol="http">http://mirror1.com/example.zip</url>
+                <url protocol="ftp">ftp://mirror2.com/example.zip</url>
               </resources>
             </file>
           </files>
@@ -116,5 +138,7 @@ mod tests {
         assert_eq!(metalink.files[0].name, "example.zip");
         assert_eq!(metalink.files[0].size, Some(12345));
         assert_eq!(metalink.files[0].resources.len(), 2);
+        assert_eq!(metalink.files[0].resources[0].protocol, "http");
+        assert_eq!(metalink.files[0].resources[1].protocol, "ftp");
     }
 }

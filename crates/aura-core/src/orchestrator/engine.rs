@@ -15,6 +15,12 @@ pub struct Engine {
     pub(crate) event_tx: broadcast::Sender<Event>,
 }
 
+impl std::fmt::Debug for Engine {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Engine").finish()
+    }
+}
+
 impl Engine {
     pub async fn new(config: crate::Config) -> Result<(Self, Orchestrator, StorageEngine)> {
         let config = Arc::new(ArcSwap::from_pointee(config));
@@ -77,8 +83,7 @@ impl Engine {
             })
             .await;
 
-        let db_path = std::env::current_dir()
-            .unwrap_or_default()
+        let db_path = std::path::PathBuf::from(&initial_config.storage.download_dir)
             .join(".aura")
             .join("metadata.db");
         let storage = StorageEngine::new(storage_rx, completion_tx, Some(db_path));
@@ -270,6 +275,14 @@ impl Engine {
             .send(Command::Shutdown)
             .await
             .map_err(|e| Error::Engine(format!("Failed to send Shutdown command: {}", e)))?;
+        Ok(())
+    }
+
+    pub async fn trigger_killswitch(&self) -> Result<()> {
+        self.command_tx
+            .send(Command::KillSwitch)
+            .await
+            .map_err(|e| Error::Engine(format!("Failed to send KillSwitch command: {}", e)))?;
         Ok(())
     }
 

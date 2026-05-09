@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<metalink version="3.0" xmlns="http://www.metalinker.org/">
+<files>
+<file name="file.zip">
+<resources>
+<url protocol="http">https://mirror1.com/file.zip</url>
+<url protocol="ftp">ftp://mirror2.com/file.zip</url>
+</resources>
+</file>
+</files>
+</metalink>

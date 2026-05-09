@@ -147,6 +147,7 @@ impl Orchestrator {
                     .send(crate::storage::StorageRequest::RegisterTask {
                         task_id: meta_id,
                         path,
+                        total_length: meta_task.total_length,
                     })
                     .await;
             }

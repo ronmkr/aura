@@ -354,12 +354,21 @@ impl Orchestrator {
                     }
                     self.update_power_management();
                 }
-                Some(cmd) = self.command_rx.recv() => {
-                    if let Err(e) = self.handle_command(cmd).await {
-                        if e.to_string().contains("Shutting down") {
+                cmd_res = self.command_rx.recv() => {
+                    match cmd_res {
+                        Some(cmd) => {
+                            if let Err(e) = self.handle_command(cmd).await {
+                                if e.to_string().contains("Shutting down") {
+                                    tracing::info!("Orchestrator shutting down gracefully");
+                                    return Ok(());
+                                }
+                                tracing::error!("Command handle error: {}", e);
+                            }
+                        }
+                        None => {
+                            tracing::warn!("Orchestrator command channel closed, exiting loop");
                             return Ok(());
                         }
-                        tracing::error!("Command handle error: {}", e);
                     }
                     self.update_power_management();
                 }

@@ -16,7 +16,7 @@ Feature: Resource Governance and Throttling
     And Task A has a per-task limit of "51200" (50 KB/s)
     When I start Task A
     Then Task A should be capped at 50 KB/s
-    Even if the global bucket has remaining capacity
+    And the global bucket should still have remaining capacity
 
   @ADR-0023
   Scenario: Adaptive connection scaling for slow servers
