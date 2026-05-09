@@ -356,6 +356,9 @@ impl Orchestrator {
                 }
                 Some(cmd) = self.command_rx.recv() => {
                     if let Err(e) = self.handle_command(cmd).await {
+                        if e.to_string().contains("Shutting down") {
+                            return Ok(());
+                        }
                         tracing::error!("Command handle error: {}", e);
                     }
                     self.update_power_management();

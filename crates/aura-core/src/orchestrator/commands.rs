@@ -82,6 +82,42 @@ impl Orchestrator {
 
         if meta_task.subtasks.is_empty() {
             for (uri, ttype) in sources {
+                if uri.ends_with(".metalink") || uri.ends_with(".meta4") {
+                    if let Ok(data) = std::fs::read(&uri) {
+                        if let Ok(ml) = crate::metalink::Metalink::parse(&data) {
+                            for file in ml.files {
+                                if meta_task.name == "unnamed" || meta_task.name.is_empty() {
+                                    meta_task.name = file.name.clone();
+                                    // Update storage engine with the real name
+                                    let path = std::env::current_dir()
+                                        .unwrap_or_default()
+                                        .join(&file.name);
+                                    let _ = self
+                                        .storage_tx
+                                        .send(crate::storage::StorageRequest::RegisterTask {
+                                            task_id: id,
+                                            path,
+                                        })
+                                        .await;
+                                }
+                                if meta_task.total_length == 0 {
+                                    if let Some(size) = file.size {
+                                        meta_task.total_length = size;
+                                        meta_task.generate_ranges(16);
+                                    }
+                                }
+                                for res in file.resources {
+                                    let res_ttype = match res.protocol.to_lowercase().as_str() {
+                                        "ftp" => crate::task::TaskType::Ftp,
+                                        _ => crate::task::TaskType::Http,
+                                    };
+                                    meta_task.add_subtask(res.uri, res_ttype);
+                                }
+                            }
+                            continue;
+                        }
+                    }
+                }
                 meta_task.add_subtask(uri, ttype);
             }
         }

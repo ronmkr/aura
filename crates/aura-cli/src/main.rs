@@ -3,6 +3,7 @@ use aura_core::task::TaskType;
 use aura_core::{Result, TaskId};
 use clap::Parser;
 use indicatif::{ProgressBar, ProgressStyle};
+use rand::RngExt;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -45,18 +46,44 @@ async fn main() -> Result<()> {
 
     // Register and add all tasks
     for uri in &expanded_uris {
-        let name = url::Url::parse(uri)
-            .ok()
-            .and_then(|u| u.path_segments()?.next_back()?.to_string().into())
-            .filter(|s: &String| !s.is_empty())
-            .unwrap_or_else(|| "download.bin".to_string());
+        let path_obj = std::path::Path::new(uri);
+        let is_local_file = path_obj.exists() && path_obj.is_file();
+
+        let (name, is_metadata) = if is_local_file
+            && (uri.ends_with(".torrent") || uri.ends_with(".metalink") || uri.ends_with(".meta4"))
+        {
+            ("unnamed".to_string(), true)
+        } else if is_local_file {
+            (
+                path_obj
+                    .file_name()
+                    .and_then(|s| s.to_str())
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(|| "download.bin".to_string()),
+                false,
+            )
+        } else {
+            (
+                url::Url::parse(uri)
+                    .ok()
+                    .and_then(|u| u.path_segments()?.next_back()?.to_string().into())
+                    .filter(|s: &String| !s.is_empty())
+                    .unwrap_or_else(|| "download.bin".to_string()),
+                false,
+            )
+        };
 
         let path = current_dir.join(&name);
-        let id = TaskId(rand::random());
-        storage.register_task(id, path);
+        let id = TaskId(rand::rng().random());
+        if !is_metadata {
+            storage.register_task(id, path);
+        }
 
-        let ttype = if uri.ends_with(".torrent") {
+        let ttype = if uri.ends_with(".torrent") || (is_local_file && uri.ends_with(".torrent")) {
             TaskType::BitTorrent
+        } else if uri.ends_with(".metalink") || uri.ends_with(".meta4") {
+            // Orchestrator handles parsing if the type is Metalink-compatible (Http is used as a placeholder for parsing)
+            TaskType::Http
         } else if uri.starts_with("ftp://") || uri.starts_with("ftps://") {
             TaskType::Ftp
         } else {
