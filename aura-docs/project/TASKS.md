@@ -12,7 +12,7 @@ This document tracks the technical debt and missing features identified during t
     - Decompose `aura-core/src/dht/` (was 445 lines) into sub-modules.
 
 ## 🟡 Medium Priority: Connectivity & UX
-- [ ] **Browser Extension Bridge** (Issue #95)
+- [x] **Browser Extension Bridge** (Issue #95)
     - Implement RPC gateway for Chrome/Firefox extensions.
     - Add protocol interceptors for magnet/torrent/metalink MIME types.
 - [ ] **Native VPN Integration** (Issue #42)

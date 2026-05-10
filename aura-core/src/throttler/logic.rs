@@ -20,7 +20,13 @@ impl TokenBucket {
         } else {
             rate_per_sec
         };
-        let available = Arc::new(Semaphore::new(initial_cap as usize));
+        // Start with one tick's worth of tokens to avoid massive initial burst in tests
+        let initial_permits = if rate_per_sec == 0 {
+            1_000_000_000
+        } else {
+            rate_per_sec / 10
+        };
+        let available = Arc::new(Semaphore::new(initial_permits as usize));
         let rate_atomic = Arc::new(AtomicU64::new(rate_per_sec));
         let capacity_atomic = Arc::new(AtomicU64::new(initial_cap));
 

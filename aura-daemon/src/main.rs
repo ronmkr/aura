@@ -1,7 +1,13 @@
 use aura_core::orchestrator::Engine;
 use aura_core::task::TaskType;
 use aura_core::TaskId;
-use axum::{extract::State, routing::post, Json, Router};
+use axum::{
+    extract::State,
+    http::{HeaderMap, StatusCode},
+    response::IntoResponse,
+    routing::post,
+    Json, Router,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::sync::Arc;
@@ -25,8 +31,15 @@ struct JsonRpcResponse {
     id: Value,
 }
 
+#[derive(Debug, Deserialize)]
+struct ExtensionAddRequest {
+    uri: String,
+    mime_type: Option<String>,
+}
+
 struct AppState {
     engine: Arc<Engine>,
+    rpc_secret: Option<String>,
 }
 
 #[tokio::main]
@@ -37,6 +50,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Bootstrap the engine
     let config = aura_core::Config::from_file("Aura.toml").unwrap_or_default();
+    let rpc_secret = config.network.rpc_secret.clone();
+
     let (engine, orchestrator, storage) = match Engine::new(config).await {
         Ok(res) => res,
         Err(e) => {
@@ -59,24 +74,58 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
-    let state = Arc::new(AppState { engine });
+    let state = Arc::new(AppState { engine, rpc_secret });
 
     let app = Router::new()
         .route("/jsonrpc", post(handle_jsonrpc))
+        .route("/extension/add", post(handle_extension_add))
         .layer(CorsLayer::permissive())
         .with_state(state);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:6800").await?;
-    info!("RPC Server listening on http://0.0.0.0:6800/jsonrpc");
+    info!("RPC Server listening on http://0.0.0.0:6800");
     axum::serve(listener, app).await?;
 
     Ok(())
 }
 
+fn authenticate(
+    headers: &HeaderMap,
+    secret: &Option<String>,
+) -> Result<(), (StatusCode, Json<Value>)> {
+    if let Some(expected_secret) = secret {
+        let auth_header = headers
+            .get("X-Aura-Token")
+            .or_else(|| headers.get("Authorization"));
+
+        let is_valid = match auth_header {
+            Some(val) => {
+                let val_str = val.to_str().unwrap_or("");
+                // Check if it's Bearer token or exact match for X-Aura-Token
+                val_str == expected_secret || val_str == format!("Bearer {}", expected_secret)
+            }
+            None => false,
+        };
+
+        if !is_valid {
+            return Err((
+                StatusCode::UNAUTHORIZED,
+                Json(json!({ "error": "Unauthorized. Invalid or missing X-Aura-Token." })),
+            ));
+        }
+    }
+    Ok(())
+}
+
 async fn handle_jsonrpc(
     State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
     Json(payload): Json<JsonRpcRequest>,
-) -> Json<JsonRpcResponse> {
+) -> impl IntoResponse {
+    if let Err(err) = authenticate(&headers, &state.rpc_secret) {
+        return err.into_response();
+    }
+
     info!("RPC Method: {}", payload.method);
 
     let result = match payload.method.as_str() {
@@ -90,18 +139,65 @@ async fn handle_jsonrpc(
     };
 
     match result {
-        Ok(res) => Json(JsonRpcResponse {
-            jsonrpc: "2.0".to_string(),
-            result: Some(res),
-            error: None,
-            id: payload.id,
-        }),
-        Err(err) => Json(JsonRpcResponse {
-            jsonrpc: "2.0".to_string(),
-            result: None,
-            error: Some(err),
-            id: payload.id,
-        }),
+        Ok(res) => (
+            StatusCode::OK,
+            Json(json!(JsonRpcResponse {
+                jsonrpc: "2.0".to_string(),
+                result: Some(res),
+                error: None,
+                id: payload.id,
+            })),
+        )
+            .into_response(),
+        Err(err) => (
+            StatusCode::OK,
+            Json(json!(JsonRpcResponse {
+                jsonrpc: "2.0".to_string(),
+                result: None,
+                error: Some(err),
+                id: payload.id,
+            })),
+        )
+            .into_response(),
+    }
+}
+
+async fn handle_extension_add(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Json(payload): Json<ExtensionAddRequest>,
+) -> impl IntoResponse {
+    if let Err(err) = authenticate(&headers, &state.rpc_secret) {
+        return err.into_response();
+    }
+
+    info!("Extension Add: {}", payload.uri);
+
+    let uri = payload.uri;
+    let ttype = if uri.starts_with("magnet:")
+        || uri.ends_with(".torrent")
+        || payload.mime_type.as_deref() == Some("application/x-bittorrent")
+    {
+        TaskType::BitTorrent
+    } else {
+        TaskType::Http
+    };
+
+    let id = TaskId(rand::random());
+    let name = "browser-download".to_string();
+    let sources = vec![(uri, ttype)];
+
+    match state.engine.add_task_with_sources(id, name, sources).await {
+        Ok(_) => (
+            StatusCode::OK,
+            Json(json!({ "success": true, "gid": id.0.to_string() })),
+        )
+            .into_response(),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "success": false, "error": e.to_string() })),
+        )
+            .into_response(),
     }
 }
 
