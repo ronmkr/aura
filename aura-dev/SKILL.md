@@ -16,15 +16,21 @@ make green-loop
 
 ## 🛠️ Workflows
 
-### 1. Feature Implementation & Bug Fixing (TDD)
-1.  **Analyze**: Read the relevant ADR in `aura-docs/adr/` to understand the technical mandate.
+### 1. Requirement Audit & Edge Case Verification
+Before writing code, ensure you have a complete picture:
+1.  **Audit**: Read the relevant ADR in `aura-docs/adr/` and check previous implementations in the codebase to understand the technical mandate and identify potential regressions.
+2.  **Verify Edge Cases**: Explicitly identify and verify any edge cases (e.g., OS-specific limits, race conditions, file system quirks) based on your audit.
+3.  **Define Real-World Scenarios**: Formulate concrete, real-world testing scenarios (e.g., "SOCKS5 proxy over unreliable network", "Windows 260-char path limit") before starting TDD.
+
+### 2. Feature Implementation & Bug Fixing (TDD)
+1.  **Analyze**: Review the requirements and edge cases gathered during the audit phase.
 2.  **RED**: Write a failing test in `#[cfg(test)]` or `tests/`.
 3.  **GREEN**: Implement the minimal logic to pass the test.
 4.  **REFACTOR**: Apply Rust Specialist principles (no unwraps, minimal cloning, idiomatic iterators).
-5.  **Audit**: Ensure the file is under **400 lines**. If not, decompose into sub-modules.
+5.  **Maintainability**: Ensure the file is under **400 lines**. If not, decompose into sub-modules.
 6.  **Verify**: Run `make green-loop`.
 
-### 2. Real-World Scenario Testing
+### 3. Real-World Scenario Testing
 Always verify changes against actual network resources:
 -   **CLI**: `make run-cli ARGS="URL"`
 -   **Daemon**: `make run-daemon`
@@ -32,7 +38,7 @@ Always verify changes against actual network resources:
 -   **Control Files**: Verify `.aura` files are created/deleted correctly.
 -   **VPN/Interface**: Test binding with dummy interfaces if possible.
 
-### 3. Documentation & ADR Sync
+### 4. Documentation & ADR Sync
 -   **Build Manual**: Run `make docs` to verify the mdBook manual builds correctly.
 -   **Update ADRs**: If an architectural decision changes, update the relevant file in `aura-docs/adr/`.
 -   **Update TASKS**: Mark items as `[x]` in `aura-docs/project/TASKS.md` after completion.
