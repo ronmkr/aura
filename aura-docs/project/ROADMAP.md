@@ -39,7 +39,7 @@
 - [x] **RPC Server** (Axum/JSON-RPC 2.0).
 - [x] **Themeable TUI** (Ratatui + JSON-RPC client).
 - [x] **Public Rust API** (TaskHandles & Streams).
-- [ ] **Browser Bridge** (Extension support).
+- [x] **Browser Bridge** (Extension support).
 - [x] **Headless Daemon Mode** (`Aura-daemon`).
 
 ## 🚀 Milestone 6: Persistence & Advanced Protocols
