@@ -89,9 +89,10 @@ impl StorageEngine {
         let base_path = self.task_paths.get(&id).ok_or(Error::TaskNotFound(id))?;
 
         let part_path = get_part_path(base_path)?;
+        let hardened_base = crate::storage::sys::harden_path(base_path);
 
-        info!(%id, from = ?part_path, to = ?base_path, "Performing atomic completion rename");
-        fs::rename(&part_path, base_path).await?;
+        info!(%id, from = ?part_path, to = ?hardened_base, "Performing atomic completion rename");
+        fs::rename(&part_path, &hardened_base).await?;
 
         let _ = self.completion_tx.send(id).await;
 
@@ -100,7 +101,7 @@ impl StorageEngine {
 }
 
 pub(crate) fn get_part_path(base_path: &Path) -> Result<PathBuf> {
-    let mut part_path = base_path.to_path_buf();
+    let mut part_path = crate::storage::sys::harden_path(base_path);
     let mut filename = part_path
         .file_name()
         .ok_or_else(|| Error::Task(TaskId(0), "Invalid filename".to_string()))? // Placeholder ID as we don't have it here

@@ -1,4 +1,5 @@
 pub mod ops;
+pub mod sys;
 
 use crate::buffer_pool::BufferPool;
 use crate::worker::Segment;
@@ -94,6 +95,14 @@ impl StorageEngine {
             return Ok(());
         }
         let file = self.get_or_open_part_file(id).await?;
+
+        let file_clone = file.try_clone().await?.into_std().await;
+        let length_clone = length;
+        let _ = tokio::task::spawn_blocking(move || {
+            let _ = crate::storage::sys::harden_file(&file_clone, length_clone);
+        })
+        .await;
+
         file.set_len(length).await.map_err(Error::from)
     }
 
