@@ -82,8 +82,10 @@ impl Default for PowerManager {
 }
 
 #[cfg(test)]
+#[cfg(test)]
 mod tests {
     use super::*;
+
     use std::time::Duration;
 
     #[test]

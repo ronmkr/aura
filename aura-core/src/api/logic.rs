@@ -111,8 +111,10 @@ impl TaskHandle {
 }
 
 #[cfg(test)]
+#[cfg(test)]
 mod tests {
     use super::*;
+
     use crate::Config;
     use tokio_stream::StreamExt;
 
