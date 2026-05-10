@@ -3,7 +3,7 @@
 This document tracks the technical debt and missing features identified during the Milestone 1-6 audit on 2026-05-09.
 
 ## 🔴 High Priority: Stability & Performance
-- [ ] **Advanced Filesystem Hardening** (Issue #92)
+- [x] **Advanced Filesystem Hardening** (Issue #92)
     - Implement `fallocate` for actual block allocation (Linux).
     - Implement COW-awareness (`chattr +C`) for Btrfs/ZFS.
     - Implement Windows long path prefixing (`\\?\`).
