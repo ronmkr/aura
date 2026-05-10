@@ -20,11 +20,9 @@ pub(crate) fn harden_file(file: &File, length: u64) -> Result<()> {
                 const FS_IOC_SETFLAGS: libc::c_ulong = 0x40086602;
                 const FS_NOCOW_FL: libc::c_long = 0x00800000;
 
-                if libc::ioctl(fd, FS_IOC_GETFLAGS, &mut flags) == 0 {
-                    if (flags & FS_NOCOW_FL) == 0 {
-                        flags |= FS_NOCOW_FL;
-                        let _ = libc::ioctl(fd, FS_IOC_SETFLAGS, &flags);
-                    }
+                if libc::ioctl(fd, FS_IOC_GETFLAGS, &mut flags) == 0 && (flags & FS_NOCOW_FL) == 0 {
+                    flags |= FS_NOCOW_FL;
+                    let _ = libc::ioctl(fd, FS_IOC_SETFLAGS, &flags);
                 }
                 // Skip fallocate on COW filesystems as per ADR 0035
                 return Ok(());

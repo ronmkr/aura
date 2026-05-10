@@ -76,10 +76,17 @@ impl TokenBucket {
         if self.rate_per_sec.load(Ordering::Relaxed) == 0 {
             return; // Unlimited
         }
-        let cap = self.capacity.load(Ordering::Relaxed);
-        let permits = std::cmp::min(amount as usize, cap as usize);
-        if permits > 0 {
-            let _ = self.available.acquire_many(permits as u32).await;
+        let cap = self.capacity.load(Ordering::Relaxed) as usize;
+        let mut remaining = amount as usize;
+
+        while remaining > 0 {
+            let permits = std::cmp::min(remaining, cap);
+            if permits > 0 {
+                let _ = self.available.acquire_many(permits as u32).await;
+                remaining -= permits;
+            } else {
+                break;
+            }
         }
     }
 }
