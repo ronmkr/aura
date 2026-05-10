@@ -99,7 +99,7 @@ impl Orchestrator {
                                         }
                                         Err(e) => {
                                             debug!(%meta_id, %sub_id, error = %e, "Range fetch failed");
-                                            let _ = subtask_tx.send(SubTaskEvent::Failed(meta_id, sub_id, e.to_string())).await;
+                                            let _ = subtask_tx.send(crate::orchestrator::SubTaskEvent::Failed(meta_id, sub_id, e.to_string())).await;
                                         }
                                     }
                                 }
@@ -130,7 +130,7 @@ impl Orchestrator {
                                         }
                                         Err(e) => {
                                             debug!(%meta_id, %sub_id, error = %e, "Range fetch failed");
-                                            let _ = subtask_tx.send(SubTaskEvent::Failed(meta_id, sub_id, e.to_string())).await;
+                                            let _ = subtask_tx.send(crate::orchestrator::SubTaskEvent::Failed(meta_id, sub_id, e.to_string())).await;
                                         }
                                     }
                                 }

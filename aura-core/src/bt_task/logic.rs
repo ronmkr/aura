@@ -70,7 +70,7 @@ impl BtTaskState {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct BtTask {
     pub id: TaskId,
     pub state: Arc<BtTaskState>,
@@ -259,5 +259,40 @@ impl BtTask {
     ) {
         let mut registry = self.state.registry.lock().await;
         registry.update_state(addr, state);
+    }
+
+    pub async fn run(
+        &self,
+        my_id: [u8; 20],
+        _storage_tx: mpsc::Sender<crate::storage::StorageRequest>,
+        _subtask_tx: mpsc::Sender<crate::orchestrator::SubTaskEvent>,
+        token: tokio_util::sync::CancellationToken,
+        _throttler: Arc<crate::throttler::Throttler>,
+    ) -> Result<()> {
+        let port = 6881; // TODO: make configurable
+        let dht_token = token.clone();
+        let lpd_token = token.clone();
+        let tracker_token = token.clone();
+
+        let this = Arc::new(self.clone());
+        let this_dht = this.clone();
+        let this_lpd = this.clone();
+        let this_tracker = this.clone();
+
+        tokio::spawn(async move {
+            let _ = this_dht.run_dht_loop(dht_token).await;
+        });
+
+        tokio::spawn(async move {
+            let _ = this_lpd.run_lpd_loop(port, lpd_token).await;
+        });
+
+        tokio::spawn(async move {
+            let _ = this_tracker
+                .run_tracker_loop(my_id, port, tracker_token, None, None, None)
+                .await;
+        });
+
+        Ok(())
     }
 }

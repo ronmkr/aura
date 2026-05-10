@@ -124,6 +124,7 @@ pub fn expand_url(url: &str) -> Result<Vec<String>> {
 }
 
 #[cfg(test)]
+#[cfg(test)]
 mod tests {
     use super::*;
 

@@ -101,12 +101,19 @@ impl LpdActor {
     async fn send_announce(&self, info_hash: InfoHash, port: u16) {
         let info_hash_hex = hex::encode(info_hash.to_vec());
         let message = format!(
-            "BT-SEARCH * HTTP/1.1\r\n\
-             Host: 239.192.152.143:6771\r\n\
-             Port: {}\r\n\
-             Infohash: {}\r\n\
-             cookie: {}\r\n\
-             \r\n\r\n",
+            "BT-SEARCH * HTTP/1.1\r
+\
+             Host: 239.192.152.143:6771\r
+\
+             Port: {}\r
+\
+             Infohash: {}\r
+\
+             cookie: {}\r
+\
+             \r
+\r
+",
             port, info_hash_hex, self.cookie
         );
 
@@ -186,8 +193,10 @@ impl LpdActor {
 }
 
 #[cfg(test)]
+#[cfg(test)]
 mod tests {
     use super::*;
+
     use proptest::prelude::*;
     use tokio::sync::mpsc;
 
@@ -220,10 +229,15 @@ mod tests {
         let mut actor = actor;
         actor.active_hashes.insert((info_hash, 6881));
 
-        let message = "BT-SEARCH * HTTP/1.1\r\n\
-                       Port: 6882\r\n\
-                       Infohash: 0101010101010101010101010101010101010101\r\n\
-                       cookie: other-cookie\r\n\r\n";
+        let message = "BT-SEARCH * HTTP/1.1\r
+\
+                   Port: 6882\r
+\
+                   Infohash: 0101010101010101010101010101010101010101\r
+\
+                   cookie: other-cookie\r
+\r
+";
 
         let addr = "192.168.1.100:12345".parse::<SocketAddr>().unwrap();
         actor.handle_packet(message.as_bytes(), addr).await;
@@ -255,10 +269,15 @@ mod tests {
         let mut actor = actor;
         actor.active_hashes.insert((info_hash, 6881));
 
-        let message = "BT-SEARCH * HTTP/1.1\r\n\
-                       Port: 6881\r\n\
-                       Infohash: 0101010101010101010101010101010101010101\r\n\
-                       cookie: my-cookie\r\n\r\n";
+        let message = "BT-SEARCH * HTTP/1.1\r
+\
+                   Port: 6881\r
+\
+                   Infohash: 0101010101010101010101010101010101010101\r
+\
+                   cookie: my-cookie\r
+\r
+";
 
         let addr = "192.168.1.100:12345".parse::<SocketAddr>().unwrap();
         actor.handle_packet(message.as_bytes(), addr).await;

@@ -6,42 +6,43 @@ pub use peer_handler::handle_incoming_peer;
 use super::{Orchestrator, SubTaskEvent};
 use crate::bitfield::Bitfield;
 use crate::bt_task::BtTask;
-use crate::bt_worker::BtWorker;
 use crate::task::TaskType;
 use crate::worker::Metadata;
 use crate::{Error, Result, TaskId};
 use std::sync::Arc;
 use tokio_util::sync::CancellationToken;
-use tracing::{debug, info};
+use tracing::{info, warn};
 
 impl Orchestrator {
     pub(crate) async fn save_task(&self, id: TaskId) -> Result<()> {
         if let Some(meta_task) = self.tasks.get(&id) {
             let mut bitfield: Option<Bitfield> = None;
             for sub in &meta_task.subtasks {
-                if let Some(bt) = self.bt_tasks.get(&sub.id) {
-                    let bf = bt.state.bitfield.lock().await;
-                    bitfield = bf.clone();
-                    break;
+                if sub.task_type == TaskType::BitTorrent {
+                    if let Some(bt) = self.bt_tasks.get(&sub.id) {
+                        let bf = bt.state.bitfield.lock().await;
+                        bitfield = bf.clone();
+                        break;
+                    }
                 }
             }
 
+            // Save bitfield to Sled for high-performance resumption
+            if let Some(ref bf) = bitfield {
+                let bytes = bf.as_bytes();
+                let _ = self.db.insert(format!("task:{}:bitfield", id.0), bytes);
+            }
+
+            // Save full task state to .aura control file for human-readability and basic resumption
             let state = meta_task.to_state(bitfield);
-            let filename = format!("{}.aura", meta_task.name);
-            let config = self.config.load();
-            let download_dir = std::path::PathBuf::from(&config.storage.download_dir);
-            let path = download_dir.join(&filename);
-            info!(%id, path = ?path, "Saving control file");
-
-            let data = serde_json::to_vec_pretty(&state)
-                .map_err(|e| Error::Task(id, format!("Failed to serialize task state: {}", e)))?;
-
-            tokio::fs::write(&path, data).await.map_err(|e| {
-                Error::Task(
-                    id,
-                    format!("Failed to write control file {}: {}", filename, e),
-                )
-            })?;
+            if let Ok(json) = serde_json::to_vec_pretty(&state) {
+                let config = self.config.load();
+                let path = std::path::Path::new(&config.storage.download_dir)
+                    .join(format!("{}.aura", meta_task.name));
+                if let Err(e) = std::fs::write(&path, json) {
+                    warn!(%id, ?path, error = %e, "Failed to write control file");
+                }
+            }
         }
         Ok(())
     }
@@ -96,7 +97,11 @@ impl Orchestrator {
                             }
                             Err(e) => {
                                 let _ = subtask_tx
-                                    .send(SubTaskEvent::Failed(id, sub_id, e.to_string()))
+                                    .send(crate::orchestrator::SubTaskEvent::Failed(
+                                        id,
+                                        sub_id,
+                                        e.to_string(),
+                                    ))
                                     .await;
                             }
                         }
@@ -112,7 +117,11 @@ impl Orchestrator {
                             }
                             Err(e) => {
                                 let _ = subtask_tx
-                                    .send(SubTaskEvent::Failed(id, sub_id, e.to_string()))
+                                    .send(crate::orchestrator::SubTaskEvent::Failed(
+                                        id,
+                                        sub_id,
+                                        e.to_string(),
+                                    ))
                                     .await;
                             }
                         }
@@ -154,7 +163,11 @@ impl Orchestrator {
                                 }
                                 Err(e) => {
                                     let _ = subtask_tx
-                                        .send(SubTaskEvent::Failed(id, sub_id, e.to_string()))
+                                        .send(crate::orchestrator::SubTaskEvent::Failed(
+                                            id,
+                                            sub_id,
+                                            e.to_string(),
+                                        ))
                                         .await;
                                     return;
                                 }
@@ -185,129 +198,21 @@ impl Orchestrator {
                                 .send(SubTaskEvent::Matured(id, sub_id, metadata))
                                 .await;
                         }
-                        drop(torrent_guard);
 
-                        let tracker_task = bt_task.clone();
-                        let t1 = token_clone.clone();
-                        let ua = config.network.user_agent.clone();
-                        let port = config.network.listen_port;
-                        let proxy_conf = config.network.proxy.clone();
+                        let bt_task_run = bt_task.clone();
+                        let throttler_clone = throttler_clone.clone();
                         tokio::spawn(async move {
-                            let _ = tracker_task
-                                .run_tracker_loop(
+                            if let Err(e) = bt_task_run
+                                .run(
                                     my_peer_id,
-                                    port,
-                                    t1,
-                                    local_addr,
-                                    Some(ua),
-                                    proxy_conf,
+                                    storage_tx,
+                                    subtask_tx,
+                                    token_clone,
+                                    throttler_clone,
                                 )
-                                .await;
-                        });
-
-                        let dht_task = bt_task.clone();
-                        let t2 = token_clone.clone();
-                        tokio::spawn(async move {
-                            let _ = dht_task.run_dht_loop(t2).await;
-                        });
-
-                        if config.bittorrent.lpd_enabled {
-                            let lpd_task = bt_task.clone();
-                            let t5 = token_clone.clone();
-                            let port = config.network.listen_port;
-                            tokio::spawn(async move {
-                                let _ = lpd_task.run_lpd_loop(port, t5).await;
-                            });
-                        }
-
-                        let peer_task = bt_task.clone();
-                        let storage_tx_loop = storage_tx.clone();
-                        let subtask_tx_loop = subtask_tx.clone();
-                        let t3 = token_clone.clone();
-                        let config_loop = config_clone.clone();
-                        let pool_loop = pool.clone();
-
-                        use std::sync::atomic::{AtomicUsize, Ordering};
-                        let active_workers = Arc::new(AtomicUsize::new(0));
-
-                        tokio::spawn(async move {
-                            loop {
-                                if t3.is_cancelled() {
-                                    break;
-                                }
-                                let config = config_loop.load();
-                                if active_workers.load(Ordering::Relaxed)
-                                    < config.bittorrent.max_peers_per_torrent
-                                {
-                                    if let Some((maybe_piece_idx, peer)) =
-                                        peer_task.pick_work().await
-                                    {
-                                        let addr = format!("{}:{}", peer.ip, peer.port);
-                                        let peer_id = peer
-                                            .id
-                                            .and_then(|v| {
-                                                if let serde_bencode::value::Value::Bytes(b) = v {
-                                                    let mut pid = [0u8; 20];
-                                                    if b.len() == 20 {
-                                                        pid.copy_from_slice(&b);
-                                                        Some(pid)
-                                                    } else {
-                                                        None
-                                                    }
-                                                } else {
-                                                    None
-                                                }
-                                            })
-                                            .unwrap_or([0; 20]);
-
-                                        info!(%id, %addr, ?maybe_piece_idx, "Initiating peer connection");
-                                        peer_task
-                                            .update_peer_state(
-                                                &addr,
-                                                crate::peer_registry::ConnectionState::Connecting,
-                                            )
-                                            .await;
-
-                                        let mut worker = BtWorker::new(
-                                            addr.clone(),
-                                            info_hash,
-                                            peer_id,
-                                            my_peer_id,
-                                            pool_loop.clone(),
-                                            config.network.proxy.clone(),
-                                            throttler_clone.clone(),
-                                        );
-                                        worker.local_addr = local_addr;
-                                        worker.pipeline_size =
-                                            config.bittorrent.request_pipeline_size;
-                                        let s_tx_inner = storage_tx_loop.clone();
-                                        let sub_tx = subtask_tx_loop.clone();
-                                        let peer_task_inner = peer_task.clone();
-                                        let active_counter = active_workers.clone();
-                                        let t4 = t3.clone();
-                                        let w_cmd_rx = worker_cmd_tx.subscribe();
-
-                                        active_counter.fetch_add(1, Ordering::Relaxed);
-                                        tokio::spawn(async move {
-                                            if let Err(e) = worker
-                                                .run_loop(
-                                                    id,
-                                                    sub_id,
-                                                    peer_task_inner,
-                                                    s_tx_inner,
-                                                    sub_tx,
-                                                    w_cmd_rx,
-                                                    t4,
-                                                )
-                                                .await
-                                            {
-                                                debug!(%id, %addr, error = %e, "Peer loop stopped");
-                                            }
-                                            active_counter.fetch_sub(1, Ordering::Relaxed);
-                                        });
-                                    }
-                                }
-                                tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+                                .await
+                            {
+                                info!(%id, %sub_id, error = %e, "BT task failed");
                             }
                         });
                     }

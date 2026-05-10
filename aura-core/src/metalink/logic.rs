@@ -114,25 +114,26 @@ impl Metalink {
 }
 
 #[cfg(test)]
+#[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn test_parse_simple_metalink() {
         let xml = r#"
-        <?xml version="1.0" encoding="utf-8"?>
-        <metalink version="3.0" xmlns="http://www.metalinker.org/">
-          <files>
-            <file name="example.zip">
-              <size>12345</size>
-              <resources>
-                <url protocol="http">http://mirror1.com/example.zip</url>
-                <url protocol="ftp">ftp://mirror2.com/example.zip</url>
-              </resources>
-            </file>
-          </files>
-        </metalink>
-        "#;
+    <?xml version="1.0" encoding="utf-8"?>
+    <metalink version="3.0" xmlns="http://www.metalinker.org/">
+      <files>
+        <file name="example.zip">
+          <size>12345</size>
+          <resources>
+            <url protocol="http">http://mirror1.com/example.zip</url>
+            <url protocol="ftp">ftp://mirror2.com/example.zip</url>
+          </resources>
+        </file>
+      </files>
+    </metalink>
+    "#;
         let metalink = Metalink::parse(xml.as_bytes()).expect("Failed to parse Metalink");
         assert_eq!(metalink.files.len(), 1);
         assert_eq!(metalink.files[0].name, "example.zip");
