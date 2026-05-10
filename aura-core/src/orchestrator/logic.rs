@@ -142,6 +142,50 @@ impl Orchestrator {
         self.power_manager.set_active(is_active);
     }
 
+    pub(crate) async fn verify_vpn_connectivity(&self) -> Result<()> {
+        let config = self.config.load();
+        if !config.vpn.force_tunnel {
+            return Ok(());
+        }
+
+        if let Some(ref vpn) = self.vpn_provider {
+            match vpn.status().await? {
+                crate::vpn::VpnStatus::Connected => Ok(()),
+                crate::vpn::VpnStatus::Connecting => {
+                    tracing::info!("VPN is connecting, waiting...");
+                    // Simple retry loop or just wait?
+                    // For now, let's just fail and let the next attempt try again
+                    // or let auto_connect handle it.
+                    Err(crate::Error::Engine("VPN is still connecting".to_string()))
+                }
+                crate::vpn::VpnStatus::Disconnected | crate::vpn::VpnStatus::Error(_) => {
+                    if config.vpn.auto_connect {
+                        tracing::info!("VPN disconnected, attempting auto-connect...");
+                        vpn.connect().await?;
+                        Err(crate::Error::Engine(
+                            "VPN re-connect triggered. Please retry in a moment.".to_string(),
+                        ))
+                    } else {
+                        Err(crate::Error::Engine(
+                            "Mandatory VPN tunnel is down and auto-connect is disabled."
+                                .to_string(),
+                        ))
+                    }
+                }
+            }
+        } else {
+            // Force tunnel is on but no provider is configured
+            if config.network.interface.is_some() {
+                Ok(()) // Interface monitor is technically a provider, handled above
+            } else {
+                Err(crate::Error::Config(
+                    "Mandatory tunnel enabled but no VPN provider or interface configured"
+                        .to_string(),
+                ))
+            }
+        }
+    }
+
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         command_rx: mpsc::Receiver<Command>,
@@ -167,11 +211,36 @@ impl Orchestrator {
             initial_config.bandwidth.global_upload_limit,
         ));
 
-        let vpn_provider: Option<Arc<dyn crate::vpn::VpnProvider>> =
-            initial_config.network.interface.as_ref().map(|iface| {
-                Arc::new(crate::vpn::InterfaceMonitor::new(iface.clone()))
-                    as Arc<dyn crate::vpn::VpnProvider>
-            });
+        let vpn_provider: Option<Arc<dyn crate::vpn::VpnProvider>> = {
+            if let Some(ref type_name) = initial_config.vpn.type_name {
+                match type_name.to_lowercase().as_str() {
+                    "wireguard" => {
+                        let iface = initial_config
+                            .network
+                            .interface
+                            .clone()
+                            .unwrap_or_else(|| "wg0".to_string());
+                        Some(Arc::new(crate::vpn::WireGuardProvider::new(iface))
+                            as Arc<dyn crate::vpn::VpnProvider>)
+                    }
+                    "openvpn" => {
+                        let addr = initial_config
+                            .vpn
+                            .profile_path
+                            .clone()
+                            .unwrap_or_else(|| "127.0.0.1:1337".to_string());
+                        Some(Arc::new(crate::vpn::OpenVpnProvider::new(addr))
+                            as Arc<dyn crate::vpn::VpnProvider>)
+                    }
+                    _ => None,
+                }
+            } else {
+                initial_config.network.interface.as_ref().map(|iface| {
+                    Arc::new(crate::vpn::InterfaceMonitor::new(iface.clone()))
+                        as Arc<dyn crate::vpn::VpnProvider>
+                })
+            }
+        };
 
         (
             Self {

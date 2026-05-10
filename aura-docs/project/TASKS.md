@@ -18,7 +18,7 @@ This document tracks the technical debt and missing features identified during t
 - [ ] **WebSocket Telemetry for RPC** (Edge Case from ADR 0016)
     - Implement WebSocket support in `aura-daemon` for real-time `EventBus` subscriptions.
     - Support bi-directional streaming for frontend (TUI/Web) parity.
-- [ ] **Native VPN Integration** (Issue #42)
+- [x] **Native VPN Integration** (Issue #42)
     - Implement `WireGuard` controller (CLI/IPC).
     - Implement `OpenVPN` controller (Management Interface).
     - Add "Mandatory Tunnel" enforcement.

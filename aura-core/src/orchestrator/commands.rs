@@ -59,6 +59,9 @@ impl Orchestrator {
         name: String,
         sources: Vec<(String, crate::task::TaskType)>,
     ) -> Result<()> {
+        // Enforce mandatory tunnel
+        self.verify_vpn_connectivity().await?;
+
         info!(%id, %name, "Adding MetaTask with {} sources", sources.len());
 
         let config = self.config.load();
@@ -174,6 +177,9 @@ impl Orchestrator {
     }
 
     pub(crate) async fn handle_resume(&mut self, id: TaskId) -> Result<()> {
+        // Enforce mandatory tunnel
+        self.verify_vpn_connectivity().await?;
+
         if let Some(task) = self.tasks.get_mut(&id) {
             if task.phase == DownloadPhase::Paused {
                 info!(%id, "Resuming task");
