@@ -26,5 +26,5 @@ We will use an **Orchestrated Pull** model.
 - **Logic**: Orchestrator listens for `SubTaskEvent` and assigns pieces via the `PiecePicker`.
 
 ## Verification
-- **Unit Test**: `aura-core/src/piece_picker.rs` (Tests piece selection strategy).
+- **Unit Test**: `aura-core/src/piece_picker/logic.rs` (Tests piece selection strategy).
 - **Integration Test**: `aura-core/src/bt_worker/tests.rs` (Simulates worker requesting work).

@@ -229,20 +229,20 @@ This table maps architectural concepts to their primary implementation files in 
 | **The Pilot (TUI)** | Interface | `aura-tui/src/app.rs`, `ui.rs` |
 | **Aura Daemon** | Persistent | `aura-daemon/src/main.rs` |
 | **Engine Core** | Orchestration | `aura-core/src/orchestrator/engine.rs` |
-| **Task Orchestrator** | Orchestration | `aura-core/src/orchestrator/mod.rs` |
-| **Sequential Aggregator** | Storage | `aura-core/src/storage/mod.rs` |
+| **Task Orchestrator** | Orchestration | `aura-core/src/orchestrator/logic.rs` |
+| **Sequential Aggregator** | Storage | `aura-core/src/storage/logic.rs` |
 | **Storage Ops** | Storage | `aura-core/src/storage/ops.rs` |
-| **Buffer Pool** | Memory | `aura-core/src/buffer_pool.rs` |
+| **Buffer Pool** | Memory | `aura-core/src/buffer_pool/logic.rs` |
 | **HTTP Worker** | Protocol | `aura-core/src/worker/http.rs` |
 | **FTP Worker** | Protocol | `aura-core/src/worker/ftp.rs` |
-| **BitTorrent Logic** | Protocol | `aura-core/src/bt_worker/logic.rs` |
-| **Piece Picker** | Strategy | `aura-core/src/piece_picker.rs` |
-| **Peer Registry** | Strategy | `aura-core/src/peer_registry.rs` |
-| **DHT Node** | Discovery | `aura-core/src/dht/mod.rs` |
-| **Tracker Client** | Discovery | `aura-core/src/tracker/mod.rs` |
-| **Power Manager** | System | `aura-core/src/power.rs` |
-| **NAT Traversal** | Network | `aura-core/src/nat.rs` |
-| **LPD** | Discovery | `aura-core/src/lpd.rs` |
+| **BitTorrent Logic** | Protocol | `aura-core/src/bt_worker/worker.rs` |
+| **Piece Picker** | Strategy | `aura-core/src/piece_picker/logic.rs` |
+| **Peer Registry** | Strategy | `aura-core/src/peer_registry/logic.rs` |
+| **DHT Node** | Discovery | `aura-core/src/dht/actor/mod.rs` |
+| **Tracker Client** | Discovery | `aura-core/src/tracker/logic.rs` |
+| **Power Manager** | System | `aura-core/src/power/logic.rs` |
+| **NAT Traversal** | Network | `aura-core/src/nat/logic.rs` |
+| **LPD** | Discovery | `aura-core/src/lpd/logic.rs` |
 
 ---
 

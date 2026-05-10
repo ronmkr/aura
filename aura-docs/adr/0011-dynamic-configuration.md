@@ -25,4 +25,4 @@ Implemented
 - **Logic**: Uses `notify` crate to watch `Aura.toml` and updates `ArcSwap<Config>` inside the `Engine`.
 
 ## Verification
-- **Test**: `aura-core/src/config.rs` (Validates TOML parsing and default overrides).
+- **Test**: `aura-core/src/config/logic.rs` (Validates TOML parsing and default overrides).

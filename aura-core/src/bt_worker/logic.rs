@@ -5,7 +5,6 @@ use crate::storage::StorageRequest;
 use crate::{Error, Result, TaskId};
 use futures_util::SinkExt;
 use sha1::{Digest, Sha1};
-use sha2::Sha256;
 use tokio_util::codec::Framed;
 use tracing::{debug, error, info};
 
@@ -89,10 +88,9 @@ impl super::BtWorker {
             if self.bytes_received >= piece_total_len {
                 // Piece complete, verify hash
                 let is_verified = if torrent.info_hash_v2().unwrap_or(None).is_some() {
-                    // v2 or Hybrid: use SHA-256
-                    let mut hasher = Sha256::new();
-                    hasher.update(&self.piece_buffer);
-                    let actual_hash: [u8; 32] = hasher.finalize().into();
+                    // v2 or Hybrid: use SHA-256 Merkle root
+                    let actual_hash =
+                        crate::torrent::Torrent::compute_piece_merkle_root(&self.piece_buffer);
 
                     if let Ok(expected_hash) =
                         torrent.piece_hash_v2(piece_idx, Some(&task.state.db))

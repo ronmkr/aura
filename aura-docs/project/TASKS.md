@@ -8,8 +8,8 @@ This document tracks the technical debt and missing features identified during t
     - Implement COW-awareness (`chattr +C`) for Btrfs/ZFS.
     - Implement Windows long path prefixing (`\\?\`).
 - [x] **Modular Architecture Refactor** (Issue #96)
-    - Decompose `aura-core/src/torrent.rs` (461 lines) into `torrent/`.
-    - Decompose `aura-core/src/dht/mod.rs` (445 lines).
+    - Decompose `aura-core/src/torrent/` (was 461 lines) into sub-modules.
+    - Decompose `aura-core/src/dht/` (was 445 lines) into sub-modules.
 
 ## 🟡 Medium Priority: Connectivity & UX
 - [ ] **Browser Extension Bridge** (Issue #95)
