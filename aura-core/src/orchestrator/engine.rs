@@ -137,8 +137,9 @@ impl Engine {
                 while rx.recv().await.is_some() {
                     info!("Config file modified, reloading...");
                     if let Ok(new_config) = crate::Config::from_file(&config_path_watcher) {
+                        let (tx, _rx) = tokio::sync::oneshot::channel();
                         let _ = command_tx_watcher
-                            .send(Command::ReloadConfig(Arc::new(new_config)))
+                            .send(Command::ReloadConfig(Arc::new(new_config), tx))
                             .await;
                     } else {
                         warn!("Failed to reload modified config");
@@ -287,10 +288,13 @@ impl Engine {
     }
 
     pub async fn reload_config(&self, config: crate::Config) -> Result<()> {
+        let (tx, rx) = tokio::sync::oneshot::channel();
         self.command_tx
-            .send(Command::ReloadConfig(Arc::new(config)))
+            .send(Command::ReloadConfig(Arc::new(config), tx))
             .await
             .map_err(|e| Error::Engine(format!("Failed to send ReloadConfig command: {}", e)))?;
+
+        let _ = rx.await;
         Ok(())
     }
 

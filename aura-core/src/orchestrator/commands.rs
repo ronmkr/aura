@@ -28,13 +28,22 @@ impl Orchestrator {
                 let config = self.config.load().clone();
                 let _ = reply_tx.send(config).await;
             }
-            Command::ReloadConfig(new_config) => {
+            Command::ReloadConfig(new_config, resp_tx) => {
                 info!("Reloading configuration");
                 self.throttler
                     .set_global_download_limit(new_config.bandwidth.global_download_limit);
                 self.throttler
                     .set_global_upload_limit(new_config.bandwidth.global_upload_limit);
+
+                // Update VPN provider if changed
+                if self.config.load().vpn != new_config.vpn
+                    || self.config.load().network.interface != new_config.network.interface
+                {
+                    self.update_vpn_provider(&new_config);
+                }
+
                 self.config.store(new_config);
+                let _ = resp_tx.send(());
             }
             Command::KillSwitch => {
                 let ids: Vec<TaskId> = self.tasks.keys().cloned().collect();

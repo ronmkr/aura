@@ -21,7 +21,7 @@ pub use super::engine::Engine;
 use super::lifecycle;
 
 /// Internal commands for the Orchestrator.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum Command {
     AddTask {
         id: TaskId,
@@ -33,7 +33,7 @@ pub enum Command {
     Remove(TaskId),
     ListActive(mpsc::Sender<Vec<MetaTask>>),
     GetConfig(mpsc::Sender<Arc<crate::Config>>),
-    ReloadConfig(Arc<crate::Config>),
+    ReloadConfig(Arc<crate::Config>, tokio::sync::oneshot::Sender<()>),
     KillSwitch,
     Shutdown,
 }
@@ -106,6 +106,7 @@ pub struct Orchestrator {
     pub(crate) peer_id: [u8; 20],
     pub(crate) throttler: Arc<Throttler>,
     pub(crate) vpn_provider: Option<Arc<dyn crate::vpn::VpnProvider>>,
+    pub(crate) vpn_watch_tx: tokio::sync::watch::Sender<Option<Arc<dyn crate::vpn::VpnProvider>>>,
     pub(crate) config: Arc<ArcSwap<crate::Config>>,
     pub(crate) power_manager: crate::power::PowerManager,
     pub(crate) pool: BufferPool,
@@ -113,6 +114,45 @@ pub struct Orchestrator {
 }
 
 impl Orchestrator {
+    pub(crate) fn create_vpn_provider(
+        config: &crate::Config,
+    ) -> Option<Arc<dyn crate::vpn::VpnProvider>> {
+        if let Some(ref type_name) = config.vpn.type_name {
+            match type_name.to_lowercase().as_str() {
+                "wireguard" => {
+                    let iface = config
+                        .network
+                        .interface
+                        .clone()
+                        .unwrap_or_else(|| "wg0".to_string());
+                    Some(Arc::new(crate::vpn::WireGuardProvider::new(iface))
+                        as Arc<dyn crate::vpn::VpnProvider>)
+                }
+                "openvpn" => {
+                    let addr = config
+                        .vpn
+                        .profile_path
+                        .clone()
+                        .unwrap_or_else(|| "127.0.0.1:1337".to_string());
+                    Some(Arc::new(crate::vpn::OpenVpnProvider::new(addr))
+                        as Arc<dyn crate::vpn::VpnProvider>)
+                }
+                _ => None,
+            }
+        } else {
+            config.network.interface.as_ref().map(|iface| {
+                Arc::new(crate::vpn::InterfaceMonitor::new(iface.clone()))
+                    as Arc<dyn crate::vpn::VpnProvider>
+            })
+        }
+    }
+
+    pub(crate) fn update_vpn_provider(&mut self, config: &crate::Config) {
+        let new_provider = Self::create_vpn_provider(config);
+        self.vpn_provider = new_provider.clone();
+        let _ = self.vpn_watch_tx.send(new_provider);
+    }
+
     pub(crate) fn resolve_local_addr(&self) -> Option<std::net::IpAddr> {
         let config = self.config.load();
         if let Some(addr) = config.network.local_addr {
@@ -211,36 +251,8 @@ impl Orchestrator {
             initial_config.bandwidth.global_upload_limit,
         ));
 
-        let vpn_provider: Option<Arc<dyn crate::vpn::VpnProvider>> = {
-            if let Some(ref type_name) = initial_config.vpn.type_name {
-                match type_name.to_lowercase().as_str() {
-                    "wireguard" => {
-                        let iface = initial_config
-                            .network
-                            .interface
-                            .clone()
-                            .unwrap_or_else(|| "wg0".to_string());
-                        Some(Arc::new(crate::vpn::WireGuardProvider::new(iface))
-                            as Arc<dyn crate::vpn::VpnProvider>)
-                    }
-                    "openvpn" => {
-                        let addr = initial_config
-                            .vpn
-                            .profile_path
-                            .clone()
-                            .unwrap_or_else(|| "127.0.0.1:1337".to_string());
-                        Some(Arc::new(crate::vpn::OpenVpnProvider::new(addr))
-                            as Arc<dyn crate::vpn::VpnProvider>)
-                    }
-                    _ => None,
-                }
-            } else {
-                initial_config.network.interface.as_ref().map(|iface| {
-                    Arc::new(crate::vpn::InterfaceMonitor::new(iface.clone()))
-                        as Arc<dyn crate::vpn::VpnProvider>
-                })
-            }
-        };
+        let vpn_provider = Self::create_vpn_provider(&initial_config);
+        let (vpn_watch_tx, _vpn_watch_rx) = tokio::sync::watch::channel(vpn_provider.clone());
 
         (
             Self {
@@ -261,6 +273,7 @@ impl Orchestrator {
                 peer_id,
                 throttler,
                 vpn_provider,
+                vpn_watch_tx,
                 config,
                 power_manager: crate::power::PowerManager::new(),
                 pool,
@@ -359,14 +372,18 @@ impl Orchestrator {
         let mut scaling_interval = tokio::time::interval(std::time::Duration::from_secs(1));
 
         // VPN Kill-switch Monitor
-        let vpn_provider_monitor = self.vpn_provider.clone();
+        let vpn_watch_rx = self.vpn_watch_tx.subscribe();
         let subtask_tx_monitor = self.subtask_tx.clone();
 
         tokio::spawn(async move {
-            if let Some(vpn) = vpn_provider_monitor {
-                let mut interval = tokio::time::interval(std::time::Duration::from_secs(2));
-                loop {
-                    interval.tick().await;
+            let mut interval = tokio::time::interval(std::time::Duration::from_secs(2));
+            loop {
+                interval.tick().await;
+
+                // Pick up the latest provider
+                let vpn_opt = vpn_watch_rx.borrow().clone();
+
+                if let Some(vpn) = vpn_opt {
                     match vpn.status().await {
                         Ok(crate::vpn::VpnStatus::Disconnected)
                         | Ok(crate::vpn::VpnStatus::Error(_)) => {
