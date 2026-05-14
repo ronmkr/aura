@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aura Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Aura 🌌</h1>
+            <div class="header-controls">
+                <input type="text" id="token-input" placeholder="RPC Token (optional)">
+                <button id="connect-btn">Connect</button>
+                <div id="connection-status" class="status-indicator disconnected"></div>
+            </div>
+        </header>
+
+        <section class="add-task-section">
+            <input type="text" id="uri-input" placeholder="Enter HTTP, FTP, Magnet, or Torrent URI">
+            <button id="add-task-btn">Add Download</button>
+        </section>
+
+        <main>
+            <div class="stats-bar">
+                <div class="stat-box">
+                    <span class="stat-label">Global DL</span>
+                    <span class="stat-value" id="global-dl">0 B/s</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-label">Global UL</span>
+                    <span class="stat-value" id="global-ul">0 B/s</span>
+                </div>
+            </div>
+
+            <h2>Active Tasks</h2>
+            <div id="tasks-container" class="tasks-container">
+                <!-- Task items will be dynamically inserted here -->
+            </div>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

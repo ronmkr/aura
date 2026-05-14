@@ -1,0 +1,185 @@
+:root {
+    --bg-color: #1e1e2e;
+    --card-bg: #2d2d3f;
+    --text-color: #cdd6f4;
+    --accent-color: #89b4fa;
+    --success-color: #a6e3a1;
+    --warning-color: #f9e2af;
+    --danger-color: #f38ba8;
+    --border-radius: 8px;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    margin: 0;
+    padding: 20px;
+}
+
+.container {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+h1 {
+    color: var(--accent-color);
+    margin: 0;
+}
+
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+input[type="text"] {
+    background-color: var(--card-bg);
+    border: 1px solid #45475a;
+    color: var(--text-color);
+    padding: 8px 12px;
+    border-radius: var(--border-radius);
+    outline: none;
+}
+
+input[type="text"]:focus {
+    border-color: var(--accent-color);
+}
+
+button {
+    background-color: var(--accent-color);
+    color: var(--bg-color);
+    border: none;
+    padding: 8px 16px;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    font-weight: bold;
+    transition: opacity 0.2s;
+}
+
+button:hover {
+    opacity: 0.9;
+}
+
+button.danger {
+    background-color: var(--danger-color);
+}
+
+button.warning {
+    background-color: var(--warning-color);
+}
+
+.status-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+
+.status-indicator.connected { background-color: var(--success-color); box-shadow: 0 0 8px var(--success-color); }
+.status-indicator.disconnected { background-color: var(--danger-color); }
+
+.add-task-section {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 30px;
+}
+
+.add-task-section input {
+    flex-grow: 1;
+}
+
+.stats-bar {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.stat-box {
+    background-color: var(--card-bg);
+    padding: 15px;
+    border-radius: var(--border-radius);
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.stat-label {
+    font-size: 0.85em;
+    color: #a6adc8;
+    margin-bottom: 5px;
+}
+
+.stat-value {
+    font-size: 1.2em;
+    font-weight: bold;
+    color: var(--accent-color);
+}
+
+.tasks-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.task-card {
+    background-color: var(--card-bg);
+    padding: 15px;
+    border-radius: var(--border-radius);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.task-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.task-name {
+    font-weight: bold;
+    word-break: break-all;
+}
+
+.task-status {
+    font-size: 0.85em;
+    padding: 4px 8px;
+    border-radius: 4px;
+    background-color: #313244;
+}
+
+.progress-bar-container {
+    width: 100%;
+    height: 8px;
+    background-color: #313244;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    background-color: var(--success-color);
+    width: 0%;
+    transition: width 0.3s ease;
+}
+
+.task-details {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85em;
+    color: #bac2de;
+}
+
+.task-controls {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}

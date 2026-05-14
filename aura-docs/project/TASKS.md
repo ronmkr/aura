@@ -22,7 +22,7 @@ This document tracks the technical debt and missing features identified during t
     - Implement `WireGuard` controller (CLI/IPC).
     - Implement `OpenVPN` controller (Management Interface).
     - Add "Mandatory Tunnel" enforcement.
-- [ ] **Web UI Dashboard** (Issue #67)
+- [x] **Web UI Dashboard** (Issue #67)
     - Built-in static file server in the Daemon.
     - Full parity with CLI/TUI functionality.
 - [ ] **QR Code Sharing** (Issue #74)
