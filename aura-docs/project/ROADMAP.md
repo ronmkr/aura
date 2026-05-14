@@ -41,7 +41,7 @@
 - [x] **Public Rust API** (TaskHandles & Streams).
 - [x] **Browser Bridge** (Extension support).
 - [x] **Headless Daemon Mode** (`Aura-daemon`).
-- [ ] **Web UI Dashboard** (Built-in static file server) (Issue #67).
+- [x] **Web UI Dashboard** (Built-in static file server) (Issue #67).
 - [ ] **QR Code Sharing** (CLI/TUI magnet link sharing) (Issue #74).
 
 ## 🚀 Milestone 6: Persistence & Advanced Protocols
