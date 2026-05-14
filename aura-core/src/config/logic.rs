@@ -140,7 +140,7 @@ impl Default for StorageConfig {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(default)]
 pub struct VpnConfig {
     pub type_name: Option<String>, // "openvpn", "wireguard"
@@ -157,7 +157,7 @@ impl Default for VpnConfig {
             profile_path: None,
             auto_connect: false,
             check_interval_secs: 5,
-            force_tunnel: true,
+            force_tunnel: false,
         }
     }
 }
