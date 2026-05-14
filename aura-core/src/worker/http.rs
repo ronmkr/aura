@@ -162,14 +162,14 @@ impl ProtocolWorker for HttpWorker {
 
         while let Some(chunk_res) = stream.next().await {
             let chunk = chunk_res.map_err(|e| Error::Protocol(format!("Stream error: {}", e)))?;
-            
+
             let mut remaining_chunk = &chunk[..];
             while !remaining_chunk.is_empty() {
-                // Process in chunks of 16KB to prevent bursty progress reporting 
+                // Process in chunks of 16KB to prevent bursty progress reporting
                 // that skews the EWMA throughput calculations.
                 let take_len = std::cmp::min(remaining_chunk.len(), 16384);
                 let sub_chunk = &remaining_chunk[..take_len];
-                
+
                 // Admission Control: Wait for bandwidth tokens before processing the sub-chunk
                 throttler.acquire_download(task_id, take_len as u64).await;
 
@@ -177,7 +177,7 @@ impl ProtocolWorker for HttpWorker {
                 if let Some(ref p_tx) = progress {
                     let _ = p_tx.send(take_len as u64);
                 }
-                
+
                 remaining_chunk = &remaining_chunk[take_len..];
             }
         }
