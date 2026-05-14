@@ -17,10 +17,27 @@ make green-loop
 ## 🛠️ Workflows
 
 ### 1. Requirement Audit & Edge Case Verification
-Before writing code, ensure you have a complete picture:
-1.  **Audit**: Read the relevant ADR in `aura-docs/adr/` and check previous implementations in the codebase to understand the technical mandate and identify potential regressions.
-2.  **Verify Edge Cases**: Explicitly identify and verify any edge cases (e.g., OS-specific limits, race conditions, file system quirks) based on your audit.
-3.  **Define Real-World Scenarios**: Formulate concrete, real-world testing scenarios (e.g., "SOCKS5 proxy over unreliable network", "Windows 260-char path limit") before starting TDD.
+Before writing a single line of code, you MUST complete this pre-flight check:
+
+**Requirement Audit:**
+1.  **Read ADRs**: Consult the relevant files in `aura-docs/adr/`. Identify the core architectural constraints and the "why" behind the design.
+2.  **Verify Alignment**: Compare the ADR against the current codebase. If the implementation has diverged or if the requirement is outdated, update the ADR or propose a change before proceeding.
+3.  **Constraint Mapping**: For complex requirements, create a "Constraint Map" where every mandatory clause in the ADR (e.g., "Must be atomic", "No data over eth0") is mapped to a specific test case or implementation block.
+4.  **Check Previous Implementation**: Search the codebase for similar logic. Identify patterns, shared types, and potential integration points.
+5.  **Audit Learnings**: Read `aura-docs/project/LEARNINGS.md` to avoid repeating historical mistakes (e.g., trust-but-verify server headers, redirect loop traps).
+
+**Edge Case Verification:**
+Identify and document how the feature handles:
+-   **Network Limits**: Latency spikes, packet loss, socket timeouts, and SOCKS5 proxy overhead.
+-   **OS Constraints**: File path length limits (Windows `\\?\`), block allocation quirks (`fallocate`), and sandbox violations.
+-   **Concurrency Traps**: Race conditions in config reloads (use oneshot sync!), deadlock risks in circular actor dependencies, and channel backpressure.
+-   **State Corruption**: Handling malformed persisted state (`.aura` files) and database migration failures.
+
+**Real-World Scenario Definition:**
+Formulate concrete, hostile testing scenarios to guide your TDD:
+-   *Example (Throttling)*: "A user reloads config to 1KB/s while a 100MB/s stream is active. Does the task instantly react without overflow?"
+-   *Example (VPN)*: "The wg0 interface vanishes while 5 protocol workers are mid-read. Are all sockets closed within 500ms?"
+-   *Example (I/O)*: "Disk space runs out during a sequential write flush. Is the in-memory buffer preserved or dropped?"
 
 ### 2. Feature Implementation & Bug Fixing (TDD)
 1.  **Analyze**: Review the requirements and edge cases gathered during the audit phase.

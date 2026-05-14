@@ -15,7 +15,7 @@ This document tracks the technical debt and missing features identified during t
 - [x] **Browser Extension Bridge** (Issue #95)
     - Implement RPC gateway for Chrome/Firefox extensions.
     - Add protocol interceptors for magnet/torrent/metalink MIME types.
-- [ ] **WebSocket Telemetry for RPC** (Edge Case from ADR 0016)
+- [x] **WebSocket Telemetry for RPC** (Edge Case from ADR 0016)
     - Implement WebSocket support in `aura-daemon` for real-time `EventBus` subscriptions.
     - Support bi-directional streaming for frontend (TUI/Web) parity.
 - [x] **Native VPN Integration** (Issue #42)
