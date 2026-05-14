@@ -59,11 +59,15 @@
 - [x] **Power Management** (OS-level sleep assertions).
 
 ## 🚀 Milestone 7: Industrial Hardening (Proposed)
-- [ ] **Advanced Disk I/O Scheduling** (Deadline-based sorted writes) (ADR 0022).
-- [ ] **Unified Credential Provider** (Netrc/Cookie management) (ADR 0014).
-- [ ] **Multi-tenancy & Quotas** (Resource isolation) (ADR 0032).
-- [ ] **No-COW Allocator** (Btrfs/ZFS fragmentation prevention).
-- [ ] **Recursive Mirroring** (Wget-style site crawling).
+- [ ] **Advanced Disk I/O Scheduling** (Deadline-based sorted writes) (Issue #13).
+- [ ] **Unified Credential Provider** (Netrc/Cookie management) (Issue #21).
+- [ ] **Multi-tenancy & Quotas** (Resource isolation) (Issue #15).
+- [x] **No-COW Allocator** (Btrfs/ZFS fragmentation prevention) (Issue #92).
+- [ ] **Recursive Mirroring** (Wget-style site crawling) (Issue #65).
+- [ ] **Generational Write Buffer & Advanced Caching** (Issue #14).
+- [ ] **Task Chaining & Metadata-based Path Mapping** (Issue #11).
+- [ ] **Network Filesystem (NFS/SMB) Optimizations** (Issue #12).
+- [ ] **Integrity Scrubbing & Self-healing Storage** (Issue #4).
 
 ## 🛡️ Infrastructure & DevSecOps
 - [x] `GEMINI.md` (Engineering Mandates).
