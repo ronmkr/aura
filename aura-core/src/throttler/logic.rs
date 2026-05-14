@@ -76,6 +76,15 @@ impl TokenBucket {
             new_rate
         };
         self.capacity.store(cap, Ordering::Relaxed);
+
+        // Drain excess permits if we reduced capacity
+        let current = self.available.available_permits();
+        if current > cap as usize {
+            // We can't safely "set" semaphore permits, but we can acquire the excess
+            // We use try_acquire_many to avoid blocking.
+            let excess = current - cap as usize;
+            let _ = self.available.try_acquire_many(excess as u32);
+        }
     }
 
     pub async fn acquire(&self, amount: u64) {

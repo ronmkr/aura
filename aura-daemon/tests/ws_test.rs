@@ -12,7 +12,8 @@ use tokio_tungstenite::tungstenite::Message as TungsteniteMessage;
 #[tokio::test]
 async fn test_ws_telemetry() {
     // 1. Setup Engine
-    let config = aura_core::Config::default();
+    let mut config = aura_core::Config::default();
+    config.network.listen_port = 0; // Prevent port conflicts in parallel tests
     let (engine, orchestrator, storage) = Engine::new(config).await.unwrap();
     let engine = Arc::new(engine);
 
