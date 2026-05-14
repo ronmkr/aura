@@ -41,6 +41,8 @@
 - [x] **Public Rust API** (TaskHandles & Streams).
 - [x] **Browser Bridge** (Extension support).
 - [x] **Headless Daemon Mode** (`Aura-daemon`).
+- [ ] **Web UI Dashboard** (Built-in static file server) (Issue #67).
+- [ ] **QR Code Sharing** (CLI/TUI magnet link sharing) (Issue #74).
 
 ## 🚀 Milestone 6: Persistence & Advanced Protocols
 - [x] **Pause/Resume Support** (Stopping and restarting downloads).
@@ -52,8 +54,8 @@
 - [x] **VPN Safety & Traffic Kill-switch** (ADR 0038).
 - [x] **Metalink Support (V3/V4)** (Issue #33) - **[PRIORITY: HIGH]**.
 - [x] **Dynamic TOML Configuration** (Aura.toml + Hot-reloading).
-- [ ] **Modular Architecture Refactor** (No file > 400 lines) - **[PENDING: torrent.rs, dht/mod.rs]**.
-- [ ] **VPN Native Integration** (OpenVPN/WireGuard support) (ADR 0038).
+- [x] **Modular Architecture Refactor** (No file > 400 lines) - **[PENDING: torrent.rs, dht/mod.rs]**.
+- [x] **VPN Native Integration** (OpenVPN/WireGuard support) (ADR 0038).
 - [x] **Power Management** (OS-level sleep assertions).
 
 ## 🚀 Milestone 7: Industrial Hardening (Proposed)
