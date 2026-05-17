@@ -158,9 +158,11 @@ impl Orchestrator {
                 meta_task.name = new_name;
 
                 // Update storage engine
-                let path = std::env::current_dir()
-                    .unwrap_or_default()
-                    .join(&meta_task.name);
+                let download_dir = {
+                    let config = self.config.load();
+                    config.storage.download_dir.clone()
+                };
+                let path = std::path::Path::new(&download_dir).join(&meta_task.name);
                 let _ = self
                     .storage_tx
                     .send(crate::storage::StorageRequest::RegisterTask {
@@ -236,7 +238,7 @@ impl Orchestrator {
 
             meta_task.mark_range_complete(sub_id, range);
 
-            if meta_task.is_complete() {
+            if meta_task.is_complete() && meta_task.phase != DownloadPhase::Complete {
                 info!(%meta_id, "All ranges complete for MetaTask, entering seeding phase");
                 meta_task.phase = DownloadPhase::Complete;
                 if meta_task.seeding_start_time.is_none() {

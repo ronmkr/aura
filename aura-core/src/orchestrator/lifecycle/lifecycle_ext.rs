@@ -134,7 +134,7 @@ impl Orchestrator {
                 let throttler_clone = self.throttler.clone();
 
                 let subtask_tx_progress = subtask_tx.clone();
-                tokio::spawn(async move {
+                let progress_handle = tokio::spawn(async move {
                     while let Some(bytes) = progress_rx.recv().await {
                         let _ = subtask_tx_progress
                             .send(SubTaskEvent::Downloaded(meta_id, sub_id, bytes))
@@ -161,6 +161,9 @@ impl Orchestrator {
                                 _ = token_clone.cancelled() => {
                                 }
                                 res = worker.fetch_segment(meta_id, segment, Some(progress_tx), throttler_clone.clone()) => {
+                                    // Ensure all progress events are forwarded before finishing the range
+                                    let _ = progress_handle.await;
+
                                     match res {
                                         Ok(piece) => {
                                             let _ = storage_tx.send(StorageRequest::Write {

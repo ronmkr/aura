@@ -114,7 +114,7 @@ mod tests {
             on_download_pause: None,
         };
         let mut manager = HookManager::new(config1);
-        
+
         let config2 = HookConfig {
             on_download_start: Some("echo start2".into()),
             on_download_complete: Some("echo complete2".into()),
@@ -122,9 +122,15 @@ mod tests {
             on_download_pause: None,
         };
         manager.update_config(config2);
-        
-        assert_eq!(manager.config.on_download_start.as_deref(), Some("echo start2"));
-        assert_eq!(manager.config.on_download_complete.as_deref(), Some("echo complete2"));
+
+        assert_eq!(
+            manager.config.on_download_start.as_deref(),
+            Some("echo start2")
+        );
+        assert_eq!(
+            manager.config.on_download_complete.as_deref(),
+            Some("echo complete2")
+        );
     }
 
     #[tokio::test]
@@ -136,9 +142,8 @@ mod tests {
             on_download_pause: None,
         };
         let manager = HookManager::new(config);
-        
+
         // This shouldn't panic or do anything since no hooks are defined
         manager.handle_event(&Event::TaskAdded(TaskId(1))).await;
     }
 }
-

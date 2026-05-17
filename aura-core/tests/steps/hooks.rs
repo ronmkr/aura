@@ -72,7 +72,10 @@ async fn when_task_completes(world: &mut AuraWorld) {
             aura_core::orchestrator::Event::TaskCompleted(ev_id) if ev_id == id => {
                 break;
             }
-            aura_core::orchestrator::Event::TaskError { id: ev_id, message: err } if ev_id == id => {
+            aura_core::orchestrator::Event::TaskError {
+                id: ev_id,
+                message: err,
+            } if ev_id == id => {
                 panic!("Task failed instead of completing: {}", err);
             }
             _ => {}
