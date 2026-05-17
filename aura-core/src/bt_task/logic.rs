@@ -234,15 +234,15 @@ impl BtTask {
 
     /// Picks a peer to connect to and optionally a piece to download.
     pub async fn pick_work(&self) -> Option<(Option<usize>, Peer)> {
-        let registry = self.state.registry.lock().await;
+        let mut registry = self.state.registry.lock().await;
         let peer = registry.get_peer_to_connect()?;
         let addr = format!("{}:{}", peer.ip, peer.port);
 
         // Try to pick a piece
         let bf_guard = self.state.bitfield.lock().await;
-        let picker_guard = self.state.picker.lock().await;
+        let mut picker_guard = self.state.picker.lock().await;
 
-        let piece_idx = if let (Some(bf), Some(picker)) = (bf_guard.as_ref(), picker_guard.as_ref())
+        let piece_idx = if let (Some(bf), Some(picker)) = (bf_guard.as_ref(), picker_guard.as_mut())
         {
             picker.pick_next(bf, &addr)
         } else {

@@ -41,7 +41,9 @@ impl TrackerClient {
                 .unwrap_or_else(|_| reqwest::header::HeaderValue::from_static("Aura/0.1.0")),
         );
 
-        let mut builder = reqwest::Client::builder().default_headers(headers);
+        let mut builder = reqwest::Client::builder()
+            .default_headers(headers)
+            .timeout(std::time::Duration::from_secs(10));
 
         if let Some(addr) = local_addr {
             builder = builder.local_address(addr);
@@ -77,17 +79,26 @@ impl TrackerClient {
         }
 
         let mut futures = Vec::new();
-        for url in trackers {
-            futures.push(self.announce_single(url, torrent));
+        for url in &trackers {
+            futures.push(self.announce_single(url.clone(), torrent));
         }
 
         let results = join_all(futures).await;
         let mut all_peers = Vec::new();
         let mut success = false;
 
-        for peers in results.into_iter().flatten() {
-            all_peers.extend(peers);
-            success = true;
+        for (i, res) in results.into_iter().enumerate() {
+            let url = &trackers[i];
+            match res {
+                Ok(peers) => {
+                    tracing::debug!(url = %url, count = peers.len(), "Tracker returned peers");
+                    all_peers.extend(peers);
+                    success = true;
+                }
+                Err(e) => {
+                    tracing::debug!(url = %url, error = %e, "Tracker announce failed");
+                }
+            }
         }
 
         if success {

@@ -9,6 +9,7 @@ pub mod bt_worker;
 pub mod buffer_pool;
 pub mod dht;
 pub mod glob;
+pub mod hooks;
 pub mod lpd;
 pub mod magnet;
 pub mod metalink;

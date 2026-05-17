@@ -20,11 +20,13 @@ impl TrackerClient {
             .port()
             .ok_or_else(|| Error::Protocol("Missing port in UDP tracker URL".to_string()))?;
 
-        let addrs = tokio::net::lookup_host(format!("{}:{}", host, port))
-            .await
-            .map_err(|e| {
-                Error::Protocol(format!("Failed to resolve UDP tracker {}: {}", host, e))
-            })?;
+        let addrs = tokio::time::timeout(
+            std::time::Duration::from_secs(5),
+            tokio::net::lookup_host(format!("{}:{}", host, port)),
+        )
+        .await
+        .map_err(|_| Error::Protocol(format!("DNS lookup timeout for UDP tracker {}", host)))?
+        .map_err(|e| Error::Protocol(format!("Failed to resolve UDP tracker {}: {}", host, e)))?;
 
         let mut last_error = Error::Protocol("All UDP attempts failed".to_string());
 

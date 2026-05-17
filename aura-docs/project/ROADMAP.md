@@ -54,7 +54,7 @@
 - [x] **VPN Safety & Traffic Kill-switch** (ADR 0038).
 - [x] **Metalink Support (V3/V4)** (Issue #33) - **[PRIORITY: HIGH]**.
 - [x] **Dynamic TOML Configuration** (Aura.toml + Hot-reloading).
-- [x] **Modular Architecture Refactor** (No file > 400 lines) - **[PENDING: torrent.rs, dht/mod.rs]**.
+- [x] **Modular Architecture Refactor** (No file > 400 lines).
 - [x] **VPN Native Integration** (OpenVPN/WireGuard support) (ADR 0038).
 - [x] **Power Management** (OS-level sleep assertions).
 
@@ -68,6 +68,9 @@
 - [ ] **Task Chaining & Metadata-based Path Mapping** (Issue #11).
 - [ ] **Network Filesystem (NFS/SMB) Optimizations** (Issue #12).
 - [ ] **Integrity Scrubbing & Self-healing Storage** (Issue #4).
+- [ ] **MIME Validation & Landing Page Resolution** (Issue #19).
+- [ ] **Policy-based Error Management & Self-healing** (Issue #18).
+- [ ] **Advanced Networking (kTLS, Captive Portals)** (Issue #8).
 
 ## 🛡️ Infrastructure & DevSecOps
 - [x] `GEMINI.md` (Engineering Mandates).

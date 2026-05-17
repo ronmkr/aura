@@ -9,6 +9,7 @@ pub struct Config {
     pub bittorrent: BitTorrentConfig,
     pub storage: StorageConfig,
     pub vpn: VpnConfig,
+    pub hooks: HookConfig,
     pub general: GeneralConfig,
 }
 
@@ -72,8 +73,8 @@ impl Default for BandwidthConfig {
             per_task_upload_limit: 0,
             max_concurrent_downloads: 10,
             max_active_tasks: 5,
-            min_connections_per_task: 4,
-            max_connections_per_task: 16,
+            min_connections_per_task: 16,
+            max_connections_per_task: 128,
         }
     }
 }
@@ -99,9 +100,9 @@ impl Default for BitTorrentConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            max_peers_per_torrent: 50,
-            max_overall_peers: 200,
-            request_pipeline_size: 10,
+            max_peers_per_torrent: 200,
+            max_overall_peers: 500,
+            request_pipeline_size: 50,
             dht_enabled: true,
             pex_enabled: true,
             lpd_enabled: false,
@@ -109,7 +110,7 @@ impl Default for BitTorrentConfig {
             seed_time_mins: 0,
             endgame_mode_enabled: true,
             min_split_size_mb: 20,
-            max_connections_per_torrent: 100,
+            max_connections_per_torrent: 200,
         }
     }
 }
@@ -240,4 +241,13 @@ impl Config {
         toml::from_str(&content)
             .map_err(|e| Error::Config(format!("Failed to parse TOML config: {}", e)))
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct HookConfig {
+    pub on_download_start: Option<String>,
+    pub on_download_complete: Option<String>,
+    pub on_download_error: Option<String>,
+    pub on_download_pause: Option<String>,
 }

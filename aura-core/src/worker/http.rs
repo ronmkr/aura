@@ -95,12 +95,20 @@ impl HttpWorker {
                 continue;
             }
 
-            let total_length = response
+            let mut total_length = response
                 .headers()
                 .get("Content-Range")
                 .and_then(|h| h.to_str().ok())
                 .and_then(|s| s.split('/').next_back())
                 .and_then(|s| s.parse::<u64>().ok());
+
+            if total_length.is_none() {
+                total_length = response
+                    .headers()
+                    .get("Content-Length")
+                    .and_then(|h| h.to_str().ok())
+                    .and_then(|s| s.parse::<u64>().ok());
+            }
 
             let name = response
                 .headers()

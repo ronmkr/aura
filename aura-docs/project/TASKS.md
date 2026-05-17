@@ -31,8 +31,14 @@ This document tracks the technical debt and missing features identified during t
     - Externalized string resources and multiple language support.
 - [ ] **Prometheus Metrics Exporter** (Issue #69)
     - Implement telemetry endpoint for monitoring tools.
-- [ ] **Integrated Hook System** (Issue #16)
+- [x] **Integrated Hook System** (Issue #16)
     - Event callbacks for task completion/error via external scripts.
+- [ ] **MIME Validation & Landing Page Resolution** (Issue #19)
+    - Validate Content-Type and handle redirects/HTML pages gracefully. (Partially implemented: MIME type propagation exists, but dynamic HTML resolution/redirect scraping is missing).
+- [ ] **Policy-based Error Management & Self-healing** (Issue #18)
+    - Sophisticated error classification and retry policies.
+- [ ] **Unified Credential Provider** (Issue #21)
+    - Netrc, cookies, and command-line secrets resolution.
 
 ## 🟢 Low Priority: Maintenance & Advanced Features
 - [ ] **Dynamic DHT Bootstrap** (Issue #77)
@@ -43,12 +49,14 @@ This document tracks the technical debt and missing features identified during t
     - Async DNS via Cloudflare/Google over HTTPS.
 - [ ] **Task Prioritization & Dependencies** (Issue #72)
     - Manage download order and chained dependencies (Issue #11).
-- [ ] **SOCKS5 Proxy Support** (Issue #66)
+- [x] **SOCKS5 Proxy Support** (Issue #66)
     - Complete proxy routing for BitTorrent and HTTP protocols.
 - [ ] **Prioritized Streaming Mode** (Issue #28)
     - Piece selection optimized for media streaming.
 - [ ] **Modern Networking & Fallbacks**
     - Happy Eyeballs (Issue #25), HTTP/3 QUIC (Issue #23), HSTS Cache (Issue #20).
+- [ ] **Advanced Networking (kTLS, Captive Portals)** (Issue #8)
+    - Captive portal detection and kernel-level TLS offloading.
 - [ ] **New Protocols**
     - NNTP Support (Issue #22), Cloud Storage integration (Issue #10).
 - [ ] **CI Docs Deployment**

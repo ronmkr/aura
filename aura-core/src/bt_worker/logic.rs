@@ -191,9 +191,9 @@ impl super::BtWorker {
         } else {
             // Try to pick a piece
             let bf_guard = task.state.bitfield.lock().await;
-            let picker_guard = task.state.picker.lock().await;
+            let mut picker_guard = task.state.picker.lock().await;
 
-            if let (Some(bf), Some(picker)) = (bf_guard.as_ref(), picker_guard.as_ref()) {
+            if let (Some(bf), Some(picker)) = (bf_guard.as_ref(), picker_guard.as_mut()) {
                 if let Some(piece_idx) = picker.pick_next(bf, &self.peer_addr) {
                     let piece_total_len = if piece_idx == torrent.pieces_count() - 1 {
                         total_length - (piece_idx as u64 * piece_length)

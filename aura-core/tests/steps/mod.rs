@@ -2,6 +2,7 @@ pub mod aggregation;
 pub mod daemon;
 pub mod errors;
 pub mod governance;
+pub mod hooks;
 pub mod networking;
 pub mod reliability;
 pub mod storage;

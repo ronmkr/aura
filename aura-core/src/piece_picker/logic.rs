@@ -74,9 +74,13 @@ impl PiecePicker {
 
     /// Picks the next piece to download using the rarest-first strategy,
     /// considering only pieces that the specified peer has.
-    pub fn pick_next(&self, my_bitfield: &Bitfield, peer_addr: &str) -> Option<usize> {
+    pub fn pick_next(&mut self, my_bitfield: &Bitfield, peer_addr: &str) -> Option<usize> {
         if self.is_endgame(my_bitfield) {
-            return self.pick_next_endgame(my_bitfield, peer_addr);
+            let res = self.pick_next_endgame(my_bitfield, peer_addr);
+            if let Some(idx) = res {
+                self.in_progress.set(idx, true);
+            }
+            return res;
         }
 
         let peer_bf = self.peer_bitfields.get(peer_addr)?;
@@ -100,13 +104,12 @@ impl PiecePicker {
             }
         }
 
-        // Randomize from the rarest pieces to avoid thundering herds
-        if rarest_pieces.is_empty() {
-            None
-        } else {
-            use rand::prelude::IndexedRandom;
-            rarest_pieces.choose(&mut rand::rng()).copied()
+        use rand::prelude::IndexedRandom;
+        let res = rarest_pieces.choose(&mut rand::rng()).copied();
+        if let Some(idx) = res {
+            self.in_progress.set(idx, true);
         }
+        res
     }
 
     /// Determines if the task is in "Endgame Mode".
@@ -172,13 +175,15 @@ mod tests {
             .expect("Should pick a piece");
         assert!(picked == 1 || picked == 2);
 
-        // If I now have piece 1, it should pick 2 for Peer A
+        let expected_next = if picked == 1 { 2 } else { 1 };
+
         let mut my_bf_updated = my_bf.clone();
-        my_bf_updated.set(1, true);
+        my_bf_updated.set(picked, true);
+
         let picked2 = picker
             .pick_next(&my_bf_updated, "1.1.1.1:80")
             .expect("Should pick another piece");
-        assert_eq!(picked2, 2);
+        assert_eq!(picked2, expected_next);
     }
 
     #[test]

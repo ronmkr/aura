@@ -19,6 +19,25 @@ impl Orchestrator {
             }
             SubTaskEvent::Failed(meta_id, sub_id, err) => {
                 info!(%meta_id, %sub_id, %err, "Subtask failed");
+                if let Some(task) = self.tasks.get_mut(&meta_id) {
+                    if let Some(sub) = task.subtasks.iter_mut().find(|s| s.id == sub_id) {
+                        sub.active = false;
+                        sub.phase = DownloadPhase::Error;
+                    }
+                    if task
+                        .subtasks
+                        .iter()
+                        .all(|s| s.phase == DownloadPhase::Error)
+                    {
+                        task.phase = DownloadPhase::Error;
+                        let event = Event::TaskError {
+                            id: meta_id,
+                            message: err,
+                        };
+                        let _ = self.event_tx.send(event.clone());
+                        self.hook_manager.handle_event(&event).await;
+                    }
+                }
             }
             SubTaskEvent::Downloaded(meta_id, sub_id, bytes) => {
                 if let Some(task) = self.tasks.get_mut(&meta_id) {
@@ -247,7 +266,9 @@ impl Orchestrator {
                 total_bytes: task.total_length,
             });
         }
-        let _ = self.event_tx.send(Event::TaskCompleted(id));
+        let event = Event::TaskCompleted(id);
+        let _ = self.event_tx.send(event.clone());
+        self.hook_manager.handle_event(&event).await;
         Ok(())
     }
 }

@@ -71,32 +71,44 @@ impl BtWorker {
             Error::Protocol(format!("Invalid peer address {}: {}", self.peer_addr, e))
         })?;
 
-        let mut stream = crate::net_util::connect_tcp_bound(
-            remote_addr,
-            None,
-            self.local_addr,
-            self.proxy.as_deref(),
+        let mut stream = tokio::time::timeout(
+            std::time::Duration::from_secs(5),
+            crate::net_util::connect_tcp_bound(
+                remote_addr,
+                None,
+                self.local_addr,
+                self.proxy.as_deref(),
+            ),
         )
-        .await?;
+        .await
+        .map_err(|_| Error::Protocol("Peer connection timeout".to_string()))??;
 
         debug!(addr = %self.peer_addr, "Sending handshake...");
         let handshake = Handshake::new(self.info_hash.for_handshake(), self.my_id);
-        stream.write_all(&handshake.serialize()).await?;
 
-        let mut buf = [0u8; HANDSHAKE_LEN];
-        use tokio::io::AsyncReadExt;
-        stream.read_exact(&mut buf).await?;
-        let res_handshake = Handshake::deserialize(&buf)?;
+        tokio::time::timeout(std::time::Duration::from_secs(5), async {
+            stream.write_all(&handshake.serialize()).await?;
+            let mut buf = [0u8; HANDSHAKE_LEN];
+            use tokio::io::AsyncReadExt;
+            stream.read_exact(&mut buf).await?;
+            Ok::<[u8; HANDSHAKE_LEN], std::io::Error>(buf)
+        })
+        .await
+        .map_err(|_| Error::Protocol("Peer handshake timeout".to_string()))?
+        .map_err(|e| Error::Protocol(format!("Peer handshake error: {}", e)))
+        .and_then(|buf| {
+            let res_handshake = Handshake::deserialize(&buf)?;
 
-        if res_handshake.info_hash != self.info_hash.for_handshake() {
-            return Err(Error::Protocol("Handshake info_hash mismatch".to_string()));
-        }
+            if res_handshake.info_hash != self.info_hash.for_handshake() {
+                return Err(Error::Protocol("Handshake info_hash mismatch".to_string()));
+            }
 
-        Ok((
-            stream,
-            res_handshake.peer_id,
-            res_handshake.extension_protocol,
-        ))
+            Ok((
+                stream,
+                res_handshake.peer_id,
+                res_handshake.extension_protocol,
+            ))
+        })
     }
 
     #[allow(clippy::too_many_arguments)]
