@@ -95,12 +95,20 @@ impl HttpWorker {
                 continue;
             }
 
-            let total_length = response
+            let mut total_length = response
                 .headers()
                 .get("Content-Range")
                 .and_then(|h| h.to_str().ok())
                 .and_then(|s| s.split('/').next_back())
                 .and_then(|s| s.parse::<u64>().ok());
+
+            if total_length.is_none() {
+                total_length = response
+                    .headers()
+                    .get("Content-Length")
+                    .and_then(|h| h.to_str().ok())
+                    .and_then(|s| s.parse::<u64>().ok());
+            }
 
             let name = response
                 .headers()
@@ -159,26 +167,37 @@ impl ProtocolWorker for HttpWorker {
         };
 
         let mut stream = response.bytes_stream();
+        let mut bytes_downloaded = 0u64;
 
         while let Some(chunk_res) = stream.next().await {
             let chunk = chunk_res.map_err(|e| Error::Protocol(format!("Stream error: {}", e)))?;
 
             let mut remaining_chunk = &chunk[..];
             while !remaining_chunk.is_empty() {
+                if bytes_downloaded >= segment.length {
+                    break;
+                }
+
                 // Process in chunks of 16KB to prevent bursty progress reporting
                 // that skews the EWMA throughput calculations.
-                let take_len = std::cmp::min(remaining_chunk.len(), 16384);
+                let max_take = (segment.length - bytes_downloaded) as usize;
+                let take_len = std::cmp::min(remaining_chunk.len(), std::cmp::min(16384, max_take));
                 let sub_chunk = &remaining_chunk[..take_len];
 
                 // Admission Control: Wait for bandwidth tokens before processing the sub-chunk
                 throttler.acquire_download(task_id, take_len as u64).await;
 
                 buffer.extend_from_slice(sub_chunk);
+                bytes_downloaded += take_len as u64;
                 if let Some(ref p_tx) = progress {
                     let _ = p_tx.send(take_len as u64);
                 }
 
                 remaining_chunk = &remaining_chunk[take_len..];
+            }
+
+            if bytes_downloaded >= segment.length {
+                break;
             }
         }
 

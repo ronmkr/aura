@@ -82,6 +82,8 @@ pub enum Event {
         total_bytes: u64,
     },
     TaskCompleted(TaskId),
+    TaskPaused(TaskId),
+    TaskResumed(TaskId),
     TaskError {
         id: TaskId,
         message: String,
@@ -109,6 +111,7 @@ pub struct Orchestrator {
     pub(crate) vpn_watch_tx: tokio::sync::watch::Sender<Option<Arc<dyn crate::vpn::VpnProvider>>>,
     pub(crate) config: Arc<ArcSwap<crate::Config>>,
     pub(crate) power_manager: crate::power::PowerManager,
+    pub(crate) hook_manager: crate::hooks::HookManager,
     pub(crate) pool: BufferPool,
     pub(crate) db: sled::Db,
 }
@@ -253,6 +256,7 @@ impl Orchestrator {
 
         let vpn_provider = Self::create_vpn_provider(&initial_config);
         let (vpn_watch_tx, _vpn_watch_rx) = tokio::sync::watch::channel(vpn_provider.clone());
+        let hook_manager = crate::hooks::HookManager::new(initial_config.hooks.clone());
 
         (
             Self {
@@ -276,6 +280,7 @@ impl Orchestrator {
                 vpn_watch_tx,
                 config,
                 power_manager: crate::power::PowerManager::new(),
+                hook_manager,
                 pool,
                 db,
             },
@@ -322,7 +327,9 @@ impl Orchestrator {
                     0.0
                 };
 
-                if throughput_per_connection < 256.0 * 1024.0
+                if sub_task.assigned_ranges.len() < sub_task.target_concurrency {
+                    to_dispatch.push((task.id, sub_task.id));
+                } else if throughput_per_connection < 256.0 * 1024.0
                     && sub_task.target_concurrency < max_concurrency
                 {
                     sub_task.target_concurrency =

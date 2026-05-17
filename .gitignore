@@ -33,6 +33,9 @@ out/
 proptest-regressions/
 aura-docs/project/prompts
 
+# BitTorrent files
+*.torrent
+
 # Local analysis files
 metadata.json
 unused_deps.txt

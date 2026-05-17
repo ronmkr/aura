@@ -14,9 +14,9 @@ flowchart TD
         Web["Web/Remote (e.g. AriaNg)"]
     end
 
-    subgraph Daemon ["👻 Aura Daemon"]
-        RPC["JSON-RPC Server (Axum/Tokio)"]
-        Engine["Engine Core"]
+    subgraph Unified_RPC ["🔌 Unified RPC & Background Service"]
+        Daemon["Aura Daemon (Background)"]
+        RPC["Shared JSON-RPC Server"]
     end
 
     subgraph Core ["🧠 Aura Core"]
@@ -47,7 +47,9 @@ flowchart TD
 
     %% Interactions
     CLI & TUI & Web -- "JSON-RPC / WebSocket" --> RPC
-    RPC --> Engine
+    Daemon -- "Hosts" --> RPC
+    CLI -. "Hosts (Standalone)" .-> RPC
+    RPC --> Engine["Engine Core"]
     Engine --> Orchestrator
     
     Orchestrator -- "Spawns" --> Workers
@@ -69,9 +71,9 @@ flowchart TD
 ## 🧩 Component Definitions
 
 ### 1. User Interfaces (Personas)
-- **Aura CLI**: High-speed, one-off download tool.
-- **Aura TUI**: Interactive dashboard for real-time monitoring and task control.
-- **Aura Daemon**: The background service that persists across sessions and exposes an RPC interface.
+- **Aura CLI**: High-speed, one-off download tool. It can operate as a standalone instance (spinning up its own core and RPC server) or act as a client connecting to an existing `aura-daemon`.
+- **Aura TUI**: Interactive dashboard for real-time monitoring and task control via JSON-RPC.
+- **Aura Daemon**: The background service that persists across sessions, running the core engine and exposing the shared RPC interface.
 
 ### 2. The Engine & Orchestrator
 - **Engine**: The top-level coordinator. It manages the global state, configuration, and the lifecycle of the daemon.

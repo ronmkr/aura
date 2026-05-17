@@ -175,6 +175,16 @@ async fn main() -> Result<()> {
                     break;
                 }
             }
+            Event::TaskPaused(id) => {
+                if let Some(pb) = bars.get(&id) {
+                    pb.set_message(format!("Task {} paused", id.0));
+                }
+            }
+            Event::TaskResumed(id) => {
+                if let Some(pb) = bars.get(&id) {
+                    pb.set_message(format!("Task {} resumed", id.0));
+                }
+            }
         }
     }
 

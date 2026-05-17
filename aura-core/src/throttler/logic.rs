@@ -50,7 +50,7 @@ impl TokenBucket {
                     continue;
                 }
 
-                let refill_amount = rate / 10;
+                let refill_amount = rate.div_ceil(10);
                 let current = available_clone.available_permits();
                 if current < cap as usize {
                     let to_add = std::cmp::min(refill_amount as usize, cap as usize - current);
@@ -76,6 +76,15 @@ impl TokenBucket {
             new_rate
         };
         self.capacity.store(cap, Ordering::Relaxed);
+
+        // Drain excess permits if we reduced capacity
+        let current = self.available.available_permits();
+        if current > cap as usize {
+            // We can't safely "set" semaphore permits, but we can acquire the excess
+            // We use try_acquire_many to avoid blocking.
+            let excess = current - cap as usize;
+            let _ = self.available.try_acquire_many(excess as u32);
+        }
     }
 
     pub async fn acquire(&self, amount: u64) {
@@ -88,12 +97,48 @@ impl TokenBucket {
         while remaining > 0 {
             let permits = std::cmp::min(remaining, cap);
             if permits > 0 {
-                let _ = self.available.acquire_many(permits as u32).await;
-                remaining -= permits;
+                match self.available.acquire_many(permits as u32).await {
+                    Ok(permit) => {
+                        permit.forget();
+                        remaining -= permits;
+                    }
+                    Err(_) => break, // Semaphore closed
+                }
             } else {
                 break;
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::Instant;
+
+    #[tokio::test]
+    async fn test_token_bucket_throttling() {
+        let rate = 100; // 100 bytes/sec
+        let bucket = TokenBucket::new(rate);
+
+        // Wait for initial burst to subside and refill to stabilize
+        tokio::time::sleep(Duration::from_millis(500)).await;
+
+        let start = Instant::now();
+        // Acquire 300 bytes.
+        // Initial permits = 10. Refill = 10 every 100ms.
+        // Wait 500ms -> +50 permits. Total ~60.
+        // Acquire 300 -> Needs ~240 more.
+        // Takes ~24 ticks = 2.4 seconds.
+        bucket.acquire(300).await;
+        let elapsed = start.elapsed();
+
+        println!("Throttling test elapsed: {:?}", elapsed);
+        assert!(
+            elapsed >= Duration::from_millis(1500),
+            "Throttling failed: took only {:?}",
+            elapsed
+        );
     }
 }
 

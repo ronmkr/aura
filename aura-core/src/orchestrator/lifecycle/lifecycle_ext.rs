@@ -52,7 +52,80 @@ impl Orchestrator {
                 break;
             }
 
-            if let Some(range) = meta_task.pick_range_for_subtask(sub_id) {
+            if ttype == TaskType::BitTorrent {
+                let worker_tx = self
+                    .worker_command_txs
+                    .get(&sub_id)
+                    .cloned()
+                    .unwrap_or_else(|| {
+                        let (tx, _) = tokio::sync::broadcast::channel(1024);
+                        tx
+                    });
+                let my_id = self.peer_id;
+                let bt_task = match self.bt_tasks.get(&sub_id) {
+                    Some(bt) => bt.clone(),
+                    None => break,
+                };
+
+                let peer_opt = {
+                    let mut registry = bt_task.state.registry.lock().await;
+                    registry.get_peer_to_connect()
+                };
+
+                if let Some(peer) = peer_opt {
+                    let peer_addr = format!("{}:{}", peer.ip, peer.port);
+                    let info_hash = bt_task.state.info_hash;
+                    let pool = self.pool.clone();
+                    let proxy = config_arc.load().network.proxy.clone();
+                    let throttler = self.throttler.clone();
+
+                    let storage_tx = self.storage_tx.clone();
+                    let subtask_tx = self.subtask_tx.clone();
+                    let token_clone = token.clone();
+
+                    let dummy_range = crate::task::Range { start: 0, end: 0 };
+                    meta_task.in_flight_ranges.push((sub_id, dummy_range));
+                    if let Some(sub) = meta_task.subtasks.iter_mut().find(|s| s.id == sub_id) {
+                        sub.assigned_ranges.push(dummy_range);
+                    }
+
+                    tracing::debug!(%meta_id, %sub_id, %peer_addr, "Spawning worker for peer");
+
+                    tokio::spawn(async move {
+                        let mut worker = crate::bt_worker::BtWorker::new(
+                            peer_addr.clone(),
+                            info_hash,
+                            [0; 20],
+                            my_id,
+                            pool,
+                            proxy,
+                            throttler,
+                        );
+                        worker.local_addr = local_addr;
+
+                        tokio::select! {
+                            _ = token_clone.cancelled() => {}
+                            res = worker.run_loop(
+                                meta_id,
+                                sub_id,
+                                bt_task,
+                                storage_tx,
+                                subtask_tx.clone(),
+                                worker_tx.subscribe(),
+                                token_clone.clone(),
+                            ) => {
+                                if let Err(e) = res {
+                                    tracing::debug!(%meta_id, %sub_id, error = %e, "BtWorker failed");
+                                }
+                                let _ = subtask_tx.send(SubTaskEvent::RangeFinished(meta_id, sub_id, dummy_range)).await;
+                            }
+                        }
+                    });
+                } else {
+                    tracing::debug!(%meta_id, %sub_id, "peer_opt is None, breaking from dispatch_next_ranges");
+                    break;
+                }
+            } else if let Some(range) = meta_task.pick_range_for_subtask(sub_id) {
                 let storage_tx = self.storage_tx.clone();
                 let subtask_tx = self.subtask_tx.clone();
                 let (progress_tx, mut progress_rx) = mpsc::unbounded_channel::<u64>();
@@ -61,7 +134,7 @@ impl Orchestrator {
                 let throttler_clone = self.throttler.clone();
 
                 let subtask_tx_progress = subtask_tx.clone();
-                tokio::spawn(async move {
+                let progress_handle = tokio::spawn(async move {
                     while let Some(bytes) = progress_rx.recv().await {
                         let _ = subtask_tx_progress
                             .send(SubTaskEvent::Downloaded(meta_id, sub_id, bytes))
@@ -88,6 +161,9 @@ impl Orchestrator {
                                 _ = token_clone.cancelled() => {
                                 }
                                 res = worker.fetch_segment(meta_id, segment, Some(progress_tx), throttler_clone.clone()) => {
+                                    // Ensure all progress events are forwarded before finishing the range
+                                    let _ = progress_handle.await;
+
                                     match res {
                                         Ok(piece) => {
                                             let _ = storage_tx.send(StorageRequest::Write {
@@ -105,7 +181,6 @@ impl Orchestrator {
                                 }
                             }
                         }
-                        TaskType::BitTorrent => {}
                         TaskType::Ftp => {
                             let worker = crate::worker::WorkerBuilder::new(uri)
                                 .local_addr(local_addr)
@@ -136,6 +211,7 @@ impl Orchestrator {
                                 }
                             }
                         }
+                        _ => {}
                     }
                 });
             } else {

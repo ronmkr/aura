@@ -52,11 +52,17 @@ impl PeerRegistry {
         added
     }
 
-    pub fn get_peer_to_connect(&self) -> Option<Peer> {
-        self.peers
-            .values()
+    pub fn get_peer_to_connect(&mut self) -> Option<Peer> {
+        if let Some(ps) = self
+            .peers
+            .values_mut()
             .find(|ps| ps.state == ConnectionState::Disconnected)
-            .map(|ps| ps.peer.clone())
+        {
+            ps.state = ConnectionState::Connecting;
+            Some(ps.peer.clone())
+        } else {
+            None
+        }
     }
 
     pub fn update_state(&mut self, addr: &str, state: ConnectionState) {
@@ -101,8 +107,8 @@ mod tests {
         let to_connect = registry.get_peer_to_connect().unwrap();
         assert!(to_connect.ip == "1.1.1.1" || to_connect.ip == "2.2.2.2");
 
-        registry.update_state("1.1.1.1:80", ConnectionState::Connecting);
         let to_connect2 = registry.get_peer_to_connect().unwrap();
-        assert_eq!(to_connect2.ip, "2.2.2.2");
+        assert!(to_connect2.ip == "1.1.1.1" || to_connect2.ip == "2.2.2.2");
+        assert_ne!(to_connect.ip, to_connect2.ip);
     }
 }

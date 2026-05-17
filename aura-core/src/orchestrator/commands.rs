@@ -42,6 +42,8 @@ impl Orchestrator {
                     self.update_vpn_provider(&new_config);
                 }
 
+                self.hook_manager.update_config(new_config.hooks.clone());
+
                 self.config.store(new_config);
                 let _ = resp_tx.send(());
             }
@@ -103,16 +105,6 @@ impl Orchestrator {
                             for file in ml.files {
                                 if meta_task.name == "unnamed" || meta_task.name.is_empty() {
                                     meta_task.name = file.name.clone();
-                                    // Update storage engine with the real name
-                                    let path = std::path::Path::new(download_dir).join(&file.name);
-                                    let _ = self
-                                        .storage_tx
-                                        .send(crate::storage::StorageRequest::RegisterTask {
-                                            task_id: id,
-                                            path,
-                                            total_length: file.size.unwrap_or(0),
-                                        })
-                                        .await;
                                 }
                                 if meta_task.total_length == 0 {
                                     if let Some(size) = file.size {
@@ -149,11 +141,23 @@ impl Orchestrator {
             )
             .await;
 
+        let path = std::path::Path::new(download_dir).join(&meta_task.name);
+        let _ = self
+            .storage_tx
+            .send(crate::storage::StorageRequest::RegisterTask {
+                task_id: id,
+                path,
+                total_length: meta_task.total_length,
+            })
+            .await;
+
         self.tasks.insert(id, meta_task);
         self.start_task_loops_with_bitfield(id, token, loaded_bitfield)
             .await?;
 
-        let _ = self.event_tx.send(Event::TaskAdded(id));
+        let event = Event::TaskAdded(id);
+        let _ = self.event_tx.send(event.clone());
+        self.hook_manager.handle_event(&event).await;
         Ok(())
     }
 
@@ -182,6 +186,9 @@ impl Orchestrator {
             }
         }
         let _ = self.save_task(id).await;
+        let event = Event::TaskPaused(id);
+        let _ = self.event_tx.send(event.clone());
+        self.hook_manager.handle_event(&event).await;
         Ok(())
     }
 
@@ -199,6 +206,10 @@ impl Orchestrator {
                 // For resume, we don't reload bitfield from file here,
                 // we assume the in-memory one is correct or will be synced.
                 self.start_task_loops_with_bitfield(id, token, None).await?;
+
+                let event = Event::TaskResumed(id);
+                let _ = self.event_tx.send(event.clone());
+                self.hook_manager.handle_event(&event).await;
             }
         }
         Ok(())
