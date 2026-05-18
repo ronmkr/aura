@@ -94,7 +94,10 @@ impl StorageEngine {
         info!(%id, from = ?part_path, to = ?hardened_base, "Performing atomic completion rename");
         fs::rename(&part_path, &hardened_base).await?;
 
-        let _ = self.completion_tx.send(id).await;
+        let _ = self
+            .completion_tx
+            .send(crate::storage::StorageEvent::Completed(id))
+            .await;
 
         Ok(())
     }

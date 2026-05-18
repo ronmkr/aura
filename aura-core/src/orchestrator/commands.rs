@@ -163,27 +163,27 @@ impl Orchestrator {
 
     pub(crate) async fn handle_pause(&mut self, id: TaskId) -> Result<()> {
         if let Some(task) = self.tasks.get_mut(&id) {
-            if task.phase != DownloadPhase::Paused {
+            if task.phase != DownloadPhase::Paused && task.phase != DownloadPhase::Error {
                 info!(%id, "Pausing task");
                 task.phase = DownloadPhase::Paused;
-
-                if let Some(token) = self.cancellation_tokens.remove(&id) {
-                    token.cancel();
-                }
-
-                // Recycle in-flight ranges
-                let in_flight = std::mem::take(&mut task.in_flight_ranges);
-                for (_sub_id, range) in in_flight {
-                    task.pending_ranges.push(range);
-                }
-
-                let _ = self.event_tx.send(Event::TaskProgress {
-                    id,
-                    completed_bytes: task.completed_length,
-                    uploaded_bytes: task.uploaded_length,
-                    total_bytes: task.total_length,
-                });
             }
+
+            if let Some(token) = self.cancellation_tokens.remove(&id) {
+                token.cancel();
+            }
+
+            // Recycle in-flight ranges
+            let in_flight = std::mem::take(&mut task.in_flight_ranges);
+            for (_sub_id, range) in in_flight {
+                task.pending_ranges.push(range);
+            }
+
+            let _ = self.event_tx.send(Event::TaskProgress {
+                id,
+                completed_bytes: task.completed_length,
+                uploaded_bytes: task.uploaded_length,
+                total_bytes: task.total_length,
+            });
         }
         let _ = self.save_task(id).await;
         let event = Event::TaskPaused(id);

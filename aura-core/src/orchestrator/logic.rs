@@ -99,7 +99,7 @@ pub struct Orchestrator {
     pub(crate) command_rx: mpsc::Receiver<Command>,
     pub(crate) event_tx: broadcast::Sender<Event>,
     pub(crate) storage_tx: mpsc::Sender<StorageRequest>,
-    pub(crate) storage_completion_rx: mpsc::Receiver<TaskId>,
+    pub(crate) storage_completion_rx: mpsc::Receiver<crate::storage::StorageEvent>,
     pub(crate) subtask_tx: mpsc::Sender<SubTaskEvent>,
     pub(crate) subtask_rx: mpsc::Receiver<SubTaskEvent>,
     pub(crate) dht_tx: mpsc::Sender<DhtCommand>,
@@ -233,7 +233,7 @@ impl Orchestrator {
     pub fn new(
         command_rx: mpsc::Receiver<Command>,
         storage_tx: mpsc::Sender<StorageRequest>,
-        storage_completion_rx: mpsc::Receiver<TaskId>,
+        storage_completion_rx: mpsc::Receiver<crate::storage::StorageEvent>,
         dht_tx: mpsc::Sender<DhtCommand>,
         lpd_tx: mpsc::Sender<crate::lpd::LpdCommand>,
         nat_tx: mpsc::Sender<NatCommand>,
@@ -461,9 +461,9 @@ impl Orchestrator {
                     }
                     self.update_power_management();
                 }
-                Some(id) = self.storage_completion_rx.recv() => {
-                    if let Err(e) = self.handle_storage_completion(id).await {
-                        tracing::error!("Storage completion error: {}", e);
+                Some(event) = self.storage_completion_rx.recv() => {
+                    if let Err(e) = self.handle_storage_event(event).await {
+                        tracing::error!("Storage event error: {}", e);
                     }
                     self.update_power_management();
                 }

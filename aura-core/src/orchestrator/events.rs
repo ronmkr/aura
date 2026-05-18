@@ -1,7 +1,7 @@
 use super::{Event, Orchestrator, SubTaskEvent, WorkerCommand};
 use crate::task::DownloadPhase;
 use crate::{Result, TaskId};
-use tracing::{debug, info};
+use tracing::{debug, error, info};
 
 impl Orchestrator {
     pub(crate) async fn handle_subtask_event(&mut self, event: SubTaskEvent) -> Result<()> {
@@ -23,7 +23,16 @@ impl Orchestrator {
                     if let Some(sub) = task.subtasks.iter_mut().find(|s| s.id == sub_id) {
                         sub.active = false;
                         sub.phase = DownloadPhase::Error;
+
+                        // Failover: Return assigned ranges to the pending pool
+                        let failed_ranges = std::mem::take(&mut sub.assigned_ranges);
+                        for r in failed_ranges {
+                            task.pending_ranges.push(r);
+                            task.in_flight_ranges
+                                .retain(|(sid, rng)| *sid != sub_id || *rng != r);
+                        }
                     }
+
                     if task
                         .subtasks
                         .iter()
@@ -36,6 +45,17 @@ impl Orchestrator {
                         };
                         let _ = self.event_tx.send(event.clone());
                         self.hook_manager.handle_event(&event).await;
+                    } else {
+                        // Trigger next range dispatch for other active subtasks
+                        let active_subs: Vec<TaskId> = task
+                            .subtasks
+                            .iter()
+                            .filter(|s| s.active)
+                            .map(|s| s.id)
+                            .collect();
+                        for aid in active_subs {
+                            let _ = self.dispatch_next_ranges(meta_id, aid).await;
+                        }
                     }
                 }
             }
@@ -150,13 +170,27 @@ impl Orchestrator {
         metadata: crate::worker::Metadata,
     ) -> Result<()> {
         if let Some(meta_task) = self.tasks.get_mut(&meta_id) {
+            let mut needs_reregister = false;
+
+            if meta_task.total_length == 0 {
+                if let Some(len) = metadata.total_length {
+                    info!(%meta_id, %len, "Metadata matured: task initialized");
+                    meta_task.total_length = len;
+                    meta_task.generate_ranges(16); // Default 16 segments
+                    needs_reregister = true;
+                }
+            }
+
             // Update name if currently unnamed
             if (meta_task.name == "unnamed" || meta_task.name.is_empty()) && metadata.name.is_some()
             {
                 let new_name = metadata.name.clone().unwrap();
                 info!(%meta_id, %new_name, "Updating task name from metadata");
                 meta_task.name = new_name;
+                needs_reregister = true;
+            }
 
+            if needs_reregister {
                 // Update storage engine
                 let download_dir = {
                     let config = self.config.load();
@@ -171,14 +205,6 @@ impl Orchestrator {
                         total_length: meta_task.total_length,
                     })
                     .await;
-            }
-
-            if meta_task.total_length == 0 {
-                if let Some(len) = metadata.total_length {
-                    info!(%meta_id, %len, "Metadata matured: task initialized");
-                    meta_task.total_length = len;
-                    meta_task.generate_ranges(16); // Default 16 segments
-                }
             }
 
             if let Some(sub_task) = meta_task.subtasks.iter_mut().find(|s| s.id == sub_id) {
@@ -258,19 +284,46 @@ impl Orchestrator {
         self.dispatch_next_ranges(meta_id, sub_id).await
     }
 
-    pub(crate) async fn handle_storage_completion(&mut self, id: TaskId) -> Result<()> {
-        info!(%id, "Storage reported completion");
-        if let Some(task) = self.tasks.get(&id) {
-            let _ = self.event_tx.send(Event::TaskProgress {
-                id,
-                completed_bytes: task.total_length,
-                uploaded_bytes: task.uploaded_length,
-                total_bytes: task.total_length,
-            });
+    pub(crate) async fn handle_storage_event(
+        &mut self,
+        event: crate::storage::StorageEvent,
+    ) -> Result<()> {
+        match event {
+            crate::storage::StorageEvent::Completed(id) => {
+                info!(%id, "Storage reported completion");
+                if let Some(task) = self.tasks.get(&id) {
+                    let _ = self.event_tx.send(Event::TaskProgress {
+                        id,
+                        completed_bytes: task.total_length,
+                        uploaded_bytes: task.uploaded_length,
+                        total_bytes: task.total_length,
+                    });
+                }
+                let event = Event::TaskCompleted(id);
+                let _ = self.event_tx.send(event.clone());
+                self.hook_manager.handle_event(&event).await;
+            }
+            crate::storage::StorageEvent::Error(id, err) => {
+                error!(%id, %err, "Storage reported fatal error; pausing task");
+                let mut exists = false;
+                if let Some(task) = self.tasks.get_mut(&id) {
+                    task.phase = DownloadPhase::Error;
+                    exists = true;
+                }
+
+                if exists {
+                    // Trigger pause logic to cleanup workers
+                    let _ = self.handle_pause(id).await;
+
+                    let event = Event::TaskError {
+                        id,
+                        message: format!("Storage Error: {}", err),
+                    };
+                    let _ = self.event_tx.send(event.clone());
+                    self.hook_manager.handle_event(&event).await;
+                }
+            }
         }
-        let event = Event::TaskCompleted(id);
-        let _ = self.event_tx.send(event.clone());
-        self.hook_manager.handle_event(&event).await;
         Ok(())
     }
 }

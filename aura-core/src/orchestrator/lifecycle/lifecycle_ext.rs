@@ -1,7 +1,7 @@
 use super::SubTaskEvent;
 use crate::orchestrator::Orchestrator;
 use crate::storage::StorageRequest;
-use crate::task::TaskType;
+use crate::task::{DownloadPhase, TaskType};
 use crate::worker::{ProtocolWorker, Segment};
 use crate::{Error, Result, TaskId};
 use tokio::sync::mpsc;
@@ -33,6 +33,10 @@ impl Orchestrator {
                 .tasks
                 .get_mut(&meta_id)
                 .ok_or(Error::TaskNotFound(meta_id))?;
+
+            if meta_task.phase == DownloadPhase::Error {
+                break;
+            }
 
             let (uri, ttype, current_concurrency, target_concurrency) = {
                 let sub_task = meta_task
@@ -151,6 +155,8 @@ impl Orchestrator {
                                 .user_agent(Some(config.network.user_agent.clone()))
                                 .connect_timeout(Some(config.network.connect_timeout_secs))
                                 .proxy(config.network.proxy.clone())
+                                .retry_count(config.network.http_retry_count)
+                                .retry_delay_secs(config.network.http_retry_delay_secs)
                                 .build_http();
                             let segment = Segment {
                                 offset: range.start,

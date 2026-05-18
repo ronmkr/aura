@@ -33,9 +33,15 @@ pub enum StorageRequest {
     Complete(TaskId),
 }
 
+#[derive(Debug, Clone)]
+pub enum StorageEvent {
+    Completed(TaskId),
+    Error(TaskId, String),
+}
+
 pub struct StorageEngine {
     pub(crate) request_rx: mpsc::Receiver<StorageRequest>,
-    pub(crate) completion_tx: mpsc::Sender<TaskId>,
+    pub(crate) completion_tx: mpsc::Sender<StorageEvent>,
     pub(crate) task_paths: HashMap<TaskId, PathBuf>,
     pub(crate) handles: HashMap<TaskId, File>,
     pub(crate) pending_writes: HashMap<TaskId, BTreeMap<u64, BytesMut>>,
@@ -47,7 +53,7 @@ pub struct StorageEngine {
 impl StorageEngine {
     pub fn new(
         request_rx: mpsc::Receiver<StorageRequest>,
-        completion_tx: mpsc::Sender<TaskId>,
+        completion_tx: mpsc::Sender<StorageEvent>,
         db_path: Option<PathBuf>,
     ) -> Self {
         let pool = BufferPool::new(1024 * 1024, 10);
@@ -116,6 +122,10 @@ impl StorageEngine {
                     self.register_task(task_id, path, total_length);
                     if let Err(e) = self.preallocate_task(task_id, total_length).await {
                         error!(%task_id, error = %e, "Failed to pre-allocate file");
+                        let _ = self
+                            .completion_tx
+                            .send(StorageEvent::Error(task_id, e.to_string()))
+                            .await;
                     }
                 }
                 StorageRequest::Write {
@@ -125,6 +135,10 @@ impl StorageEngine {
                 } => {
                     if let Err(e) = self.handle_write(task_id, segment, data).await {
                         error!(%task_id, error = %e, "Failed to write data");
+                        let _ = self
+                            .completion_tx
+                            .send(StorageEvent::Error(task_id, e.to_string()))
+                            .await;
                     }
                 }
                 StorageRequest::Read {
@@ -149,6 +163,15 @@ impl StorageEngine {
                     }
                     if let Err(e) = self.handle_complete(task_id).await {
                         error!(%task_id, error = %e, "Failed to complete task");
+                        let _ = self
+                            .completion_tx
+                            .send(StorageEvent::Error(task_id, e.to_string()))
+                            .await;
+                    } else {
+                        let _ = self
+                            .completion_tx
+                            .send(StorageEvent::Completed(task_id))
+                            .await;
                     }
                 }
             }

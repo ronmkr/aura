@@ -90,6 +90,8 @@ impl Orchestrator {
                             .connect_timeout(Some(config.network.connect_timeout_secs))
                             .proxy(config.network.proxy.clone())
                             .with_pool(pool.clone())
+                            .retry_count(config.network.http_retry_count)
+                            .retry_delay_secs(config.network.http_retry_delay_secs)
                             .build_http();
                         match worker.resolve_metadata().await {
                             Ok(m) => {

@@ -133,7 +133,6 @@ mod tests {
         bucket.acquire(300).await;
         let elapsed = start.elapsed();
 
-        println!("Throttling test elapsed: {:?}", elapsed);
         assert!(
             elapsed >= Duration::from_millis(1500),
             "Throttling failed: took only {:?}",
