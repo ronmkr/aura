@@ -151,6 +151,8 @@ impl Orchestrator {
                                 .user_agent(Some(config.network.user_agent.clone()))
                                 .connect_timeout(Some(config.network.connect_timeout_secs))
                                 .proxy(config.network.proxy.clone())
+                                .retry_count(config.network.http_retry_count)
+                                .retry_delay_secs(config.network.http_retry_delay_secs)
                                 .build_http();
                             let segment = Segment {
                                 offset: range.start,

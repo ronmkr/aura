@@ -12,6 +12,8 @@ pub struct WorkerBuilder {
     proxy: Option<String>,
     referer: Option<String>,
     pool: Option<BufferPool>,
+    retry_count: u32,
+    retry_delay_secs: u64,
 }
 
 impl WorkerBuilder {
@@ -24,6 +26,8 @@ impl WorkerBuilder {
             proxy: None,
             referer: None,
             pool: None,
+            retry_count: 5,
+            retry_delay_secs: 2,
         }
     }
 
@@ -57,6 +61,16 @@ impl WorkerBuilder {
         self
     }
 
+    pub fn retry_count(mut self, count: u32) -> Self {
+        self.retry_count = count;
+        self
+    }
+
+    pub fn retry_delay_secs(mut self, secs: u64) -> Self {
+        self.retry_delay_secs = secs;
+        self
+    }
+
     pub fn build_http(self) -> HttpWorker {
         HttpWorker::new(
             self.uri,
@@ -66,6 +80,8 @@ impl WorkerBuilder {
             self.proxy,
             self.referer,
             self.pool,
+            self.retry_count,
+            self.retry_delay_secs,
         )
     }
 

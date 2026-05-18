@@ -11,9 +11,16 @@ pub struct HttpWorker {
     uri: String,
     referer: Option<String>,
     pool: Option<BufferPool>,
+    retry_count: u32,
+    retry_delay_secs: u64,
 }
 
 impl HttpWorker {
+    fn is_retryable(status: reqwest::StatusCode) -> bool {
+        status.is_server_error() || status == reqwest::StatusCode::TOO_MANY_REQUESTS
+    }
+
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         uri: String,
         local_addr: Option<std::net::IpAddr>,
@@ -22,6 +29,8 @@ impl HttpWorker {
         proxy: Option<String>,
         referer: Option<String>,
         pool: Option<BufferPool>,
+        retry_count: u32,
+        retry_delay_secs: u64,
     ) -> Self {
         let cookie_jar = std::sync::Arc::new(reqwest::cookie::Jar::default());
         let mut builder = reqwest::Client::builder()
@@ -50,6 +59,8 @@ impl HttpWorker {
             uri,
             referer,
             pool,
+            retry_count,
+            retry_delay_secs,
         }
     }
 
@@ -61,15 +72,59 @@ impl HttpWorker {
         let max_redirects = 20;
 
         loop {
-            let mut request = self.client.get(&current_uri).header("Range", "bytes=0-0");
-            if let Some(ref ref_uri) = referer {
-                request = request.header("Referer", ref_uri);
-            }
+            let mut attempts = 0;
+            let max_attempts = self.retry_count;
 
-            let response = request
-                .send()
-                .await
-                .map_err(|e| Error::Protocol(format!("Metadata resolution failed: {}", e)))?;
+            let response = loop {
+                let mut request = self.client.get(&current_uri).header("Range", "bytes=0-0");
+                if let Some(ref ref_uri) = referer {
+                    request = request.header("Referer", ref_uri);
+                }
+
+                let res = request.send().await;
+
+                match res {
+                    Ok(resp) => {
+                        if resp.status().is_success() || resp.status().is_redirection() {
+                            break resp;
+                        } else if Self::is_retryable(resp.status()) && attempts < max_attempts {
+                            attempts += 1;
+                            let delay = self.retry_delay_secs * (2u64.pow(attempts - 1));
+                            tracing::warn!(
+                                status = %resp.status(),
+                                attempt = attempts,
+                                delay_secs = delay,
+                                "Transient HTTP error during metadata resolution, retrying"
+                            );
+                            tokio::time::sleep(std::time::Duration::from_secs(delay)).await;
+                            continue;
+                        } else {
+                            return Err(Error::Protocol(format!(
+                                "Metadata resolution failed with status: {}",
+                                resp.status()
+                            )));
+                        }
+                    }
+                    Err(e) if attempts < max_attempts => {
+                        attempts += 1;
+                        let delay = self.retry_delay_secs * (2u64.pow(attempts - 1));
+                        tracing::warn!(
+                            error = %e,
+                            attempt = attempts,
+                            delay_secs = delay,
+                            "HTTP request failed during metadata resolution, retrying"
+                        );
+                        tokio::time::sleep(std::time::Duration::from_secs(delay)).await;
+                        continue;
+                    }
+                    Err(e) => {
+                        return Err(Error::Protocol(format!(
+                            "Metadata resolution failed: {}",
+                            e
+                        )))
+                    }
+                }
+            };
 
             if response.status().is_redirection() {
                 if redirect_count >= max_redirects {
@@ -137,74 +192,107 @@ impl ProtocolWorker for HttpWorker {
         progress: Option<ProgressSender>,
         throttler: std::sync::Arc<crate::throttler::Throttler>,
     ) -> Result<PieceData> {
-        let range_header = format!(
-            "bytes={}-{}",
-            segment.offset,
-            segment.offset + segment.length - 1
-        );
-        let mut request = self.client.get(&self.uri).header("Range", range_header);
+        let mut attempts = 0;
+        let max_attempts = self.retry_count;
 
-        if let Some(ref ref_uri) = self.referer {
-            request = request.header("Referer", ref_uri);
-        }
+        loop {
+            let range_header = format!(
+                "bytes={}-{}",
+                segment.offset,
+                segment.offset + segment.length - 1
+            );
+            let mut request = self.client.get(&self.uri).header("Range", range_header);
 
-        let response = request
-            .send()
-            .await
-            .map_err(|e| Error::Worker(format!("HTTP request failed: {}", e)))?;
-
-        if !response.status().is_success() {
-            return Err(Error::Protocol(format!(
-                "HTTP error status: {}",
-                response.status()
-            )));
-        }
-
-        let mut buffer = if let Some(ref p) = self.pool {
-            p.acquire()
-        } else {
-            BytesMut::with_capacity(segment.length as usize)
-        };
-
-        let mut stream = response.bytes_stream();
-        let mut bytes_downloaded = 0u64;
-
-        while let Some(chunk_res) = stream.next().await {
-            let chunk = chunk_res.map_err(|e| Error::Protocol(format!("Stream error: {}", e)))?;
-
-            let mut remaining_chunk = &chunk[..];
-            while !remaining_chunk.is_empty() {
-                if bytes_downloaded >= segment.length {
-                    break;
-                }
-
-                // Process in chunks of 16KB to prevent bursty progress reporting
-                // that skews the EWMA throughput calculations.
-                let max_take = (segment.length - bytes_downloaded) as usize;
-                let take_len = std::cmp::min(remaining_chunk.len(), std::cmp::min(16384, max_take));
-                let sub_chunk = &remaining_chunk[..take_len];
-
-                // Admission Control: Wait for bandwidth tokens before processing the sub-chunk
-                throttler.acquire_download(task_id, take_len as u64).await;
-
-                buffer.extend_from_slice(sub_chunk);
-                bytes_downloaded += take_len as u64;
-                if let Some(ref p_tx) = progress {
-                    let _ = p_tx.send(take_len as u64);
-                }
-
-                remaining_chunk = &remaining_chunk[take_len..];
+            if let Some(ref ref_uri) = self.referer {
+                request = request.header("Referer", ref_uri);
             }
 
-            if bytes_downloaded >= segment.length {
-                break;
+            let response_res = request.send().await;
+
+            match response_res {
+                Ok(response) => {
+                    if response.status().is_success() {
+                        let mut buffer = if let Some(ref p) = self.pool {
+                            p.acquire()
+                        } else {
+                            BytesMut::with_capacity(segment.length as usize)
+                        };
+
+                        let mut stream = response.bytes_stream();
+                        let mut bytes_downloaded = 0u64;
+
+                        while let Some(chunk_res) = stream.next().await {
+                            let chunk = chunk_res
+                                .map_err(|e| Error::Protocol(format!("Stream error: {}", e)))?;
+
+                            let mut remaining_chunk = &chunk[..];
+                            while !remaining_chunk.is_empty() {
+                                if bytes_downloaded >= segment.length {
+                                    break;
+                                }
+
+                                let max_take = (segment.length - bytes_downloaded) as usize;
+                                let take_len = std::cmp::min(
+                                    remaining_chunk.len(),
+                                    std::cmp::min(16384, max_take),
+                                );
+                                let sub_chunk = &remaining_chunk[..take_len];
+
+                                throttler.acquire_download(task_id, take_len as u64).await;
+
+                                buffer.extend_from_slice(sub_chunk);
+                                bytes_downloaded += take_len as u64;
+                                if let Some(ref p_tx) = progress {
+                                    let _ = p_tx.send(take_len as u64);
+                                }
+
+                                remaining_chunk = &remaining_chunk[take_len..];
+                            }
+
+                            if bytes_downloaded >= segment.length {
+                                break;
+                            }
+                        }
+
+                        return Ok(PieceData {
+                            segment,
+                            data: buffer,
+                        });
+                    } else if Self::is_retryable(response.status()) && attempts < max_attempts {
+                        attempts += 1;
+                        let delay = self.retry_delay_secs * (2u64.pow(attempts - 1));
+                        tracing::warn!(
+                            %task_id,
+                            status = %response.status(),
+                            attempt = attempts,
+                            delay_secs = delay,
+                            "Transient HTTP error, retrying"
+                        );
+                        tokio::time::sleep(std::time::Duration::from_secs(delay)).await;
+                        continue;
+                    } else {
+                        return Err(Error::Protocol(format!(
+                            "HTTP error status: {}",
+                            response.status()
+                        )));
+                    }
+                }
+                Err(e) if attempts < max_attempts => {
+                    attempts += 1;
+                    let delay = self.retry_delay_secs * (2u64.pow(attempts - 1));
+                    tracing::warn!(
+                        %task_id,
+                        error = %e,
+                        attempt = attempts,
+                        delay_secs = delay,
+                        "HTTP request failed, retrying"
+                    );
+                    tokio::time::sleep(std::time::Duration::from_secs(delay)).await;
+                    continue;
+                }
+                Err(e) => return Err(Error::Worker(format!("HTTP request failed: {}", e))),
             }
         }
-
-        Ok(PieceData {
-            segment,
-            data: buffer,
-        })
     }
 
     fn available_capacity(&self) -> usize {
@@ -245,6 +333,8 @@ mod tests {
             None,
             None,
             None,
+            5,
+            2,
         );
         let metadata = worker
             .resolve_metadata()
@@ -259,6 +349,8 @@ mod tests {
             None,
             Some(format!("{}/start", server.uri())),
             None,
+            5,
+            2,
         );
         let throttler = std::sync::Arc::new(crate::throttler::Throttler::new(0, 0));
         let result = worker_final
@@ -298,6 +390,8 @@ mod tests {
             None,
             None,
             None,
+            5,
+            2,
         );
         let result = worker.resolve_metadata().await;
         match result {
