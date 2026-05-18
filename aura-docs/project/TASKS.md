@@ -9,10 +9,10 @@ This document tracks the technical debt and missing features identified during t
     - [x] Developer setup guide (`DEVELOPMENT.md`).
     - [x] Public Rust API documentation (`API.md`).
     - [x] User migration guide (`MIGRATION.md`).
-- [ ] **Policy-based Error Management & Self-healing** (Issue #18)
+- [x] **Policy-based Error Management & Self-healing** (Issue #18)
     - [x] Fixed HTTP 0-byte size assignment bug.
-    - [ ] Implement exponential backoff for 503/429 errors.
-    - [ ] Mirror failover/degradation logic.
+    - [x] Implement exponential backoff for 503/429 errors.
+    - [x] Mirror failover/degradation logic.
 
 ## 🟡 Medium Priority: Connectivity & UX
 - [x] **Browser Extension Bridge** (Issue #95)
