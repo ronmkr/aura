@@ -1,7 +1,7 @@
 use super::SubTaskEvent;
 use crate::orchestrator::Orchestrator;
 use crate::storage::StorageRequest;
-use crate::task::TaskType;
+use crate::task::{DownloadPhase, TaskType};
 use crate::worker::{ProtocolWorker, Segment};
 use crate::{Error, Result, TaskId};
 use tokio::sync::mpsc;
@@ -33,6 +33,10 @@ impl Orchestrator {
                 .tasks
                 .get_mut(&meta_id)
                 .ok_or(Error::TaskNotFound(meta_id))?;
+
+            if meta_task.phase == DownloadPhase::Error {
+                break;
+            }
 
             let (uri, ttype, current_concurrency, target_concurrency) = {
                 let sub_task = meta_task

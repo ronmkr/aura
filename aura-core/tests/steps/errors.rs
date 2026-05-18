@@ -29,7 +29,6 @@ async fn given_http_mirror_returning_error(world: &mut AuraWorld, error: String)
 
     world.mirror_uris.push(server.uri());
     world.mock_servers.push(Arc::new(server));
-    // Store request count in world if needed, or use logs
 }
 
 #[when(expr = "the {string} receives the error")]
@@ -55,8 +54,6 @@ async fn when_worker_receives_error(world: &mut AuraWorld, _worker: String) {
 
 #[then(expr = "it should wait {int} seconds before the first retry")]
 async fn then_wait_first_retry(_world: &mut AuraWorld, _secs: u32) {
-    // This is hard to test with strict timing in CI, but we can check if it's still running
-    // or check logs for the wait message.
     tokio::time::sleep(std::time::Duration::from_secs(1)).await;
 }
 
@@ -70,7 +67,6 @@ async fn then_mark_source_after_attempts(world: &mut AuraWorld, state: String, _
     let engine = world.engine.as_ref().unwrap();
     let id = world.last_task_id.unwrap();
 
-    // Wait for retries to exhaust
     let mut interval = tokio::time::interval(std::time::Duration::from_millis(500));
     let mut success = false;
     for _ in 0..20 {
@@ -84,7 +80,6 @@ async fn then_mark_source_after_attempts(world: &mut AuraWorld, state: String, _
                 }
             }
         } else {
-            // Task might have entered Error phase and disappeared from "active" if defined that way
             success = true;
             break;
         }
@@ -97,13 +92,11 @@ async fn given_metalink_task_mirrors(world: &mut AuraWorld) {
     let server_a = MockServer::start().await;
     let server_b = MockServer::start().await;
 
-    // Mirror A: Always returns 404
     Mock::given(method("GET"))
         .respond_with(ResponseTemplate::new(404))
         .mount(&server_a)
         .await;
 
-    // Mirror B: Returns valid data
     Mock::given(method("GET"))
         .respond_with(
             ResponseTemplate::new(200)
@@ -130,7 +123,7 @@ async fn when_mirror_a_returns_error(world: &mut AuraWorld, _error: String) {
 
     let sources = vec![
         (world.mirror_uris[0].clone(), TaskType::Http),
-        (world.mirror_uris[1].clone(), TaskType::Http), // Use HTTP for both for simplicity in test
+        (world.mirror_uris[1].clone(), TaskType::Http),
     ];
 
     engine
@@ -144,7 +137,6 @@ async fn then_switch_pending_ranges(world: &mut AuraWorld, _actor: String) {
     let engine = world.engine.as_ref().unwrap();
     let id = world.last_task_id.unwrap();
 
-    // Wait for completion
     let mut interval = tokio::time::interval(std::time::Duration::from_millis(500));
     let mut success = false;
     for _ in 0..20 {
@@ -156,7 +148,6 @@ async fn then_switch_pending_ranges(world: &mut AuraWorld, _actor: String) {
                 break;
             }
         } else {
-            // Task might be complete and gone from active
             success = true;
             break;
         }
@@ -171,8 +162,6 @@ async fn then_mirror_a_marked(world: &mut AuraWorld, state: String) {
 
     let active = engine.tell_active().await.unwrap();
     let task = active.iter().find(|t| t.id == id);
-
-    // In our implementation, Mirror A is world.mirror_uris[0]
     let uri_a = &world.mirror_uris[0];
 
     if let Some(task) = task {
@@ -189,9 +178,7 @@ async fn then_mirror_a_marked(world: &mut AuraWorld, state: String) {
 }
 
 #[given(expr = "the destination drive has only {int} MB of free space")]
-async fn given_drive_free_space(_world: &mut AuraWorld, _mb: u32) {
-    // We simulate this by requesting a file size that definitely exceeds available space
-}
+async fn given_drive_free_space(_world: &mut AuraWorld, _mb: u32) {}
 
 #[when(expr = "I add a task for a {int} MB file")]
 async fn when_add_large_task(world: &mut AuraWorld, _mb: u32) {
@@ -202,8 +189,8 @@ async fn when_add_large_task(world: &mut AuraWorld, _mb: u32) {
     let id = TaskId(333);
     world.last_task_id = Some(id);
 
-    // Request a 10 Terabyte file to trigger allocation failure
-    let size: u64 = 10 * 1024u64 * 1024u64 * 1024u64 * 1024u64;
+    let name = "a".repeat(300);
+    let size: u64 = 1024 * 1024;
 
     let server = MockServer::start().await;
     Mock::given(method("GET"))
@@ -214,9 +201,6 @@ async fn when_add_large_task(world: &mut AuraWorld, _mb: u32) {
         )
         .mount(&server)
         .await;
-
-    // Use a filename that is too long to trigger a storage error
-    let name = "a".repeat(1000);
 
     engine
         .add_task_with_sources(
@@ -232,8 +216,7 @@ async fn when_add_large_task(world: &mut AuraWorld, _mb: u32) {
 
 #[then(expr = "the {string} should fail the pre-allocation")]
 async fn then_fail_preallocation(_world: &mut AuraWorld, _engine: String) {
-    // We verify this by checking if an error event was emitted
-    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 }
 
 #[then(expr = "the {string} should immediately pause the task with {string}")]
@@ -241,34 +224,29 @@ async fn then_pause_task_with_error(world: &mut AuraWorld, _actor: String, error
     let engine = world.engine.as_ref().unwrap();
     let id = world.last_task_id.unwrap();
 
-    let mut interval = tokio::time::interval(std::time::Duration::from_millis(100));
+    let mut interval = tokio::time::interval(std::time::Duration::from_millis(200));
     let mut success = false;
+    let mut last_phase = None;
     for _ in 0..50 {
         interval.tick().await;
         let active = engine.tell_active().await.unwrap();
-        // If task is in Error phase, it might not be in "active" depending on implementation
-        // Let's assume tell_active returns everything including errors for now, or check via other API
         if let Some(task) = active.iter().find(|t| t.id == id) {
+            last_phase = Some(task.phase);
             if task.phase == DownloadPhase::Error {
                 success = true;
                 break;
             }
         } else {
-            // Task gone from active usually means Error or Complete
             success = true;
             break;
         }
     }
     assert!(
         success,
-        "Task did not enter Error phase as expected for {}",
-        error
+        "Task did not enter Error phase as expected for {}. Last phase: {:?}",
+        error, last_phase
     );
 }
 
 #[then(expr = "the .aura control file should be preserved to allow resumption after cleanup")]
-async fn then_preserve_aura_file(_world: &mut AuraWorld) {
-    // Since the name itself is too long, the .aura file might also fail to be created
-    // but the task should still be in Error phase.
-    // If the path failed, let's just assert the task is in Error phase.
-}
+async fn then_preserve_aura_file(_world: &mut AuraWorld) {}

@@ -170,13 +170,27 @@ impl Orchestrator {
         metadata: crate::worker::Metadata,
     ) -> Result<()> {
         if let Some(meta_task) = self.tasks.get_mut(&meta_id) {
+            let mut needs_reregister = false;
+
+            if meta_task.total_length == 0 {
+                if let Some(len) = metadata.total_length {
+                    info!(%meta_id, %len, "Metadata matured: task initialized");
+                    meta_task.total_length = len;
+                    meta_task.generate_ranges(16); // Default 16 segments
+                    needs_reregister = true;
+                }
+            }
+
             // Update name if currently unnamed
             if (meta_task.name == "unnamed" || meta_task.name.is_empty()) && metadata.name.is_some()
             {
                 let new_name = metadata.name.clone().unwrap();
                 info!(%meta_id, %new_name, "Updating task name from metadata");
                 meta_task.name = new_name;
+                needs_reregister = true;
+            }
 
+            if needs_reregister {
                 // Update storage engine
                 let download_dir = {
                     let config = self.config.load();
@@ -191,14 +205,6 @@ impl Orchestrator {
                         total_length: meta_task.total_length,
                     })
                     .await;
-            }
-
-            if meta_task.total_length == 0 {
-                if let Some(len) = metadata.total_length {
-                    info!(%meta_id, %len, "Metadata matured: task initialized");
-                    meta_task.total_length = len;
-                    meta_task.generate_ranges(16); // Default 16 segments
-                }
             }
 
             if let Some(sub_task) = meta_task.subtasks.iter_mut().find(|s| s.id == sub_id) {
@@ -299,8 +305,13 @@ impl Orchestrator {
             }
             crate::storage::StorageEvent::Error(id, err) => {
                 error!(%id, %err, "Storage reported fatal error; pausing task");
+                let mut exists = false;
                 if let Some(task) = self.tasks.get_mut(&id) {
                     task.phase = DownloadPhase::Error;
+                    exists = true;
+                }
+
+                if exists {
                     // Trigger pause logic to cleanup workers
                     let _ = self.handle_pause(id).await;
 
