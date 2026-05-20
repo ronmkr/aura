@@ -44,21 +44,20 @@ impl CredentialProvider {
         for line in reader.lines() {
             let line =
                 line.map_err(|e| Error::Config(format!("Failed to read cookie file: {}", e)))?;
-            if line.is_empty() || line.starts_with('#') {
+            let trimmed = line.trim();
+            if trimmed.is_empty() || trimmed.starts_with('#') {
                 continue;
             }
 
-            let parts: Vec<&str> = line.split('\t').collect();
+            let parts: Vec<&str> = trimmed.split('\t').collect();
             if parts.len() < 7 {
                 continue;
             }
 
             // Netscape format: domain, flag, path, secure, expiration, name, value
             let domain = parts[0];
-            // let _flag = parts[1];
             let path_str = parts[2];
             let secure = parts[3].to_lowercase() == "true";
-            // let _expiration = parts[4];
             let name = parts[5];
             let value = parts[6];
 
@@ -85,6 +84,13 @@ impl CredentialProvider {
 
         for line in reader.lines() {
             let line = line.map_err(|e| Error::Config(format!("Failed to read .netrc: {}", e)))?;
+
+            // Handle comments
+            let line = match line.find('#') {
+                Some(idx) => &line[..idx],
+                None => &line,
+            };
+
             let tokens: Vec<&str> = line.split_whitespace().collect();
 
             let mut i = 0;
@@ -110,6 +116,14 @@ impl CredentialProvider {
                         credentials.account = Some(tokens[i + 1].to_string());
                         i += 2;
                     }
+                    "default" => {
+                        if !current_machine.is_empty() {
+                            self.netrc.insert(current_machine, credentials);
+                        }
+                        current_machine = "default".to_string();
+                        credentials = Credentials::default();
+                        i += 1;
+                    }
                     _ => i += 1,
                 }
             }
@@ -123,8 +137,9 @@ impl CredentialProvider {
     }
 
     /// Resolves credentials for a given host.
+    /// Falls back to 'default' entry if no exact match is found.
     pub fn get_credentials(&self, host: &str) -> Option<&Credentials> {
-        self.netrc.get(host)
+        self.netrc.get(host).or_else(|| self.netrc.get("default"))
     }
 }
 
@@ -137,15 +152,23 @@ impl Default for CredentialProvider {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use reqwest::cookie::CookieStore;
     use std::io::Write;
     use tempfile::NamedTempFile;
 
     #[test]
-    fn test_netrc_parsing() {
+    fn test_netrc_parsing_advanced() {
         let mut file = NamedTempFile::new().unwrap();
         writeln!(
             file,
-            "machine github.com login myuser password mypass\nmachine example.com login otheruser password otherpass account myacc"
+            r#"
+            # This is a comment
+            machine github.com # trailing comment
+            login myuser
+            password mypass
+
+            default login guest password anon
+            "#
         )
         .unwrap();
 
@@ -156,8 +179,34 @@ mod tests {
         assert_eq!(creds.login.as_deref(), Some("myuser"));
         assert_eq!(creds.password.as_deref(), Some("mypass"));
 
-        let creds2 = provider.get_credentials("example.com").unwrap();
-        assert_eq!(creds2.login.as_deref(), Some("otheruser"));
-        assert_eq!(creds2.account.as_deref(), Some("myacc"));
+        let creds2 = provider.get_credentials("unknown.com").unwrap();
+        assert_eq!(creds2.login.as_deref(), Some("guest"));
+        assert_eq!(creds2.password.as_deref(), Some("anon"));
+    }
+
+    #[test]
+    fn test_cookie_parsing_advanced() {
+        let mut file = NamedTempFile::new().unwrap();
+        writeln!(
+            file,
+            r#"# Netscape HTTP Cookie File
+.google.com	TRUE	/	TRUE	2147483647	NID	val1
+example.com	FALSE	/path	FALSE	2147483647	session	val2
+"#
+        )
+        .unwrap();
+
+        let provider = CredentialProvider::new();
+        provider.load_cookies(file.path()).unwrap();
+
+        let jar = provider.cookie_jar();
+
+        let url1 = url::Url::parse("https://google.com").unwrap();
+        let cookie1 = jar.cookies(&url1).unwrap();
+        assert!(cookie1.to_str().unwrap().contains("NID=val1"));
+
+        let url2 = url::Url::parse("http://example.com/path").unwrap();
+        let cookie2 = jar.cookies(&url2).unwrap();
+        assert!(cookie2.to_str().unwrap().contains("session=val2"));
     }
 }
