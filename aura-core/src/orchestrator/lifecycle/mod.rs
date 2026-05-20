@@ -77,6 +77,7 @@ impl Orchestrator {
             let pool = self.pool.clone();
             let db = self.db.clone();
             let throttler_clone = throttler_arc.clone();
+            let provider_clone = self.credential_provider.clone();
 
             let existing_bt = self.bt_tasks.get(&sub_id).cloned();
 
@@ -92,6 +93,7 @@ impl Orchestrator {
                             .with_pool(pool.clone())
                             .retry_count(config.network.http_retry_count)
                             .retry_delay_secs(config.network.http_retry_delay_secs)
+                            .credential_provider(provider_clone.clone())
                             .build_http();
                         match worker.resolve_metadata().await {
                             Ok(m) => {
@@ -112,6 +114,7 @@ impl Orchestrator {
                         let worker = crate::worker::WorkerBuilder::new(uri)
                             .local_addr(local_addr)
                             .with_pool(pool.clone())
+                            .credential_provider(provider_clone.clone())
                             .build_ftp();
                         match worker.resolve_metadata().await {
                             Ok(m) => {

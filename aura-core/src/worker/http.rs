@@ -13,6 +13,7 @@ pub struct HttpWorker {
     pool: Option<BufferPool>,
     retry_count: u32,
     retry_delay_secs: u64,
+    credential_provider: Option<std::sync::Arc<crate::config::credentials::CredentialProvider>>,
 }
 
 impl HttpWorker {
@@ -31,8 +32,14 @@ impl HttpWorker {
         pool: Option<BufferPool>,
         retry_count: u32,
         retry_delay_secs: u64,
+        credential_provider: Option<std::sync::Arc<crate::config::credentials::CredentialProvider>>,
     ) -> Self {
-        let cookie_jar = std::sync::Arc::new(reqwest::cookie::Jar::default());
+        let cookie_jar = if let Some(ref provider) = credential_provider {
+            provider.cookie_jar()
+        } else {
+            std::sync::Arc::new(reqwest::cookie::Jar::default())
+        };
+
         let mut builder = reqwest::Client::builder()
             .user_agent(user_agent.unwrap_or_else(|| "Aura/0.1.0".to_string()))
             .cookie_provider(cookie_jar)
@@ -61,6 +68,7 @@ impl HttpWorker {
             pool,
             retry_count,
             retry_delay_secs,
+            credential_provider,
         }
     }
 
@@ -79,6 +87,18 @@ impl HttpWorker {
                 let mut request = self.client.get(&current_uri).header("Range", "bytes=0-0");
                 if let Some(ref ref_uri) = referer {
                     request = request.header("Referer", ref_uri);
+                }
+
+                if let Some(ref provider) = self.credential_provider {
+                    if let Ok(url) = url::Url::parse(&current_uri) {
+                        if let Some(host) = url.host_str() {
+                            if let Some(creds) = provider.get_credentials(host) {
+                                if let (Some(user), Some(pass)) = (&creds.login, &creds.password) {
+                                    request = request.basic_auth(user, Some(pass));
+                                }
+                            }
+                        }
+                    }
                 }
 
                 let res = request.send().await;
@@ -205,6 +225,18 @@ impl ProtocolWorker for HttpWorker {
 
             if let Some(ref ref_uri) = self.referer {
                 request = request.header("Referer", ref_uri);
+            }
+
+            if let Some(ref provider) = self.credential_provider {
+                if let Ok(url) = url::Url::parse(&self.uri) {
+                    if let Some(host) = url.host_str() {
+                        if let Some(creds) = provider.get_credentials(host) {
+                            if let (Some(user), Some(pass)) = (&creds.login, &creds.password) {
+                                request = request.basic_auth(user, Some(pass));
+                            }
+                        }
+                    }
+                }
             }
 
             let response_res = request.send().await;
@@ -335,6 +367,7 @@ mod tests {
             None,
             5,
             2,
+            None,
         );
         let metadata = worker
             .resolve_metadata()
@@ -351,6 +384,7 @@ mod tests {
             None,
             5,
             2,
+            None,
         );
         let throttler = std::sync::Arc::new(crate::throttler::Throttler::new(0, 0));
         let result = worker_final
@@ -392,6 +426,7 @@ mod tests {
             None,
             5,
             2,
+            None,
         );
         let result = worker.resolve_metadata().await;
         match result {

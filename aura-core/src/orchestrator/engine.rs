@@ -1,6 +1,6 @@
 use super::{Command, Event, Orchestrator};
 use crate::dht::DhtActor;
-use crate::storage::StorageEngine;
+use crate::storage::{StorageEngine, StorageEvent};
 use crate::task::{MetaTask, TaskType};
 use crate::{Error, Result, TaskId};
 use arc_swap::ArcSwap;
@@ -26,7 +26,7 @@ impl Engine {
         let config = Arc::new(ArcSwap::from_pointee(config));
         let (command_tx, command_rx) = mpsc::channel(100);
         let (storage_tx, storage_rx) = mpsc::channel(100);
-        let (completion_tx, completion_rx) = mpsc::channel(100);
+        let (completion_tx, completion_rx) = mpsc::channel::<StorageEvent>(100);
         let (dht_tx, dht_rx) = mpsc::channel(100);
         let (nat_tx, nat_rx) = mpsc::channel(100);
         let (lpd_tx, lpd_rx) = mpsc::channel(100);

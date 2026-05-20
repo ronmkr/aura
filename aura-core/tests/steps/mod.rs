@@ -1,4 +1,5 @@
 pub mod aggregation;
+pub mod credentials;
 pub mod daemon;
 pub mod errors;
 pub mod governance;

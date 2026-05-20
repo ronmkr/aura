@@ -136,6 +136,7 @@ impl Orchestrator {
                 let token_clone = token.clone();
                 let config_clone = config_arc.clone();
                 let throttler_clone = self.throttler.clone();
+                let provider_clone = self.credential_provider.clone();
 
                 let subtask_tx_progress = subtask_tx.clone();
                 let progress_handle = tokio::spawn(async move {
@@ -157,6 +158,7 @@ impl Orchestrator {
                                 .proxy(config.network.proxy.clone())
                                 .retry_count(config.network.http_retry_count)
                                 .retry_delay_secs(config.network.http_retry_delay_secs)
+                                .credential_provider(provider_clone)
                                 .build_http();
                             let segment = Segment {
                                 offset: range.start,
@@ -190,6 +192,7 @@ impl Orchestrator {
                         TaskType::Ftp => {
                             let worker = crate::worker::WorkerBuilder::new(uri)
                                 .local_addr(local_addr)
+                                .credential_provider(provider_clone)
                                 .build_ftp();
                             let segment = Segment {
                                 offset: range.start,

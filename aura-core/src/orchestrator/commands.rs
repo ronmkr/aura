@@ -1,7 +1,8 @@
 use super::{Command, Event, Orchestrator};
 use crate::task::{DownloadPhase, MetaTask};
 use crate::{Error, Result, TaskId};
-use tracing::info;
+use std::sync::Arc;
+use tracing::{info, warn};
 
 impl Orchestrator {
     pub(crate) async fn handle_command(&mut self, cmd: Command) -> Result<()> {
@@ -43,6 +44,26 @@ impl Orchestrator {
                 }
 
                 self.hook_manager.update_config(new_config.hooks.clone());
+
+                // Update CredentialProvider if paths changed
+                if self.config.load().credentials.netrc_path != new_config.credentials.netrc_path
+                    || self.config.load().credentials.cookie_file
+                        != new_config.credentials.cookie_file
+                {
+                    info!("Reloading credentials");
+                    let mut new_provider = crate::config::credentials::CredentialProvider::new();
+                    if let Some(ref netrc) = new_config.credentials.netrc_path {
+                        if let Err(e) = new_provider.load_netrc(netrc) {
+                            warn!("Failed to reload .netrc from {}: {}", netrc, e);
+                        }
+                    }
+                    if let Some(ref cookie_file) = new_config.credentials.cookie_file {
+                        if let Err(e) = new_provider.load_cookies(cookie_file) {
+                            warn!("Failed to reload cookies from {}: {}", cookie_file, e);
+                        }
+                    }
+                    self.credential_provider = Arc::new(new_provider);
+                }
 
                 self.config.store(new_config);
                 let _ = resp_tx.send(());

@@ -112,6 +112,7 @@ pub struct Orchestrator {
     pub(crate) config: Arc<ArcSwap<crate::Config>>,
     pub(crate) power_manager: crate::power::PowerManager,
     pub(crate) hook_manager: crate::hooks::HookManager,
+    pub(crate) credential_provider: Arc<crate::config::credentials::CredentialProvider>,
     pub(crate) pool: BufferPool,
     pub(crate) db: sled::Db,
 }
@@ -258,6 +259,19 @@ impl Orchestrator {
         let (vpn_watch_tx, _vpn_watch_rx) = tokio::sync::watch::channel(vpn_provider.clone());
         let hook_manager = crate::hooks::HookManager::new(initial_config.hooks.clone());
 
+        let mut credential_provider = crate::config::credentials::CredentialProvider::new();
+        if let Some(ref netrc) = initial_config.credentials.netrc_path {
+            if let Err(e) = credential_provider.load_netrc(netrc) {
+                tracing::warn!("Failed to load .netrc from {}: {}", netrc, e);
+            }
+        }
+        if let Some(ref cookie_file) = initial_config.credentials.cookie_file {
+            if let Err(e) = credential_provider.load_cookies(cookie_file) {
+                tracing::warn!("Failed to load cookies from {}: {}", cookie_file, e);
+            }
+        }
+        let credential_provider = Arc::new(credential_provider);
+
         (
             Self {
                 tasks: HashMap::new(),
@@ -281,6 +295,7 @@ impl Orchestrator {
                 config,
                 power_manager: crate::power::PowerManager::new(),
                 hook_manager,
+                credential_provider,
                 pool,
                 db,
             },
