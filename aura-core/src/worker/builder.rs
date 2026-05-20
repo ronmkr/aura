@@ -14,6 +14,7 @@ pub struct WorkerBuilder {
     pool: Option<BufferPool>,
     retry_count: u32,
     retry_delay_secs: u64,
+    credential_provider: Option<std::sync::Arc<crate::config::credentials::CredentialProvider>>,
 }
 
 impl WorkerBuilder {
@@ -28,7 +29,16 @@ impl WorkerBuilder {
             pool: None,
             retry_count: 5,
             retry_delay_secs: 2,
+            credential_provider: None,
         }
+    }
+
+    pub fn credential_provider(
+        mut self,
+        provider: std::sync::Arc<crate::config::credentials::CredentialProvider>,
+    ) -> Self {
+        self.credential_provider = Some(provider);
+        self
     }
 
     pub fn local_addr(mut self, addr: Option<IpAddr>) -> Self {
@@ -82,10 +92,16 @@ impl WorkerBuilder {
             self.pool,
             self.retry_count,
             self.retry_delay_secs,
+            self.credential_provider,
         )
     }
 
     pub fn build_ftp(self) -> FtpWorker {
-        FtpWorker::new(self.uri, self.local_addr, self.pool)
+        FtpWorker::new(
+            self.uri,
+            self.local_addr,
+            self.pool,
+            self.credential_provider,
+        )
     }
 }

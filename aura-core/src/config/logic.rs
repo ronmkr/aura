@@ -11,6 +11,7 @@ pub struct Config {
     pub vpn: VpnConfig,
     pub hooks: HookConfig,
     pub general: GeneralConfig,
+    pub credentials: CredentialConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -250,4 +251,10 @@ pub struct HookConfig {
     pub on_download_complete: Option<String>,
     pub on_download_error: Option<String>,
     pub on_download_pause: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct CredentialConfig {
+    pub netrc_path: Option<String>,
+    pub cookie_file: Option<String>,
 }

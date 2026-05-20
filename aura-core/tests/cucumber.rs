@@ -12,6 +12,9 @@ pub struct AuraWorld {
     pub temp_dir: tempfile::TempDir,
     pub mirror_uris: Vec<String>,
     pub mock_servers: Vec<std::sync::Arc<MockServer>>,
+    pub temp_files: Vec<tempfile::NamedTempFile>,
+    pub netrc_path: Option<std::path::PathBuf>,
+    pub cookie_path: Option<std::path::PathBuf>,
 }
 
 impl AuraWorld {
@@ -61,6 +64,9 @@ impl Default for AuraWorld {
             temp_dir: tempfile::tempdir().expect("Failed to create temp dir"),
             mirror_uris: Vec::new(),
             mock_servers: Vec::new(),
+            temp_files: Vec::new(),
+            netrc_path: None,
+            cookie_path: None,
         }
     }
 }

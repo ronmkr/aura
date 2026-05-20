@@ -13,6 +13,7 @@ pub struct FtpWorker {
     uri: String,
     _local_addr: Option<std::net::IpAddr>,
     pool: Option<BufferPool>,
+    credential_provider: Option<std::sync::Arc<crate::config::credentials::CredentialProvider>>,
 }
 
 impl FtpWorker {
@@ -20,11 +21,13 @@ impl FtpWorker {
         uri: String,
         local_addr: Option<std::net::IpAddr>,
         pool: Option<BufferPool>,
+        credential_provider: Option<std::sync::Arc<crate::config::credentials::CredentialProvider>>,
     ) -> Self {
         Self {
             uri,
             _local_addr: local_addr,
             pool,
+            credential_provider,
         }
     }
 
@@ -36,12 +39,36 @@ impl FtpWorker {
             .host_str()
             .ok_or_else(|| Error::Protocol("Missing host in FTP URL".to_string()))?;
         let port = url.port().unwrap_or(21);
-        let user = if url.username().is_empty() {
+
+        let mut user = if url.username().is_empty() {
             "anonymous"
         } else {
             url.username()
         };
-        let pass = url.password().unwrap_or("anonymous@aura.rs");
+        let mut pass = url.password().unwrap_or("anonymous@aura.rs");
+
+        let mut resolved_user = None;
+        let mut resolved_pass = None;
+
+        if (user == "anonymous") && self.credential_provider.is_some() {
+            if let Some(ref provider) = self.credential_provider {
+                if let Some(creds) = provider.get_credentials(host) {
+                    if let Some(u) = &creds.login {
+                        resolved_user = Some(u.clone());
+                    }
+                    if let Some(p) = &creds.password {
+                        resolved_pass = Some(p.clone());
+                    }
+                }
+            }
+        }
+
+        if let Some(ref u) = resolved_user {
+            user = u;
+        }
+        if let Some(ref p) = resolved_pass {
+            pass = p;
+        }
 
         let mut ftp_stream = AsyncFtpStream::connect(format!("{}:{}", host, port))
             .await
