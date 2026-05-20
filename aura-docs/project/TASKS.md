@@ -28,7 +28,10 @@ This document tracks the technical debt and missing features identified during t
 - [ ] **MIME Validation & Landing Page Resolution** (Issue #19)
     - [x] `Content-Length` fallback implemented in HTTP worker.
     - [ ] Redirect/HTML scraping for actual asset links.
-- [ ] **Unified Credential Provider** (Issue #21)
+- [x] **Unified Credential Provider** (Issue #21)
+    - [x] .netrc parser with machine/default support.
+    - [x] Netscape cookie jar support.
+    - [x] Transparent injection into HTTP/FTP workers.
 
 ## 🟢 Low Priority: Maintenance & Advanced Features
 - [ ] **Dynamic DHT Bootstrap** (Issue #77)

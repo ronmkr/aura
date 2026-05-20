@@ -60,7 +60,7 @@
 
 ## 🚀 Milestone 7: Industrial Hardening (Proposed)
 - [ ] **Advanced Disk I/O Scheduling** (Deadline-based sorted writes) (Issue #13).
-- [ ] **Unified Credential Provider** (Netrc/Cookie management) (Issue #21).
+- [x] **Unified Credential Provider** (Netrc/Cookie management) (Issue #21).
 - [ ] **Multi-tenancy & Quotas** (Resource isolation) (Issue #15).
 - [x] **No-COW Allocator** (Btrfs/ZFS fragmentation prevention) (Issue #92).
 - [ ] **Recursive Mirroring** (Wget-style site crawling) (Issue #65).
