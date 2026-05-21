@@ -30,6 +30,16 @@ async fn given_expected_sha256(world: &mut AuraWorld, checksum: String) {
     world.task_checksum = Some(aura_core::Checksum::Sha256(checksum));
 }
 
+#[given(expr = "the expected MD5 checksum is {string}")]
+async fn given_expected_md5(world: &mut AuraWorld, checksum: String) {
+    world.task_checksum = Some(aura_core::Checksum::Md5(checksum));
+}
+
+#[given(expr = "the expected SHA-512 checksum is {string}")]
+async fn given_expected_sha512(world: &mut AuraWorld, checksum: String) {
+    world.task_checksum = Some(aura_core::Checksum::Sha512(checksum));
+}
+
 #[when(expr = "I add the task with the checksum")]
 async fn when_add_task_with_checksum(world: &mut AuraWorld) {
     if world.engine.is_none() {

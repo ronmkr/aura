@@ -175,6 +175,10 @@ impl StorageEngine {
                         error!(%task_id, error = %e, "Failed to flush pending writes on completion");
                     }
 
+                    // Close the write handle before verification to ensure all data is committed
+                    // and to allow clean read-only access.
+                    self.handles.remove(&task_id);
+
                     // Perform integrity verification if a checksum was provided
                     if let Err(e) = self.verify_checksum(task_id).await {
                         error!(%task_id, error = %e, "Integrity verification failed");
@@ -218,42 +222,70 @@ impl StorageEngine {
         let file = File::open(&part_path).await?;
         let mut reader = tokio::io::BufReader::new(file);
 
-        let (mut hasher_sha256, mut hasher_sha512, mut hasher_sha1, mut hasher_md5) = (
-            sha2::Sha256::default(),
-            sha2::Sha512::default(),
-            sha1::Sha1::default(),
-            md5::Md5::default(),
-        );
-
         use md5::Digest;
         use tokio::io::AsyncReadExt;
 
-        let mut buffer = [0u8; 65536];
-        loop {
-            let n = reader.read(&mut buffer).await?;
-            if n == 0 {
-                break;
+        let actual = match checksum {
+            crate::Checksum::Md5(ref expected) => {
+                let mut hasher = md5::Md5::default();
+                let mut buffer = [0u8; 65536];
+                loop {
+                    let n = reader.read(&mut buffer).await?;
+                    if n == 0 {
+                        break;
+                    }
+                    hasher.update(&buffer[..n]);
+                }
+                let hash = hex::encode(hasher.finalize());
+                (expected.clone(), hash)
             }
-            let chunk = &buffer[..n];
-            match checksum {
-                crate::Checksum::Sha256(_) => hasher_sha256.update(chunk),
-                crate::Checksum::Sha512(_) => hasher_sha512.update(chunk),
-                crate::Checksum::Sha1(_) => hasher_sha1.update(chunk),
-                crate::Checksum::Md5(_) => hasher_md5.update(chunk),
+            crate::Checksum::Sha1(ref expected) => {
+                let mut hasher = sha1::Sha1::default();
+                let mut buffer = [0u8; 65536];
+                loop {
+                    let n = reader.read(&mut buffer).await?;
+                    if n == 0 {
+                        break;
+                    }
+                    hasher.update(&buffer[..n]);
+                }
+                let hash = hex::encode(hasher.finalize());
+                (expected.clone(), hash)
             }
-        }
-
-        let (expected, actual) = match checksum {
-            crate::Checksum::Sha256(expected) => (expected, hex::encode(hasher_sha256.finalize())),
-            crate::Checksum::Sha512(expected) => (expected, hex::encode(hasher_sha512.finalize())),
-            crate::Checksum::Sha1(expected) => (expected, hex::encode(hasher_sha1.finalize())),
-            crate::Checksum::Md5(expected) => (expected, hex::encode(hasher_md5.finalize())),
+            crate::Checksum::Sha256(ref expected) => {
+                let mut hasher = sha2::Sha256::default();
+                let mut buffer = [0u8; 65536];
+                loop {
+                    let n = reader.read(&mut buffer).await?;
+                    if n == 0 {
+                        break;
+                    }
+                    hasher.update(&buffer[..n]);
+                }
+                let hash = hex::encode(hasher.finalize());
+                (expected.clone(), hash)
+            }
+            crate::Checksum::Sha512(ref expected) => {
+                let mut hasher = sha2::Sha512::default();
+                let mut buffer = [0u8; 65536];
+                loop {
+                    let n = reader.read(&mut buffer).await?;
+                    if n == 0 {
+                        break;
+                    }
+                    hasher.update(&buffer[..n]);
+                }
+                let hash = hex::encode(hasher.finalize());
+                (expected.clone(), hash)
+            }
         };
 
-        if expected.to_lowercase() != actual.to_lowercase() {
+        let (expected, actual_hash) = actual;
+
+        if expected.to_lowercase() != actual_hash.to_lowercase() {
             return Err(Error::Storage(format!(
                 "Checksum mismatch: expected {}, got {}",
-                expected, actual
+                expected, actual_hash
             )));
         }
 

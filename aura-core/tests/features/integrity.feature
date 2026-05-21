@@ -17,3 +17,15 @@ Feature: Non-Swarm Integrity Verification
     When I add the task with the checksum
     Then the task should eventually fail with a "Checksum mismatch" error
     And the "corrupt.bin" file should be preserved
+
+  Scenario: Successful MD5 verification
+    Given an HTTP mirror for "integrity.md5" with content "C"
+    And the expected MD5 checksum is "0d61f8370cad1d412f80b84d143e1257"
+    When I add the task with the checksum
+    Then the task should eventually be "Complete"
+
+  Scenario: Successful SHA-512 verification
+    Given an HTTP mirror for "integrity.sha512" with content "D"
+    And the expected SHA-512 checksum is "2ac968752f624be3e3df46764b51b7831feb70d40307df5d587d4793bffeaf8b4042a1fd6d465df2aacc3304328d431ef10e083baf690b8cc535480a4fef092f"
+    When I add the task with the checksum
+    Then the task should eventually be "Complete"

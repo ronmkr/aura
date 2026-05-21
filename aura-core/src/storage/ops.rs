@@ -84,8 +84,6 @@ impl StorageEngine {
     }
 
     pub(crate) async fn handle_complete(&mut self, id: TaskId) -> Result<()> {
-        self.handles.remove(&id);
-
         let base_path = self.task_paths.get(&id).ok_or(Error::TaskNotFound(id))?;
 
         let part_path = get_part_path(base_path)?;
