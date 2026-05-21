@@ -47,7 +47,12 @@ async fn when_worker_receives_error(world: &mut AuraWorld, _worker: String) {
 
     let uri = format!("{}/file", world.mirror_uris[0]);
     engine
-        .add_task_with_sources(id, "error-task".to_string(), vec![(uri, TaskType::Http)])
+        .add_task_with_sources(
+            id,
+            "error-task".to_string(),
+            vec![(uri, TaskType::Http)],
+            None,
+        )
         .await
         .unwrap();
 }
@@ -127,7 +132,7 @@ async fn when_mirror_a_returns_error(world: &mut AuraWorld, _error: String) {
     ];
 
     engine
-        .add_task_with_sources(id, "failover-task".to_string(), sources)
+        .add_task_with_sources(id, "failover-task".to_string(), sources, None)
         .await
         .unwrap();
 }
@@ -207,6 +212,7 @@ async fn when_add_large_task(world: &mut AuraWorld, _mb: u32) {
             id,
             name,
             vec![(format!("{}/file", server.uri()), TaskType::Http)],
+            None,
         )
         .await
         .unwrap();

@@ -51,6 +51,7 @@ async fn test_ws_telemetry() {
             id,
             "test-task".to_string(),
             vec![("http://example.com".to_string(), TaskType::Http)],
+            None,
         )
         .await
         .unwrap();

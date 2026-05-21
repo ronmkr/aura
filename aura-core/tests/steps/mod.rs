@@ -4,6 +4,7 @@ pub mod daemon;
 pub mod errors;
 pub mod governance;
 pub mod hooks;
+pub mod integrity;
 pub mod networking;
 pub mod reliability;
 pub mod storage;

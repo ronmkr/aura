@@ -62,6 +62,7 @@ async fn when_task_completes(world: &mut AuraWorld) {
             id,
             "hook-test".to_string(),
             vec![(uri, aura_core::task::TaskType::Http)],
+            None,
         )
         .await
         .unwrap();

@@ -33,6 +33,15 @@ pub use api::{TaskEvent, TaskHandle};
 pub use config::Config;
 pub use orchestrator::Engine;
 
+/// Supported checksum algorithms for non-swarm integrity verification.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum Checksum {
+    Md5(String),
+    Sha1(String),
+    Sha256(String),
+    Sha512(String),
+}
+
 /// Newtype for Download Task identifiers to ensure type safety.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct TaskId(pub u64);

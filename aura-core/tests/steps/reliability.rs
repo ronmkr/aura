@@ -31,9 +31,11 @@ async fn given_active_download(world: &mut AuraWorld, percent: u32) {
             id,
             "reliability-task".to_string(),
             vec![(format!("{}/file", server.uri()), TaskType::Http)],
+            None,
         )
         .await
         .unwrap();
+
     world.last_task_id = Some(handle.id());
     world.mock_servers.push(std::sync::Arc::new(server));
 

@@ -103,7 +103,7 @@ impl StorageEngine {
     }
 }
 
-pub(crate) fn get_part_path(base_path: &Path) -> Result<PathBuf> {
+pub fn get_part_path(base_path: &Path) -> Result<PathBuf> {
     let mut part_path = crate::storage::sys::harden_path(base_path);
     let mut filename = part_path
         .file_name()

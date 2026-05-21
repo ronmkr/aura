@@ -1,5 +1,5 @@
 use aura_core::orchestrator::{Engine, Event};
-use aura_core::{Config, TaskId};
+use aura_core::{Checksum, Config, TaskId};
 use cucumber::World;
 use tokio::sync::mpsc;
 use wiremock::MockServer;
@@ -15,6 +15,7 @@ pub struct AuraWorld {
     pub temp_files: Vec<tempfile::NamedTempFile>,
     pub netrc_path: Option<std::path::PathBuf>,
     pub cookie_path: Option<std::path::PathBuf>,
+    pub task_checksum: Option<crate::Checksum>,
 }
 
 impl AuraWorld {
@@ -67,6 +68,7 @@ impl Default for AuraWorld {
             temp_files: Vec::new(),
             netrc_path: None,
             cookie_path: None,
+            task_checksum: None,
         }
     }
 }

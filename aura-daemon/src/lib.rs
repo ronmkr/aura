@@ -249,7 +249,11 @@ pub async fn handle_extension_add(
     let name = "browser-download".to_string();
     let sources = vec![(uri, ttype)];
 
-    match state.engine.add_task_with_sources(id, name, sources).await {
+    match state
+        .engine
+        .add_task_with_sources(id, name, sources, None)
+        .await
+    {
         Ok(_) => (
             StatusCode::OK,
             Json(json!({ "success": true, "gid": id.0.to_string() })),
@@ -287,7 +291,7 @@ async fn handle_add_uri(engine: &Engine, params: Option<Value>) -> Result<Value,
         .collect();
 
     engine
-        .add_task_with_sources(id, name, sources)
+        .add_task_with_sources(id, name, sources, None)
         .await
         .map_err(|e| json!({ "code": -32000, "message": e.to_string() }))?;
 
