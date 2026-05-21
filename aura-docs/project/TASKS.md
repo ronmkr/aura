@@ -35,7 +35,10 @@ This document tracks the technical debt and missing features identified during t
 
 ## 🟢 Low Priority: Maintenance & Advanced Features
 - [ ] **Dynamic DHT Bootstrap** (Issue #77)
-- [ ] **Non-Swarm Integrity** (Issue #75)
+- [x] **Non-Swarm Integrity** (Issue #75)
+    - [x] Support `--checksum` (MD5, SHA-1, SHA-256, SHA-512) for HTTP and FTP tasks.
+    - [x] Implement `Verifying` lifecycle phase.
+    - [x] Automatic part-file preservation on mismatch.
 - [ ] **Privacy-Enhanced Resolver (DoH/DoT)** (Issue #73)
 - [ ] **Task Prioritization & Dependencies** (Issue #72)
 - [x] **SOCKS5 Proxy Support** (Issue #66)

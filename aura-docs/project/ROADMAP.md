@@ -59,7 +59,9 @@
 - [x] **Power Management** (OS-level sleep assertions).
 
 ## 🚀 Milestone 7: Industrial Hardening (Proposed)
-- [ ] **Advanced Disk I/O Scheduling** (Deadline-based sorted writes) (Issue #13).
+- [x] **Non-Swarm Integrity** (Checksum verification for HTTP/FTP) (Issue #75).
+- [ ] **Advanced Disk I/O Scheduling**
+ (Deadline-based sorted writes) (Issue #13).
 - [x] **Unified Credential Provider** (Netrc/Cookie management) (Issue #21).
 - [ ] **Multi-tenancy & Quotas** (Resource isolation) (Issue #15).
 - [x] **No-COW Allocator** (Btrfs/ZFS fragmentation prevention) (Issue #92).
