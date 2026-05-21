@@ -89,7 +89,12 @@ async fn when_start_high_speed_download(world: &mut AuraWorld) {
     world.last_task_id = Some(id);
 
     engine
-        .add_task_with_sources(id, "throttled-task".into(), vec![(uri, TaskType::Http)])
+        .add_task_with_sources(
+            id,
+            "throttled-task".into(),
+            vec![(uri, TaskType::Http)],
+            None,
+        )
         .await
         .unwrap();
 }
@@ -218,7 +223,7 @@ async fn when_download_starts(world: &mut AuraWorld) {
         .collect();
 
     engine
-        .add_task_with_sources(id, "scaling-task".into(), sources)
+        .add_task_with_sources(id, "scaling-task".into(), sources, None)
         .await
         .unwrap();
 }

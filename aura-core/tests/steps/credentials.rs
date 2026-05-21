@@ -99,7 +99,12 @@ async fn when_add_cred_task(world: &mut AuraWorld) {
 
     let uri = format!("{}/file", world.mirror_uris.last().unwrap());
     engine
-        .add_task_with_sources(id, "cred-task".to_string(), vec![(uri, TaskType::Http)])
+        .add_task_with_sources(
+            id,
+            "cred-task".to_string(),
+            vec![(uri, TaskType::Http)],
+            None,
+        )
         .await
         .unwrap();
 }
@@ -136,7 +141,12 @@ async fn when_add_specific_task(world: &mut AuraWorld, uri_placeholder: String) 
     };
 
     engine
-        .add_task_with_sources(id, uri_placeholder, vec![(actual_uri, TaskType::Http)])
+        .add_task_with_sources(
+            id,
+            uri_placeholder,
+            vec![(actual_uri, TaskType::Http)],
+            None,
+        )
         .await
         .unwrap();
 }

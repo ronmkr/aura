@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 pub enum DownloadPhase {
     MetadataExchange,
     Downloading,
+    Verifying,
     Paused,
     Complete,
     Error,
@@ -62,6 +63,7 @@ pub struct MetaTask {
     pub subtasks: Vec<SubTask>,
     pub pending_ranges: Vec<Range>,
     pub in_flight_ranges: Vec<(TaskId, Range)>, // (SubTaskID, Range)
+    pub checksum: Option<crate::Checksum>,
     pub seeding_start_time: Option<chrono::DateTime<chrono::Utc>>,
 }
 
@@ -79,6 +81,7 @@ pub struct TaskState {
     pub subtasks: Vec<SubTask>,
     pub pending_ranges: Vec<Range>,
     pub bitfield: Option<Bitfield>,
+    pub checksum: Option<crate::Checksum>,
     pub seeding_start_time: Option<chrono::DateTime<chrono::Utc>>,
 }
 
@@ -94,6 +97,7 @@ impl MetaTask {
             subtasks: self.subtasks.clone(),
             pending_ranges: self.pending_ranges.clone(),
             bitfield,
+            checksum: self.checksum.clone(),
             seeding_start_time: self.seeding_start_time,
         }
     }
@@ -109,6 +113,7 @@ impl MetaTask {
             subtasks: state.subtasks,
             pending_ranges: state.pending_ranges,
             in_flight_ranges: Vec::new(),
+            checksum: state.checksum,
             seeding_start_time: state.seeding_start_time,
         }
     }
@@ -124,6 +129,7 @@ impl MetaTask {
             subtasks: Vec::new(),
             pending_ranges: Vec::new(),
             in_flight_ranges: Vec::new(),
+            checksum: None,
             seeding_start_time: None,
         }
     }

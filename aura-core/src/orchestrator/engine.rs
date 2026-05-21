@@ -172,7 +172,7 @@ impl Engine {
         task_type: TaskType,
     ) -> Result<crate::api::TaskHandle> {
         let id = TaskId(rand::rng().random());
-        self.add_task_with_sources(id, name, vec![(uri, task_type)])
+        self.add_task_with_sources(id, name, vec![(uri, task_type)], None)
             .await
     }
 
@@ -183,7 +183,19 @@ impl Engine {
         uri: String,
         task_type: TaskType,
     ) -> Result<crate::api::TaskHandle> {
-        self.add_task_with_sources(id, name, vec![(uri, task_type)])
+        self.add_task_with_sources(id, name, vec![(uri, task_type)], None)
+            .await
+    }
+
+    pub async fn add_task_with_checksum(
+        &self,
+        id: TaskId,
+        name: String,
+        uri: String,
+        task_type: TaskType,
+        checksum: Option<crate::Checksum>,
+    ) -> Result<crate::api::TaskHandle> {
+        self.add_task_with_sources(id, name, vec![(uri, task_type)], checksum)
             .await
     }
 
@@ -192,9 +204,15 @@ impl Engine {
         id: TaskId,
         name: String,
         sources: Vec<(String, TaskType)>,
+        checksum: Option<crate::Checksum>,
     ) -> Result<crate::api::TaskHandle> {
         self.command_tx
-            .send(Command::AddTask { id, name, sources })
+            .send(Command::AddTask {
+                id,
+                name,
+                sources,
+                checksum,
+            })
             .await
             .map_err(|e| Error::Engine(format!("Failed to send AddTask command: {}", e)))?;
         Ok(crate::api::TaskHandle::new(id, self.clone()))
@@ -257,7 +275,10 @@ impl Engine {
                     .map(|s| (s.uri.clone(), s.task_type.clone()))
                     .collect();
                 let id = state.id;
-                let _ = self.add_task_with_sources(id, state.name, sources).await;
+                let checksum = state.checksum.clone();
+                let _ = self
+                    .add_task_with_sources(id, state.name, sources, checksum)
+                    .await;
             }
         }
         Ok(())

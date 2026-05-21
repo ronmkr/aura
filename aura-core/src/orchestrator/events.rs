@@ -203,6 +203,7 @@ impl Orchestrator {
                         task_id: meta_id,
                         path,
                         total_length: meta_task.total_length,
+                        checksum: meta_task.checksum.clone(),
                     })
                     .await;
             }
@@ -264,11 +265,19 @@ impl Orchestrator {
 
             meta_task.mark_range_complete(sub_id, range);
 
-            if meta_task.is_complete() && meta_task.phase != DownloadPhase::Complete {
-                info!(%meta_id, "All ranges complete for MetaTask, entering seeding phase");
-                meta_task.phase = DownloadPhase::Complete;
-                if meta_task.seeding_start_time.is_none() {
-                    meta_task.seeding_start_time = Some(chrono::Utc::now());
+            if meta_task.is_complete()
+                && meta_task.phase != DownloadPhase::Verifying
+                && meta_task.phase != DownloadPhase::Complete
+            {
+                if meta_task.checksum.is_some() {
+                    info!(%meta_id, "All ranges complete for MetaTask, entering Verifying phase");
+                    meta_task.phase = DownloadPhase::Verifying;
+                } else {
+                    info!(%meta_id, "All ranges complete for MetaTask, entering seeding phase");
+                    meta_task.phase = DownloadPhase::Complete;
+                    if meta_task.seeding_start_time.is_none() {
+                        meta_task.seeding_start_time = Some(chrono::Utc::now());
+                    }
                 }
                 completed = true;
             }
@@ -291,7 +300,11 @@ impl Orchestrator {
         match event {
             crate::storage::StorageEvent::Completed(id) => {
                 info!(%id, "Storage reported completion");
-                if let Some(task) = self.tasks.get(&id) {
+                if let Some(task) = self.tasks.get_mut(&id) {
+                    task.phase = DownloadPhase::Complete;
+                    if task.seeding_start_time.is_none() {
+                        task.seeding_start_time = Some(chrono::Utc::now());
+                    }
                     let _ = self.event_tx.send(Event::TaskProgress {
                         id,
                         completed_bytes: task.total_length,

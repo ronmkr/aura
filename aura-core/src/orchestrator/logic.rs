@@ -27,6 +27,7 @@ pub enum Command {
         id: TaskId,
         name: String,
         sources: Vec<(String, crate::task::TaskType)>,
+        checksum: Option<crate::Checksum>,
     },
     Pause(TaskId),
     Resume(TaskId),

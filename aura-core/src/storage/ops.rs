@@ -84,8 +84,6 @@ impl StorageEngine {
     }
 
     pub(crate) async fn handle_complete(&mut self, id: TaskId) -> Result<()> {
-        self.handles.remove(&id);
-
         let base_path = self.task_paths.get(&id).ok_or(Error::TaskNotFound(id))?;
 
         let part_path = get_part_path(base_path)?;
@@ -103,7 +101,7 @@ impl StorageEngine {
     }
 }
 
-pub(crate) fn get_part_path(base_path: &Path) -> Result<PathBuf> {
+pub fn get_part_path(base_path: &Path) -> Result<PathBuf> {
     let mut part_path = crate::storage::sys::harden_path(base_path);
     let mut filename = part_path
         .file_name()

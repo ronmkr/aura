@@ -7,8 +7,13 @@ use tracing::{info, warn};
 impl Orchestrator {
     pub(crate) async fn handle_command(&mut self, cmd: Command) -> Result<()> {
         match cmd {
-            Command::AddTask { id, name, sources } => {
-                self.handle_add_task(id, name, sources).await?;
+            Command::AddTask {
+                id,
+                name,
+                sources,
+                checksum,
+            } => {
+                self.handle_add_task(id, name, sources, checksum).await?;
             }
             Command::Pause(id) => {
                 self.handle_pause(id).await?;
@@ -90,6 +95,7 @@ impl Orchestrator {
         id: TaskId,
         name: String,
         sources: Vec<(String, crate::task::TaskType)>,
+        checksum: Option<crate::Checksum>,
     ) -> Result<()> {
         // Enforce mandatory tunnel
         self.verify_vpn_connectivity().await?;
@@ -117,6 +123,10 @@ impl Orchestrator {
         } else {
             (MetaTask::new(id, name, 0), None)
         };
+
+        if let Some(c) = checksum {
+            meta_task.checksum = Some(c);
+        }
 
         if meta_task.subtasks.is_empty() {
             for (uri, ttype) in sources {
@@ -169,6 +179,7 @@ impl Orchestrator {
                 task_id: id,
                 path,
                 total_length: meta_task.total_length,
+                checksum: meta_task.checksum.clone(),
             })
             .await;
 
