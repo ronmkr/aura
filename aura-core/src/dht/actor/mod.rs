@@ -127,9 +127,8 @@ impl DhtActor {
                     let port = u16::from_be_bytes([val[20], val[21]]);
                     let ip_data = &val[22..];
                     let addr = if ip_data.len() == 4 {
-                        let ip = std::net::Ipv4Addr::new(
-                            ip_data[0], ip_data[1], ip_data[2], ip_data[3],
-                        );
+                        let ip =
+                            std::net::Ipv4Addr::new(ip_data[0], ip_data[1], ip_data[2], ip_data[3]);
                         SocketAddr::new(std::net::IpAddr::V4(ip), port)
                     } else if ip_data.len() == 16 {
                         let mut ip_arr = [0u8; 16];

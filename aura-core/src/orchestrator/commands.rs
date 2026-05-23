@@ -298,10 +298,7 @@ impl Orchestrator {
     }
 
     pub(crate) async fn handle_retry_subtask(&mut self, id: TaskId, sub_id: TaskId) -> Result<()> {
-        let meta_task = self
-            .tasks
-            .get_mut(&id)
-            .ok_or(Error::TaskNotFound(id))?;
+        let meta_task = self.tasks.get_mut(&id).ok_or(Error::TaskNotFound(id))?;
 
         let token = self
             .cancellation_tokens
