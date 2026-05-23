@@ -22,9 +22,11 @@ impl Orchestrator {
                 if let Some(task) = self.tasks.get_mut(&meta_id) {
                     if let Some(sub) = task.subtasks.iter_mut().find(|s| s.id == sub_id) {
                         sub.active = false;
+                        let is_fatal =
+                            err.contains("404") || err.contains("403") || err.contains("401");
                         sub.retry_count += 1;
 
-                        if sub.retry_count < 5 {
+                        if sub.retry_count < 5 && !is_fatal {
                             sub.phase = DownloadPhase::Degraded;
                             tracing::warn!(%meta_id, %sub_id, count = sub.retry_count, "Mirror degraded, recycling ranges");
 
@@ -38,7 +40,11 @@ impl Orchestrator {
                             });
                         } else {
                             sub.phase = DownloadPhase::Error;
-                            tracing::error!(%meta_id, %sub_id, "Mirror permanently failed after 5 retries");
+                            if is_fatal {
+                                tracing::error!(%meta_id, %sub_id, "Mirror permanently failed due to fatal error: {}", err);
+                            } else {
+                                tracing::error!(%meta_id, %sub_id, "Mirror permanently failed after 5 retries");
+                            }
                             task.blacklisted_uris.push(sub.uri.clone());
                         }
 
