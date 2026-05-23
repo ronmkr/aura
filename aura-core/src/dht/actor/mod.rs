@@ -9,7 +9,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::UdpSocket;
 use tokio::sync::{mpsc, Mutex};
-use tracing::info;
+use tracing::{debug, info};
 
 pub enum DhtCommand {
     GetPeers {
@@ -33,6 +33,7 @@ pub struct DhtActor {
     pub(crate) peers: Arc<Mutex<BTreeMap<InfoHash, Vec<SocketAddr>>>>,
     // RemoteAddr -> Token (for announce_peer)
     pub(crate) tokens: Arc<Mutex<BTreeMap<SocketAddr, Vec<u8>>>>,
+    pub(crate) db: Option<sled::Db>,
 }
 
 impl DhtActor {
@@ -42,6 +43,7 @@ impl DhtActor {
         command_rx: mpsc::Receiver<DhtCommand>,
         local_addr: Option<std::net::IpAddr>,
         port: u16,
+        db: Option<sled::Db>,
     ) -> Result<Self> {
         let socket = crate::net_util::bind_udp_bound(port, None, local_addr)
             .await
@@ -54,11 +56,15 @@ impl DhtActor {
             pending_queries: Arc::new(Mutex::new(BTreeMap::new())),
             peers: Arc::new(Mutex::new(BTreeMap::new())),
             tokens: Arc::new(Mutex::new(BTreeMap::new())),
+            db,
         })
     }
 
     pub async fn run(mut self) -> Result<()> {
         info!("DHT Actor started");
+
+        // Load persisted nodes
+        self.load_nodes().await;
 
         // Bootstrap with some standard routers
         let bootstrap_nodes = vec![
@@ -76,6 +82,9 @@ impl DhtActor {
                 }
             }
         }
+
+        let mut save_interval = tokio::time::interval(tokio::time::Duration::from_secs(300));
+        let mut ping_interval = tokio::time::interval(tokio::time::Duration::from_secs(600));
 
         let mut buf = [0u8; 2048];
         loop {
@@ -97,7 +106,91 @@ impl DhtActor {
                         }
                     }
                 }
+                _ = save_interval.tick() => {
+                    self.save_nodes().await;
+                }
+                _ = ping_interval.tick() => {
+                    self.reping_nodes().await;
+                }
             }
+        }
+    }
+
+    async fn load_nodes(&mut self) {
+        if let Some(ref db) = self.db {
+            let mut count = 0;
+            for (_key, val) in db.scan_prefix(b"dht_node:").flatten() {
+                // format: id(20) + port(2) + ip(4 or 16)
+                if val.len() >= 26 {
+                    let mut id = [0u8; 20];
+                    id.copy_from_slice(&val[0..20]);
+                    let port = u16::from_be_bytes([val[20], val[21]]);
+                    let ip_data = &val[22..];
+                    let addr = if ip_data.len() == 4 {
+                        let ip = std::net::Ipv4Addr::new(
+                            ip_data[0], ip_data[1], ip_data[2], ip_data[3],
+                        );
+                        SocketAddr::new(std::net::IpAddr::V4(ip), port)
+                    } else if ip_data.len() == 16 {
+                        let mut ip_arr = [0u8; 16];
+                        ip_arr.copy_from_slice(ip_data);
+                        let ip = std::net::Ipv6Addr::from(ip_arr);
+                        SocketAddr::new(std::net::IpAddr::V6(ip), port)
+                    } else {
+                        continue;
+                    };
+
+                    let mut rt = self.routing_table.lock().await;
+                    rt.insert(crate::dht::routing::Node { id, addr });
+                    let _ = self.send_ping(addr).await;
+                    count += 1;
+                }
+            }
+            if count > 0 {
+                info!("Loaded {} DHT nodes from database", count);
+            }
+        }
+    }
+
+    async fn save_nodes(&self) {
+        if let Some(ref db) = self.db {
+            let rt = self.routing_table.lock().await;
+            let mut count = 0;
+            for bucket in &rt.buckets {
+                for node in &bucket.nodes {
+                    let mut key = b"dht_node:".to_vec();
+                    key.extend_from_slice(&node.id);
+
+                    let mut val = node.id.to_vec();
+                    val.extend_from_slice(&node.addr.port().to_be_bytes());
+                    match node.addr.ip() {
+                        std::net::IpAddr::V4(ip) => val.extend_from_slice(&ip.octets()),
+                        std::net::IpAddr::V6(ip) => val.extend_from_slice(&ip.octets()),
+                    }
+
+                    let _ = db.insert(key, val);
+                    count += 1;
+                }
+            }
+            let _ = db.flush();
+            debug!("Saved {} DHT nodes to database", count);
+        }
+    }
+
+    async fn reping_nodes(&self) {
+        let nodes = {
+            let rt = self.routing_table.lock().await;
+            let mut nodes = Vec::new();
+            for bucket in &rt.buckets {
+                for node in &bucket.nodes {
+                    nodes.push(node.addr);
+                }
+            }
+            nodes
+        };
+
+        for addr in nodes {
+            let _ = self.send_ping(addr).await;
         }
     }
 }

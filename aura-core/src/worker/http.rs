@@ -79,6 +79,8 @@ impl HttpWorker {
         let mut redirect_count = 0;
         let max_redirects = 20;
 
+        let link_regex = regex::Regex::new(r#"(?i)<a\s+[^>]*href=["']([^"']+)["']"#).unwrap();
+
         loop {
             let mut attempts = 0;
             let max_attempts = self.retry_count;
@@ -170,9 +172,65 @@ impl HttpWorker {
                 continue;
             }
 
+            let is_html = {
+                let content_type = response
+                    .headers()
+                    .get(reqwest::header::CONTENT_TYPE)
+                    .and_then(|h| h.to_str().ok());
+                content_type
+                    .map(|ct| ct.contains("text/html"))
+                    .unwrap_or(false)
+            };
+
+            if is_html {
+                let ct = response
+                    .headers()
+                    .get(reqwest::header::CONTENT_TYPE)
+                    .and_then(|h| h.to_str().ok())
+                    .unwrap_or("text/html")
+                    .to_string();
+
+                let body = response
+                    .text()
+                    .await
+                    .map_err(|e| Error::Protocol(format!("Failed to read HTML body: {}", e)))?;
+
+                let base_url = url::Url::parse(&current_uri)
+                    .map_err(|e| Error::Protocol(format!("Invalid current URI for base: {}", e)))?;
+
+                let mut resolved_link = None;
+                let asset_exts = [
+                    ".zip", ".tar.gz", ".tgz", ".dmg", ".exe", ".pkg", ".iso", ".rar", ".7z",
+                    ".bin", ".msi", ".pdf", ".mp4", ".mkv", ".tar",
+                ];
+
+                for cap in link_regex.captures_iter(&body) {
+                    let href = &cap[1];
+                    if let Ok(resolved) = base_url.join(href) {
+                        let path = resolved.path().to_lowercase();
+                        if asset_exts.iter().any(|ext| path.ends_with(ext)) {
+                            resolved_link = Some(resolved.to_string());
+                            break;
+                        }
+                    }
+                }
+
+                if let Some(link) = resolved_link {
+                    tracing::info!(from = %current_uri, to = %link, "Resolved landing page direct link");
+                    referer = Some(current_uri);
+                    current_uri = link;
+                    continue;
+                }
+
+                return Err(Error::Protocol(format!(
+                    "URI {} points to an HTML landing page (Content-Type: {}). Direct link resolution failed.",
+                    current_uri, ct
+                )));
+            }
+
             let mut total_length = response
                 .headers()
-                .get("Content-Range")
+                .get(reqwest::header::CONTENT_RANGE)
                 .and_then(|h| h.to_str().ok())
                 .and_then(|s| s.split('/').next_back())
                 .and_then(|s| s.parse::<u64>().ok());
@@ -180,14 +238,14 @@ impl HttpWorker {
             if total_length.is_none() {
                 total_length = response
                     .headers()
-                    .get("Content-Length")
+                    .get(reqwest::header::CONTENT_LENGTH)
                     .and_then(|h| h.to_str().ok())
                     .and_then(|s| s.parse::<u64>().ok());
             }
 
             let name = response
                 .headers()
-                .get("Content-Disposition")
+                .get(reqwest::header::CONTENT_DISPOSITION)
                 .and_then(|h| h.to_str().ok())
                 .and_then(|s| {
                     s.find("filename=")
@@ -432,6 +490,149 @@ mod tests {
         match result {
             Err(Error::Protocol(msg)) => assert!(msg.to_lowercase().contains("redirect")),
             _ => panic!("Expected redirect loop error"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_http_worker_retry_on_503() {
+        let server = MockServer::start().await;
+        let counter = std::sync::Arc::new(std::sync::atomic::AtomicU32::new(0));
+
+        Mock::given(method("GET"))
+            .respond_with(move |_req: &wiremock::Request| {
+                let prev = counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                if prev < 2 {
+                    ResponseTemplate::new(503)
+                } else {
+                    ResponseTemplate::new(200)
+                        .set_body_bytes(vec![1u8; 10])
+                        .insert_header("Content-Range", "bytes 0-9/10")
+                }
+            })
+            .mount(&server)
+            .await;
+
+        let worker = HttpWorker::new(
+            format!("{}/retry", server.uri()),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            3, // Max retries
+            1, // 1s base delay
+            None,
+        );
+
+        let throttler = std::sync::Arc::new(crate::throttler::Throttler::new(0, 0));
+        let result = worker
+            .fetch_segment(
+                TaskId(1),
+                Segment {
+                    offset: 0,
+                    length: 10,
+                },
+                None,
+                throttler,
+            )
+            .await;
+
+        if let Err(ref e) = result {
+            panic!("Retry test failed with error: {}", e);
+        }
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().data.len(), 10);
+    }
+
+    #[tokio::test]
+    async fn test_http_worker_html_landing_page_resolution_success() {
+        let server = MockServer::start().await;
+
+        Mock::given(method("GET"))
+            .and(path("/landing"))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .insert_header("content-type", "text/html; charset=UTF-8")
+                    .set_body_bytes(
+                        "<html><body>Download here: <a href='/download/file.zip'>link</a></body></html>"
+                            .as_bytes()
+                            .to_vec(),
+                    ),
+            )
+            .mount(&server)
+            .await;
+
+        Mock::given(method("GET"))
+            .and(path("/download/file.zip"))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .insert_header("content-type", "application/octet-stream")
+                    .set_body_bytes(vec![0u8; 100]),
+            )
+            .mount(&server)
+            .await;
+
+        let worker = HttpWorker::new(
+            format!("{}/landing", server.uri()),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            3,
+            1,
+            None,
+        );
+
+        let result = worker.resolve_metadata().await;
+        assert!(
+            result.is_ok(),
+            "Should successfully resolve intermediate landing page: {:?}",
+            result.err()
+        );
+        let meta = result.unwrap();
+        assert!(meta.final_uri.contains("/download/file.zip"));
+        assert_eq!(meta.total_length, Some(100));
+    }
+
+    #[tokio::test]
+    async fn test_http_worker_html_landing_page_resolution_failure() {
+        let server = MockServer::start().await;
+
+        Mock::given(method("GET"))
+            .and(path("/landing"))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .insert_header("content-type", "text/html; charset=UTF-8")
+                    .set_body_bytes(
+                        "<html><body>Welcome to landing page! No direct links here.</body></html>"
+                            .as_bytes()
+                            .to_vec(),
+                    ),
+            )
+            .mount(&server)
+            .await;
+
+        let worker = HttpWorker::new(
+            format!("{}/landing", server.uri()),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            3,
+            1,
+            None,
+        );
+
+        let result = worker.resolve_metadata().await;
+        assert!(result.is_err());
+        match result {
+            Err(Error::Protocol(msg)) => assert!(msg.contains("Direct link resolution failed")),
+            _ => panic!("Expected Protocol error for HTML landing page failure"),
         }
     }
 }

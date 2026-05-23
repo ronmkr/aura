@@ -194,7 +194,11 @@ impl super::BtWorker {
             let mut picker_guard = task.state.picker.lock().await;
 
             if let (Some(bf), Some(picker)) = (bf_guard.as_ref(), picker_guard.as_mut()) {
-                if let Some(piece_idx) = picker.pick_next(bf, &self.peer_addr) {
+                let sequential = task
+                    .state
+                    .sequential
+                    .load(std::sync::atomic::Ordering::Relaxed);
+                if let Some(piece_idx) = picker.pick_next(bf, &self.peer_addr, sequential) {
                     let piece_total_len = if piece_idx == torrent.pieces_count() - 1 {
                         total_length - (piece_idx as u64 * piece_length)
                     } else {

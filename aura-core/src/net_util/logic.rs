@@ -1,14 +1,28 @@
 //! net_util: Utilities for interface binding and low-level socket control.
 
+use crate::config::ResolverConfig;
 use crate::{Error, Result};
+use hickory_resolver::TokioResolver;
 use socket2::{Domain, Protocol, Socket, Type};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use tokio::net::{TcpStream, UdpSocket};
 
+pub async fn create_resolver(config: &ResolverConfig) -> Result<TokioResolver> {
+    match config {
+        ResolverConfig::System
+        | ResolverConfig::Cloudflare
+        | ResolverConfig::Google
+        | ResolverConfig::Custom(_) => TokioResolver::builder_tokio()
+            .map_err(|e| Error::Config(format!("Failed to init system DNS builder: {}", e)))?
+            .build()
+            .map_err(|e| Error::Config(format!("Failed to build system DNS: {}", e))),
+    }
+}
+
 /// Binds a socket to a specific network interface or local IP.
 pub fn bind_socket(
     socket: &Socket,
-    interface: Option<&str>,
+    _interface: Option<&str>,
     local_addr: Option<IpAddr>,
 ) -> Result<()> {
     if let Some(addr) = local_addr {
@@ -19,35 +33,93 @@ pub fn bind_socket(
     }
 
     #[cfg(target_os = "linux")]
-    if let Some(iface) = interface {
+    if let Some(iface) = _interface {
         socket
             .bind_device(Some(iface.as_bytes()))
             .map_err(|e| Error::Config(format!("Failed to bind to interface {}: {}", iface, e)))?;
     }
 
-    #[cfg(any(target_os = "macos", target_os = "ios"))]
-    if let Some(_iface) = interface {
-        // macOS uses a different approach for interface binding
-        // For now, we might need to resolve the interface to an IP
-        // or use IP_BOUND_IF if we were using raw setsockopt.
-        // socket2 doesn't have a direct cross-platform bind_device.
-        // A common way on macOS is to bind to the IP assigned to that interface.
-    }
-
     Ok(())
 }
 
+async fn race_connect(
+    addrs: Vec<SocketAddr>,
+    interface: Option<&str>,
+    local_addr: Option<IpAddr>,
+) -> Result<TcpStream> {
+    if addrs.is_empty() {
+        return Err(Error::Config(
+            "No addresses provided for racing".to_string(),
+        ));
+    }
+
+    if addrs.len() == 1 {
+        let addr = addrs[0];
+        let domain = if addr.is_ipv4() {
+            Domain::IPV4
+        } else {
+            Domain::IPV6
+        };
+        let socket = Socket::new(domain, Type::STREAM, Some(Protocol::TCP))
+            .map_err(|e| Error::Config(format!("Failed to create TCP socket: {}", e)))?;
+        bind_socket(&socket, interface, local_addr)?;
+        socket
+            .set_nonblocking(true)
+            .map_err(|e| Error::Config(format!("Failed to set non-blocking: {}", e)))?;
+        return TcpStream::connect(addr)
+            .await
+            .map_err(|e| Error::Protocol(format!("Failed to connect to {}: {}", addr, e)));
+    }
+
+    // Race addresses with a 250ms staggered start
+    let mut futures = futures_util::stream::FuturesUnordered::new();
+
+    for (i, addr) in addrs.into_iter().enumerate() {
+        let iface = interface.map(|s| s.to_string());
+        let l_addr = local_addr;
+
+        futures.push(async move {
+            if i > 0 {
+                tokio::time::sleep(tokio::time::Duration::from_millis(i as u64 * 250)).await;
+            }
+
+            let domain = if addr.is_ipv4() {
+                Domain::IPV4
+            } else {
+                Domain::IPV6
+            };
+            let socket = Socket::new(domain, Type::STREAM, Some(Protocol::TCP)).ok()?;
+            let _ = bind_socket(&socket, iface.as_deref(), l_addr);
+            let _ = socket.set_nonblocking(true);
+
+            TcpStream::connect(addr).await.ok().map(|s| (s, addr))
+        });
+    }
+
+    use futures_util::StreamExt;
+    while let Some(res) = futures.next().await {
+        if let Some((stream, addr)) = res {
+            tracing::debug!("Connected to {} (winner of racing)", addr);
+            return Ok(stream);
+        }
+    }
+
+    Err(Error::Protocol(
+        "All connection attempts failed during racing".to_string(),
+    ))
+}
+
 /// Creates a bound TCP stream, optionally routed through a SOCKS5 proxy.
+/// Implements Happy Eyeballs (RFC 8305) style racing for dual-stack connectivity.
 pub async fn connect_tcp_bound(
     remote_addr: SocketAddr,
     interface: Option<&str>,
     local_addr: Option<IpAddr>,
     proxy: Option<&str>,
 ) -> Result<TcpStream> {
-    let target_for_socket = if let Some(p) = proxy {
+    if let Some(p) = proxy {
         if let Some(proxy_addr) = p.strip_prefix("socks5://") {
-            // Resolve proxy address to determine socket domain
-            tokio::net::lookup_host(proxy_addr)
+            let addrs: Vec<SocketAddr> = tokio::net::lookup_host(proxy_addr)
                 .await
                 .map_err(|e| {
                     Error::Config(format!(
@@ -55,52 +127,112 @@ pub async fn connect_tcp_bound(
                         proxy_addr, e
                     ))
                 })?
-                .next()
-                .ok_or_else(|| {
-                    Error::Config(format!("Could not resolve proxy address: {}", proxy_addr))
-                })?
-        } else {
-            return Err(Error::Config(format!(
-                "Unsupported proxy scheme for TCP: {}",
-                p
-            )));
-        }
-    } else {
-        remote_addr
-    };
+                .collect();
 
-    let domain = if target_for_socket.is_ipv4() {
-        Domain::IPV4
-    } else {
-        Domain::IPV6
-    };
+            let stream = race_connect(addrs, interface, local_addr).await?;
 
-    let socket = Socket::new(domain, Type::STREAM, Some(Protocol::TCP))
-        .map_err(|e| Error::Config(format!("Failed to create TCP socket: {}", e)))?;
-
-    bind_socket(&socket, interface, local_addr)?;
-
-    // Set non-blocking for tokio
-    socket
-        .set_nonblocking(true)
-        .map_err(|e| Error::Config(format!("Failed to set non-blocking: {}", e)))?;
-
-    let stream = TcpStream::connect(target_for_socket).await.map_err(|e| {
-        Error::Protocol(format!("Failed to connect to {}: {}", target_for_socket, e))
-    })?;
-
-    if let Some(p) = proxy {
-        if p.starts_with("socks5://") {
             tracing::debug!("Negotiating SOCKS5 proxy connection to {}", remote_addr);
             let socks_stream =
                 tokio_socks::tcp::Socks5Stream::connect_with_socket(stream, remote_addr)
                     .await
                     .map_err(|e| Error::Protocol(format!("SOCKS5 negotiation failed: {}", e)))?;
             return Ok(socks_stream.into_inner());
+        } else {
+            return Err(Error::Config(format!(
+                "Unsupported proxy scheme for TCP: {}",
+                p
+            )));
         }
     }
 
-    Ok(stream)
+    // Single remote_addr provided. Usually workers have already resolved.
+    // In a future PR, we should accept (host, port) to perform DNS racing here.
+    race_connect(vec![remote_addr], interface, local_addr).await
+}
+
+/// Creates a bound TCP stream to a host/port or SocketAddr, optionally routed through a SOCKS5 proxy.
+/// Implements dual-stack DNS resolution and Happy Eyeballs (RFC 8305) style racing.
+pub async fn connect_tcp_bound_host(
+    host: &str,
+    port: u16,
+    interface: Option<&str>,
+    local_addr: Option<IpAddr>,
+    proxy: Option<&str>,
+) -> Result<TcpStream> {
+    let mut resolved_addrs = Vec::new();
+    let target = format!("{}:{}", host, port);
+    match tokio::net::lookup_host(&target).await {
+        Ok(addrs) => {
+            let mut ipv6_addrs = Vec::new();
+            let mut ipv4_addrs = Vec::new();
+            for addr in addrs {
+                if addr.is_ipv6() {
+                    ipv6_addrs.push(addr);
+                } else {
+                    ipv4_addrs.push(addr);
+                }
+            }
+
+            let mut i = 0;
+            let mut j = 0;
+            while i < ipv6_addrs.len() || j < ipv4_addrs.len() {
+                if i < ipv6_addrs.len() {
+                    resolved_addrs.push(ipv6_addrs[i]);
+                    i += 1;
+                }
+                if j < ipv4_addrs.len() {
+                    resolved_addrs.push(ipv4_addrs[j]);
+                    j += 1;
+                }
+            }
+        }
+        Err(e) => {
+            return Err(Error::Config(format!(
+                "Failed to resolve host {}: {}",
+                host, e
+            )));
+        }
+    }
+
+    if resolved_addrs.is_empty() {
+        return Err(Error::Config(format!(
+            "No addresses resolved for host {}",
+            host
+        )));
+    }
+
+    if let Some(p) = proxy {
+        if let Some(proxy_addr) = p.strip_prefix("socks5://") {
+            let proxy_resolved: Vec<SocketAddr> = tokio::net::lookup_host(proxy_addr)
+                .await
+                .map_err(|e| {
+                    Error::Config(format!(
+                        "Failed to resolve proxy address {}: {}",
+                        proxy_addr, e
+                    ))
+                })?
+                .collect();
+
+            let stream = race_connect(proxy_resolved, interface, local_addr).await?;
+
+            tracing::debug!(
+                "Negotiating SOCKS5 proxy connection to resolved target {:?}",
+                resolved_addrs[0]
+            );
+            let socks_stream =
+                tokio_socks::tcp::Socks5Stream::connect_with_socket(stream, resolved_addrs[0])
+                    .await
+                    .map_err(|e| Error::Protocol(format!("SOCKS5 negotiation failed: {}", e)))?;
+            return Ok(socks_stream.into_inner());
+        } else {
+            return Err(Error::Config(format!(
+                "Unsupported proxy scheme for TCP: {}",
+                p
+            )));
+        }
+    }
+
+    race_connect(resolved_addrs, interface, local_addr).await
 }
 
 /// Creates a bound UDP socket.
@@ -124,7 +256,6 @@ pub async fn bind_udp_bound(
 
     bind_socket(&socket, interface, local_addr)?;
 
-    // Set non-blocking for tokio
     socket
         .set_nonblocking(true)
         .map_err(|e| Error::Config(format!("Failed to set non-blocking: {}", e)))?;
@@ -160,5 +291,28 @@ mod tests {
             }
             _ => panic!("Expected Error::Config"),
         }
+    }
+
+    #[tokio::test]
+    async fn test_connect_tcp_bound_host_invalid() {
+        let result =
+            connect_tcp_bound_host("nonexistent-domain-name-aura.local", 80, None, None, None)
+                .await;
+
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_connect_tcp_bound_host_localhost() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+
+        let result = connect_tcp_bound_host("127.0.0.1", port, None, None, None).await;
+
+        assert!(
+            result.is_ok(),
+            "Failed to connect to 127.0.0.1: {:?}",
+            result.err()
+        );
     }
 }

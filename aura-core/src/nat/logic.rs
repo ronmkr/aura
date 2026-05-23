@@ -17,25 +17,42 @@ pub enum NatCommand {
 
 pub struct NatActor {
     command_rx: mpsc::Receiver<NatCommand>,
+    active_mappings: Vec<(u16, String)>,
 }
 
 impl NatActor {
     pub fn new(command_rx: mpsc::Receiver<NatCommand>) -> Self {
-        Self { command_rx }
+        Self {
+            command_rx,
+            active_mappings: Vec::new(),
+        }
     }
 
     pub async fn run(mut self) -> Result<()> {
         info!("NAT Traversal Actor started");
 
-        while let Some(cmd) = self.command_rx.recv().await {
-            match cmd {
-                NatCommand::MapPort { port, description } => {
-                    self.perform_mapping(port, &description).await;
+        let mut refresh_interval = tokio::time::interval(tokio::time::Duration::from_secs(1800)); // 30 mins
+
+        loop {
+            tokio::select! {
+                Some(cmd) = self.command_rx.recv() => {
+                    match cmd {
+                        NatCommand::MapPort { port, description } => {
+                            self.active_mappings.push((port, description.clone()));
+                            self.perform_mapping(port, &description).await;
+                        }
+                    }
+                }
+                _ = refresh_interval.tick() => {
+                    if !self.active_mappings.is_empty() {
+                        debug!("Refreshing {} NAT mappings", self.active_mappings.len());
+                        for (port, description) in self.active_mappings.clone() {
+                            self.perform_mapping(port, &description).await;
+                        }
+                    }
                 }
             }
         }
-
-        Ok(())
     }
 
     async fn perform_mapping(&self, port: u16, description: &str) {

@@ -28,6 +28,8 @@ pub enum Command {
         name: String,
         sources: Vec<(String, crate::task::TaskType)>,
         checksum: Option<crate::Checksum>,
+        priority: u32,
+        streaming_mode: bool,
     },
     Pause(TaskId),
     Resume(TaskId),
@@ -37,6 +39,7 @@ pub enum Command {
     ReloadConfig(Arc<crate::Config>, tokio::sync::oneshot::Sender<()>),
     KillSwitch,
     Shutdown,
+    RetrySubtask(TaskId, TaskId),
 }
 
 #[derive(Debug, Clone)]
@@ -64,6 +67,7 @@ pub enum SubTaskEvent {
     ),
     LpdPeerDiscovered(InfoHash, crate::tracker::Peer),
     KillSwitch,
+    Retry(TaskId, TaskId),
 }
 
 /// Telemetry events published to the Event Bus.
@@ -93,8 +97,9 @@ pub enum Event {
 
 pub struct Orchestrator {
     pub(crate) tasks: HashMap<TaskId, MetaTask>,
-    pub(crate) bt_registry: HashMap<InfoHash, Arc<BtTask>>,
-    pub(crate) bt_tasks: HashMap<TaskId, Arc<BtTask>>, // Key: sub_id
+    pub(crate) bt_registry: HashMap<InfoHash, TaskId>,
+    pub(crate) bt_tasks: HashMap<TaskId, Arc<BtTask>>,
+    // Key: sub_id
     pub(crate) worker_command_txs: HashMap<TaskId, tokio::sync::broadcast::Sender<WorkerCommand>>, // Key: sub_id
     pub(crate) cancellation_tokens: HashMap<TaskId, CancellationToken>,
     pub(crate) command_rx: mpsc::Receiver<Command>,
@@ -114,6 +119,7 @@ pub struct Orchestrator {
     pub(crate) power_manager: crate::power::PowerManager,
     pub(crate) hook_manager: crate::hooks::HookManager,
     pub(crate) credential_provider: Arc<crate::config::credentials::CredentialProvider>,
+    pub(crate) _dns_resolver: Arc<hickory_resolver::TokioResolver>,
     pub(crate) pool: BufferPool,
     pub(crate) db: sled::Db,
 }
@@ -242,6 +248,7 @@ impl Orchestrator {
         config: Arc<ArcSwap<crate::Config>>,
         pool: BufferPool,
         db: sled::Db,
+        dns_resolver: Arc<hickory_resolver::TokioResolver>,
     ) -> (Self, broadcast::Sender<Event>) {
         let (event_tx, _event_rx) = broadcast::channel(1024);
         let (subtask_tx, subtask_rx) = mpsc::channel(4096);
@@ -297,6 +304,7 @@ impl Orchestrator {
                 power_manager: crate::power::PowerManager::new(),
                 hook_manager,
                 credential_provider,
+                _dns_resolver: dns_resolver,
                 pool,
                 db,
             },
@@ -447,8 +455,10 @@ impl Orchestrator {
                     let pool = self.pool.clone();
                     let throttler = self.throttler.clone();
 
+                    let bt_tasks = self.bt_tasks.clone();
+
                     tokio::spawn(async move {
-                        if let Err(e) = lifecycle::handle_incoming_peer(stream, addr, bt_registry, worker_command_txs, storage_tx, subtask_tx, my_peer_id, cancellation_tokens, local_addr, config, pool, throttler).await {
+                        if let Err(e) = lifecycle::handle_incoming_peer(stream, addr, bt_registry, bt_tasks, worker_command_txs, storage_tx, subtask_tx, my_peer_id, cancellation_tokens, local_addr, config, pool, throttler).await {
                             tracing::debug!(?addr, error = %e, "Failed to handle incoming peer");
                         }
                     });

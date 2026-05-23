@@ -13,7 +13,8 @@ use tracing::{debug, info};
 pub async fn handle_incoming_peer(
     mut stream: TcpStream,
     addr: std::net::SocketAddr,
-    bt_registry: std::collections::HashMap<InfoHash, Arc<BtTask>>,
+    bt_registry: std::collections::HashMap<InfoHash, TaskId>,
+    bt_tasks: std::collections::HashMap<TaskId, Arc<BtTask>>,
     worker_command_txs: std::collections::HashMap<
         TaskId,
         tokio::sync::broadcast::Sender<WorkerCommand>,
@@ -37,10 +38,12 @@ pub async fn handle_incoming_peer(
 
     // Find the task by matching the 20-byte hash from handshake
     let mut task_found = None;
-    for (info_hash, bt_task) in &bt_registry {
+    for (info_hash, meta_id) in &bt_registry {
         if info_hash.matches_handshake(&handshake.info_hash) {
-            task_found = Some((*info_hash, bt_task.clone()));
-            break;
+            if let Some(task) = bt_tasks.get(meta_id) {
+                task_found = Some((*info_hash, task.clone()));
+                break;
+            }
         }
     }
 

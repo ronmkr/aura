@@ -30,6 +30,16 @@ pub struct NetworkConfig {
     pub max_redirects: usize,
     pub http_retry_count: u32,
     pub http_retry_delay_secs: u64,
+    pub dns_resolver: ResolverConfig,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub enum ResolverConfig {
+    #[default]
+    System,
+    Cloudflare,
+    Google,
+    Custom(String),
 }
 
 impl Default for NetworkConfig {
@@ -48,6 +58,7 @@ impl Default for NetworkConfig {
             max_redirects: 20,
             http_retry_count: 5,
             http_retry_delay_secs: 2,
+            dns_resolver: ResolverConfig::System,
         }
     }
 }

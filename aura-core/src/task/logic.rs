@@ -12,6 +12,7 @@ pub enum DownloadPhase {
     Paused,
     Complete,
     Error,
+    Degraded,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -48,6 +49,7 @@ pub struct SubTask {
     pub target_concurrency: usize,
     pub recent_bytes_downloaded: u64,
     pub ewma_throughput: f64,
+    pub retry_count: u32,
 }
 
 /// The high-level representation of a logical download operation.
@@ -60,11 +62,14 @@ pub struct MetaTask {
     pub completed_length: u64,
     pub uploaded_length: u64,
     pub phase: DownloadPhase,
+    pub priority: u32, // 0 = highest, 100 = default
+    pub streaming_mode: bool,
     pub subtasks: Vec<SubTask>,
     pub pending_ranges: Vec<Range>,
     pub in_flight_ranges: Vec<(TaskId, Range)>, // (SubTaskID, Range)
     pub checksum: Option<crate::Checksum>,
     pub seeding_start_time: Option<chrono::DateTime<chrono::Utc>>,
+    pub blacklisted_uris: Vec<String>,
 }
 
 use crate::bitfield::Bitfield;
@@ -75,6 +80,8 @@ pub struct TaskState {
     pub id: TaskId,
     pub name: String,
     pub phase: DownloadPhase,
+    pub priority: u32,
+    pub streaming_mode: bool,
     pub total_length: u64,
     pub completed_length: u64,
     pub uploaded_length: u64,
@@ -83,6 +90,7 @@ pub struct TaskState {
     pub bitfield: Option<Bitfield>,
     pub checksum: Option<crate::Checksum>,
     pub seeding_start_time: Option<chrono::DateTime<chrono::Utc>>,
+    pub blacklisted_uris: Option<Vec<String>>,
 }
 
 impl MetaTask {
@@ -91,6 +99,8 @@ impl MetaTask {
             id: self.id,
             name: self.name.clone(),
             phase: self.phase,
+            priority: self.priority,
+            streaming_mode: self.streaming_mode,
             total_length: self.total_length,
             completed_length: self.completed_length,
             uploaded_length: self.uploaded_length,
@@ -99,6 +109,7 @@ impl MetaTask {
             bitfield,
             checksum: self.checksum.clone(),
             seeding_start_time: self.seeding_start_time,
+            blacklisted_uris: Some(self.blacklisted_uris.clone()),
         }
     }
 
@@ -107,6 +118,8 @@ impl MetaTask {
             id: state.id,
             name: state.name,
             phase: state.phase,
+            priority: state.priority,
+            streaming_mode: state.streaming_mode,
             total_length: state.total_length,
             completed_length: state.completed_length,
             uploaded_length: state.uploaded_length,
@@ -115,6 +128,7 @@ impl MetaTask {
             in_flight_ranges: Vec::new(),
             checksum: state.checksum,
             seeding_start_time: state.seeding_start_time,
+            blacklisted_uris: state.blacklisted_uris.unwrap_or_default(),
         }
     }
 
@@ -126,11 +140,14 @@ impl MetaTask {
             completed_length: 0,
             uploaded_length: 0,
             phase: DownloadPhase::Downloading,
+            priority: 100,
+            streaming_mode: false,
             subtasks: Vec::new(),
             pending_ranges: Vec::new(),
             in_flight_ranges: Vec::new(),
             checksum: None,
             seeding_start_time: None,
+            blacklisted_uris: Vec::new(),
         }
     }
 
@@ -165,11 +182,13 @@ impl MetaTask {
             total_length: 0,
             completed_length: 0,
             active: true,
-            phase: DownloadPhase::MetadataExchange,
-            target_concurrency: 4, // Initial default
+            phase: DownloadPhase::Downloading,
+            target_concurrency: 1,
             recent_bytes_downloaded: 0,
             ewma_throughput: 0.0,
+            retry_count: 0,
         });
+
         sub_id
     }
 

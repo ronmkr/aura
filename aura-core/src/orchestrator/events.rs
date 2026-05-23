@@ -22,7 +22,25 @@ impl Orchestrator {
                 if let Some(task) = self.tasks.get_mut(&meta_id) {
                     if let Some(sub) = task.subtasks.iter_mut().find(|s| s.id == sub_id) {
                         sub.active = false;
-                        sub.phase = DownloadPhase::Error;
+                        sub.retry_count += 1;
+
+                        if sub.retry_count < 5 {
+                            sub.phase = DownloadPhase::Degraded;
+                            tracing::warn!(%meta_id, %sub_id, count = sub.retry_count, "Mirror degraded, recycling ranges");
+
+                            // Self-healing: Schedule retry with exponential backoff (5s, 10s, 15s, 20s)
+                            let subtask_tx = self.subtask_tx.clone();
+                            let retry_delay =
+                                std::time::Duration::from_secs(sub.retry_count as u64 * 5);
+                            tokio::spawn(async move {
+                                tokio::time::sleep(retry_delay).await;
+                                let _ = subtask_tx.send(SubTaskEvent::Retry(meta_id, sub_id)).await;
+                            });
+                        } else {
+                            sub.phase = DownloadPhase::Error;
+                            tracing::error!(%meta_id, %sub_id, "Mirror permanently failed after 5 retries");
+                            task.blacklisted_uris.push(sub.uri.clone());
+                        }
 
                         // Failover: Return assigned ranges to the pending pool
                         let failed_ranges = std::mem::take(&mut sub.assigned_ranges);
@@ -99,8 +117,11 @@ impl Orchestrator {
 
                     // Endgame coordination: if we are in endgame, we might want to assign
                     // this newly available worker capacity to other pending pieces.
-                    let bf_guard = bt_task.state.bitfield.lock().await;
-                    let picker_guard = bt_task.state.picker.lock().await;
+                    let bf_guard: tokio::sync::MutexGuard<Option<crate::bitfield::Bitfield>> =
+                        bt_task.state.bitfield.lock().await;
+                    let picker_guard: tokio::sync::MutexGuard<
+                        Option<crate::piece_picker::PiecePicker>,
+                    > = bt_task.state.picker.lock().await;
                     if let (Some(bf), Some(picker)) = (bf_guard.as_ref(), picker_guard.as_ref()) {
                         if picker.is_endgame(bf) {
                             let mut pending_pieces = Vec::new();
@@ -123,14 +144,16 @@ impl Orchestrator {
                 }
             }
             SubTaskEvent::BtTaskRegistered(sub_id, info_hash, task, worker_cmd_tx) => {
-                self.bt_registry.insert(info_hash, task.clone());
+                self.bt_registry.insert(info_hash, sub_id);
                 self.bt_tasks.insert(sub_id, task);
                 self.worker_command_txs.insert(sub_id, worker_cmd_tx);
             }
             SubTaskEvent::LpdPeerDiscovered(info_hash, peer) => {
-                if let Some(bt_task) = self.bt_registry.get(&info_hash) {
-                    let mut registry = bt_task.state.registry.lock().await;
-                    registry.add_peers(vec![peer]);
+                if let Some(meta_id) = self.bt_registry.get(&info_hash) {
+                    if let Some(bt_task) = self.bt_tasks.get(meta_id) {
+                        let mut registry = bt_task.state.registry.lock().await;
+                        registry.add_peers(vec![peer]);
+                    }
                 }
             }
             SubTaskEvent::KillSwitch => {
@@ -138,6 +161,9 @@ impl Orchestrator {
                 for id in ids {
                     let _ = self.handle_pause(id).await;
                 }
+            }
+            SubTaskEvent::Retry(meta_id, sub_id) => {
+                self.handle_retry_subtask(meta_id, sub_id).await?;
             }
         }
         Ok(())
