@@ -49,6 +49,11 @@ impl Engine {
             }
         };
 
+        let db_path = std::path::PathBuf::from(&initial_config.storage.download_dir)
+            .join(".aura")
+            .join("metadata.db");
+        let storage = StorageEngine::new(storage_rx, completion_tx, Some(db_path));
+
         let mut dht_id = [0u8; 20];
         rand::rng().fill(&mut dht_id);
 
@@ -58,6 +63,7 @@ impl Engine {
             dht_rx,
             local_addr,
             initial_config.network.dht_port,
+            Some(storage.get_db()),
         )
         .await?;
         tokio::spawn(async move {
@@ -83,10 +89,16 @@ impl Engine {
             })
             .await;
 
-        let db_path = std::path::PathBuf::from(&initial_config.storage.download_dir)
-            .join(".aura")
-            .join("metadata.db");
-        let storage = StorageEngine::new(storage_rx, completion_tx, Some(db_path));
+        let dns_resolver = crate::net_util::create_resolver(&initial_config.network.dns_resolver)
+            .await
+            .unwrap_or_else(|_| {
+                hickory_resolver::TokioResolver::builder_tokio()
+                    .unwrap()
+                    .build()
+                    .unwrap()
+            });
+        let dns_resolver = Arc::new(dns_resolver);
+
         let (orchestrator, event_tx) = Orchestrator::new(
             command_rx,
             storage_tx,
@@ -97,6 +109,7 @@ impl Engine {
             config.clone(),
             storage.get_pool(),
             storage.get_db(),
+            dns_resolver,
         );
 
         use crate::lpd::LpdActor;
@@ -199,12 +212,14 @@ impl Engine {
             .await
     }
 
-    pub async fn add_task_with_sources(
+    pub async fn add_task_with_options(
         &self,
         id: TaskId,
         name: String,
         sources: Vec<(String, TaskType)>,
         checksum: Option<crate::Checksum>,
+        priority: u32,
+        streaming_mode: bool,
     ) -> Result<crate::api::TaskHandle> {
         self.command_tx
             .send(Command::AddTask {
@@ -212,10 +227,23 @@ impl Engine {
                 name,
                 sources,
                 checksum,
+                priority,
+                streaming_mode,
             })
             .await
             .map_err(|e| Error::Engine(format!("Failed to send AddTask command: {}", e)))?;
         Ok(crate::api::TaskHandle::new(id, self.clone()))
+    }
+
+    pub async fn add_task_with_sources(
+        &self,
+        id: TaskId,
+        name: String,
+        sources: Vec<(String, TaskType)>,
+        checksum: Option<crate::Checksum>,
+    ) -> Result<crate::api::TaskHandle> {
+        self.add_task_with_options(id, name, sources, checksum, 100, false)
+            .await
     }
 
     pub async fn tell_active(&self) -> Result<Vec<MetaTask>> {

@@ -72,7 +72,8 @@ impl Orchestrator {
                 };
 
                 let peer_opt = {
-                    let mut registry = bt_task.state.registry.lock().await;
+                    let mut registry: tokio::sync::MutexGuard<crate::peer_registry::PeerRegistry> =
+                        bt_task.state.registry.lock().await;
                     registry.get_peer_to_connect()
                 };
 

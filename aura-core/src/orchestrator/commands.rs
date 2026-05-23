@@ -1,5 +1,5 @@
-use super::{Command, Event, Orchestrator};
-use crate::task::{DownloadPhase, MetaTask};
+use super::{Command, Event, Orchestrator, SubTaskEvent};
+use crate::task::{DownloadPhase, MetaTask, TaskType};
 use crate::{Error, Result, TaskId};
 use std::sync::Arc;
 use tracing::{info, warn};
@@ -12,8 +12,11 @@ impl Orchestrator {
                 name,
                 sources,
                 checksum,
+                priority,
+                streaming_mode,
             } => {
-                self.handle_add_task(id, name, sources, checksum).await?;
+                self.handle_add_task(id, name, sources, checksum, priority, streaming_mode)
+                    .await?;
             }
             Command::Pause(id) => {
                 self.handle_pause(id).await?;
@@ -86,6 +89,9 @@ impl Orchestrator {
                 // but explicit shutdown is better.
                 return Err(Error::Engine("Shutting down".to_string()));
             }
+            Command::RetrySubtask(meta_id, sub_id) => {
+                self.handle_retry_subtask(meta_id, sub_id).await?;
+            }
         }
         Ok(())
     }
@@ -96,6 +102,8 @@ impl Orchestrator {
         name: String,
         sources: Vec<(String, crate::task::TaskType)>,
         checksum: Option<crate::Checksum>,
+        priority: u32,
+        streaming_mode: bool,
     ) -> Result<()> {
         // Enforce mandatory tunnel
         self.verify_vpn_connectivity().await?;
@@ -127,6 +135,8 @@ impl Orchestrator {
         if let Some(c) = checksum {
             meta_task.checksum = Some(c);
         }
+        meta_task.priority = priority;
+        meta_task.streaming_mode = streaming_mode;
 
         if meta_task.subtasks.is_empty() {
             for (uri, ttype) in sources {
@@ -285,5 +295,100 @@ impl Orchestrator {
         for id in to_pause {
             let _ = self.handle_pause(id).await;
         }
+    }
+
+    pub(crate) async fn handle_retry_subtask(&mut self, id: TaskId, sub_id: TaskId) -> Result<()> {
+        let meta_task = self.tasks.get_mut(&id).ok_or(Error::TaskNotFound(id))?;
+
+        let token = self
+            .cancellation_tokens
+            .get(&id)
+            .cloned()
+            .ok_or_else(|| Error::Engine("No cancellation token for task".to_string()))?;
+
+        if token.is_cancelled() {
+            return Ok(());
+        }
+
+        if let Some(sub_task) = meta_task.subtasks.iter_mut().find(|s| s.id == sub_id) {
+            if sub_task.phase != DownloadPhase::Degraded || sub_task.active {
+                return Ok(());
+            }
+
+            let uri = sub_task.uri.clone();
+            let ttype = sub_task.task_type.clone();
+
+            if meta_task.blacklisted_uris.contains(&uri) {
+                sub_task.phase = DownloadPhase::Error;
+                sub_task.active = false;
+                return Ok(());
+            }
+
+            sub_task.active = true;
+
+            let subtask_tx = self.subtask_tx.clone();
+            let config_clone = self.config.clone();
+            let pool = self.pool.clone();
+            let local_addr = self.resolve_local_addr();
+            let provider_clone = self.credential_provider.clone();
+
+            tracing::info!(%id, %sub_id, %uri, "Retrying/Self-healing Degraded subtask");
+
+            tokio::spawn(async move {
+                let config = config_clone.load();
+                match ttype {
+                    TaskType::Http => {
+                        let worker = crate::worker::WorkerBuilder::new(uri)
+                            .local_addr(local_addr)
+                            .user_agent(Some(config.network.user_agent.clone()))
+                            .connect_timeout(Some(config.network.connect_timeout_secs))
+                            .proxy(config.network.proxy.clone())
+                            .with_pool(pool.clone())
+                            .retry_count(config.network.http_retry_count)
+                            .retry_delay_secs(config.network.http_retry_delay_secs)
+                            .credential_provider(provider_clone)
+                            .build_http();
+                        match worker.resolve_metadata().await {
+                            Ok(m) => {
+                                let _ = subtask_tx.send(SubTaskEvent::Matured(id, sub_id, m)).await;
+                            }
+                            Err(e) => {
+                                let _ = subtask_tx
+                                    .send(crate::orchestrator::SubTaskEvent::Failed(
+                                        id,
+                                        sub_id,
+                                        e.to_string(),
+                                    ))
+                                    .await;
+                            }
+                        }
+                    }
+                    TaskType::Ftp => {
+                        let worker = crate::worker::WorkerBuilder::new(uri)
+                            .local_addr(local_addr)
+                            .with_pool(pool.clone())
+                            .credential_provider(provider_clone)
+                            .build_ftp();
+                        match worker.resolve_metadata().await {
+                            Ok(m) => {
+                                let _ = subtask_tx.send(SubTaskEvent::Matured(id, sub_id, m)).await;
+                            }
+                            Err(e) => {
+                                let _ = subtask_tx
+                                    .send(crate::orchestrator::SubTaskEvent::Failed(
+                                        id,
+                                        sub_id,
+                                        e.to_string(),
+                                    ))
+                                    .await;
+                            }
+                        }
+                    }
+                    TaskType::BitTorrent => {}
+                }
+            });
+        }
+
+        Ok(())
     }
 }

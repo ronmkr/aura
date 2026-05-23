@@ -72,9 +72,15 @@ impl PiecePicker {
         }
     }
 
-    /// Picks the next piece to download using the rarest-first strategy,
-    /// considering only pieces that the specified peer has.
-    pub fn pick_next(&mut self, my_bitfield: &Bitfield, peer_addr: &str) -> Option<usize> {
+    /// Picks the next piece to download.
+    /// If `sequential` is true, it picks the first available piece in order.
+    /// Otherwise, it uses the rarest-first strategy.
+    pub fn pick_next(
+        &mut self,
+        my_bitfield: &Bitfield,
+        peer_addr: &str,
+        sequential: bool,
+    ) -> Option<usize> {
         if self.is_endgame(my_bitfield) {
             let res = self.pick_next_endgame(my_bitfield, peer_addr);
             if let Some(idx) = res {
@@ -84,6 +90,16 @@ impl PiecePicker {
         }
 
         let peer_bf = self.peer_bitfields.get(peer_addr)?;
+
+        if sequential {
+            for i in 0..self.num_pieces {
+                if !my_bitfield.get(i) && peer_bf.get(i) && !self.in_progress.get(i) {
+                    self.in_progress.set(i, true);
+                    return Some(i);
+                }
+            }
+            return None;
+        }
 
         let mut rarest_pieces = Vec::new();
         let mut min_count = usize::MAX;
@@ -171,7 +187,7 @@ mod tests {
         // Pick next piece. Since 1, 2, 3 are equally rare (1 peer),
         // but for Peer A only 1 or 2 are available.
         let picked = picker
-            .pick_next(&my_bf, "1.1.1.1:80")
+            .pick_next(&my_bf, "1.1.1.1:80", false)
             .expect("Should pick a piece");
         assert!(picked == 1 || picked == 2);
 
@@ -181,7 +197,7 @@ mod tests {
         my_bf_updated.set(picked, true);
 
         let picked2 = picker
-            .pick_next(&my_bf_updated, "1.1.1.1:80")
+            .pick_next(&my_bf_updated, "1.1.1.1:80", false)
             .expect("Should pick another piece");
         assert_eq!(picked2, expected_next);
     }
@@ -200,7 +216,7 @@ mod tests {
         picker.mark_in_progress(1);
 
         // Standard pick SHOULD now return a piece because we are in endgame (2/2 pieces)
-        let picked = picker.pick_next(&my_bf, "peer1");
+        let picked = picker.pick_next(&my_bf, "peer1", false);
         assert!(picked.is_some());
 
         // Also verify explicitly calling pick_next_endgame

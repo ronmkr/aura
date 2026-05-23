@@ -17,6 +17,7 @@ pub struct BtTaskState {
     pub bitfield: Mutex<Option<Bitfield>>,
     pub picker: Mutex<Option<PiecePicker>>,
     pub registry: Mutex<PeerRegistry>,
+    pub sequential: std::sync::atomic::AtomicBool,
     pub db: sled::Db,
 }
 
@@ -34,6 +35,7 @@ impl BtTaskState {
             bitfield: Mutex::new(Some(Bitfield::new(num_pieces))),
             picker: Mutex::new(Some(PiecePicker::new(num_pieces))),
             registry: Mutex::new(PeerRegistry::new()),
+            sequential: std::sync::atomic::AtomicBool::new(false),
             db,
         }
     }
@@ -45,6 +47,7 @@ impl BtTaskState {
             bitfield: Mutex::new(None),
             picker: Mutex::new(None),
             registry: Mutex::new(PeerRegistry::new()),
+            sequential: std::sync::atomic::AtomicBool::new(false),
             db,
         }
     }
@@ -241,10 +244,14 @@ impl BtTask {
         // Try to pick a piece
         let bf_guard = self.state.bitfield.lock().await;
         let mut picker_guard = self.state.picker.lock().await;
+        let sequential = self
+            .state
+            .sequential
+            .load(std::sync::atomic::Ordering::Relaxed);
 
         let piece_idx = if let (Some(bf), Some(picker)) = (bf_guard.as_ref(), picker_guard.as_mut())
         {
-            picker.pick_next(bf, &addr)
+            picker.pick_next(bf, &addr, sequential)
         } else {
             None
         };

@@ -20,7 +20,8 @@ impl Orchestrator {
             for sub in &meta_task.subtasks {
                 if sub.task_type == TaskType::BitTorrent {
                     if let Some(bt) = self.bt_tasks.get(&sub.id) {
-                        let bf = bt.state.bitfield.lock().await;
+                        let bf: tokio::sync::MutexGuard<Option<crate::bitfield::Bitfield>> =
+                            bt.state.bitfield.lock().await;
                         bitfield = bf.clone();
                         break;
                     }

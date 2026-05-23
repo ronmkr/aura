@@ -45,7 +45,8 @@ Formulate concrete, hostile testing scenarios to guide your TDD:
 3.  **GREEN**: Implement the minimal logic to pass the test.
 4.  **REFACTOR**: Apply Rust Specialist principles (no unwraps, minimal cloning, idiomatic iterators).
 5.  **Maintainability**: Ensure the file is under **400 lines**. If not, decompose into sub-modules.
-6.  **Verify**: Run `make green-loop`.
+6.  **Format**: Automatically format all code using `cargo fmt --all` to guarantee style consistency and avoid CI check failures.
+7.  **Verify**: Run `make green-loop`.
 
 ### 3. Real-World Scenario Testing
 Always verify changes against actual network resources:
