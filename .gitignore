@@ -40,3 +40,6 @@ aura-docs/project/prompts
 metadata.json
 unused_deps.txt
 
+# Antigravity CLI artifacts
+.antigravitycli/
+
