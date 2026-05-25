@@ -14,6 +14,18 @@ tcp_keepalive_secs = 60                # TCP keepalive interval
 max_redirects = 20                     # Maximum HTTP redirect depth
 http_retry_count = 5                   # Number of retries for transient HTTP errors
 http_retry_delay_secs = 2              # Delay between HTTP retries
+# dns_resolver = "system"              # DNS resolver: "system", "cloudflare", "google", or an IP address
+
+# [network.dns_resolver]               # DNS-over-HTTPS (DoH) example
+# type = "doh"
+# url = "https://cloudflare-dns.com/dns-query"
+# ips = ["1.1.1.1", "1.0.0.1"]
+
+# [network.dns_resolver]               # DNS-over-TLS (DoT) example
+# type = "dot"
+# server = "1.1.1.1"
+# port = 853
+# tls_name = "cloudflare-dns.com"
 
 [bandwidth]
 # All limits are in bytes per second. 0 means unlimited.

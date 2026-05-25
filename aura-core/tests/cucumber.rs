@@ -24,6 +24,8 @@ impl AuraWorld {
         let path = self.temp_dir.path().to_path_buf();
         config.storage.download_dir = path.to_str().unwrap().to_string();
         config.network.listen_port = 0; // Random port
+        config.network.http_retry_count = 0; // Disable retries to speed up tests
+        config.network.connect_timeout_secs = 1; // Fast timeout for tests
 
         config_mod(&mut config);
 

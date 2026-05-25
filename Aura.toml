@@ -11,6 +11,18 @@ user_agent = "Aura/0.1.0"              # Custom User-Agent string
 connect_timeout_secs = 30              # Connection timeout for all protocols
 tcp_keepalive_secs = 60                # TCP keepalive interval
 # proxy = "http://127.0.0.1:8080"      # Optional global proxy
+# dns_resolver = "system"              # DNS resolver: "system", "cloudflare", "google", or an IP address
+
+# [network.dns_resolver]               # DNS-over-HTTPS (DoH) example
+# type = "doh"
+# url = "https://cloudflare-dns.com/dns-query"
+# ips = ["1.1.1.1", "1.0.0.1"]
+
+# [network.dns_resolver]               # DNS-over-TLS (DoT) example
+# type = "dot"
+# server = "1.1.1.1"
+# port = 853
+# tls_name = "cloudflare-dns.com"
 
 [bandwidth]
 # All limits are in bytes per second. 0 means unlimited.

@@ -41,10 +41,20 @@ async fn given_active_download(world: &mut AuraWorld, percent: u32) {
 
     // Wait for partial completion
     let mut interval = tokio::time::interval(std::time::Duration::from_millis(100));
+    let start = std::time::Instant::now();
     loop {
         interval.tick().await;
+        if start.elapsed().as_secs() > 30 {
+            panic!(
+                "Timed out waiting for task to reach {}% completion",
+                percent
+            );
+        }
         let active = engine.tell_active().await.unwrap();
         if let Some(task) = active.iter().find(|t| t.id == id) {
+            if task.phase == aura_core::task::DownloadPhase::Error {
+                panic!("Task entered Error phase, failing test early");
+            }
             if task.total_length > 0
                 && (task.completed_length as f64 / task.total_length as f64) * 100.0
                     >= percent as f64

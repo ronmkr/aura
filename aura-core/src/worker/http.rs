@@ -33,6 +33,7 @@ impl HttpWorker {
         retry_count: u32,
         retry_delay_secs: u64,
         credential_provider: Option<std::sync::Arc<crate::config::credentials::CredentialProvider>>,
+        dns_resolver: Option<std::sync::Arc<crate::net_util::TokioResolver>>,
     ) -> Self {
         let cookie_jar = if let Some(ref provider) = credential_provider {
             provider.cookie_jar()
@@ -57,6 +58,11 @@ impl HttpWorker {
             if let Ok(proxy_obj) = reqwest::Proxy::all(p) {
                 builder = builder.proxy(proxy_obj);
             }
+        }
+
+        if let Some(resolver) = dns_resolver {
+            let wrapped = crate::net_util::ReqwestDnsResolver::from_arc(resolver);
+            builder = builder.dns_resolver(std::sync::Arc::new(wrapped));
         }
 
         let client = builder.build().expect("Failed to build HTTP client");
@@ -426,6 +432,7 @@ mod tests {
             5,
             2,
             None,
+            None,
         );
         let metadata = worker
             .resolve_metadata()
@@ -442,6 +449,7 @@ mod tests {
             None,
             5,
             2,
+            None,
             None,
         );
         let throttler = std::sync::Arc::new(crate::throttler::Throttler::new(0, 0));
@@ -485,12 +493,43 @@ mod tests {
             5,
             2,
             None,
+            None,
         );
         let result = worker.resolve_metadata().await;
         match result {
             Err(Error::Protocol(msg)) => assert!(msg.to_lowercase().contains("redirect")),
             _ => panic!("Expected redirect loop error"),
         }
+    }
+
+    #[tokio::test]
+    async fn test_http_worker_custom_dns() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .respond_with(ResponseTemplate::new(200).set_body_bytes(vec![0; 10]))
+            .mount(&server)
+            .await;
+
+        let dns_config = crate::config::ResolverConfig::Simple("system".to_string());
+        let resolver = crate::net_util::create_resolver(&dns_config).await.unwrap();
+        let resolver_arc = std::sync::Arc::new(resolver);
+
+        let worker = HttpWorker::new(
+            format!("{}/file", server.uri()),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            5,
+            2,
+            None,
+            Some(resolver_arc),
+        );
+
+        let metadata = worker.resolve_metadata().await.expect("Should resolve");
+        assert_eq!(metadata.total_length, Some(10));
     }
 
     #[tokio::test]
@@ -522,6 +561,7 @@ mod tests {
             None,
             3, // Max retries
             1, // 1s base delay
+            None,
             None,
         );
 
@@ -584,6 +624,7 @@ mod tests {
             3,
             1,
             None,
+            None,
         );
 
         let result = worker.resolve_metadata().await;
@@ -625,6 +666,7 @@ mod tests {
             None,
             3,
             1,
+            None,
             None,
         );
 

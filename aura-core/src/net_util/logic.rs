@@ -1,23 +1,9 @@
 //! net_util: Utilities for interface binding and low-level socket control.
 
-use crate::config::ResolverConfig;
 use crate::{Error, Result};
-use hickory_resolver::TokioResolver;
 use socket2::{Domain, Protocol, Socket, Type};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use tokio::net::{TcpStream, UdpSocket};
-
-pub async fn create_resolver(config: &ResolverConfig) -> Result<TokioResolver> {
-    match config {
-        ResolverConfig::System
-        | ResolverConfig::Cloudflare
-        | ResolverConfig::Google
-        | ResolverConfig::Custom(_) => TokioResolver::builder_tokio()
-            .map_err(|e| Error::Config(format!("Failed to init system DNS builder: {}", e)))?
-            .build()
-            .map_err(|e| Error::Config(format!("Failed to build system DNS: {}", e))),
-    }
-}
 
 /// Binds a socket to a specific network interface or local IP.
 pub fn bind_socket(
