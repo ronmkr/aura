@@ -13,6 +13,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Bootstrap the engine
     let config = aura_core::Config::from_file("Aura.toml").unwrap_or_default();
     let rpc_secret = config.network.rpc_secret.clone();
+    let rpc_port = config.network.rpc_port;
 
     let (engine, orchestrator, storage) = match Engine::new(config).await {
         Ok(res) => res,
@@ -40,8 +41,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let app = create_router(state).layer(CorsLayer::permissive());
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:6800").await?;
-    info!("RPC Server listening on http://0.0.0.0:6800");
+    let addr = format!("0.0.0.0:{}", rpc_port);
+    let listener = tokio::net::TcpListener::bind(&addr).await?;
+    info!("RPC Server listening on http://{}", addr);
     axum::serve(listener, app).await?;
 
     Ok(())

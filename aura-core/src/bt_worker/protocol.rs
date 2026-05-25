@@ -5,7 +5,7 @@ use tokio_util::codec::{Decoder, Encoder};
 
 pub const HANDSHAKE_LEN: usize = 68;
 pub const PSTR: &[u8] = b"BitTorrent protocol";
-pub const BLOCK_SIZE: u32 = 32768; // 32KB block size for better speed
+pub const BLOCK_SIZE: u32 = 16384; // 16KB block size (BitTorrent specification standard)
 
 pub const EXTENSION_BIT: usize = 20; // 20th bit in reserved bytes (counting from end)
 

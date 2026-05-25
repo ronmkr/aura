@@ -220,3 +220,6 @@ A specialized logic within the **Filesystem Adapter** that detects Copy-On-Write
 
 #### Kernel TLS (kTLS)
 An advanced optimization utilized by the **Zero-Copy Path**. It offloads HTTPS/TLS decryption to the kernel or network hardware.
+
+#### BitTorrent Block Size
+The standard request payload block size in the BitTorrent protocol is strictly 16KB (16,384 bytes). Standardizing this prevents strict peer clients from dropping connection requests, ensuring broad swarm compatibility.

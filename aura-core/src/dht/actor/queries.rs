@@ -25,6 +25,25 @@ impl DhtActor {
         Ok(())
     }
 
+    pub(crate) async fn send_error(
+        &self,
+        tid: Vec<u8>,
+        code: u32,
+        message: &str,
+        addr: SocketAddr,
+    ) -> Result<()> {
+        let reply = KrpcMessage {
+            transaction_id: tid,
+            msg_type: "e".to_string(),
+            query: None,
+            args: None,
+            response: None,
+            error: Some((code, message.to_string())),
+        };
+        let _ = self.socket.send_to(&reply.encode()?, addr).await;
+        Ok(())
+    }
+
     pub(crate) async fn send_ping(&self, addr: SocketAddr) -> Result<()> {
         let mut args = BTreeMap::new();
         args.insert(
@@ -154,6 +173,31 @@ impl DhtActor {
         drop(rt);
 
         for node in closest {
+            let mut gp_args = BTreeMap::new();
+            gp_args.insert(
+                "id".to_string(),
+                serde_bencode::value::Value::Bytes(self.my_id.to_vec()),
+            );
+            gp_args.insert(
+                "info_hash".to_string(),
+                serde_bencode::value::Value::Bytes(info_hash.to_vec()),
+            );
+
+            let token = if let Ok(reply) = self.send_query("get_peers", gp_args, node.addr).await {
+                if let Some(res) = reply.response {
+                    if let Some(serde_bencode::value::Value::Bytes(token_bytes)) = res.get("token")
+                    {
+                        token_bytes.clone()
+                    } else {
+                        self.generate_token(node.addr).await
+                    }
+                } else {
+                    self.generate_token(node.addr).await
+                }
+            } else {
+                self.generate_token(node.addr).await
+            };
+
             let mut args = BTreeMap::new();
             args.insert(
                 "id".to_string(),
@@ -169,7 +213,7 @@ impl DhtActor {
             );
             args.insert(
                 "token".to_string(),
-                serde_bencode::value::Value::Bytes(vec![1, 2, 3, 4]),
+                serde_bencode::value::Value::Bytes(token),
             );
 
             let _ = self.send_query("announce_peer", args, node.addr).await;

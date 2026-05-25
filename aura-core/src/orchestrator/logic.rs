@@ -166,6 +166,22 @@ impl Orchestrator {
 
     pub(crate) fn resolve_local_addr(&self) -> Option<std::net::IpAddr> {
         let config = self.config.load();
+
+        if config.vpn.force_tunnel {
+            if let Some(ref vpn) = self.vpn_provider {
+                if let Some(iface) = vpn.interface() {
+                    use local_ip_address::list_afinet_netifas;
+                    if let Ok(ifas) = list_afinet_netifas() {
+                        for (name, ip) in ifas {
+                            if name == iface {
+                                return Some(ip);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         if let Some(addr) = config.network.local_addr {
             return Some(addr);
         }

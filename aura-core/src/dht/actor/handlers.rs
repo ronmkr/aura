@@ -48,7 +48,7 @@ impl DhtActor {
                             );
 
                             // Generate a token
-                            let token = vec![1, 2, 3, 4];
+                            let token = self.generate_token(addr).await;
                             self.tokens.lock().await.insert(addr, token.clone());
                             r.insert(
                                 "token".to_string(),
@@ -81,6 +81,26 @@ impl DhtActor {
                         }
                     }
                     "announce_peer" => {
+                        let token_valid =
+                            if let Some(serde_bencode::value::Value::Bytes(token_bytes)) =
+                                args.and_then(|a| a.get("token"))
+                            {
+                                self.validate_token(addr, token_bytes).await
+                            } else {
+                                false
+                            };
+
+                        if !token_valid {
+                            self.send_error(
+                                msg.transaction_id,
+                                203,
+                                "Protocol Error: Invalid or missing token",
+                                addr,
+                            )
+                            .await?;
+                            return Ok(());
+                        }
+
                         if let Some(serde_bencode::value::Value::Bytes(b)) =
                             args.and_then(|a| a.get("info_hash"))
                         {
