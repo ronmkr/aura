@@ -4,7 +4,7 @@ This document tracks the technical debt and missing features identified during t
 
 ## 🔴 Critical: Data Integrity & Security
 
-- [ ] **fsync before atomic rename** (Issue #120) [CRITICAL]
+- [x] **fsync before atomic rename** (Issue #120) [CRITICAL]
     - `storage/ops.rs` does NOT call `fsync()`/`fdatasync()` before `.part` → final rename.
     - Crash before OS writeback could cause silent data loss/corruption.
 - [ ] **DHT token is hardcoded `[1,2,3,4]`** (Issue #121) [CRITICAL]
@@ -14,7 +14,7 @@ This document tracks the technical debt and missing features identified during t
     - `force_tunnel` config key exists but is never read/enforced in `vpn/logic.rs`.
     - No firewall rules, no iptables/pf integration, no automatic interface binding.
     - Users relying on `force_tunnel = true` have a false sense of security.
-- [ ] **DNS resolver config is a facade** (Issue #128) [MODERATE]
+- [x] **DNS resolver config is a facade** (Issue #128) [MODERATE]
     - `create_resolver()` accepts Cloudflare/Google/Custom enum variants but ALL paths create the same system resolver.
     - `hickory-resolver` with DoH feature is a dependency but never configured for DoH/DoT.
 

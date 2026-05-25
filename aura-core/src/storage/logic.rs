@@ -175,6 +175,13 @@ impl StorageEngine {
                         error!(%task_id, error = %e, "Failed to flush pending writes on completion");
                     }
 
+                    // Flush all buffered data to disk and update metadata of the .part file
+                    if let Some(file) = self.handles.get_mut(&task_id) {
+                        if let Err(e) = file.sync_all().await {
+                            error!(%task_id, error = %e, "Failed to sync file data on completion");
+                        }
+                    }
+
                     // Close the write handle before verification to ensure all data is committed
                     // and to allow clean read-only access.
                     self.handles.remove(&task_id);
@@ -405,5 +412,49 @@ mod tests {
         assert!(file_path.exists());
         let content = std::fs::read_to_string(&file_path).unwrap();
         assert_eq!(content, "hello_seq_world");
+    }
+
+    #[tokio::test]
+    async fn test_storage_engine_fsync_durability() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("durable_file.bin");
+        let (request_tx, request_rx) = mpsc::channel(1);
+        let (completion_tx, mut completion_rx) = mpsc::channel(1);
+        let mut storage = StorageEngine::new(request_rx, completion_tx, None);
+        let id = TaskId(300);
+        storage.register_task(id, file_path.clone(), 0, None);
+
+        tokio::spawn(async move {
+            storage.run().await.unwrap();
+        });
+
+        let data = Bytes::from("durable data");
+        request_tx
+            .send(StorageRequest::Write {
+                task_id: id,
+                segment: Segment {
+                    offset: 0,
+                    length: data.len() as u64,
+                },
+                data: data.into(),
+            })
+            .await
+            .unwrap();
+
+        request_tx.send(StorageRequest::Complete(id)).await.unwrap();
+
+        let event = completion_rx.recv().await.unwrap();
+        match event {
+            StorageEvent::Completed(completed_id) => {
+                assert_eq!(completed_id, id);
+            }
+            StorageEvent::Error(_, err) => {
+                panic!("Completed with error: {}", err);
+            }
+        }
+
+        assert!(file_path.exists());
+        let content = std::fs::read_to_string(&file_path).unwrap();
+        assert_eq!(content, "durable data");
     }
 }

@@ -92,12 +92,27 @@ impl StorageEngine {
         info!(%id, from = ?part_path, to = ?hardened_base, "Performing atomic completion rename");
         fs::rename(&part_path, &hardened_base).await?;
 
+        // Sync parent directory to ensure metadata rename is durable on Unix
+        sync_parent_dir(&hardened_base).await;
+
         let _ = self
             .completion_tx
             .send(crate::storage::StorageEvent::Completed(id))
             .await;
 
         Ok(())
+    }
+}
+
+async fn sync_parent_dir(path: &Path) {
+    if let Some(parent) = path.parent() {
+        let parent_clone = parent.to_path_buf();
+        let _ = tokio::task::spawn_blocking(move || {
+            if let Ok(dir) = std::fs::File::open(&parent_clone) {
+                let _ = dir.sync_all();
+            }
+        })
+        .await;
     }
 }
 
