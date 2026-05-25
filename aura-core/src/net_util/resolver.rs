@@ -13,10 +13,9 @@ pub async fn create_resolver(config: &ResolverConfig) -> Result<TokioResolver> {
         ResolverConfig::Simple(ref s) => {
             let s_lower = s.to_lowercase();
             if s_lower == "system" {
-                let builder = TokioResolver::builder_tokio()
-                    .map_err(|e| {
-                        Error::Config(format!("Failed to init system DNS builder: {}", e))
-                    })?;
+                let builder = TokioResolver::builder_tokio().map_err(|e| {
+                    Error::Config(format!("Failed to init system DNS builder: {}", e))
+                })?;
                 Ok(builder.build())
             } else if s_lower == "cloudflare" {
                 Ok(hickory_resolver::Resolver::builder_with_config(
