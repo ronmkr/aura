@@ -14,11 +14,57 @@ pub struct HttpWorker {
     retry_count: u32,
     retry_delay_secs: u64,
     credential_provider: Option<std::sync::Arc<crate::config::credentials::CredentialProvider>>,
+    hsts_cache: Option<crate::security::HstsCache>,
 }
 
 impl HttpWorker {
     fn is_retryable(status: reqwest::StatusCode) -> bool {
         status.is_server_error() || status == reqwest::StatusCode::TOO_MANY_REQUESTS
+    }
+
+    async fn upgrade_url(&self, url_str: &str) -> String {
+        if let Some(ref cache) = self.hsts_cache {
+            if let Ok(mut url) = url::Url::parse(url_str) {
+                if url.scheme() == "http" {
+                    if let Some(host) = url.host_str() {
+                        if cache.should_upgrade(host).await {
+                            let _ = url.set_scheme("https");
+                            tracing::info!(
+                                from = url_str,
+                                to = url.as_str(),
+                                "HSTS: Automatically upgraded HTTP request to HTTPS"
+                            );
+                            return url.to_string();
+                        }
+                    }
+                }
+            }
+        }
+        url_str.to_string()
+    }
+
+    async fn check_and_update_hsts(&self, resp: &reqwest::Response) {
+        if let Some(ref cache) = self.hsts_cache {
+            let url = resp.url();
+            if url.scheme() == "https" {
+                if let Some(hsts_val) = resp
+                    .headers()
+                    .get(reqwest::header::STRICT_TRANSPORT_SECURITY)
+                {
+                    if let Ok(hsts_str) = hsts_val.to_str() {
+                        if let Some((max_age, include_subdomains)) =
+                            crate::security::parse_hsts_header(hsts_str)
+                        {
+                            if let Some(host) = url.host_str() {
+                                cache
+                                    .insert_policy(host.to_string(), max_age, include_subdomains)
+                                    .await;
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -34,6 +80,7 @@ impl HttpWorker {
         retry_delay_secs: u64,
         credential_provider: Option<std::sync::Arc<crate::config::credentials::CredentialProvider>>,
         dns_resolver: Option<std::sync::Arc<crate::net_util::TokioResolver>>,
+        hsts_cache: Option<crate::security::HstsCache>,
     ) -> Self {
         let cookie_jar = if let Some(ref provider) = credential_provider {
             provider.cookie_jar()
@@ -75,6 +122,7 @@ impl HttpWorker {
             retry_count,
             retry_delay_secs,
             credential_provider,
+            hsts_cache,
         }
     }
 
@@ -88,6 +136,7 @@ impl HttpWorker {
         let link_regex = regex::Regex::new(r#"(?i)<a\s+[^>]*href=["']([^"']+)["']"#).unwrap();
 
         loop {
+            current_uri = self.upgrade_url(&current_uri).await;
             let mut attempts = 0;
             let max_attempts = self.retry_count;
 
@@ -113,6 +162,7 @@ impl HttpWorker {
 
                 match res {
                     Ok(resp) => {
+                        self.check_and_update_hsts(&resp).await;
                         if resp.status().is_success() || resp.status().is_redirection() {
                             break resp;
                         } else if Self::is_retryable(resp.status()) && attempts < max_attempts {
@@ -280,19 +330,20 @@ impl ProtocolWorker for HttpWorker {
         let max_attempts = self.retry_count;
 
         loop {
+            let upgraded_uri = self.upgrade_url(&self.uri).await;
             let range_header = format!(
                 "bytes={}-{}",
                 segment.offset,
                 segment.offset + segment.length - 1
             );
-            let mut request = self.client.get(&self.uri).header("Range", range_header);
+            let mut request = self.client.get(&upgraded_uri).header("Range", range_header);
 
             if let Some(ref ref_uri) = self.referer {
                 request = request.header("Referer", ref_uri);
             }
 
             if let Some(ref provider) = self.credential_provider {
-                if let Ok(url) = url::Url::parse(&self.uri) {
+                if let Ok(url) = url::Url::parse(&upgraded_uri) {
                     if let Some(host) = url.host_str() {
                         if let Some(creds) = provider.get_credentials(host) {
                             if let (Some(user), Some(pass)) = (&creds.login, &creds.password) {
@@ -307,6 +358,7 @@ impl ProtocolWorker for HttpWorker {
 
             match response_res {
                 Ok(response) => {
+                    self.check_and_update_hsts(&response).await;
                     if response.status().is_success() {
                         let mut buffer = if let Some(ref p) = self.pool {
                             p.acquire()
@@ -433,6 +485,7 @@ mod tests {
             2,
             None,
             None,
+            None,
         );
         let metadata = worker
             .resolve_metadata()
@@ -449,6 +502,7 @@ mod tests {
             None,
             5,
             2,
+            None,
             None,
             None,
         );
@@ -494,6 +548,7 @@ mod tests {
             2,
             None,
             None,
+            None,
         );
         let result = worker.resolve_metadata().await;
         match result {
@@ -526,6 +581,7 @@ mod tests {
             2,
             None,
             Some(resolver_arc),
+            None,
         );
 
         let metadata = worker.resolve_metadata().await.expect("Should resolve");
@@ -561,6 +617,7 @@ mod tests {
             None,
             3, // Max retries
             1, // 1s base delay
+            None,
             None,
             None,
         );
@@ -625,6 +682,7 @@ mod tests {
             1,
             None,
             None,
+            None,
         );
 
         let result = worker.resolve_metadata().await;
@@ -668,6 +726,7 @@ mod tests {
             1,
             None,
             None,
+            None,
         );
 
         let result = worker.resolve_metadata().await;
@@ -676,5 +735,32 @@ mod tests {
             Err(Error::Protocol(msg)) => assert!(msg.contains("Direct link resolution failed")),
             _ => panic!("Expected Protocol error for HTML landing page failure"),
         }
+    }
+
+    #[tokio::test]
+    async fn test_http_worker_hsts_upgrade() {
+        let hsts_cache = crate::security::HstsCache::new();
+        let host = "example.com".to_string();
+        hsts_cache.insert_policy(host, 300, true).await;
+
+        // Create a worker with an insecure http URL
+        let http_uri = "http://example.com/file".to_string();
+        let worker = HttpWorker::new(
+            http_uri,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            3,
+            1,
+            None,
+            None,
+            Some(hsts_cache),
+        );
+
+        let upgraded = worker.upgrade_url(&worker.uri).await;
+        assert_eq!(upgraded, "https://example.com/file");
     }
 }

@@ -139,6 +139,7 @@ impl Orchestrator {
                 let throttler_clone = self.throttler.clone();
                 let provider_clone = self.credential_provider.clone();
                 let dns_resolver = self.dns_resolver.clone();
+                let hsts_cache = self.hsts_cache.clone();
 
                 let subtask_tx_progress = subtask_tx.clone();
                 let progress_handle = tokio::spawn(async move {
@@ -162,6 +163,7 @@ impl Orchestrator {
                                 .retry_count(config.network.http_retry_count)
                                 .retry_delay_secs(config.network.http_retry_delay_secs)
                                 .credential_provider(provider_clone)
+                                .hsts_cache(hsts_cache)
                                 .build_http();
                             let segment = Segment {
                                 offset: range.start,

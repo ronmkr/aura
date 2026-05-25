@@ -345,6 +345,7 @@ impl Orchestrator {
             let local_addr = self.resolve_local_addr();
             let provider_clone = self.credential_provider.clone();
             let dns_resolver = self.dns_resolver.clone();
+            let hsts_cache = self.hsts_cache.clone();
 
             tracing::info!(%id, %sub_id, %uri, "Retrying/Self-healing Degraded subtask");
 
@@ -362,6 +363,7 @@ impl Orchestrator {
                             .retry_count(config.network.http_retry_count)
                             .retry_delay_secs(config.network.http_retry_delay_secs)
                             .credential_provider(provider_clone)
+                            .hsts_cache(hsts_cache)
                             .build_http();
                         match worker.resolve_metadata().await {
                             Ok(m) => {

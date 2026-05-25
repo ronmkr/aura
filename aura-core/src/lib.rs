@@ -28,6 +28,7 @@ pub mod vpn;
 pub mod worker;
 
 pub mod config;
+pub mod security;
 
 pub use api::{TaskEvent, TaskHandle};
 pub use config::Config;

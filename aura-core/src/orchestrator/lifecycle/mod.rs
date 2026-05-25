@@ -80,6 +80,7 @@ impl Orchestrator {
             let throttler_clone = throttler_arc.clone();
             let provider_clone = self.credential_provider.clone();
             let dns_resolver = self.dns_resolver.clone();
+            let hsts_cache = self.hsts_cache.clone();
 
             let existing_bt = self.bt_tasks.get(&sub_id).cloned();
 
@@ -97,6 +98,7 @@ impl Orchestrator {
                             .retry_count(config.network.http_retry_count)
                             .retry_delay_secs(config.network.http_retry_delay_secs)
                             .credential_provider(provider_clone.clone())
+                            .hsts_cache(hsts_cache)
                             .build_http();
                         match worker.resolve_metadata().await {
                             Ok(m) => {
