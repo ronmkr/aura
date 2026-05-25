@@ -11,6 +11,8 @@ use tokio::net::UdpSocket;
 use tokio::sync::{mpsc, Mutex};
 use tracing::{debug, info};
 
+use sha2::{Digest, Sha256};
+
 pub enum DhtCommand {
     GetPeers {
         info_hash: InfoHash,
@@ -20,6 +22,12 @@ pub enum DhtCommand {
         info_hash: InfoHash,
         port: u16,
     },
+}
+
+pub struct DhtSecrets {
+    pub current: [u8; 32],
+    pub previous: [u8; 32],
+    pub last_rotation: std::time::Instant,
 }
 
 pub struct DhtActor {
@@ -34,6 +42,7 @@ pub struct DhtActor {
     // RemoteAddr -> Token (for announce_peer)
     pub(crate) tokens: Arc<Mutex<BTreeMap<SocketAddr, Vec<u8>>>>,
     pub(crate) db: Option<sled::Db>,
+    pub(crate) secrets: Arc<Mutex<DhtSecrets>>,
 }
 
 impl DhtActor {
@@ -48,6 +57,14 @@ impl DhtActor {
         let socket = crate::net_util::bind_udp_bound(port, None, local_addr)
             .await
             .map_err(|e| Error::Config(format!("Failed to bind DHT UDP socket: {}", e)))?;
+        let current = rand::random::<[u8; 32]>();
+        let previous = rand::random::<[u8; 32]>();
+        let last_rotation = std::time::Instant::now();
+        let secrets = Arc::new(Mutex::new(DhtSecrets {
+            current,
+            previous,
+            last_rotation,
+        }));
         Ok(Self {
             my_id,
             socket: Arc::new(socket),
@@ -57,7 +74,45 @@ impl DhtActor {
             peers: Arc::new(Mutex::new(BTreeMap::new())),
             tokens: Arc::new(Mutex::new(BTreeMap::new())),
             db,
+            secrets,
         })
+    }
+
+    pub async fn generate_token(&self, addr: SocketAddr) -> Vec<u8> {
+        let mut secrets = self.secrets.lock().await;
+        if secrets.last_rotation.elapsed() >= std::time::Duration::from_secs(600) {
+            secrets.previous = secrets.current;
+            secrets.current = rand::random::<[u8; 32]>();
+            secrets.last_rotation = std::time::Instant::now();
+        }
+
+        let mut hasher = Sha256::new();
+        hasher.update(addr.ip().to_string().as_bytes());
+        hasher.update(&secrets.current);
+        hasher.finalize().to_vec()
+    }
+
+    pub async fn validate_token(&self, addr: SocketAddr, token: &[u8]) -> bool {
+        let mut secrets = self.secrets.lock().await;
+        if secrets.last_rotation.elapsed() >= std::time::Duration::from_secs(600) {
+            secrets.previous = secrets.current;
+            secrets.current = rand::random::<[u8; 32]>();
+            secrets.last_rotation = std::time::Instant::now();
+        }
+
+        let mut hasher = Sha256::new();
+        hasher.update(addr.ip().to_string().as_bytes());
+        hasher.update(&secrets.current);
+        let current_hash = hasher.finalize();
+        if current_hash.as_slice() == token {
+            return true;
+        }
+
+        let mut hasher = Sha256::new();
+        hasher.update(addr.ip().to_string().as_bytes());
+        hasher.update(&secrets.previous);
+        let previous_hash = hasher.finalize();
+        previous_hash.as_slice() == token
     }
 
     pub async fn run(mut self) -> Result<()> {
