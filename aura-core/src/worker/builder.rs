@@ -16,6 +16,7 @@ pub struct WorkerBuilder {
     retry_delay_secs: u64,
     credential_provider: Option<std::sync::Arc<crate::config::credentials::CredentialProvider>>,
     dns_resolver: Option<std::sync::Arc<crate::net_util::TokioResolver>>,
+    hsts_cache: Option<crate::security::HstsCache>,
 }
 
 impl WorkerBuilder {
@@ -32,6 +33,7 @@ impl WorkerBuilder {
             retry_delay_secs: 2,
             credential_provider: None,
             dns_resolver: None,
+            hsts_cache: None,
         }
     }
 
@@ -40,6 +42,11 @@ impl WorkerBuilder {
         resolver: std::sync::Arc<crate::net_util::TokioResolver>,
     ) -> Self {
         self.dns_resolver = Some(resolver);
+        self
+    }
+
+    pub fn hsts_cache(mut self, cache: crate::security::HstsCache) -> Self {
+        self.hsts_cache = Some(cache);
         self
     }
 
@@ -104,6 +111,7 @@ impl WorkerBuilder {
             self.retry_delay_secs,
             self.credential_provider,
             self.dns_resolver,
+            self.hsts_cache,
         )
     }
 
