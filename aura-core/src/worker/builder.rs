@@ -15,6 +15,7 @@ pub struct WorkerBuilder {
     retry_count: u32,
     retry_delay_secs: u64,
     credential_provider: Option<std::sync::Arc<crate::config::credentials::CredentialProvider>>,
+    dns_resolver: Option<std::sync::Arc<crate::net_util::TokioResolver>>,
 }
 
 impl WorkerBuilder {
@@ -30,7 +31,16 @@ impl WorkerBuilder {
             retry_count: 5,
             retry_delay_secs: 2,
             credential_provider: None,
+            dns_resolver: None,
         }
+    }
+
+    pub fn dns_resolver(
+        mut self,
+        resolver: std::sync::Arc<crate::net_util::TokioResolver>,
+    ) -> Self {
+        self.dns_resolver = Some(resolver);
+        self
     }
 
     pub fn credential_provider(
@@ -93,6 +103,7 @@ impl WorkerBuilder {
             self.retry_count,
             self.retry_delay_secs,
             self.credential_provider,
+            self.dns_resolver,
         )
     }
 

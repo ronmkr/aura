@@ -79,6 +79,7 @@ impl Orchestrator {
             let db = self.db.clone();
             let throttler_clone = throttler_arc.clone();
             let provider_clone = self.credential_provider.clone();
+            let dns_resolver = self.dns_resolver.clone();
 
             let existing_bt = self.bt_tasks.get(&sub_id).cloned();
 
@@ -88,6 +89,7 @@ impl Orchestrator {
                     TaskType::Http => {
                         let worker = crate::worker::WorkerBuilder::new(uri)
                             .local_addr(local_addr)
+                            .dns_resolver(dns_resolver)
                             .user_agent(Some(config.network.user_agent.clone()))
                             .connect_timeout(Some(config.network.connect_timeout_secs))
                             .proxy(config.network.proxy.clone())

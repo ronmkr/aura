@@ -95,7 +95,6 @@ impl Engine {
                 hickory_resolver::TokioResolver::builder_tokio()
                     .unwrap()
                     .build()
-                    .unwrap()
             });
         let dns_resolver = Arc::new(dns_resolver);
 

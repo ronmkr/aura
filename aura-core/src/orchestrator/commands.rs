@@ -73,6 +73,19 @@ impl Orchestrator {
                     self.credential_provider = Arc::new(new_provider);
                 }
 
+                // Update DNS resolver if changed
+                if self.config.load().network.dns_resolver != new_config.network.dns_resolver {
+                    info!("Reloading DNS resolver");
+                    match crate::net_util::create_resolver(&new_config.network.dns_resolver).await {
+                        Ok(new_resolver) => {
+                            self.dns_resolver = Arc::new(new_resolver);
+                        }
+                        Err(e) => {
+                            warn!("Failed to reload DNS resolver: {}", e);
+                        }
+                    }
+                }
+
                 self.config.store(new_config);
                 let _ = resp_tx.send(());
             }
@@ -331,6 +344,7 @@ impl Orchestrator {
             let pool = self.pool.clone();
             let local_addr = self.resolve_local_addr();
             let provider_clone = self.credential_provider.clone();
+            let dns_resolver = self.dns_resolver.clone();
 
             tracing::info!(%id, %sub_id, %uri, "Retrying/Self-healing Degraded subtask");
 
@@ -340,6 +354,7 @@ impl Orchestrator {
                     TaskType::Http => {
                         let worker = crate::worker::WorkerBuilder::new(uri)
                             .local_addr(local_addr)
+                            .dns_resolver(dns_resolver)
                             .user_agent(Some(config.network.user_agent.clone()))
                             .connect_timeout(Some(config.network.connect_timeout_secs))
                             .proxy(config.network.proxy.clone())

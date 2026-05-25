@@ -11,6 +11,7 @@ Multiple external interfaces (Ratatui TUI, JSON-RPC, logging) need real-time upd
 2. **Event Bus**: We will use a `tokio::sync::broadcast` channel to implement an **Event Bus**.
 3. **Telemetry Events**: The Orchestrator will convert internal state changes into structured **Telemetry Events** and publish them to the Event Bus.
 4. **Subscription**: Subsystems like the TUI and RPC server will subscribe to this broadcast channel to react to changes.
+5. **Metrics Exporter**: A built-in Prometheus exporter will expose core statistics (throughput, active tasks, worker counts) over a standard HTTP `/metrics` endpoint for external monitoring.
 
 ## Alternatives Considered
 - **Polling**: TUI/RPC periodically query the Orchestrator. *Rejected:* Inefficient and leads to "stuttering" in the UI.

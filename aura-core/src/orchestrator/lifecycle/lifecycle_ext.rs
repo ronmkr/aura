@@ -82,7 +82,7 @@ impl Orchestrator {
                     let info_hash = bt_task.state.info_hash;
                     let pool = self.pool.clone();
                     let proxy = config_arc.load().network.proxy.clone();
-                    let throttler = self.throttler.clone();
+                    let throttler_clone = self.throttler.clone();
 
                     let storage_tx = self.storage_tx.clone();
                     let subtask_tx = self.subtask_tx.clone();
@@ -104,7 +104,7 @@ impl Orchestrator {
                             my_id,
                             pool,
                             proxy,
-                            throttler,
+                            throttler_clone,
                         );
                         worker.local_addr = local_addr;
 
@@ -138,6 +138,7 @@ impl Orchestrator {
                 let config_clone = config_arc.clone();
                 let throttler_clone = self.throttler.clone();
                 let provider_clone = self.credential_provider.clone();
+                let dns_resolver = self.dns_resolver.clone();
 
                 let subtask_tx_progress = subtask_tx.clone();
                 let progress_handle = tokio::spawn(async move {
@@ -154,6 +155,7 @@ impl Orchestrator {
                         TaskType::Http => {
                             let worker = crate::worker::WorkerBuilder::new(uri)
                                 .local_addr(local_addr)
+                                .dns_resolver(dns_resolver)
                                 .user_agent(Some(config.network.user_agent.clone()))
                                 .connect_timeout(Some(config.network.connect_timeout_secs))
                                 .proxy(config.network.proxy.clone())

@@ -119,7 +119,7 @@ pub struct Orchestrator {
     pub(crate) power_manager: crate::power::PowerManager,
     pub(crate) hook_manager: crate::hooks::HookManager,
     pub(crate) credential_provider: Arc<crate::config::credentials::CredentialProvider>,
-    pub(crate) _dns_resolver: Arc<hickory_resolver::TokioResolver>,
+    pub(crate) dns_resolver: Arc<crate::net_util::TokioResolver>,
     pub(crate) pool: BufferPool,
     pub(crate) db: sled::Db,
 }
@@ -248,7 +248,7 @@ impl Orchestrator {
         config: Arc<ArcSwap<crate::Config>>,
         pool: BufferPool,
         db: sled::Db,
-        dns_resolver: Arc<hickory_resolver::TokioResolver>,
+        dns_resolver: Arc<crate::net_util::TokioResolver>,
     ) -> (Self, broadcast::Sender<Event>) {
         let (event_tx, _event_rx) = broadcast::channel(1024);
         let (subtask_tx, subtask_rx) = mpsc::channel(4096);
@@ -304,7 +304,7 @@ impl Orchestrator {
                 power_manager: crate::power::PowerManager::new(),
                 hook_manager,
                 credential_provider,
-                _dns_resolver: dns_resolver,
+                dns_resolver,
                 pool,
                 db,
             },
@@ -405,28 +405,43 @@ impl Orchestrator {
         // VPN Kill-switch Monitor
         let vpn_watch_rx = self.vpn_watch_tx.subscribe();
         let subtask_tx_monitor = self.subtask_tx.clone();
+        let config_monitor = self.config.clone();
 
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(std::time::Duration::from_secs(2));
             loop {
                 interval.tick().await;
 
+                let force_tunnel = config_monitor.load().vpn.force_tunnel;
+
                 // Pick up the latest provider
                 let vpn_opt = vpn_watch_rx.borrow().clone();
 
                 if let Some(vpn) = vpn_opt {
-                    match vpn.status().await {
-                        Ok(crate::vpn::VpnStatus::Disconnected)
-                        | Ok(crate::vpn::VpnStatus::Error(_)) => {
-                            tracing::warn!(
-                                provider = %vpn.name(),
-                                interface = ?vpn.interface(),
-                                "VPN Kill-switch triggered! Connection lost. Stopping all tasks."
-                            );
-                            let _ = subtask_tx_monitor.send(SubTaskEvent::KillSwitch).await;
+                    if force_tunnel {
+                        match vpn.status().await {
+                            Ok(crate::vpn::VpnStatus::Disconnected)
+                            | Ok(crate::vpn::VpnStatus::Error(_)) => {
+                                tracing::warn!(
+                                    provider = %vpn.name(),
+                                    interface = ?vpn.interface(),
+                                    "VPN Kill-switch triggered! Connection lost. Stopping all tasks."
+                                );
+                                if subtask_tx_monitor
+                                    .send(SubTaskEvent::KillSwitch)
+                                    .await
+                                    .is_err()
+                                {
+                                    break;
+                                }
+                            }
+                            _ => {}
                         }
-                        _ => {}
                     }
+                }
+
+                if subtask_tx_monitor.is_closed() {
+                    break;
                 }
             }
         });
