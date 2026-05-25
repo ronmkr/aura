@@ -1,4 +1,5 @@
 pub mod logic;
+pub mod message_handlers;
 pub mod protocol;
 #[cfg(test)]
 mod tests;

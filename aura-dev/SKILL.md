@@ -44,7 +44,10 @@ Formulate concrete, hostile testing scenarios to guide your TDD:
 2.  **RED**: Write a failing test in `#[cfg(test)]` or `tests/`.
 3.  **GREEN**: Implement the minimal logic to pass the test.
 4.  **REFACTOR**: Apply Rust Specialist principles (no unwraps, minimal cloning, idiomatic iterators).
-5.  **Maintainability**: Ensure the file is under **400 lines**. If not, decompose into sub-modules.
+5.  **Maintainability**: Keep files highly focused and single-purpose by following these strict line-count thresholds:
+        -   **Optimal Size (50–150 lines)**: Perfect for single-purpose structs, trait impls, individual endpoint handlers, or specific JSON-RPC functions.
+        -   **Soft Ceiling (300 lines)**: If a file exceeds 300 lines, actively evaluate it for a modular split (e.g. separating structs from runner loops).
+        -   **Strict Hard Cap (400 lines)**: Core logic/actors must never exceed 400 lines. Split immediately if it goes over. (Integration test suites are the only exception).
 6.  **Format**: Automatically format all code using `cargo fmt --all` to guarantee style consistency and avoid CI check failures.
 7.  **Verify**: Run `make green-loop`.
 
