@@ -30,7 +30,7 @@ async fn test_choking_algorithm_tit_for_tat() {
         }
     }
 
-    let (worker_cmd_tx, mut worker_cmd_rx) = broadcast::channel(100);
+    let (worker_cmd_tx, _worker_cmd_rx) = broadcast::channel(100);
     let token = CancellationToken::new();
 
     let task_clone = task.clone();
