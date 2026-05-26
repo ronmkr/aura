@@ -145,7 +145,12 @@ impl Orchestrator {
                 let progress_handle = tokio::spawn(async move {
                     while let Some(bytes) = progress_rx.recv().await {
                         let _ = subtask_tx_progress
-                            .send(SubTaskEvent::Downloaded(meta_id, sub_id, bytes))
+                            .send(SubTaskEvent::Downloaded(
+                                meta_id,
+                                sub_id,
+                                bytes,
+                                String::new(),
+                            ))
                             .await;
                     }
                 });

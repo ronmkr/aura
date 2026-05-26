@@ -87,11 +87,15 @@ impl Orchestrator {
                     }
                 }
             }
-            SubTaskEvent::Downloaded(meta_id, sub_id, bytes) => {
+            SubTaskEvent::Downloaded(meta_id, sub_id, bytes, peer_addr) => {
                 if let Some(task) = self.tasks.get_mut(&meta_id) {
                     task.completed_length += bytes;
                     if let Some(sub) = task.subtasks.iter_mut().find(|s| s.id == sub_id) {
                         sub.recent_bytes_downloaded += bytes;
+                    }
+                    if let Some(bt_task) = self.bt_tasks.get(&sub_id) {
+                        let mut registry = bt_task.state.registry.lock().await;
+                        registry.add_downloaded(&peer_addr, bytes);
                     }
                     let _ = self.event_tx.send(Event::TaskProgress {
                         id: meta_id,
@@ -101,9 +105,13 @@ impl Orchestrator {
                     });
                 }
             }
-            SubTaskEvent::Uploaded(meta_id, bytes) => {
+            SubTaskEvent::Uploaded(meta_id, sub_id, bytes, peer_addr) => {
                 if let Some(task) = self.tasks.get_mut(&meta_id) {
                     task.uploaded_length += bytes;
+                    if let Some(bt_task) = self.bt_tasks.get(&sub_id) {
+                        let mut registry = bt_task.state.registry.lock().await;
+                        registry.add_uploaded(&peer_addr, bytes);
+                    }
                     let _ = self.event_tx.send(Event::TaskProgress {
                         id: meta_id,
                         completed_bytes: task.completed_length,

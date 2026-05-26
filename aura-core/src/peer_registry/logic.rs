@@ -22,6 +22,10 @@ pub struct PeerState {
     pub downloaded_bytes: u64,
     pub last_downloaded_bytes: u64,
     pub download_rate: f64,
+    pub uploaded_bytes: u64,
+    pub last_uploaded_bytes: u64,
+    pub upload_rate: f64,
+    pub is_optimistic_unchoke: bool,
 }
 
 #[derive(Debug)]
@@ -52,6 +56,10 @@ impl PeerRegistry {
                     downloaded_bytes: 0,
                     last_downloaded_bytes: 0,
                     download_rate: 0.0,
+                    uploaded_bytes: 0,
+                    last_uploaded_bytes: 0,
+                    upload_rate: 0.0,
+                    is_optimistic_unchoke: false,
                 }
             });
         }
@@ -77,17 +85,37 @@ impl PeerRegistry {
         }
     }
 
+    pub fn get_mut(&mut self, addr: &str) -> Option<&mut PeerState> {
+        self.peers.get_mut(addr)
+    }
+
     pub fn add_downloaded(&mut self, addr: &str, bytes: u64) {
         if let Some(ps) = self.peers.get_mut(addr) {
             ps.downloaded_bytes += bytes;
         }
     }
 
+    pub fn add_uploaded(&mut self, addr: &str, bytes: u64) {
+        if let Some(ps) = self.peers.get_mut(addr) {
+            ps.uploaded_bytes += bytes;
+        }
+    }
+
     pub fn tick_rates(&mut self, elapsed_secs: f64) {
         for ps in self.peers.values_mut() {
-            let bytes_in_interval = ps.downloaded_bytes.saturating_sub(ps.last_downloaded_bytes);
-            ps.download_rate = bytes_in_interval as f64 / elapsed_secs;
+            let d_bytes = ps.downloaded_bytes.saturating_sub(ps.last_downloaded_bytes);
+            ps.download_rate = d_bytes as f64 / elapsed_secs;
             ps.last_downloaded_bytes = ps.downloaded_bytes;
+
+            let u_bytes = ps.uploaded_bytes.saturating_sub(ps.last_uploaded_bytes);
+            ps.upload_rate = u_bytes as f64 / elapsed_secs;
+            ps.last_uploaded_bytes = ps.uploaded_bytes;
+        }
+    }
+
+    pub fn reset_optimistic_unchokes(&mut self) {
+        for ps in self.peers.values_mut() {
+            ps.is_optimistic_unchoke = false;
         }
     }
 
