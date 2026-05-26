@@ -1,10 +1,9 @@
 use crate::AuraWorld;
 use cucumber::{given, then, when};
-use std::path::PathBuf;
 
 #[given(expr = "a new download task for {string}")]
 async fn given_new_download_task(world: &mut AuraWorld, file: String) {
-    let path = world.temp_dir.path().join(&file);
+    let _path = world.temp_dir.path().join(&file);
     world
         .temp_files
         .push(tempfile::NamedTempFile::new().unwrap());
