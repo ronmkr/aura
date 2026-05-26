@@ -1,90 +1,87 @@
-# Aura: Development Tasks (Post-Deep-Dive Audit)
+# Aura: Development Tasks
 
-This document tracks the technical debt and missing features identified during the 2026-05-24 code-level deep-dive audit across all 4 crates. Updated from the earlier 2026-05-09/2026-05-17 audits with corrections.
+All active development tasks, technical debt, and feature requests are managed exclusively via [GitHub Issues](https://github.com/ronmkr/aura/issues).
 
-## 🔴 Critical: Data Integrity & Security
+## 🟢 Open Tasks
 
-- [x] **fsync before atomic rename** (Issue #120) [CRITICAL]
-    - `storage/ops.rs` does NOT call `fsync()`/`fdatasync()` before `.part` → final rename.
-    - Crash before OS writeback could cause silent data loss/corruption.
-- [ ] **DHT token is hardcoded `[1,2,3,4]`** (Issue #121) [CRITICAL]
-    - `dht/actor/` uses a predictable static token for all announce_peer responses.
-    - Remote peers can forge announcements — security vulnerability per BEP 5.
-- [ ] **VPN kill-switch is dead code** (Issue #122) [HIGH]
-    - `force_tunnel` config key exists but is never read/enforced in `vpn/logic.rs`.
-    - No firewall rules, no iptables/pf integration, no automatic interface binding.
-    - Users relying on `force_tunnel = true` have a false sense of security.
-- [x] **DNS resolver config is a facade** (Issue #128) [MODERATE]
-    - `create_resolver()` accepts Cloudflare/Google/Custom enum variants but ALL paths create the same system resolver.
-    - `hickory-resolver` with DoH feature is a dependency but never configured for DoH/DoT.
+- [ ] **infra: CI Docs Deployment** (Issue #134)
+- [ ] **Feat: Respect BEP 12 tracker tier ordering** (Issue #128) `[enhancement]`
+- [ ] **Test: Implement stub BDD step definitions for daemon, networking, storage, swarm features** (Issue #124) `[status:unverified]`
+- [ ] **Feat: Add peer health scoring, reputation, and eviction to peer registry** (Issue #123) `[enhancement, module:core, priority:moderate]`
+- [ ] **Feat: Implement PEX (Peer Exchange) — BEP 11** (Issue #121) `[enhancement, module:core, priority:moderate]`
+- [ ] **Feat: Implement BT choking algorithm (tit-for-tat + optimistic unchoke)** (Issue #120) `[enhancement, module:core, priority:critical]`
+- [ ] **feat: QR code sharing for magnet links in CLI/TUI** (Issue #74)
+- [ ] **feat: implement Privacy-Enhanced Resolver (DoH/DoT)** (Issue #73)
+- [ ] **feat: task prioritization and dependency management** (Issue #72) `[enhancement, module:core, priority:moderate]`
+- [ ] **feat: i18n support for CLI and TUI** (Issue #71)
+- [ ] **feat: implement recursive mirroring (wget parity)** (Issue #65) `[enhancement, module:core, priority:moderate]`
+- [ ] **feat: Prioritized Streaming Mode for Media Playback** (Issue #28) `[enhancement, module:core, priority:moderate]`
+- [ ] **feat: Modern Networking: HTTP/3 (QUIC) & Alt-Svc Support** (Issue #23) `[enhancement, module:core, priority:moderate]`
+- [ ] **feat: NNTP (Usenet) Protocol Support** (Issue #22)
+- [ ] **feat: Multi-tenancy & Structured Audit Tracing** (Issue #15) `[enhancement, priority:moderate, module:daemon]`
+- [ ] **perf: Generational Write Buffer & Advanced Caching** (Issue #14) `[enhancement, module:storage, priority:moderate]`
+- [ ] **perf: Advanced Disk I/O Scheduling** (Issue #13) `[enhancement, module:storage, priority:moderate]`
+- [ ] **feat: Network Filesystem (NFS/SMB) Optimizations** (Issue #12)
+- [ ] **feat: Task Chaining & Metadata-based Path Mapping** (Issue #11)
+- [ ] **feat: Cloud Storage Support (S3, Google Drive)** (Issue #10) `[enhancement, module:core, priority:moderate]`
+- [ ] **feat: Advanced Networking (kTLS, Captive Portals, Roaming)** (Issue #8)
+- [ ] **feat: Integrity Scrubbing & Self-healing Storage** (Issue #4) `[enhancement, module:storage, priority:moderate]`
 
-## 🟡 High Priority: Protocol Correctness
+## ✅ Completed Tasks
 
-- [ ] **BT choking algorithm** (Issue #123) [HIGH]
-    - Worker tracks `peer_choking` state but NEVER sends outgoing Choke/Unchoke/NotInterested.
-    - No tit-for-tat, no optimistic unchoke cycle, no upload bandwidth management.
-    - `peer_registry` `am_choking`/`am_interested` fields initialized but never updated.
-- [ ] **PEX (Peer Exchange) — BEP 11** (Issue #124) [MODERATE]
-    - Config flag `pex_enabled` exists but zero PEX code anywhere in the codebase.
-    - README and ROADMAP list PEX as implemented — this is inaccurate.
-- [ ] **Peer registry health scoring** (Issue #126) [MODERATE]
-    - `peer_registry/logic.rs` (115 lines) only tracks connection state.
-    - No speed tracking, latency, error/corrupt piece counting, reputation, banning, or eviction.
-    - Peer selection is naive: first Disconnected peer, no prioritization.
-- [ ] **FTP: No FTPS (TLS) and no retry** (Issue #125) [MODERATE]
-    - `into_secure()` never called — all FTP connections plaintext.
-    - No retry logic — single attempt, any error is terminal.
-- [ ] **BT block size is 32KB** (Issue #131) [LOW]
-    - Non-standard (spec says 16KB). May cause compatibility issues with strict peers.
-- [ ] **Tracker tier ordering** (Issue #132) [LOW]
-    - All trackers queried in parallel, not by BEP 12 tier priority.
-
-## 🟡 Medium Priority: Correctness & UX
-
-- [ ] **BDD stub test implementations** (Issue #127) [MODERATE]
-    - 41 empty step functions across 4 feature files (daemon, networking, storage, swarm).
-    - 9 scenarios compile and pass vacuously but test nothing.
-- [ ] **Daemon ignores rpc_port config** (Issue #129) [LOW]
-    - Hardcoded `0.0.0.0:6800`, ignores `config.network.rpc_port`.
-- [ ] **Metalink priority hardcoded + debug eprintln** (Issue #130) [LOW]
-    - Priority always 0 (not parsed from XML `<url>` attribute).
-    - `eprintln!("DEBUG: ...")` left in production code at `metalink/logic.rs:83`.
-- [ ] **QR Code Sharing** (Issue #74) [MINOR]
-- [ ] **i18n Support for CLI and TUI** (Issue #71) [MINOR]
-
-## 🟢 Low Priority: Future Features (Milestone 7+)
-
-- [ ] **Advanced Disk I/O Scheduling** (Issue #13) — Deadline-based sorted writes.
-- [ ] **Generational Write Buffer** (Issue #14) — Current aggregator is a simple BTreeMap with no eviction.
-- [ ] **Multi-tenancy & Quotas** (Issue #15) — No tenant isolation or resource quotas.
-- [ ] **Integrity Scrubbing & Self-healing Storage** (Issue #4) — No periodic re-verification.
-- [ ] **Task Chaining & Dependencies** (Issue #11) — No DAG-based scheduler.
-- [ ] **Recursive Mirroring** (Issue #65) — No wget-style site crawling.
-- [ ] **Network Filesystem (NFS/SMB) Optimizations** (Issue #12) — No FS type detection beyond Btrfs/ZFS.
-- [ ] **Task Priority Scheduling** (Issue #72) — `priority` field exists in API but orchestrator doesn't sort by it.
-- [ ] **Prioritized Streaming Mode** (Issue #28) — Sequential piece picker exists but no seek-based scheduling.
-- [ ] **HTTP/3 QUIC** (Issue #23).
-- [ ] **HSTS Cache** (Issue #20).
-- [ ] **Advanced Networking (kTLS, Captive Portals)** (Issue #8).
-- [ ] **New Protocols** (NNTP #22, Cloud #10).
-- [ ] **CI Docs Deployment**.
-
-## ✅ Previously Completed (Verified by Deep-Dive)
-
-- [x] **Advanced Filesystem Hardening** (Issue #92) — No-COW on Btrfs/ZFS, fallocate, path hardening.
-- [x] **Modular Architecture Refactor** (Issue #96) — No file >400 lines (except http.rs at 625).
-- [x] **Project Documentation** — DEVELOPMENT.md, API.md, MIGRATION.md, 18-page mdBook manual.
-- [x] **Policy-based Error Management** (Issue #18) — Retry backoff, mirror failover, blacklisting.
-- [x] **Browser Extension Bridge** (Issue #95) — `/extension/add` endpoint.
-- [x] **WebSocket Telemetry for RPC** — Real-time `aura.onEvent` streaming.
-- [x] **Web UI Dashboard** (Issue #67) — Real SPA with Catppuccin dark theme.
-- [x] **Prometheus Metrics Exporter** (Issue #69) — `/metrics` endpoint.
-- [x] **Integrated Hook System** (Issue #16) — 4 event types, script execution.
-- [x] **MIME Validation & Landing Page Resolution** (Issue #19) — HTML scraping with asset link matching.
-- [x] **Unified Credential Provider** (Issue #21) — Netrc + Netscape cookie parsing.
-- [x] **Dynamic DHT Bootstrap** (Issue #77) — sled persistence, periodic re-pinging.
-- [x] **Non-Swarm Integrity** (Issue #75) — MD5/SHA-1/SHA-256/SHA-512 at storage layer.
-- [x] **SOCKS5 Proxy Support** (Issue #66) — `reqwest::Proxy` + `tokio_socks`.
-- [x] **NAT Traversal & Port Mapping Refresh** (Issue #114) — 30-minute refresh interval.
-- [x] **Happy Eyeballs** (Issue #25) — IPv6/IPv4 interleaving with 250ms stagger.
-- [x] **VPN Detection** (Issue #42) — WireGuard, OpenVPN, InterfaceMonitor providers (but kill-switch not enforced).
+- [x] **Bug: DNS resolver config is a facade — DoH/DoT not wired** (Issue #135)
+- [x] **Bug: BT block size is 32KB — non-standard (spec is 16KB)** (Issue #127) `[bug]`
+- [x] **Bug: Metalink parser has debug eprintln and hardcoded priority** (Issue #126) `[bug]`
+- [x] **Bug: Daemon ignores rpc_port config — hardcoded to 6800** (Issue #125) `[bug]`
+- [x] **Feat: Add FTPS (TLS) support and retry logic to FTP worker** (Issue #122) `[enhancement]`
+- [x] **Bug: VPN kill-switch (force_tunnel) is dead code — not enforced** (Issue #119) `[bug]`
+- [x] **Bug: DHT token is hardcoded [1,2,3,4] — security vulnerability** (Issue #118) `[bug]`
+- [x] **Bug: Add fsync/fdatasync before atomic .part rename to prevent data loss** (Issue #117) `[bug, module:storage]`
+- [x] **Feature: NAT Traversal Mapping Refresh** (Issue #114) `[enhancement]`
+- [x] **feat: WebSocket Telemetry for RPC (ADR 0016 Edge Case)** (Issue #104)
+- [x] **chore: Modular Architecture Refactor (exceeding 400 lines)** (Issue #96)
+- [x] **feat: Browser Bridge (Extension Support)** (Issue #95)
+- [x] **feat: implement advanced filesystem hardening (Pre-allocation/No-COW)** (Issue #92) `[module:storage, status:unverified]`
+- [x] **Implement Integration Tests Suite** (Issue #89) `[status:unverified]`
+- [x] **refactor: technical debt cleanup and dead code removal** (Issue #78)
+- [x] **feat: dynamic DHT bootstrap node refreshing** (Issue #77)
+- [x] **feat: enforce BitTorrent upload ratio and seed time limits** (Issue #76)
+- [x] **feat: checksum verification for HTTP and FTP downloads** (Issue #75)
+- [x] **feat: implement COW-aware storage allocator (Btrfs/ZFS)** (Issue #70)
+- [x] **feat: prometheus metrics and telemetry exporter** (Issue #69) `[enhancement]`
+- [x] **feat: support BitTorrent v2 (SHA-256 Merkle Trees)** (Issue #68)
+- [x] **feat: built-in Web UI dashboard for Aura Daemon** (Issue #67)
+- [x] **feat: implement SOCKS5 proxy support for BitTorrent protocol** (Issue #66)
+- [x] **feat: enable full palette customization & token-based theming** (Issue #57)
+- [x] **refactor: Use robust URL encoding for tracker announcements** (Issue #52)
+- [x] **perf: Wrap synchronous network interface calls in spawn_blocking** (Issue #51)
+- [x] **perf: Replace unbounded subtask channel with bounded backpressure** (Issue #50)
+- [x] **reliability: Replace unchecked unwrap() calls with robust error handling** (Issue #49)
+- [x] **infra: Automated Performance Benchmarking Suite** (Issue #47)
+- [x] **feat: Public Rust API & Embeddability (TaskHandles)** (Issue #46)
+- [x] **feat: Magnet Link Support (BEP 9 Metadata Exchange)** (Issue #45)
+- [x] **feat: Task Persistence & Session Recovery (.aura files)** (Issue #44)
+- [x] **feat: URL Globbing & Batch Expansion Support** (Issue #43)
+- [x] **feat: Native VPN Integration (OpenVPN/WireGuard)** (Issue #42)
+- [x] **chore: Modular Architecture Refactor (No file > 400 lines)** (Issue #41)
+- [x] **feat: Metalink Support (V3/V4) & Automated Multi-source Tasking** (Issue #33)
+- [x] **feat: Unified Proxy Connector (SOCKS5/HTTP)** (Issue #32)
+- [x] **feat: Adaptive Connection Scaling & Sourced Aggregation** (Issue #31) `[status:stub, module:core, module:storage]`
+- [x] **feat: Hierarchical Token Bucket Throttling** (Issue #30) `[status:stub, module:core, module:storage]`
+- [x] **feat: Racing Work Stealer for Slow Stream Mitigation** (Issue #29) `[status:stub, module:core, module:storage]`
+- [x] **feat: Themeable TUI & UI Customization** (Issue #27)
+- [x] **perf: Write-Back Caching & Memory-aligned I/O** (Issue #26)
+- [x] **feat: Happy Eyeballs (RFC 8305) Support** (Issue #25)
+- [x] **feat: DNS over HTTPS (DoH) & Async DNS Resolver** (Issue #24)
+- [x] **feat: Credential Provider & Security Abstraction** (Issue #21)
+- [x] **feat: HSTS Cache & Automated HTTPS Upgrade** (Issue #20)
+- [x] **feat: MIME Validation & Landing Page Resolution** (Issue #19) `[enhancement]`
+- [x] **feat: Policy-based Error Management & Self-healing** (Issue #18) `[enhancement]`
+- [x] **feat: Integrated Hook System (Event Callbacks)** (Issue #16)
+- [x] **feat: BitTorrent v2 Support (Merkle Trees)** (Issue #9)
+- [x] **feat: Recursive Site Mirroring (Wget-style)** (Issue #7)
+- [x] **feat: BitTorrent Endgame Mode** (Issue #6)
+- [x] **feat: Power Management & Sleep Prevention** (Issue #5)
+- [x] **feat: Dynamic TOML Configuration & Hot-reloading** (Issue #3)
+- [x] **perf: No-COW Allocator & Disk Optimization** (Issue #2)
+- [x] **feat: Local Peer Discovery (LPD) Support** (Issue #1)

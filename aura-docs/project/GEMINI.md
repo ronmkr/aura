@@ -15,8 +15,9 @@ This document defines the foundational mandates for Gemini CLI when working on t
 
 ## 🏗️ Workflow Mandates
 - **Zero Warnings**: Treat all compiler and Clippy warnings as errors. Run `cargo clippy -- -D warnings` before every commit.
-- **Requirement Audit & Edge Cases**: Before beginning any implementation, you MUST audit the relevant ADRs in `aura-docs/adr/` and check previous implementations to identify constraints and potential edge cases (e.g., OS-specific limits). Do not write code without formulating real-world scenarios first.
+- **Requirement Audit & Edge Cases**: Before beginning any implementation, you MUST audit the relevant ADRs in `aura-docs/adr/` and check corresponding GitHub Issues to identify constraints and potential edge cases (e.g., OS-specific limits). Do not write code without formulating real-world scenarios first.
 - **TDD Workflow**: Always follow the Red-Green-Refactor cycle. A task is not started until a failing test (RED) exists, and not finished until the test passes (GREEN) and the code is idiomatic (REFACTOR).
+- **Issue Tracking**: All technical debt, bugs, and feature requests are tracked exclusively on GitHub. Never create local issue markdown files.
 - **Branch Protection**: All changes must be submitted via **Pull Requests** to the `main` branch. Direct pushes to `main` are prohibited.
 - **Validation**: Every implementation task is incomplete without comprehensive unit tests and behavioral verification.
 - **Documentation**: Update `CONTEXT.md` for new domain terms and maintain the ADR sequence in `aura-docs/adr/`. All project documentation must reside in `aura-docs/project/`.
