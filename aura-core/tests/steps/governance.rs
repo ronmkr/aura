@@ -235,7 +235,7 @@ async fn when_download_starts_single(world: &mut AuraWorld) {
 
 #[then(expr = "the Orchestrator should detect throughput is below the global potential")]
 async fn then_detect_potential(_world: &mut AuraWorld) {
-    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
 }
 
 #[then(regex = r"the Orchestrator should scale the subtask to (\d+) concurrent connections")]

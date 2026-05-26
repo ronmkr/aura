@@ -8,7 +8,6 @@ use std::sync::Arc;
 
 /// Creates a `TokioResolver` from the provided custom `ResolverConfig`.
 pub async fn create_resolver(config: &ResolverConfig) -> Result<TokioResolver> {
-    use hickory_resolver::proto::xfer::Protocol;
     match config {
         ResolverConfig::Simple(ref s) => {
             let s_lower = s.to_lowercase();
@@ -16,35 +15,88 @@ pub async fn create_resolver(config: &ResolverConfig) -> Result<TokioResolver> {
                 let builder = TokioResolver::builder_tokio().map_err(|e| {
                     Error::Config(format!("Failed to init system DNS builder: {}", e))
                 })?;
-                Ok(builder.build())
+                builder.build().map_err(|e| {
+                    Error::Config(format!("Failed to build system DNS resolver: {}", e))
+                })
             } else if s_lower == "cloudflare" {
-                Ok(hickory_resolver::Resolver::builder_with_config(
-                    hickory_resolver::config::ResolverConfig::cloudflare_https(),
-                    hickory_resolver::name_server::TokioConnectionProvider::default(),
+                // Cloudflare DNS-over-HTTPS bootstrap addresses
+                let ips = vec![
+                    "1.1.1.1".parse::<IpAddr>().unwrap(),
+                    "1.0.0.1".parse::<IpAddr>().unwrap(),
+                    "2606:4700:4700::1111".parse::<IpAddr>().unwrap(),
+                    "2606:4700:4700::1001".parse::<IpAddr>().unwrap(),
+                ];
+                let mut name_servers = Vec::new();
+                for ip in ips {
+                    let ns_config = hickory_resolver::config::NameServerConfig::https(
+                        ip,
+                        std::sync::Arc::from("cloudflare-dns.com"),
+                        Some(std::sync::Arc::from("/dns-query")),
+                    );
+                    name_servers.push(ns_config);
+                }
+                let hickory_config = hickory_resolver::config::ResolverConfig::from_parts(
+                    None,
+                    vec![],
+                    name_servers,
+                );
+
+                hickory_resolver::Resolver::builder_with_config(
+                    hickory_config,
+                    hickory_resolver::net::runtime::TokioRuntimeProvider::default(),
                 )
-                .build())
+                .build()
+                .map_err(|e| {
+                    Error::Config(format!("Failed to build Cloudflare DNS resolver: {}", e))
+                })
             } else if s_lower == "google" {
-                Ok(hickory_resolver::Resolver::builder_with_config(
-                    hickory_resolver::config::ResolverConfig::google_https(),
-                    hickory_resolver::name_server::TokioConnectionProvider::default(),
+                // Google DNS-over-HTTPS bootstrap addresses
+                let ips = vec![
+                    "8.8.8.8".parse::<IpAddr>().unwrap(),
+                    "8.8.4.4".parse::<IpAddr>().unwrap(),
+                    "2001:4860:4860::8888".parse::<IpAddr>().unwrap(),
+                    "2001:4860:4860::8844".parse::<IpAddr>().unwrap(),
+                ];
+                let mut name_servers = Vec::new();
+                for ip in ips {
+                    let ns_config = hickory_resolver::config::NameServerConfig::https(
+                        ip,
+                        std::sync::Arc::from("dns.google"),
+                        Some(std::sync::Arc::from("/dns-query")),
+                    );
+                    name_servers.push(ns_config);
+                }
+                let hickory_config = hickory_resolver::config::ResolverConfig::from_parts(
+                    None,
+                    vec![],
+                    name_servers,
+                );
+
+                hickory_resolver::Resolver::builder_with_config(
+                    hickory_config,
+                    hickory_resolver::net::runtime::TokioRuntimeProvider::default(),
                 )
-                .build())
+                .build()
+                .map_err(|e| Error::Config(format!("Failed to build Google DNS resolver: {}", e)))
             } else {
                 let ip: IpAddr = s.parse().map_err(|_| {
                     Error::Config(format!("Unsupported or invalid dns_resolver config: {}", s))
                 })?;
-                let mut hickory_config = hickory_resolver::config::ResolverConfig::new();
-                let addr = std::net::SocketAddr::new(ip, 53);
-                hickory_config.add_name_server(hickory_resolver::config::NameServerConfig::new(
-                    addr,
-                    Protocol::Udp,
-                ));
+                let ns_config = hickory_resolver::config::NameServerConfig::udp_and_tcp(ip);
+                let hickory_config = hickory_resolver::config::ResolverConfig::from_parts(
+                    None,
+                    vec![],
+                    vec![ns_config],
+                );
 
-                Ok(hickory_resolver::Resolver::builder_with_config(
+                hickory_resolver::Resolver::builder_with_config(
                     hickory_config,
-                    hickory_resolver::name_server::TokioConnectionProvider::default(),
+                    hickory_resolver::net::runtime::TokioRuntimeProvider::default(),
                 )
-                .build())
+                .build()
+                .map_err(|e| {
+                    Error::Config(format!("Failed to build custom IP DNS resolver: {}", e))
+                })
             }
         }
         ResolverConfig::Structured(ref structured) => match structured {
@@ -90,24 +142,28 @@ pub async fn create_resolver(config: &ResolverConfig) -> Result<TokioResolver> {
                     )));
                 }
 
-                let mut hickory_config = hickory_resolver::config::ResolverConfig::new();
-                let server_name = host.clone();
-
+                let mut name_servers = Vec::new();
                 for ip in resolved_ips {
-                    let mut ns_config = hickory_resolver::config::NameServerConfig::new(
-                        std::net::SocketAddr::new(ip, port),
-                        Protocol::Https,
+                    let ns_config = hickory_resolver::config::NameServerConfig::https(
+                        ip,
+                        std::sync::Arc::from(host.as_str()),
+                        Some(std::sync::Arc::from(parsed_url.path())),
                     );
-                    ns_config.tls_dns_name = Some(server_name.clone());
-                    ns_config.http_endpoint = Some(parsed_url.path().to_string());
-                    hickory_config.add_name_server(ns_config);
+                    name_servers.push(ns_config);
                 }
 
-                Ok(hickory_resolver::Resolver::builder_with_config(
+                let hickory_config = hickory_resolver::config::ResolverConfig::from_parts(
+                    None,
+                    vec![],
+                    name_servers,
+                );
+
+                hickory_resolver::Resolver::builder_with_config(
                     hickory_config,
-                    hickory_resolver::name_server::TokioConnectionProvider::default(),
+                    hickory_resolver::net::runtime::TokioRuntimeProvider::default(),
                 )
-                .build())
+                .build()
+                .map_err(|e| Error::Config(format!("Failed to build DoH DNS resolver: {}", e)))
             }
             StructuredResolverConfig::Dot {
                 server,
@@ -136,22 +192,27 @@ pub async fn create_resolver(config: &ResolverConfig) -> Result<TokioResolver> {
                     )));
                 }
 
-                let mut hickory_config = hickory_resolver::config::ResolverConfig::new();
-
+                let mut name_servers = Vec::new();
                 for ip in resolved_ips {
-                    let mut ns_config = hickory_resolver::config::NameServerConfig::new(
-                        std::net::SocketAddr::new(ip, resolved_port),
-                        Protocol::Tls,
+                    let ns_config = hickory_resolver::config::NameServerConfig::tls(
+                        ip,
+                        std::sync::Arc::from(tls_name.as_str()),
                     );
-                    ns_config.tls_dns_name = Some(tls_name.clone());
-                    hickory_config.add_name_server(ns_config);
+                    name_servers.push(ns_config);
                 }
 
-                Ok(hickory_resolver::Resolver::builder_with_config(
+                let hickory_config = hickory_resolver::config::ResolverConfig::from_parts(
+                    None,
+                    vec![],
+                    name_servers,
+                );
+
+                hickory_resolver::Resolver::builder_with_config(
                     hickory_config,
-                    hickory_resolver::name_server::TokioConnectionProvider::default(),
+                    hickory_resolver::net::runtime::TokioRuntimeProvider::default(),
                 )
-                .build())
+                .build()
+                .map_err(|e| Error::Config(format!("Failed to build DoT DNS resolver: {}", e)))
             }
         },
     }

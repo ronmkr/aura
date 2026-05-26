@@ -90,5 +90,8 @@ mod steps;
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt::init();
-    AuraWorld::cucumber().run_and_exit("tests/features").await;
+    AuraWorld::cucumber()
+        .max_concurrent_scenarios(1)
+        .run_and_exit("tests/features")
+        .await;
 }
