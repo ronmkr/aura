@@ -140,4 +140,29 @@ mod tests {
         assert!(to_connect2.ip == "1.1.1.1" || to_connect2.ip == "2.2.2.2");
         assert_ne!(to_connect.ip, to_connect2.ip);
     }
+
+    #[test]
+    fn test_peer_registry_rates() {
+        let mut registry = PeerRegistry::new();
+        let p1 = Peer {
+            id: None,
+            ip: "1.1.1.1".to_string(),
+            port: 80,
+        };
+        registry.add_peers(vec![p1]);
+
+        let addr = "1.1.1.1:80";
+        registry.update_state(addr, ConnectionState::Handshaked);
+        registry.add_downloaded(addr, 1024);
+
+        registry.tick_rates(1.0);
+        let connected = registry.get_all_connected();
+        assert_eq!(connected.len(), 1);
+        assert_eq!(connected[0].download_rate, 1024.0);
+
+        // Tick again with no new downloads
+        registry.tick_rates(1.0);
+        let connected2 = registry.get_all_connected();
+        assert_eq!(connected2[0].download_rate, 0.0);
+    }
 }
