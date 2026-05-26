@@ -228,10 +228,21 @@ impl BtWorker {
                             })
                             .await?;
                         let _ = subtask_tx
-                            .send(SubTaskEvent::Uploaded(meta_id, length as u64))
+                            .send(SubTaskEvent::Uploaded(
+                                meta_id,
+                                sub_id,
+                                length as u64,
+                                peer_addr.clone(),
+                            ))
                             .await;
                     }
                 }
+            }
+            PeerMessage::Interested => {
+                task.update_peer_interest(&peer_addr, true).await;
+            }
+            PeerMessage::NotInterested => {
+                task.update_peer_interest(&peer_addr, false).await;
             }
             PeerMessage::Piece {
                 index,
@@ -244,8 +255,15 @@ impl BtWorker {
 
                 self.piece_buffer[begin as usize..begin as usize + len].copy_from_slice(&block);
                 self.bytes_received += len as u64;
+
+                // Send Downloaded event so PeerRegistry can track rates
                 let _ = subtask_tx
-                    .send(SubTaskEvent::Downloaded(meta_id, sub_id, len as u64))
+                    .send(SubTaskEvent::Downloaded(
+                        meta_id,
+                        sub_id,
+                        len as u64,
+                        peer_addr.clone(),
+                    ))
                     .await;
 
                 if !*peer_choking {
