@@ -19,6 +19,9 @@ pub struct PeerState {
     pub am_interested: bool,
     pub peer_choking: bool,
     pub peer_interested: bool,
+    pub downloaded_bytes: u64,
+    pub last_downloaded_bytes: u64,
+    pub download_rate: f64,
 }
 
 #[derive(Debug)]
@@ -46,6 +49,9 @@ impl PeerRegistry {
                     am_interested: false,
                     peer_choking: true,
                     peer_interested: false,
+                    downloaded_bytes: 0,
+                    last_downloaded_bytes: 0,
+                    download_rate: 0.0,
                 }
             });
         }
@@ -69,6 +75,29 @@ impl PeerRegistry {
         if let Some(ps) = self.peers.get_mut(addr) {
             ps.state = state;
         }
+    }
+
+    pub fn add_downloaded(&mut self, addr: &str, bytes: u64) {
+        if let Some(ps) = self.peers.get_mut(addr) {
+            ps.downloaded_bytes += bytes;
+        }
+    }
+
+    pub fn tick_rates(&mut self, elapsed_secs: f64) {
+        for ps in self.peers.values_mut() {
+            let bytes_in_interval = ps.downloaded_bytes.saturating_sub(ps.last_downloaded_bytes);
+            ps.download_rate = bytes_in_interval as f64 / elapsed_secs;
+            ps.last_downloaded_bytes = ps.downloaded_bytes;
+        }
+    }
+
+    pub fn get_all_connected(&mut self) -> Vec<&mut PeerState> {
+        self.peers
+            .values_mut()
+            .filter(|ps| {
+                ps.state == ConnectionState::Handshaked || ps.state == ConnectionState::Connected
+            })
+            .collect()
     }
 
     pub fn peer_count(&self) -> usize {
