@@ -6,7 +6,7 @@
 
 - **Actor-Based**: Built using the actor model (via Tokio) for high-speed, non-blocking I/O.
 - **Protocol Agnostic**: Seamlessly aggregates data from HTTP, FTP, and BitTorrent (v1 & v2) into a single file.
-- **Privacy First**: Built-in VPN kill-switches and SOCKS5 proxy support.
+- **Privacy First**: Built-in VPN kill-switches, SOCKS5 proxy support, and DNS-over-HTTPS (DoH/DoT) resolution.
 - **Resilient**: Automatic retry, self-healing workers, and session persistence.
 
 Aura can be used as a standalone CLI utility, an interactive TUI dashboard, or a headless daemon for server-side orchestration.
