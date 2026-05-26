@@ -5,7 +5,7 @@ Aura's design is driven by a series of formal Architecture Decision Records. The
 | ADR | Title | Status |
 |---|---|---|
 | [0001](../adr/0001-orchestrated-pull-model.md) | Orchestrated Pull Model | Implemented |
-| [0003](../adr/0003-atomic-completion-and-pre-allocation.md) | Atomic Completion & Pre-allocation | Partially Implemented |
+| [0003](../adr/0003-atomic-completion-and-pre-allocation.md) | Atomic Completion & Pre-allocation | Implemented |
 | [0005](../adr/0005-racing-work-stealer.md) | Racing Work Stealer | Implemented |
 | [0006](../adr/0006-error-classification-and-self-healing.md) | Error Classification | Implemented |
 | [0009](../adr/0009-global-token-bucket-throttling.md) | Token Bucket Throttling | Implemented |
@@ -15,8 +15,9 @@ Aura's design is driven by a series of formal Architecture Decision Records. The
 | [0023](../adr/0023-adaptive-scaling-and-aggregation.md) | Adaptive Connection Scaling | Implemented |
 | [0025](../adr/0025-nat-traversal-and-lpd.md) | NAT Traversal & LPD | Implemented |
 | [0031](../adr/0031-bittorrent-v2-merkle.md) | BitTorrent v2 & Merkle | Implemented |
-| [0035](../adr/0035-advanced-filesystem-edge-cases.md) | Advanced Filesystem (No-COW) | Partially Implemented |
-| [0038](../adr/0038-vpn-integration.md) | Native VPN Integration | Partially Implemented |
+| [0035](../adr/0035-advanced-filesystem-edge-cases.md) | Advanced Filesystem (No-COW) | Implemented |
+| [0038](../adr/0038-vpn-integration.md) | Native VPN Integration | Implemented |
 | [0039](../adr/0039-bittorrent-endgame-mode.md) | BitTorrent Endgame Mode | Implemented |
+| [0044](../adr/0044-bittorrent-choking-algorithm.md) | BitTorrent Choking Algorithm | Implemented |
 
 For a full list of ADRs, see the `aura-docs/adr/` directory in the repository.
