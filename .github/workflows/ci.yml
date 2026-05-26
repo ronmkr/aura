@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: stable
           components: rustfmt
@@ -46,8 +46,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libdbus-1-dev pkg-config
       - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: stable
       - uses: Swatinem/rust-cache@v2
       - name: Run Tests
         run: cargo test --all-features -v
