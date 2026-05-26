@@ -4,27 +4,27 @@ All active development tasks, technical debt, and feature requests are managed e
 
 ## 🟢 Open Tasks
 
-- [ ] **infra: CI Docs Deployment** (Issue #134)
-- [ ] **Feat: Respect BEP 12 tracker tier ordering** (Issue #128) `[enhancement]`
-- [ ] **Test: Implement stub BDD step definitions for daemon, networking, storage, swarm features** (Issue #124) `[status:unverified]`
+- [ ] **infra: CI Docs Deployment** (Issue #134) `[enhancement, priority:moderate, infra]`
+- [ ] **Feat: Respect BEP 12 tracker tier ordering** (Issue #128) `[enhancement, module:core, priority:low]`
+- [ ] **Test: Implement stub BDD step definitions for daemon, networking, storage, swarm features** (Issue #124) `[status:unverified, priority:moderate, testing]`
 - [ ] **Feat: Add peer health scoring, reputation, and eviction to peer registry** (Issue #123) `[enhancement, module:core, priority:moderate]`
 - [ ] **Feat: Implement PEX (Peer Exchange) — BEP 11** (Issue #121) `[enhancement, module:core, priority:moderate]`
 - [ ] **Feat: Implement BT choking algorithm (tit-for-tat + optimistic unchoke)** (Issue #120) `[enhancement, module:core, priority:critical]`
-- [ ] **feat: QR code sharing for magnet links in CLI/TUI** (Issue #74)
-- [ ] **feat: implement Privacy-Enhanced Resolver (DoH/DoT)** (Issue #73)
+- [ ] **feat: QR code sharing for magnet links in CLI/TUI** (Issue #74) `[enhancement, module:cli, module:tui, priority:minor]`
+- [ ] **feat: implement Privacy-Enhanced Resolver (DoH/DoT)** (Issue #73) `[enhancement, priority:moderate, module:network]`
 - [ ] **feat: task prioritization and dependency management** (Issue #72) `[enhancement, module:core, priority:moderate]`
-- [ ] **feat: i18n support for CLI and TUI** (Issue #71)
+- [ ] **feat: i18n support for CLI and TUI** (Issue #71) `[enhancement, module:cli, module:tui, priority:minor]`
 - [ ] **feat: implement recursive mirroring (wget parity)** (Issue #65) `[enhancement, module:core, priority:moderate]`
 - [ ] **feat: Prioritized Streaming Mode for Media Playback** (Issue #28) `[enhancement, module:core, priority:moderate]`
 - [ ] **feat: Modern Networking: HTTP/3 (QUIC) & Alt-Svc Support** (Issue #23) `[enhancement, module:core, priority:moderate]`
-- [ ] **feat: NNTP (Usenet) Protocol Support** (Issue #22)
+- [ ] **feat: NNTP (Usenet) Protocol Support** (Issue #22) `[enhancement, module:core, priority:low]`
 - [ ] **feat: Multi-tenancy & Structured Audit Tracing** (Issue #15) `[enhancement, priority:moderate, module:daemon]`
 - [ ] **perf: Generational Write Buffer & Advanced Caching** (Issue #14) `[enhancement, module:storage, priority:moderate]`
 - [ ] **perf: Advanced Disk I/O Scheduling** (Issue #13) `[enhancement, module:storage, priority:moderate]`
-- [ ] **feat: Network Filesystem (NFS/SMB) Optimizations** (Issue #12)
-- [ ] **feat: Task Chaining & Metadata-based Path Mapping** (Issue #11)
+- [ ] **feat: Network Filesystem (NFS/SMB) Optimizations** (Issue #12) `[enhancement, module:storage, priority:moderate]`
+- [ ] **feat: Task Chaining & Metadata-based Path Mapping** (Issue #11) `[enhancement, module:core, priority:low]`
 - [ ] **feat: Cloud Storage Support (S3, Google Drive)** (Issue #10) `[enhancement, module:core, priority:moderate]`
-- [ ] **feat: Advanced Networking (kTLS, Captive Portals, Roaming)** (Issue #8)
+- [ ] **feat: Advanced Networking (kTLS, Captive Portals, Roaming)** (Issue #8) `[enhancement, priority:low, module:network]`
 - [ ] **feat: Integrity Scrubbing & Self-healing Storage** (Issue #4) `[enhancement, module:storage, priority:moderate]`
 
 ## ✅ Completed Tasks
