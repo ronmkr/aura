@@ -1,4 +1,7 @@
-pub mod logic;
+pub mod engine;
 pub mod ops;
 pub mod sys;
-pub use logic::*;
+pub use engine::*;
+
+#[cfg(test)]
+mod tests;

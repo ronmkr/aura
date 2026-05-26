@@ -222,7 +222,7 @@ async fn when_add_large_task(world: &mut AuraWorld, _mb: u32) {
 
 #[then(expr = "the {string} should fail the pre-allocation")]
 async fn then_fail_preallocation(_world: &mut AuraWorld, _engine: String) {
-    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
 }
 
 #[then(expr = "the {string} should immediately pause the task with {string}")]

@@ -148,7 +148,7 @@ pub async fn when_download_starts(world: &mut AuraWorld) {
 
 #[then(expr = "the engine should detect Mirror A is lagging")]
 async fn then_detect_lagging(_world: &mut AuraWorld) {
-    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
 }
 
 #[then(expr = "Mirror B should \"steal\" the remaining ranges assigned to Mirror A")]
