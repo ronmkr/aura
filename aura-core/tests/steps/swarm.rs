@@ -2,19 +2,25 @@ use crate::AuraWorld;
 use cucumber::{given, then, when};
 
 #[given(expr = "a magnet link with info-hash {string}")]
-async fn given_magnet_link(_world: &mut AuraWorld, _hash: String) {}
+async fn given_magnet_link(_world: &mut AuraWorld, hash: String) {
+    assert_eq!(hash, "...");
+}
 
 #[when(expr = "I add the task")]
 async fn when_add_task(_world: &mut AuraWorld) {}
 
 #[then(expr = "the engine should enter {string} phase")]
-async fn then_engine_enter_phase(_world: &mut AuraWorld, _phase: String) {}
+async fn then_engine_enter_phase(_world: &mut AuraWorld, phase: String) {
+    assert_eq!(phase, "MetadataExchange");
+}
 
 #[then(expr = "it should connect to DHT and PEX to find peers")]
 async fn then_connect_dht_pex(_world: &mut AuraWorld) {}
 
 #[then(expr = "once the info-dict is received, it should transition to {string} phase")]
-async fn then_transition_phase(_world: &mut AuraWorld, _phase: String) {}
+async fn then_transition_phase(_world: &mut AuraWorld, phase: String) {
+    assert_eq!(phase, "Downloading");
+}
 
 #[then(expr = "the total file size should be correctly resolved")]
 async fn then_total_file_size_resolved(_world: &mut AuraWorld) {}

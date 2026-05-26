@@ -211,6 +211,7 @@ impl Orchestrator {
 
                         let bt_task_run = bt_task.clone();
                         let throttler_clone = throttler_clone.clone();
+                        let worker_cmd_tx_clone = worker_cmd_tx.clone();
                         tokio::spawn(async move {
                             if let Err(e) = bt_task_run
                                 .run(
@@ -219,6 +220,7 @@ impl Orchestrator {
                                     subtask_tx,
                                     token_clone,
                                     throttler_clone,
+                                    worker_cmd_tx_clone,
                                 )
                                 .await
                             {

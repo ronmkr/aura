@@ -221,6 +221,18 @@ impl BtWorker {
                                 self.trigger_request(&mut framed, &task, meta_id, sub_id, storage_tx.clone(), subtask_tx.clone()).await?;
                             }
                         }
+                        WorkerCommand::Choke(addr, _) => {
+                            if addr == self.peer_addr {
+                                debug!(addr = %peer_addr, "Choking peer based on tit-for-tat");
+                                let _ = framed.send(PeerMessage::Choke).await;
+                            }
+                        }
+                        WorkerCommand::Unchoke(addr, _) => {
+                            if addr == self.peer_addr {
+                                debug!(addr = %peer_addr, "Unchoking peer based on tit-for-tat");
+                                let _ = framed.send(PeerMessage::Unchoke).await;
+                            }
+                        }
                     }
                 }
                 msg_res = framed.next() => {

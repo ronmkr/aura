@@ -41,6 +41,8 @@ pub enum Command {
 pub enum WorkerCommand {
     CancelPiece(usize),
     RequestPiece(usize),
+    Choke(String, u16),
+    Unchoke(String, u16),
 }
 
 #[derive(Debug)]

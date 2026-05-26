@@ -1,13 +1,6 @@
 name: Continuous Integration
 
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-
-permissions:
-  contents: read
+on: [push, pull_request]
 
 env:
   CARGO_TERM_COLOR: always
@@ -18,9 +11,10 @@ jobs:
     name: Rustfmt
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: stable
           components: rustfmt
       - name: Formatting
         run: cargo fmt -- --check
@@ -29,28 +23,31 @@ jobs:
     name: Clippy
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
       - name: Install System Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y libdbus-1-dev pkg-config
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: stable
           components: clippy
       - uses: Swatinem/rust-cache@v2
       - name: Clippy
-        run: cargo clippy -- -D warnings
+        run: cargo clippy --all-features -- -D warnings
 
   test:
     name: Tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
       - name: Install System Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y libdbus-1-dev pkg-config
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
       - uses: Swatinem/rust-cache@v2
       - name: Run Tests
-        run: cargo test -v
+        run: cargo test --all-features -v

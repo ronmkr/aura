@@ -19,6 +19,9 @@ pub struct PeerState {
     pub am_interested: bool,
     pub peer_choking: bool,
     pub peer_interested: bool,
+    pub downloaded_bytes: u64,
+    pub last_downloaded_bytes: u64,
+    pub download_rate: f64,
 }
 
 #[derive(Debug)]
@@ -46,6 +49,9 @@ impl PeerRegistry {
                     am_interested: false,
                     peer_choking: true,
                     peer_interested: false,
+                    downloaded_bytes: 0,
+                    last_downloaded_bytes: 0,
+                    download_rate: 0.0,
                 }
             });
         }
@@ -69,6 +75,29 @@ impl PeerRegistry {
         if let Some(ps) = self.peers.get_mut(addr) {
             ps.state = state;
         }
+    }
+
+    pub fn add_downloaded(&mut self, addr: &str, bytes: u64) {
+        if let Some(ps) = self.peers.get_mut(addr) {
+            ps.downloaded_bytes += bytes;
+        }
+    }
+
+    pub fn tick_rates(&mut self, elapsed_secs: f64) {
+        for ps in self.peers.values_mut() {
+            let bytes_in_interval = ps.downloaded_bytes.saturating_sub(ps.last_downloaded_bytes);
+            ps.download_rate = bytes_in_interval as f64 / elapsed_secs;
+            ps.last_downloaded_bytes = ps.downloaded_bytes;
+        }
+    }
+
+    pub fn get_all_connected(&mut self) -> Vec<&mut PeerState> {
+        self.peers
+            .values_mut()
+            .filter(|ps| {
+                ps.state == ConnectionState::Handshaked || ps.state == ConnectionState::Connected
+            })
+            .collect()
     }
 
     pub fn peer_count(&self) -> usize {
@@ -110,5 +139,30 @@ mod tests {
         let to_connect2 = registry.get_peer_to_connect().unwrap();
         assert!(to_connect2.ip == "1.1.1.1" || to_connect2.ip == "2.2.2.2");
         assert_ne!(to_connect.ip, to_connect2.ip);
+    }
+
+    #[test]
+    fn test_peer_registry_rates() {
+        let mut registry = PeerRegistry::new();
+        let p1 = Peer {
+            id: None,
+            ip: "1.1.1.1".to_string(),
+            port: 80,
+        };
+        registry.add_peers(vec![p1]);
+
+        let addr = "1.1.1.1:80";
+        registry.update_state(addr, ConnectionState::Handshaked);
+        registry.add_downloaded(addr, 1024);
+
+        registry.tick_rates(1.0);
+        let connected = registry.get_all_connected();
+        assert_eq!(connected.len(), 1);
+        assert_eq!(connected[0].download_rate, 1024.0);
+
+        // Tick again with no new downloads
+        registry.tick_rates(1.0);
+        let connected2 = registry.get_all_connected();
+        assert_eq!(connected2[0].download_rate, 0.0);
     }
 }

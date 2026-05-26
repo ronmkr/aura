@@ -268,6 +268,75 @@ impl BtTask {
         registry.update_state(addr, state);
     }
 
+    pub async fn run_choker_loop(
+        &self,
+        worker_cmd_tx: tokio::sync::broadcast::Sender<crate::orchestrator::WorkerCommand>,
+        token: tokio_util::sync::CancellationToken,
+    ) -> Result<()> {
+        let mut ticks = 0;
+        let mut interval = tokio::time::interval(std::time::Duration::from_secs(10));
+        loop {
+            tokio::select! {
+                _ = token.cancelled() => break,
+                _ = interval.tick() => {}
+            }
+            if ticks == 0 {
+                ticks += 1;
+                continue; // Skip the immediate first tick
+            }
+            ticks += 1;
+            let optimistic = ticks % 3 == 0;
+
+            let mut registry = self.state.registry.lock().await;
+            registry.tick_rates(10.0);
+
+            let mut peers: Vec<_> = registry.get_all_connected().into_iter().collect();
+            // Sort peers by download_rate descending
+            peers.sort_by(|a, b| {
+                b.download_rate
+                    .partial_cmp(&a.download_rate)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
+
+            let mut unchoked_count = 0;
+            let mut optimistic_peer = None;
+
+            for p in peers.iter_mut() {
+                if unchoked_count < 4 {
+                    // Top 4 peers (tit-for-tat)
+                    if p.am_choking {
+                        p.am_choking = false;
+                        let _ = worker_cmd_tx.send(crate::orchestrator::WorkerCommand::Unchoke(
+                            p.peer.ip.clone(),
+                            p.peer.port,
+                        ));
+                    }
+                    unchoked_count += 1;
+                } else if optimistic && optimistic_peer.is_none() {
+                    // Optimistic unchoke
+                    if p.am_choking {
+                        p.am_choking = false;
+                        let _ = worker_cmd_tx.send(crate::orchestrator::WorkerCommand::Unchoke(
+                            p.peer.ip.clone(),
+                            p.peer.port,
+                        ));
+                    }
+                    optimistic_peer = Some(p.peer.ip.clone());
+                } else {
+                    // Choke the rest
+                    if !p.am_choking {
+                        p.am_choking = true;
+                        let _ = worker_cmd_tx.send(crate::orchestrator::WorkerCommand::Choke(
+                            p.peer.ip.clone(),
+                            p.peer.port,
+                        ));
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
     pub async fn run(
         &self,
         my_id: [u8; 20],
@@ -275,16 +344,19 @@ impl BtTask {
         _subtask_tx: mpsc::Sender<crate::orchestrator::SubTaskEvent>,
         token: tokio_util::sync::CancellationToken,
         _throttler: Arc<crate::throttler::Throttler>,
+        worker_cmd_tx: tokio::sync::broadcast::Sender<crate::orchestrator::WorkerCommand>,
     ) -> Result<()> {
         let port = 6881; // TODO: make configurable
         let dht_token = token.clone();
         let lpd_token = token.clone();
         let tracker_token = token.clone();
+        let choker_token = token.clone();
 
         let this = Arc::new(self.clone());
         let this_dht = this.clone();
         let this_lpd = this.clone();
         let this_tracker = this.clone();
+        let this_choker = this.clone();
 
         tokio::spawn(async move {
             let _ = this_dht.run_dht_loop(dht_token).await;
@@ -297,6 +369,12 @@ impl BtTask {
         tokio::spawn(async move {
             let _ = this_tracker
                 .run_tracker_loop(my_id, port, tracker_token, None, None, None)
+                .await;
+        });
+
+        tokio::spawn(async move {
+            let _ = this_choker
+                .run_choker_loop(worker_cmd_tx, choker_token)
                 .await;
         });
 
