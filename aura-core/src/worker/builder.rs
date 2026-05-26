@@ -120,6 +120,8 @@ impl WorkerBuilder {
             self.uri,
             self.local_addr,
             self.pool,
+            self.retry_count,
+            self.retry_delay_secs,
             self.credential_provider,
         )
     }

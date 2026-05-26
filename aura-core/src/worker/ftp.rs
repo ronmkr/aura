@@ -3,7 +3,8 @@ use crate::buffer_pool::BufferPool;
 use crate::{Error, Result, TaskId};
 use async_trait::async_trait;
 use bytes::BytesMut;
-use suppaftp::tokio::AsyncFtpStream;
+use suppaftp::tokio::AsyncNativeTlsConnector;
+use suppaftp::tokio::AsyncNativeTlsFtpStream;
 use suppaftp::types::FileType;
 use tokio::io::AsyncReadExt;
 use url::Url;
@@ -11,8 +12,10 @@ use url::Url;
 /// A specialized worker for the FTP(S) protocol.
 pub struct FtpWorker {
     uri: String,
-    _local_addr: Option<std::net::IpAddr>,
+    local_addr: Option<std::net::IpAddr>,
     pool: Option<BufferPool>,
+    retry_count: u32,
+    retry_delay_secs: u64,
     credential_provider: Option<std::sync::Arc<crate::config::credentials::CredentialProvider>>,
 }
 
@@ -21,17 +24,21 @@ impl FtpWorker {
         uri: String,
         local_addr: Option<std::net::IpAddr>,
         pool: Option<BufferPool>,
+        retry_count: u32,
+        retry_delay_secs: u64,
         credential_provider: Option<std::sync::Arc<crate::config::credentials::CredentialProvider>>,
     ) -> Self {
         Self {
             uri,
-            _local_addr: local_addr,
+            local_addr,
             pool,
+            retry_count,
+            retry_delay_secs,
             credential_provider,
         }
     }
 
-    async fn connect(&self) -> Result<AsyncFtpStream> {
+    async fn connect_once(&self) -> Result<AsyncNativeTlsFtpStream> {
         let url = Url::parse(&self.uri)
             .map_err(|e| Error::Protocol(format!("Invalid FTP URL: {}", e)))?;
 
@@ -70,9 +77,88 @@ impl FtpWorker {
             pass = p;
         }
 
-        let mut ftp_stream = AsyncFtpStream::connect(format!("{}:{}", host, port))
-            .await
-            .map_err(|e| Error::Worker(format!("Failed to connect to FTP: {}", e)))?;
+        let mut ftp_stream = if let Some(local_ip) = self.local_addr {
+            let addrs = tokio::net::lookup_host(format!("{}:{}", host, port))
+                .await
+                .map_err(|e| {
+                    Error::Worker(format!("Failed to resolve FTP host {}: {}", host, e))
+                })?;
+
+            let mut last_err = None;
+            let mut tcp_stream = None;
+
+            for addr in addrs {
+                if addr.ip().is_ipv4() == local_ip.is_ipv4() {
+                    let socket = if local_ip.is_ipv4() {
+                        tokio::net::TcpSocket::new_v4()
+                    } else {
+                        tokio::net::TcpSocket::new_v6()
+                    }
+                    .map_err(|e| Error::Worker(format!("Failed to create socket: {}", e)))?;
+
+                    if let Err(e) = socket.bind(std::net::SocketAddr::new(local_ip, 0)) {
+                        last_err = Some(Error::Worker(format!(
+                            "Failed to bind to {}: {}",
+                            local_ip, e
+                        )));
+                        continue;
+                    }
+
+                    match socket.connect(addr).await {
+                        Ok(stream) => {
+                            tcp_stream = Some(stream);
+                            break;
+                        }
+                        Err(e) => {
+                            last_err = Some(Error::Worker(format!(
+                                "Failed to connect to {}: {}",
+                                addr, e
+                            )));
+                        }
+                    }
+                }
+            }
+
+            let tcp_stream = tcp_stream.ok_or_else(|| {
+                last_err.unwrap_or_else(|| {
+                    Error::Worker(format!(
+                        "No matching IP address found for host {} and local address {}",
+                        host, local_ip
+                    ))
+                })
+            })?;
+
+            AsyncNativeTlsFtpStream::connect_with_stream(tcp_stream)
+                .await
+                .map_err(|e| Error::Worker(format!("Failed to initialize FTP stream: {}", e)))?
+        } else {
+            AsyncNativeTlsFtpStream::connect(format!("{}:{}", host, port))
+                .await
+                .map_err(|e| Error::Worker(format!("Failed to connect to FTP: {}", e)))?
+        };
+
+        // Determine if we should upgrade to TLS.
+        let is_ftps = url.scheme() == "ftps";
+        let mut should_upgrade = is_ftps;
+
+        if !should_upgrade {
+            // Query FEAT to check if the server supports AUTH TLS.
+            if let Ok(features) = ftp_stream.feat().await {
+                should_upgrade = features.keys().any(|k| {
+                    let k_upper = k.to_uppercase();
+                    k_upper.contains("AUTH TLS") || k_upper.contains("AUTH") || k_upper == "TLS"
+                });
+            }
+        }
+
+        if should_upgrade {
+            let tls_connector = suppaftp::async_native_tls::TlsConnector::new();
+            let connector = AsyncNativeTlsConnector::from(tls_connector);
+            ftp_stream = ftp_stream
+                .into_secure(connector, host)
+                .await
+                .map_err(|e| Error::Worker(format!("FTP TLS upgrade failed: {}", e)))?;
+        }
 
         ftp_stream
             .login(user, pass)
@@ -87,8 +173,34 @@ impl FtpWorker {
         Ok(ftp_stream)
     }
 
+    async fn connect(&self) -> Result<AsyncNativeTlsFtpStream> {
+        let mut attempts = 0;
+        let max_attempts = self.retry_count;
+
+        loop {
+            match self.connect_once().await {
+                Ok(stream) => return Ok(stream),
+                Err(e) if attempts < max_attempts => {
+                    attempts += 1;
+                    let exponent = std::cmp::min(attempts - 1, 30);
+                    let delay = self.retry_delay_secs * (2u64.pow(exponent));
+                    tracing::warn!(
+                        error = %e,
+                        attempt = attempts,
+                        delay_secs = delay,
+                        "Transient FTP connection/login error, retrying"
+                    );
+                    tokio::time::sleep(std::time::Duration::from_secs(delay)).await;
+                }
+                Err(e) => {
+                    return Err(e);
+                }
+            }
+        }
+    }
+
     pub async fn resolve_metadata(&self) -> Result<Metadata> {
-        let mut ftp: AsyncFtpStream = self.connect().await?;
+        let mut ftp: AsyncNativeTlsFtpStream = self.connect().await?;
         let url = Url::parse(&self.uri)
             .map_err(|e| Error::Protocol(format!("Invalid FTP URL: {}", e)))?;
         let path = url.path().trim_start_matches('/');
@@ -122,7 +234,7 @@ impl ProtocolWorker for FtpWorker {
         progress: Option<ProgressSender>,
         throttler: std::sync::Arc<crate::throttler::Throttler>,
     ) -> Result<PieceData> {
-        let mut ftp: AsyncFtpStream = self.connect().await?;
+        let mut ftp: AsyncNativeTlsFtpStream = self.connect().await?;
         let url = Url::parse(&self.uri)
             .map_err(|e| Error::Protocol(format!("Invalid FTP URL: {}", e)))?;
         let path = url.path().trim_start_matches('/');
@@ -179,5 +291,42 @@ impl ProtocolWorker for FtpWorker {
 
     fn available_capacity(&self) -> usize {
         1
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::atomic::{AtomicU32, Ordering};
+    use std::sync::Arc;
+    use tokio::net::TcpListener;
+
+    #[tokio::test]
+    async fn test_ftp_worker_retry_on_connection_failure() {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let port = addr.port();
+
+        let connections_count = Arc::new(AtomicU32::new(0));
+        let count_clone = Arc::clone(&connections_count);
+
+        tokio::spawn(async move {
+            while let Ok((_stream, _)) = listener.accept().await {
+                count_clone.fetch_add(1, Ordering::SeqCst);
+            }
+        });
+
+        let worker = FtpWorker::new(
+            format!("ftp://127.0.0.1:{}/test_file.bin", port),
+            None,
+            None,
+            3,
+            0,
+            None,
+        );
+
+        let result = worker.resolve_metadata().await;
+        assert!(result.is_err());
+        assert_eq!(connections_count.load(Ordering::SeqCst), 4);
     }
 }
