@@ -28,7 +28,16 @@ async fn then_engine_enter_phase(world: &mut AuraWorld, _phase: String) {
 }
 
 #[then(expr = "it should connect to DHT and PEX to find peers")]
-async fn then_connect_dht_pex(_world: &mut AuraWorld) {}
+async fn then_connect_dht_pex(world: &mut AuraWorld) {
+    if let Some(engine) = &world.engine {
+        // Just verify that the engine config has PEX enabled by default in the test world
+        let cfg = engine.tell_config().await.unwrap();
+        assert!(
+            cfg.bittorrent.pex_enabled,
+            "PEX should be enabled by default"
+        );
+    }
+}
 
 #[then(expr = "once the info-dict is received, it should transition to {string} phase")]
 async fn then_transition_phase(_world: &mut AuraWorld, phase: String) {

@@ -96,6 +96,7 @@ impl Orchestrator {
 
                     tracing::debug!(%meta_id, %sub_id, %peer_addr, "Spawning worker for peer");
 
+                    let config_clone = config_arc.clone();
                     tokio::spawn(async move {
                         let mut worker = crate::bt_worker::BtWorker::new(
                             peer_addr.clone(),
@@ -105,6 +106,7 @@ impl Orchestrator {
                             pool,
                             proxy,
                             throttler_clone,
+                            config_clone.load().bittorrent.pex_enabled,
                         );
                         worker.local_addr = local_addr;
 
