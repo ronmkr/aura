@@ -40,7 +40,7 @@ audit:
 	cargo audit
 
 # The strict mandate for every commit
-green-loop: fmt check test bench clippy fmt-check
+green-loop: fmt clippy test bench
 
 # --- Documentation ---
 

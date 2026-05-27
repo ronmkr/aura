@@ -105,3 +105,32 @@ pub(crate) fn harden_path(path: &Path) -> PathBuf {
     }
     safe_path
 }
+
+#[allow(unused_variables)]
+pub(crate) fn apply_fadvise_dontneed(file: &tokio::fs::File, offset: u64, len: u64) {
+    #[cfg(target_os = "linux")]
+    {
+        use std::os::unix::io::AsRawFd;
+        let fd = file.as_raw_fd();
+        unsafe {
+            libc::posix_fadvise(
+                fd,
+                offset as libc::off_t,
+                len as libc::off_t,
+                libc::POSIX_FADV_DONTNEED,
+            );
+        }
+    }
+}
+
+#[allow(unused_variables)]
+pub(crate) fn apply_fadvise_sequential(file: &tokio::fs::File) {
+    #[cfg(target_os = "linux")]
+    {
+        use std::os::unix::io::AsRawFd;
+        let fd = file.as_raw_fd();
+        unsafe {
+            libc::posix_fadvise(fd, 0, 0, libc::POSIX_FADV_SEQUENTIAL);
+        }
+    }
+}
