@@ -1,0 +1,8 @@
+target/
+.git/
+.github/
+aura-docs/
+tests/
+package/
+*.part
+*.aura
