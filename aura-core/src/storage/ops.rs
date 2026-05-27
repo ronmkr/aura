@@ -75,20 +75,6 @@ impl StorageEngine {
         Ok(())
     }
 
-    pub(crate) async fn write_to_disk(
-        &mut self,
-        id: TaskId,
-        offset: u64,
-        data: &[u8],
-    ) -> Result<()> {
-        let file = self.get_or_open_part_file(id).await?;
-        use tokio::io::AsyncSeekExt;
-        use tokio::io::AsyncWriteExt;
-        file.seek(std::io::SeekFrom::Start(offset)).await?;
-        file.write_all(data).await?;
-        Ok(())
-    }
-
     pub(crate) async fn flush_dirty_buffer(&mut self, id: TaskId) -> Result<()> {
         let buffers = if let Some(dirty) = self.dirty_buffers.get_mut(&id) {
             std::mem::take(dirty)
@@ -100,22 +86,19 @@ impl StorageEngine {
             return Ok(());
         }
 
-        let file = self.get_or_open_part_file(id).await?;
-        use tokio::io::AsyncSeekExt;
-        use tokio::io::AsyncWriteExt;
+        let offset = buffers.first().unwrap().0;
+        let data = buffers.into_iter().map(|(_, d)| d).collect::<Vec<_>>();
 
-        // The chunks are already sequential by design
-        if let Some((first_offset, _)) = buffers.first() {
-            file.seek(std::io::SeekFrom::Start(*first_offset)).await?;
-            for (_, data) in &buffers {
-                file.write_all(data).await?;
-            }
-        }
+        use super::scheduler::{IoPriority, IoTask};
+        use tokio::time::{Duration, Instant};
 
-        // Release back to pool after all disk writes succeed
-        for (_, data) in buffers {
-            self.pool.release(data);
-        }
+        self.scheduler.enqueue(IoTask {
+            task_id: id,
+            offset,
+            data,
+            deadline: Instant::now() + Duration::from_millis(500),
+            priority: IoPriority::Normal,
+        });
 
         if let Some(size) = self.dirty_sizes.get_mut(&id) {
             *size = 0;
@@ -125,24 +108,59 @@ impl StorageEngine {
     }
 
     pub(crate) async fn flush_all_pending(&mut self, id: TaskId) -> Result<()> {
-        // First ensure any sequential dirty buffer is flushed
         self.flush_dirty_buffer(id).await?;
 
-        // Then flush any orphaned out-of-order pieces
         if let Some(pending) = self.pending_writes.remove(&id) {
+            use super::scheduler::{IoPriority, IoTask};
+            use tokio::time::{Duration, Instant};
             for (offset, data) in pending {
-                self.write_to_disk(id, offset, &data).await?;
-                self.pool.release(data);
+                self.scheduler.enqueue(IoTask {
+                    task_id: id,
+                    offset,
+                    data: vec![data],
+                    deadline: Instant::now() + Duration::from_millis(100),
+                    priority: IoPriority::High,
+                });
             }
+        }
+        Ok(())
+    }
+
+    pub(crate) async fn execute_io_task(&mut self, task: super::scheduler::IoTask) -> Result<()> {
+        let file = self.get_or_open_part_file(task.task_id).await?;
+        use tokio::io::AsyncSeekExt;
+        use tokio::io::AsyncWriteExt;
+
+        file.seek(std::io::SeekFrom::Start(task.offset)).await?;
+        let mut total_len = 0;
+        for data in &task.data {
+            file.write_all(data).await?;
+            total_len += data.len() as u64;
+        }
+
+        crate::storage::sys::apply_fadvise_dontneed(file, task.offset, total_len);
+
+        for data in task.data {
+            self.pool.release(data);
         }
         Ok(())
     }
 
     pub(crate) async fn handle_complete(&mut self, id: TaskId) -> Result<()> {
         let base_path = self.task_paths.get(&id).ok_or(Error::TaskNotFound(id))?;
-
         let part_path = get_part_path(base_path)?;
         let hardened_base = crate::storage::sys::harden_path(base_path);
+
+        self.flush_all_pending(id).await?;
+
+        let tasks = self.scheduler.extract_all_for_task(id);
+        for task in tasks {
+            self.execute_io_task(task).await?;
+        }
+
+        // Close the write handle before verification to ensure all data is committed
+        // and to allow clean read-only access.
+        self.handles.pop(&id);
 
         // fsync the .part file to ensure all data is on disk before exposing it under the final name
         let file = fs::OpenOptions::new().read(true).open(&part_path).await?;

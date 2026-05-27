@@ -45,13 +45,14 @@ pub struct StorageEngine {
     pub(crate) completion_tx: mpsc::Sender<StorageEvent>,
     pub(crate) task_paths: HashMap<TaskId, PathBuf>,
     pub(crate) task_checksums: HashMap<TaskId, crate::Checksum>,
-    pub(crate) handles: HashMap<TaskId, File>,
+    pub(crate) handles: lru::LruCache<TaskId, File>,
     pub(crate) pending_writes: HashMap<TaskId, BTreeMap<u64, BytesMut>>,
     pub(crate) dirty_buffers: HashMap<TaskId, Vec<(u64, BytesMut)>>,
     pub(crate) dirty_sizes: HashMap<TaskId, usize>,
     pub(crate) next_offsets: HashMap<TaskId, u64>,
     pub(crate) pool: BufferPool,
     pub(crate) db: sled::Db,
+    pub(crate) scheduler: super::scheduler::IoScheduler,
 }
 
 impl StorageEngine {
@@ -76,13 +77,14 @@ impl StorageEngine {
             completion_tx,
             task_paths: HashMap::new(),
             task_checksums: HashMap::new(),
-            handles: HashMap::new(),
+            handles: lru::LruCache::new(std::num::NonZeroUsize::new(256).unwrap()),
             pending_writes: HashMap::new(),
             dirty_buffers: HashMap::new(),
             dirty_sizes: HashMap::new(),
             next_offsets: HashMap::new(),
             pool: pool.clone(),
             db,
+            scheduler: super::scheduler::IoScheduler::new(),
         }
     }
 
@@ -133,6 +135,8 @@ impl StorageEngine {
         let mut interval = tokio::time::interval(std::time::Duration::from_secs(3));
 
         loop {
+            let has_tasks = !self.scheduler.is_empty();
+
             tokio::select! {
                 req_opt = self.request_rx.recv() => {
                     let req = match req_opt {
@@ -190,6 +194,14 @@ impl StorageEngine {
                                 error!(%task_id, error = %e, "Failed to flush pending writes on completion");
                             }
 
+                            // Execute all queued I/O tasks for this task synchronously before verification
+                            let tasks = self.scheduler.extract_all_for_task(task_id);
+                            for task in tasks {
+                                if let Err(e) = self.execute_io_task(task).await {
+                                    error!(%task_id, error = %e, "Failed to execute IO task on completion");
+                                }
+                            }
+
                             // Flush all buffered data to disk and update metadata of the .part file
                             if let Some(file) = self.handles.get_mut(&task_id) {
                                 if let Err(e) = file.sync_all().await {
@@ -199,7 +211,7 @@ impl StorageEngine {
 
                             // Close the write handle before verification to ensure all data is committed
                             // and to allow clean read-only access.
-                            self.handles.remove(&task_id);
+                            self.handles.pop(&task_id);
 
                             // Perform integrity verification if a checksum was provided
                             if let Err(e) = self.verify_checksum(task_id).await {
@@ -235,6 +247,13 @@ impl StorageEngine {
                     for task_id in tasks {
                         if let Err(e) = self.flush_dirty_buffer(task_id).await {
                             error!(%task_id, error = %e, "Generational flush failed");
+                        }
+                    }
+                }
+                _ = std::future::ready(()), if has_tasks => {
+                    if let Some(task) = self.scheduler.pop() {
+                        if let Err(e) = self.execute_io_task(task).await {
+                            error!("Scheduled I/O task failed: {}", e);
                         }
                     }
                 }
@@ -330,7 +349,7 @@ impl StorageEngine {
     }
 
     pub(crate) async fn get_or_open_part_file(&mut self, id: TaskId) -> Result<&mut File> {
-        if !self.handles.contains_key(&id) {
+        if !self.handles.contains(&id) {
             let base_path = self.task_paths.get(&id).ok_or(Error::TaskNotFound(id))?;
             let part_path = get_part_path(base_path)?;
 
@@ -346,7 +365,11 @@ impl StorageEngine {
                 .open(&part_path)
                 .await?;
 
-            self.handles.insert(id, file);
+            crate::storage::sys::apply_fadvise_sequential(&file);
+
+            if let Some((_, evicted_file)) = self.handles.push(id, file) {
+                let _ = evicted_file.sync_all().await;
+            }
         }
 
         Ok(self
