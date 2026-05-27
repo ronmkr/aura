@@ -1,5 +1,4 @@
 use super::ops::get_part_path;
-use crate::buffer_pool::BufferPool;
 use crate::worker::Segment;
 use crate::{Error, Result, TaskId};
 use bytes::{Bytes, BytesMut};
@@ -50,7 +49,6 @@ pub struct StorageEngine {
     pub(crate) dirty_buffers: HashMap<TaskId, Vec<(u64, BytesMut)>>,
     pub(crate) dirty_sizes: HashMap<TaskId, usize>,
     pub(crate) next_offsets: HashMap<TaskId, u64>,
-    pub(crate) pool: BufferPool,
     pub(crate) db: sled::Db,
     pub(crate) scheduler: super::scheduler::IoScheduler,
 }
@@ -61,8 +59,6 @@ impl StorageEngine {
         completion_tx: mpsc::Sender<StorageEvent>,
         db_path: Option<PathBuf>,
     ) -> Self {
-        let pool = BufferPool::new(1024 * 1024, 10);
-
         let db = if let Some(path) = db_path {
             sled::open(&path).expect("Failed to open metadata database")
         } else {
@@ -82,14 +78,9 @@ impl StorageEngine {
             dirty_buffers: HashMap::new(),
             dirty_sizes: HashMap::new(),
             next_offsets: HashMap::new(),
-            pool: pool.clone(),
             db,
             scheduler: super::scheduler::IoScheduler::new(),
         }
-    }
-
-    pub fn get_pool(&self) -> BufferPool {
-        self.pool.clone()
     }
 
     pub fn get_db(&self) -> sled::Db {

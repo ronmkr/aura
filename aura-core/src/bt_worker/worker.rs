@@ -16,8 +16,6 @@ pub use super::protocol::{
     HANDSHAKE_LEN,
 };
 
-use crate::buffer_pool::BufferPool;
-
 pub struct BtWorker {
     pub peer_addr: String,
     pub info_hash: InfoHash,
@@ -31,7 +29,6 @@ pub struct BtWorker {
     pub pipeline_size: usize,
     pub metadata_buffer: Option<BytesMut>,
     pub ut_metadata_id: Option<u8>,
-    pub pool: BufferPool,
     pub proxy: Option<String>,
     pub throttler: Arc<crate::throttler::Throttler>,
     pub ut_pex_id: Option<u8>,
@@ -46,7 +43,6 @@ impl BtWorker {
         info_hash: InfoHash,
         peer_id: [u8; 20],
         my_id: [u8; 20],
-        pool: BufferPool,
         proxy: Option<String>,
         throttler: Arc<crate::throttler::Throttler>,
         pex_enabled: bool,
@@ -64,7 +60,6 @@ impl BtWorker {
             pipeline_size: 10,
             metadata_buffer: None,
             ut_metadata_id: None,
-            pool,
             proxy,
             throttler,
             ut_pex_id: None,

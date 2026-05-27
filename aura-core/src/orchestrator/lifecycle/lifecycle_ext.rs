@@ -80,7 +80,6 @@ impl Orchestrator {
                 if let Some(peer) = peer_opt {
                     let peer_addr = format!("{}:{}", peer.ip, peer.port);
                     let info_hash = bt_task.state.info_hash;
-                    let pool = self.pool.clone();
                     let proxy = config_arc.load().network.proxy.clone();
                     let throttler_clone = self.throttler.clone();
 
@@ -103,7 +102,6 @@ impl Orchestrator {
                             info_hash,
                             [0; 20],
                             my_id,
-                            pool,
                             proxy,
                             throttler_clone,
                             config_clone.load().bittorrent.pex_enabled,

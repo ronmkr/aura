@@ -25,7 +25,6 @@ pub async fn handle_incoming_peer(
     cancellation_tokens: std::collections::HashMap<TaskId, CancellationToken>,
     local_addr: Option<std::net::IpAddr>,
     config: Arc<crate::Config>,
-    pool: crate::buffer_pool::BufferPool,
     throttler: Arc<crate::throttler::Throttler>,
 ) -> Result<()> {
     use crate::bt_worker::Handshake;
@@ -63,7 +62,6 @@ pub async fn handle_incoming_peer(
                 target_info_hash,
                 handshake.peer_id,
                 my_peer_id,
-                pool.clone(),
                 config.network.proxy.clone(),
                 throttler,
                 config.bittorrent.pex_enabled,

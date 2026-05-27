@@ -34,7 +34,6 @@ impl Orchestrator {
 
             let subtask_tx = self.subtask_tx.clone();
             let config_clone = self.config.clone();
-            let pool = self.pool.clone();
             let local_addr = self.resolve_local_addr();
             let provider_clone = self.credential_provider.clone();
             let dns_resolver = self.dns_resolver.clone();
@@ -52,7 +51,6 @@ impl Orchestrator {
                             .user_agent(Some(config.network.user_agent.clone()))
                             .connect_timeout(Some(config.network.connect_timeout_secs))
                             .proxy(config.network.proxy.clone())
-                            .with_pool(pool.clone())
                             .retry_count(config.network.http_retry_count)
                             .retry_delay_secs(config.network.http_retry_delay_secs)
                             .credential_provider(provider_clone)
@@ -72,7 +70,6 @@ impl Orchestrator {
                     TaskType::Ftp => {
                         let worker = crate::worker::WorkerBuilder::new(uri)
                             .local_addr(local_addr)
-                            .with_pool(pool.clone())
                             .credential_provider(provider_clone)
                             .build_ftp();
                         match worker.resolve_metadata().await {
