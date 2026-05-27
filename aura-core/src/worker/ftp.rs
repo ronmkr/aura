@@ -77,65 +77,16 @@ impl FtpWorker {
             pass = p;
         }
 
-        let mut ftp_stream = if let Some(local_ip) = self.local_addr {
-            let addrs = tokio::net::lookup_host(format!("{}:{}", host, port))
+        let tcp_stream =
+            crate::net_util::logic::connect_tcp_bound_host(host, port, None, self.local_addr, None)
                 .await
                 .map_err(|e| {
-                    Error::Worker(format!("Failed to resolve FTP host {}: {}", host, e))
+                    Error::Worker(format!("Failed to connect to FTP host {}: {}", host, e))
                 })?;
 
-            let mut last_err = None;
-            let mut tcp_stream = None;
-
-            for addr in addrs {
-                if addr.ip().is_ipv4() == local_ip.is_ipv4() {
-                    let socket = if local_ip.is_ipv4() {
-                        tokio::net::TcpSocket::new_v4()
-                    } else {
-                        tokio::net::TcpSocket::new_v6()
-                    }
-                    .map_err(|e| Error::Worker(format!("Failed to create socket: {}", e)))?;
-
-                    if let Err(e) = socket.bind(std::net::SocketAddr::new(local_ip, 0)) {
-                        last_err = Some(Error::Worker(format!(
-                            "Failed to bind to {}: {}",
-                            local_ip, e
-                        )));
-                        continue;
-                    }
-
-                    match socket.connect(addr).await {
-                        Ok(stream) => {
-                            tcp_stream = Some(stream);
-                            break;
-                        }
-                        Err(e) => {
-                            last_err = Some(Error::Worker(format!(
-                                "Failed to connect to {}: {}",
-                                addr, e
-                            )));
-                        }
-                    }
-                }
-            }
-
-            let tcp_stream = tcp_stream.ok_or_else(|| {
-                last_err.unwrap_or_else(|| {
-                    Error::Worker(format!(
-                        "No matching IP address found for host {} and local address {}",
-                        host, local_ip
-                    ))
-                })
-            })?;
-
-            AsyncNativeTlsFtpStream::connect_with_stream(tcp_stream)
-                .await
-                .map_err(|e| Error::Worker(format!("Failed to initialize FTP stream: {}", e)))?
-        } else {
-            AsyncNativeTlsFtpStream::connect(format!("{}:{}", host, port))
-                .await
-                .map_err(|e| Error::Worker(format!("Failed to connect to FTP: {}", e)))?
-        };
+        let mut ftp_stream = AsyncNativeTlsFtpStream::connect_with_stream(tcp_stream)
+            .await
+            .map_err(|e| Error::Worker(format!("Failed to initialize FTP stream: {}", e)))?;
 
         // Determine if we should upgrade to TLS.
         let is_ftps = url.scheme() == "ftps";
