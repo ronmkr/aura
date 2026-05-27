@@ -33,8 +33,14 @@ test:
 test-cucumber:
 	cd aura-core && cargo test --test cucumber
 
+bench:
+	cargo bench --workspace --no-run
+
+audit:
+	cargo audit
+
 # The strict mandate for every commit
-green-loop: fmt check test clippy fmt-check
+green-loop: fmt check test bench clippy fmt-check
 
 # --- Documentation ---
 

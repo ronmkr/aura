@@ -24,6 +24,7 @@ Thumbs.db
 .env.*
 # Aura session and data
 *.aura
+!tests/**/*.aura
 *.part
 downloads/
 out/
@@ -35,6 +36,7 @@ aura-docs/project/prompts
 
 # BitTorrent files
 *.torrent
+!tests/**/*.torrent
 *.magnet
 
 # Local analysis files

@@ -27,11 +27,15 @@ impl StorageEngine {
         let next_offset = *self.next_offsets.get(&id).unwrap_or(&0);
 
         if segment.offset == next_offset {
-            let current_data = data;
-            self.write_to_disk(id, segment.offset, &current_data)
-                .await?;
-            let len = current_data.len() as u64;
-            self.pool.release(current_data);
+            let len = data.len() as u64;
+
+            // Push to dirty buffer instead of immediate write
+            if let Some(dirty) = self.dirty_buffers.get_mut(&id) {
+                dirty.push((segment.offset, data));
+            }
+            if let Some(size) = self.dirty_sizes.get_mut(&id) {
+                *size += len as usize;
+            }
 
             let mut current_offset = next_offset + len;
 
@@ -45,11 +49,23 @@ impl StorageEngine {
             }
 
             for (offset, p_data) in to_flush {
-                self.write_to_disk(id, offset, &p_data).await?;
-                self.pool.release(p_data);
+                let p_len = p_data.len();
+                if let Some(dirty) = self.dirty_buffers.get_mut(&id) {
+                    dirty.push((offset, p_data));
+                }
+                if let Some(size) = self.dirty_sizes.get_mut(&id) {
+                    *size += p_len;
+                }
             }
 
             self.next_offsets.insert(id, current_offset);
+
+            // Flush if we hit the 4MB threshold
+            if let Some(&size) = self.dirty_sizes.get(&id) {
+                if size >= 4_194_304 {
+                    self.flush_dirty_buffer(id).await?;
+                }
+            }
         } else {
             debug!(%id, offset = %segment.offset, expected = %next_offset, "Buffering out-of-order piece");
             if let Some(pending) = self.pending_writes.get_mut(&id) {
@@ -73,7 +89,46 @@ impl StorageEngine {
         Ok(())
     }
 
+    pub(crate) async fn flush_dirty_buffer(&mut self, id: TaskId) -> Result<()> {
+        let buffers = if let Some(dirty) = self.dirty_buffers.get_mut(&id) {
+            std::mem::take(dirty)
+        } else {
+            Vec::new()
+        };
+
+        if buffers.is_empty() {
+            return Ok(());
+        }
+
+        let file = self.get_or_open_part_file(id).await?;
+        use tokio::io::AsyncSeekExt;
+        use tokio::io::AsyncWriteExt;
+
+        // The chunks are already sequential by design
+        if let Some((first_offset, _)) = buffers.first() {
+            file.seek(std::io::SeekFrom::Start(*first_offset)).await?;
+            for (_, data) in &buffers {
+                file.write_all(data).await?;
+            }
+        }
+
+        // Release back to pool after all disk writes succeed
+        for (_, data) in buffers {
+            self.pool.release(data);
+        }
+
+        if let Some(size) = self.dirty_sizes.get_mut(&id) {
+            *size = 0;
+        }
+
+        Ok(())
+    }
+
     pub(crate) async fn flush_all_pending(&mut self, id: TaskId) -> Result<()> {
+        // First ensure any sequential dirty buffer is flushed
+        self.flush_dirty_buffer(id).await?;
+
+        // Then flush any orphaned out-of-order pieces
         if let Some(pending) = self.pending_writes.remove(&id) {
             for (offset, data) in pending {
                 self.write_to_disk(id, offset, &data).await?;
