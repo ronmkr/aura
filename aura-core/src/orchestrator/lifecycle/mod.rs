@@ -75,7 +75,6 @@ impl Orchestrator {
             let token_clone = token.clone();
             let loaded_bf = bitfield.clone();
             let config_clone = config_arc.clone();
-            let pool = self.pool.clone();
             let db = self.db.clone();
             let throttler_clone = throttler_arc.clone();
             let provider_clone = self.credential_provider.clone();
@@ -94,7 +93,6 @@ impl Orchestrator {
                             .user_agent(Some(config.network.user_agent.clone()))
                             .connect_timeout(Some(config.network.connect_timeout_secs))
                             .proxy(config.network.proxy.clone())
-                            .with_pool(pool.clone())
                             .retry_count(config.network.http_retry_count)
                             .retry_delay_secs(config.network.http_retry_delay_secs)
                             .credential_provider(provider_clone.clone())
@@ -118,7 +116,6 @@ impl Orchestrator {
                     TaskType::Ftp => {
                         let worker = crate::worker::WorkerBuilder::new(uri)
                             .local_addr(local_addr)
-                            .with_pool(pool.clone())
                             .credential_provider(provider_clone.clone())
                             .build_ftp();
                         match worker.resolve_metadata().await {

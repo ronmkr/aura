@@ -57,10 +57,6 @@ futures = { workspace = true }
 name = "storage_bench"
 harness = false
 
-[[bench]]
-name = "buffer_bench"
-harness = false
-
 [[test]]
 name = "cucumber"
 harness = false

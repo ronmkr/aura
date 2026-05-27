@@ -138,13 +138,12 @@ impl Orchestrator {
                     let cancellation_tokens = self.cancellation_tokens.clone();
                     let local_addr = self.resolve_local_addr();
                     let config = self.config.load().clone();
-                    let pool = self.pool.clone();
                     let throttler = self.throttler.clone();
 
                     let bt_tasks = self.bt_tasks.clone();
 
                     tokio::spawn(async move {
-                        if let Err(e) = super::lifecycle::handle_incoming_peer(stream, addr, bt_registry, bt_tasks, worker_command_txs, storage_tx, subtask_tx, my_peer_id, cancellation_tokens, local_addr, config, pool, throttler).await {
+                        if let Err(e) = super::lifecycle::handle_incoming_peer(stream, addr, bt_registry, bt_tasks, worker_command_txs, storage_tx, subtask_tx, my_peer_id, cancellation_tokens, local_addr, config, throttler).await {
                             tracing::debug!(?addr, error = %e, "Failed to handle incoming peer");
                         }
                     });

@@ -107,7 +107,6 @@ impl Engine {
             lpd_tx.clone(),
             nat_tx,
             config.clone(),
-            storage.get_pool(),
             storage.get_db(),
             dns_resolver,
         );

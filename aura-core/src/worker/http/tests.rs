@@ -31,7 +31,6 @@ async fn test_http_worker_referer_propagation() {
         None,
         None,
         None,
-        None,
         5,
         2,
         None,
@@ -50,7 +49,6 @@ async fn test_http_worker_referer_propagation() {
         None,
         None,
         Some(format!("{}/start", server.uri())),
-        None,
         5,
         2,
         None,
@@ -94,7 +92,6 @@ async fn test_http_worker_redirect_loop() {
         None,
         None,
         None,
-        None,
         5,
         2,
         None,
@@ -122,7 +119,6 @@ async fn test_http_worker_custom_dns() {
 
     let worker = HttpWorker::new(
         format!("{}/file", server.uri()),
-        None,
         None,
         None,
         None,
@@ -160,7 +156,6 @@ async fn test_http_worker_retry_on_503() {
 
     let worker = HttpWorker::new(
         format!("{}/retry", server.uri()),
-        None,
         None,
         None,
         None,
@@ -228,7 +223,6 @@ async fn test_http_worker_html_landing_page_resolution_success() {
         None,
         None,
         None,
-        None,
         3,
         1,
         None,
@@ -272,7 +266,6 @@ async fn test_http_worker_html_landing_page_resolution_failure() {
         None,
         None,
         None,
-        None,
         3,
         1,
         None,
@@ -298,7 +291,6 @@ async fn test_http_worker_hsts_upgrade() {
     let http_uri = "http://example.com/file".to_string();
     let worker = HttpWorker::new(
         http_uri,
-        None,
         None,
         None,
         None,

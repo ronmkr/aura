@@ -1,6 +1,5 @@
 use super::{Command, Event, SubTaskEvent, WorkerCommand};
 use crate::bt_task::BtTask;
-use crate::buffer_pool::BufferPool;
 use crate::dht::DhtCommand;
 use crate::nat::NatCommand;
 use crate::task::MetaTask;
@@ -39,7 +38,6 @@ pub struct Orchestrator {
     pub(crate) hook_manager: crate::hooks::HookManager,
     pub(crate) credential_provider: Arc<crate::config::credentials::CredentialProvider>,
     pub(crate) dns_resolver: Arc<crate::net_util::TokioResolver>,
-    pub(crate) pool: BufferPool,
     pub(crate) db: sled::Db,
     pub(crate) hsts_cache: crate::security::HstsCache,
 }
@@ -54,7 +52,6 @@ impl Orchestrator {
         lpd_tx: mpsc::Sender<crate::lpd::LpdCommand>,
         nat_tx: mpsc::Sender<NatCommand>,
         config: Arc<ArcSwap<crate::Config>>,
-        pool: BufferPool,
         db: sled::Db,
         dns_resolver: Arc<crate::net_util::TokioResolver>,
     ) -> (Self, broadcast::Sender<Event>) {
@@ -116,7 +113,6 @@ impl Orchestrator {
                 hook_manager,
                 credential_provider,
                 dns_resolver,
-                pool,
                 db,
                 hsts_cache: crate::security::HstsCache::new(),
             },

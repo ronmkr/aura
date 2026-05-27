@@ -1,4 +1,3 @@
-use crate::buffer_pool::BufferPool;
 use crate::worker::ftp::FtpWorker;
 use crate::worker::http::HttpWorker;
 use std::net::IpAddr;
@@ -11,7 +10,6 @@ pub struct WorkerBuilder {
     connect_timeout: Option<u64>,
     proxy: Option<String>,
     referer: Option<String>,
-    pool: Option<BufferPool>,
     retry_count: u32,
     retry_delay_secs: u64,
     credential_provider: Option<std::sync::Arc<crate::config::credentials::CredentialProvider>>,
@@ -28,7 +26,6 @@ impl WorkerBuilder {
             connect_timeout: None,
             proxy: None,
             referer: None,
-            pool: None,
             retry_count: 5,
             retry_delay_secs: 2,
             credential_provider: None,
@@ -83,11 +80,6 @@ impl WorkerBuilder {
         self
     }
 
-    pub fn with_pool(mut self, pool: BufferPool) -> Self {
-        self.pool = Some(pool);
-        self
-    }
-
     pub fn retry_count(mut self, count: u32) -> Self {
         self.retry_count = count;
         self
@@ -106,7 +98,6 @@ impl WorkerBuilder {
             self.connect_timeout,
             self.proxy,
             self.referer,
-            self.pool,
             self.retry_count,
             self.retry_delay_secs,
             self.credential_provider,
@@ -119,7 +110,6 @@ impl WorkerBuilder {
         FtpWorker::new(
             self.uri,
             self.local_addr,
-            self.pool,
             self.retry_count,
             self.retry_delay_secs,
             self.credential_provider,

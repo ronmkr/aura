@@ -1,5 +1,3 @@
-use crate::buffer_pool::BufferPool;
-
 pub(crate) mod crawler;
 pub(crate) mod metadata;
 pub(crate) mod segment;
@@ -12,7 +10,6 @@ pub struct HttpWorker {
     pub(crate) client: reqwest::Client,
     pub(crate) uri: String,
     pub(crate) referer: Option<String>,
-    pub(crate) pool: Option<BufferPool>,
     pub(crate) retry_count: u32,
     pub(crate) retry_delay_secs: u64,
     pub(crate) credential_provider:
@@ -78,7 +75,6 @@ impl HttpWorker {
         connect_timeout: Option<u64>,
         proxy: Option<String>,
         referer: Option<String>,
-        pool: Option<BufferPool>,
         retry_count: u32,
         retry_delay_secs: u64,
         credential_provider: Option<std::sync::Arc<crate::config::credentials::CredentialProvider>>,
@@ -121,7 +117,6 @@ impl HttpWorker {
             client,
             uri,
             referer,
-            pool,
             retry_count,
             retry_delay_secs,
             credential_provider,

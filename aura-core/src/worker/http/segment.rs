@@ -48,11 +48,7 @@ impl ProtocolWorker for HttpWorker {
                 Ok(response) => {
                     self.check_and_update_hsts(&response).await;
                     if response.status().is_success() {
-                        let mut buffer = if let Some(ref p) = self.pool {
-                            p.acquire()
-                        } else {
-                            BytesMut::with_capacity(segment.length as usize)
-                        };
+                        let mut buffer = BytesMut::with_capacity(16384);
 
                         let mut stream = response.bytes_stream();
                         let mut bytes_downloaded = 0u64;

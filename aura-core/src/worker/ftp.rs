@@ -1,5 +1,4 @@
 use super::{Metadata, PieceData, ProgressSender, ProtocolWorker, Segment};
-use crate::buffer_pool::BufferPool;
 use crate::{Error, Result, TaskId};
 use async_trait::async_trait;
 use bytes::BytesMut;
@@ -13,7 +12,6 @@ use url::Url;
 pub struct FtpWorker {
     uri: String,
     local_addr: Option<std::net::IpAddr>,
-    pool: Option<BufferPool>,
     retry_count: u32,
     retry_delay_secs: u64,
     credential_provider: Option<std::sync::Arc<crate::config::credentials::CredentialProvider>>,
@@ -23,7 +21,6 @@ impl FtpWorker {
     pub fn new(
         uri: String,
         local_addr: Option<std::net::IpAddr>,
-        pool: Option<BufferPool>,
         retry_count: u32,
         retry_delay_secs: u64,
         credential_provider: Option<std::sync::Arc<crate::config::credentials::CredentialProvider>>,
@@ -31,7 +28,6 @@ impl FtpWorker {
         Self {
             uri,
             local_addr,
-            pool,
             retry_count,
             retry_delay_secs,
             credential_provider,
@@ -200,11 +196,7 @@ impl ProtocolWorker for FtpWorker {
             .await
             .map_err(|e| Error::Worker(format!("FTP RETR failed: {}", e)))?;
 
-        let mut buffer = if let Some(ref p) = self.pool {
-            p.acquire()
-        } else {
-            BytesMut::with_capacity(segment.length as usize)
-        };
+        let mut buffer = BytesMut::with_capacity(16384);
         let mut total_read = 0;
 
         while total_read < segment.length {
@@ -269,7 +261,6 @@ mod tests {
 
         let worker = FtpWorker::new(
             format!("ftp://127.0.0.1:{}/test_file.bin", port),
-            None,
             None,
             3,
             0,

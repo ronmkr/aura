@@ -140,9 +140,6 @@ impl StorageEngine {
 
         crate::storage::sys::apply_fadvise_dontneed(file, task.offset, total_len);
 
-        for data in task.data {
-            self.pool.release(data);
-        }
         Ok(())
     }
 

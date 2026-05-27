@@ -180,7 +180,6 @@ mod tests {
         let (lpd_tx, _lpd_rx) = tokio::sync::mpsc::channel(100);
 
         let config_swap = Arc::new(arc_swap::ArcSwap::from_pointee(config.clone()));
-        let pool = crate::buffer_pool::BufferPool::new(16384, 10);
 
         let temp_dir = tempfile::tempdir().unwrap();
         let db = sled::open(temp_dir.path()).unwrap();
@@ -199,7 +198,6 @@ mod tests {
             lpd_tx,
             nat_tx,
             config_swap,
-            pool,
             db,
             dns_resolver,
         );
