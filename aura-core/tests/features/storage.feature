@@ -21,3 +21,12 @@ Feature: Storage Performance and Integrity
     When Piece 4 arrives and is written
     Then the Storage Engine should immediately flush Piece 5 to disk
     And the disk seek count should be minimized
+
+  @ADR-0024 @Scenario-5.3
+  Scenario: Scrubber detects corruption and triggers recovery
+    Given a stalled BitTorrent download task
+    And the downloaded file contains corrupted data at piece 0
+    When the EWMA stall detection triggers the Integrity Scrubber
+    Then the Integrity Scrubber should find the corruption
+    And piece 0 should be marked as missing in the Bitfield
+    And a RefreshDiscovery event should be dispatched

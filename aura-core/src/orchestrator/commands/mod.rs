@@ -1,4 +1,4 @@
-use super::structs::{Command, Orchestrator};
+use super::{Command, Orchestrator};
 use crate::task::MetaTask;
 use crate::{Error, Result, TaskId};
 use tracing::info;
@@ -56,6 +56,78 @@ impl Orchestrator {
             }
             Command::RetrySubtask(meta_id, sub_id) => {
                 self.handle_retry_subtask(meta_id, sub_id).await?;
+            }
+            Command::Scrub(id) => {
+                if let Some(meta_task) = self.tasks.get(&id) {
+                    if meta_task
+                        .subtasks
+                        .iter()
+                        .any(|s| s.task_type == crate::task::TaskType::BitTorrent)
+                    {
+                        // For BitTorrent tasks, we might not have a direct mapping from meta_id to bt_task yet.
+                        // But wait, the BtRegistry maps InfoHash to meta_id? Actually, BtTasks are keyed by sub_id in `self.bt_tasks`.
+                        // Let's find the sub_id of the BitTorrent task.
+                        if let Some(bt_sub) = meta_task
+                            .subtasks
+                            .iter()
+                            .find(|s| s.task_type == crate::task::TaskType::BitTorrent)
+                        {
+                            if let Some(bt_task) = self.bt_tasks.get(&bt_sub.id) {
+                                let config = self.config.load();
+                                let path = std::path::Path::new(&config.storage.download_dir)
+                                    .join(&meta_task.name);
+                                let _ = self
+                                    .scrub_tx
+                                    .send(crate::scrubber::ScrubberCommand::ScrubSwarm {
+                                        task_id: id,
+                                        path,
+                                        bt_task: bt_task.clone(),
+                                    })
+                                    .await;
+                            }
+                        }
+                    } else if let Some(checksum) = meta_task.checksum.clone() {
+                        let config = self.config.load();
+                        let path = std::path::Path::new(&config.storage.download_dir)
+                            .join(&meta_task.name);
+                        let _ = self
+                            .scrub_tx
+                            .send(crate::scrubber::ScrubberCommand::ScrubNonSwarm {
+                                task_id: id,
+                                path,
+                                checksum,
+                            })
+                            .await;
+                    }
+                }
+            }
+            Command::RefreshDiscovery(id) => {
+                if let Some(meta_task) = self.tasks.get(&id) {
+                    if let Some(bt_sub) = meta_task
+                        .subtasks
+                        .iter()
+                        .find(|s| s.task_type == crate::task::TaskType::BitTorrent)
+                    {
+                        if let Some(bt_task) = self.bt_tasks.get(&bt_sub.id) {
+                            let info_hash = bt_task.state.info_hash;
+                            let _ = self
+                                .dht_tx
+                                .send(crate::dht::DhtCommand::Announce {
+                                    info_hash,
+                                    port: 6881,
+                                })
+                                .await;
+                            let _ = self
+                                .lpd_tx
+                                .send(crate::lpd::LpdCommand::Announce {
+                                    info_hash,
+                                    port: 6881,
+                                })
+                                .await;
+                            tracing::info!(%id, "Refreshed peer discovery via DHT and LPD");
+                        }
+                    }
+                }
             }
         }
         Ok(())

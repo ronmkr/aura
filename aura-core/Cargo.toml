@@ -41,6 +41,7 @@ quick-xml = { version = "0.39.4", features = ["serialize"] }
 metrics = "0.24.6"
 metrics-exporter-prometheus = "0.18.3"
 hickory-resolver = { version = "0.26.1", features = ["tokio", "serde", "webpki-roots", "https-aws-lc-rs", "tls-aws-lc-rs", "system-config"] }
+lol_html = "1.2.1"
 
 [dev-dependencies]
 tempfile = "3"

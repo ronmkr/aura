@@ -1,4 +1,4 @@
-use super::super::structs::{Orchestrator, SubTaskEvent};
+use crate::orchestrator::{Orchestrator, SubTaskEvent};
 use crate::task::{DownloadPhase, TaskType};
 use crate::{Error, Result, TaskId};
 

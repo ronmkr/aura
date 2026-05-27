@@ -1,5 +1,6 @@
 use crate::buffer_pool::BufferPool;
 
+pub(crate) mod crawler;
 pub(crate) mod metadata;
 pub(crate) mod segment;
 
