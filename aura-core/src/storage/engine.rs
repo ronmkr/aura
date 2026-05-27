@@ -47,6 +47,8 @@ pub struct StorageEngine {
     pub(crate) task_checksums: HashMap<TaskId, crate::Checksum>,
     pub(crate) handles: HashMap<TaskId, File>,
     pub(crate) pending_writes: HashMap<TaskId, BTreeMap<u64, BytesMut>>,
+    pub(crate) dirty_buffers: HashMap<TaskId, Vec<(u64, BytesMut)>>,
+    pub(crate) dirty_sizes: HashMap<TaskId, usize>,
     pub(crate) next_offsets: HashMap<TaskId, u64>,
     pub(crate) pool: BufferPool,
     pub(crate) db: sled::Db,
@@ -76,6 +78,8 @@ impl StorageEngine {
             task_checksums: HashMap::new(),
             handles: HashMap::new(),
             pending_writes: HashMap::new(),
+            dirty_buffers: HashMap::new(),
+            dirty_sizes: HashMap::new(),
             next_offsets: HashMap::new(),
             pool: pool.clone(),
             db,
@@ -103,6 +107,8 @@ impl StorageEngine {
         }
         self.next_offsets.entry(id).or_insert(0);
         self.pending_writes.entry(id).or_default();
+        self.dirty_buffers.entry(id).or_default();
+        self.dirty_sizes.entry(id).or_insert(0);
     }
 
     pub(crate) async fn preallocate_task(&mut self, id: TaskId, length: u64) -> Result<()> {
@@ -124,89 +130,112 @@ impl StorageEngine {
     pub async fn run(mut self) -> Result<()> {
         info!("Storage Engine started");
 
-        while let Some(req) = self.request_rx.recv().await {
-            match req {
-                StorageRequest::RegisterTask {
-                    task_id,
-                    path,
-                    total_length,
-                    checksum,
-                } => {
-                    self.register_task(task_id, path, total_length, checksum);
-                    if let Err(e) = self.preallocate_task(task_id, total_length).await {
-                        error!(%task_id, error = %e, "Failed to pre-allocate file");
-                        let _ = self
-                            .completion_tx
-                            .send(StorageEvent::Error(task_id, e.to_string()))
-                            .await;
-                    }
-                }
-                StorageRequest::Write {
-                    task_id,
-                    segment,
-                    data,
-                } => {
-                    if let Err(e) = self.handle_write(task_id, segment, data).await {
-                        error!(%task_id, error = %e, "Failed to write data");
-                        let _ = self
-                            .completion_tx
-                            .send(StorageEvent::Error(task_id, e.to_string()))
-                            .await;
-                    }
-                }
-                StorageRequest::Read {
-                    task_id,
-                    segment,
-                    reply_tx,
-                } => {
-                    let res = self.handle_read(task_id, segment).await;
-                    let _ = reply_tx.send(res);
-                }
-                StorageRequest::StoreV2Metadata { layers } => {
-                    for (root, data) in layers {
-                        if let Err(e) = self.db.insert(root, data) {
-                            error!(?root, error = %e, "Failed to store v2 piece layers");
+        let mut interval = tokio::time::interval(std::time::Duration::from_secs(3));
+
+        loop {
+            tokio::select! {
+                req_opt = self.request_rx.recv() => {
+                    let req = match req_opt {
+                        Some(r) => r,
+                        None => break, // Channel closed
+                    };
+
+                    match req {
+                        StorageRequest::RegisterTask {
+                            task_id,
+                            path,
+                            total_length,
+                            checksum,
+                        } => {
+                            self.register_task(task_id, path, total_length, checksum);
+                            if let Err(e) = self.preallocate_task(task_id, total_length).await {
+                                error!(%task_id, error = %e, "Failed to pre-allocate file");
+                                let _ = self
+                                    .completion_tx
+                                    .send(StorageEvent::Error(task_id, e.to_string()))
+                                    .await;
+                            }
+                        }
+                        StorageRequest::Write {
+                            task_id,
+                            segment,
+                            data,
+                        } => {
+                            if let Err(e) = self.handle_write(task_id, segment, data).await {
+                                error!(%task_id, error = %e, "Failed to write data");
+                                let _ = self
+                                    .completion_tx
+                                    .send(StorageEvent::Error(task_id, e.to_string()))
+                                    .await;
+                            }
+                        }
+                        StorageRequest::Read {
+                            task_id,
+                            segment,
+                            reply_tx,
+                        } => {
+                            let res = self.handle_read(task_id, segment).await;
+                            let _ = reply_tx.send(res);
+                        }
+                        StorageRequest::StoreV2Metadata { layers } => {
+                            for (root, data) in layers {
+                                if let Err(e) = self.db.insert(root, data) {
+                                    error!(?root, error = %e, "Failed to store v2 piece layers");
+                                }
+                            }
+                            let _ = self.db.flush();
+                        }
+                        StorageRequest::Complete(task_id) => {
+                            if let Err(e) = self.flush_all_pending(task_id).await {
+                                error!(%task_id, error = %e, "Failed to flush pending writes on completion");
+                            }
+
+                            // Flush all buffered data to disk and update metadata of the .part file
+                            if let Some(file) = self.handles.get_mut(&task_id) {
+                                if let Err(e) = file.sync_all().await {
+                                    error!(%task_id, error = %e, "Failed to sync file data on completion");
+                                }
+                            }
+
+                            // Close the write handle before verification to ensure all data is committed
+                            // and to allow clean read-only access.
+                            self.handles.remove(&task_id);
+
+                            // Perform integrity verification if a checksum was provided
+                            if let Err(e) = self.verify_checksum(task_id).await {
+                                error!(%task_id, error = %e, "Integrity verification failed");
+                                let _ = self
+                                    .completion_tx
+                                    .send(StorageEvent::Error(task_id, e.to_string()))
+                                    .await;
+                                continue;
+                            }
+
+                            if let Err(e) = self.handle_complete(task_id).await {
+                                error!(%task_id, error = %e, "Failed to complete task");
+                                let _ = self
+                                    .completion_tx
+                                    .send(StorageEvent::Error(task_id, e.to_string()))
+                                    .await;
+                            } else {
+                                let _ = self
+                                    .completion_tx
+                                    .send(StorageEvent::Completed(task_id))
+                                    .await;
+                            }
                         }
                     }
-                    let _ = self.db.flush();
                 }
-                StorageRequest::Complete(task_id) => {
-                    if let Err(e) = self.flush_all_pending(task_id).await {
-                        error!(%task_id, error = %e, "Failed to flush pending writes on completion");
-                    }
+                _ = interval.tick() => {
+                    // Generational epoch flush
+                    let tasks: Vec<TaskId> = self.dirty_sizes.iter()
+                        .filter_map(|(&id, &size)| if size > 0 { Some(id) } else { None })
+                        .collect();
 
-                    // Flush all buffered data to disk and update metadata of the .part file
-                    if let Some(file) = self.handles.get_mut(&task_id) {
-                        if let Err(e) = file.sync_all().await {
-                            error!(%task_id, error = %e, "Failed to sync file data on completion");
+                    for task_id in tasks {
+                        if let Err(e) = self.flush_dirty_buffer(task_id).await {
+                            error!(%task_id, error = %e, "Generational flush failed");
                         }
-                    }
-
-                    // Close the write handle before verification to ensure all data is committed
-                    // and to allow clean read-only access.
-                    self.handles.remove(&task_id);
-
-                    // Perform integrity verification if a checksum was provided
-                    if let Err(e) = self.verify_checksum(task_id).await {
-                        error!(%task_id, error = %e, "Integrity verification failed");
-                        let _ = self
-                            .completion_tx
-                            .send(StorageEvent::Error(task_id, e.to_string()))
-                            .await;
-                        continue;
-                    }
-
-                    if let Err(e) = self.handle_complete(task_id).await {
-                        error!(%task_id, error = %e, "Failed to complete task");
-                        let _ = self
-                            .completion_tx
-                            .send(StorageEvent::Error(task_id, e.to_string()))
-                            .await;
-                    } else {
-                        let _ = self
-                            .completion_tx
-                            .send(StorageEvent::Completed(task_id))
-                            .await;
                     }
                 }
             }

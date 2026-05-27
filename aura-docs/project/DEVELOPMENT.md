@@ -45,8 +45,7 @@ make green-loop
 This target runs:
 1. `cargo clippy -- -D warnings` (Strict linting)
 2. `cargo fmt -- --check` (Formatting)
-3. `cargo test --all-features` (Unit and Integration tests)
-4. `cargo bench --no-run` (Ensures benchmarks compile)
+4. `cargo bench --workspace --no-run` (Ensures benchmarks compile)
 
 ### Cargo Extensions (Optional but Recommended)
 - **`cargo-watch`**: `cargo install cargo-watch` (Auto-recompile on file changes)

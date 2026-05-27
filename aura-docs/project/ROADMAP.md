@@ -72,12 +72,12 @@
 - [x] **BDD Test Implementation** (Realistic integration coverage for storage, swarm, and daemon).
 - [x] **BT block size fix** (Standardized to 16KB).
 - [x] **DNS over HTTPS (DoH/DoT)** (Privacy-enhanced asynchronous resolution).
+- [x] **Integrity Scrubbing & Self-healing Storage** (Issue #4).
+- [x] **Generational Write Buffer & Advanced Caching** (Issue #14).
 
 ### Remaining - Priority
 - [ ] **PEX implementation** (BEP 11 Peer Exchange) (Issue #121) [MODERATE].
 - [ ] **Peer registry scoring** (Latency/Reputation/Eviction) (Issue #123) [MODERATE].
-- [ ] **Integrity Scrubbing & Self-healing Storage** (Issue #4) [MODERATE].
-- [ ] **Generational Write Buffer & Advanced Caching** (Issue #14) [MODERATE].
 - [ ] **Advanced Disk I/O Scheduling** (Deadline-based writes) (Issue #13) [MODERATE].
 
 ### Future Backlog

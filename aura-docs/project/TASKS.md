@@ -7,7 +7,6 @@ All active development tasks, technical debt, and feature requests are managed e
 - [ ] **Test: Implement actual BDD step definitions for daemon, networking, storage, swarm features** (Issue #124) `[status:half-baked, priority:moderate, testing]`
 - [ ] **Feat: Add peer health scoring, reputation, and eviction to peer registry** (Issue #123) `[status:half-baked, module:core, priority:moderate]`
 - [ ] **feat: implement actual Recursive Crawler (Wget parity)** (Issue #65) `[status:half-baked, module:core, priority:moderate]`
-- [ ] **feat: implement Integrity Scrubber Actor and self-healing** (Issue #4) `[status:half-baked, module:storage, priority:moderate]`
 - [x] **feat: Dual-Stack Asynchronous DNS Racing (Happy Eyeballs)** (Issue #25) `[status:completed, priority:moderate, module:network]`
 - [ ] **infra: CI Docs Deployment** (Issue #134) `[enhancement, priority:moderate, infra]`
 - [ ] **Feat: Respect BEP 12 tracker tier ordering** (Issue #128) `[enhancement, module:core, priority:low]`
@@ -20,7 +19,6 @@ All active development tasks, technical debt, and feature requests are managed e
 - [ ] **feat: Modern Networking: HTTP/3 (QUIC) & Alt-Svc Support** (Issue #23) `[enhancement, module:core, priority:moderate]`
 - [ ] **feat: NNTP (Usenet) Protocol Support** (Issue #22) `[enhancement, module:core, priority:low]`
 - [ ] **feat: Multi-tenancy & Structured Audit Tracing** (Issue #15) `[enhancement, priority:moderate, module:daemon]`
-- [ ] **perf: Generational Write Buffer & Advanced Caching** (Issue #14) `[enhancement, module:storage, priority:moderate]`
 - [ ] **perf: Advanced Disk I/O Scheduling** (Issue #13) `[enhancement, module:storage, priority:moderate]`
 - [ ] **feat: Network Filesystem (NFS/SMB) Optimizations** (Issue #12) `[enhancement, module:storage, priority:moderate]`
 - [ ] **feat: Task Chaining & Metadata-based Path Mapping** (Issue #11) `[enhancement, module:core, priority:low]`
@@ -33,6 +31,8 @@ All active development tasks, technical debt, and feature requests are managed e
 - [x] **feat: Adaptive Connection Scaling & Sourced Aggregation** (Issue #31)
 - [x] **feat: Hierarchical Token Bucket Throttling** (Issue #30)
 - [x] **feat: Racing Work Stealer for Slow Stream Mitigation** (Issue #29)
+- [x] **perf: Generational Write Buffer & Advanced Caching** (Issue #14)
+- [x] **feat: implement Integrity Scrubber Actor and self-healing** (Issue #4)
 - [x] **Bug: DNS resolver config is a facade — DoH/DoT not wired** (Issue #135)
 - [x] **Bug: BT block size is 32KB — non-standard (spec is 16KB)** (Issue #127) `[bug]`
 - [x] **Bug: Metalink parser has debug eprintln and hardcoded priority** (Issue #126) `[bug]`
