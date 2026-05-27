@@ -1,7 +1,7 @@
 # ADR 0022: Advanced Disk I/O Scheduling and Kernel Hinting
 
 ## Status
-Accepted
+Implemented
 
 ## Context
 Standard file I/O can be a bottleneck for high-speed downloads and can degrade system performance by polluting the OS page cache with temporary download data. `aria2` addresses this through write caching, `mmap`, and `posix_fadvise`.
