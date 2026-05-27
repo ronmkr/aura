@@ -53,9 +53,7 @@ jobs:
         if: runner.os != 'Windows'
         run: |
           mkdir -p package/
-          cp target/release/aura-cli package/
-          cp target/release/aura-daemon package/
-          cp target/release/aura-tui package/
+          cp target/release/aura package/
           cd package
           tar -czvf ../${{ matrix.artifact_name }}${{ matrix.archive_ext }} *
           cd ..
@@ -64,9 +62,7 @@ jobs:
         if: runner.os == 'Windows'
         run: |
           mkdir package
-          cp target/release/aura-cli.exe package/
-          cp target/release/aura-daemon.exe package/
-          cp target/release/aura-tui.exe package/
+          cp target/release/aura.exe package/
           Compress-Archive -Path package\* -DestinationPath ${{ matrix.artifact_name }}${{ matrix.archive_ext }}
 
       - name: Upload Build Artifacts

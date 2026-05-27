@@ -2,7 +2,7 @@
 
 Aura is designed to be a shared backbone service. While the CLI is great for one-off tasks, the **Aura Daemon** allows for persistent, remote management.
 
-## The Aura Daemon (`aura-daemon`)
+## The Aura Daemon (`aura daemon`)
 
 The daemon is a headless background process that:
 1.  **Maintains State**: Keeps track of all active and paused tasks across sessions.
@@ -11,7 +11,7 @@ The daemon is a headless background process that:
 
 ### Running the Daemon
 ```bash
-aura-daemon --config Aura.toml
+aura daemon --config Aura.toml
 ```
 
 ## JSON-RPC 2.0 API

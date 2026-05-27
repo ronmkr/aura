@@ -21,6 +21,6 @@ Currently, Aura is in active development. You can build it from source using Car
    ```
 
 The binaries will be available in `target/release/`:
-- `aura-cli`: The command-line interface.
-- `aura-daemon`: The headless background service.
-- `aura-tui`: The interactive terminal dashboard.
+- `aura`: The command-line interface.
+- `aura daemon`: The headless background service.
+- `aura tui`: The interactive terminal dashboard.

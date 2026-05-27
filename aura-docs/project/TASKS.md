@@ -46,6 +46,8 @@ All active development tasks, technical debt, and feature requests are managed e
 - [x] **chore: Modular Architecture Refactor (exceeding 400 lines)** (Issue #96)
 - [x] **feat: Browser Bridge (Extension Support)** (Issue #95)
 - [x] **feat: implement advanced filesystem hardening (Pre-allocation/No-COW)** (Issue #92)
+- [x] **infra: Automated binary releases via GitHub Actions** (Issue #143)
+- [x] **chore: Unified Binary Architecture (Single Executable)**
 - [x] **Implement Integration Tests Infrastructure** (Issue #89)
 - [x] **refactor: technical debt cleanup and dead code removal** (Issue #78)
 - [x] **feat: dynamic DHT bootstrap node refreshing** (Issue #77)

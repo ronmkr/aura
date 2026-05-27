@@ -4,6 +4,7 @@ members = [
     "aura-cli",
     "aura-tui",
     "aura-daemon",
+    "aura"
 ]
 resolver = "2"
 

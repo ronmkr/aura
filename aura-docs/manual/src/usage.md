@@ -1,12 +1,12 @@
 # Getting Started
 
-The primary way to interact with Aura is through the `aura-cli`. This chapter provides a range of examples to help you get the most out of your download engine.
+The primary way to interact with Aura is through the `aura`. This chapter provides a range of examples to help you get the most out of your download engine.
 
 ## Basic Downloads
 
 To start a standard download, simply pass the URL:
 ```bash
-aura-cli "https://releases.ubuntu.com/24.04/ubuntu-24.04-desktop-amd64.iso"
+aura "https://releases.ubuntu.com/24.04/ubuntu-24.04-desktop-amd64.iso"
 ```
 
 Aura will automatically:
@@ -20,10 +20,10 @@ Aura handles BitTorrent seamlessly. You can use Magnet links or local `.torrent`
 
 ```bash
 # Using a Magnet Link
-aura-cli "magnet:?xt=urn:btih:..."
+aura "magnet:?xt=urn:btih:..."
 
 # Using a local torrent file
-aura-cli ./linux-distro.torrent
+aura ./linux-distro.torrent
 ```
 
 Aura will automatically connect to DHT and trackers to find peers and verify piece integrity using SHA-1 (v1) or SHA-256 (v2).
@@ -34,7 +34,7 @@ Aura will automatically connect to DHT and trackers to find peers and verify pie
 If you have multiple mirrors for the same file, you can speed up the download by providing all of them:
 
 ```bash
-aura-cli "https://mirror1.org/f.zip" "https://mirror2.org/f.zip" "ftp://backup.com/f.zip"
+aura "https://mirror1.org/f.zip" "https://mirror2.org/f.zip" "ftp://backup.com/f.zip"
 ```
 
 Aura will split the file into ranges and fetch them simultaneously from all sources, using the **Racing Work Stealer** to bypass slow connections.
@@ -44,17 +44,17 @@ Download multiple files using numeric ranges or sets:
 
 ```bash
 # Download 10 parts of a split archive
-aura-cli "https://cdn.org/data/part[1-10].rar"
+aura "https://cdn.org/data/part[1-10].rar"
 
 # Download the same file from multiple mirrors using set expansion
-aura-cli "https://mirror{us,eu,asia}.example.com/bigfile.iso"
+aura "https://mirror{us,eu,asia}.example.com/bigfile.iso"
 ```
 
 ### Metalink Support
 For complex downloads with multiple mirrors and checksums, use a Metalink file:
 
 ```bash
-aura-cli "https://example.com/release.metalink"
+aura "https://example.com/release.metalink"
 ```
 
 ## Controlling the Output
@@ -62,7 +62,7 @@ aura-cli "https://example.com/release.metalink"
 By default, Aura downloads to the current directory. Use the `--output` flag to rename the file:
 
 ```bash
-aura-cli "https://server.com/archive.tar.gz" --output backup.tgz
+aura "https://server.com/archive.tar.gz" --output backup.tgz
 ```
 
 To change the download directory, use the `Aura.toml` configuration file. See the [Configuration](./configuration.md) chapter for details.

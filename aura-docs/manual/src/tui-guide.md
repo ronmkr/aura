@@ -4,9 +4,9 @@ The **Galactic Pilot Dashboard** is Aura's interactive terminal interface. It pr
 
 ## Launching the TUI
 
-To connect to a running `aura-daemon`:
+To connect to a running `aura daemon`:
 ```bash
-aura-tui
+aura tui
 ```
 By default, it attempts to connect to `127.0.0.1:6800`.
 

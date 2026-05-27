@@ -1,26 +1,17 @@
 use aura_core::orchestrator::{Engine, Event};
 use aura_core::task::TaskType;
 use aura_core::{Result, TaskId};
-use clap::Parser;
+
 use indicatif::{ProgressBar, ProgressStyle};
 use rand::RngExt;
 
-#[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
-struct Args {
-    /// URLs to download (as multiple sources for one file)
-    #[arg(required = true, num_args = 1..)]
-    uris: Vec<String>,
-
-    /// Output filename
-    #[arg(short, long)]
-    output: Option<String>,
+#[derive(Debug)]
+pub struct Args {
+    pub uris: Vec<String>,
+    pub output: Option<String>,
 }
 
-#[tokio::main]
-async fn main() -> Result<()> {
-    let args = Args::parse();
-
+pub async fn run(args: Args) -> Result<()> {
     // Initialize logging
     tracing_subscriber::fmt::init();
 

@@ -192,6 +192,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "aura"
+version = "0.1.0"
+dependencies = [
+ "aura-cli",
+ "aura-core",
+ "aura-daemon",
+ "aura-tui",
+ "clap",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "aura-cli"
 version = "0.1.0"
 dependencies = [
@@ -4965,6 +4979,7 @@ dependencies = [
  "signal-hook-registry",
  "socket2",
  "tokio-macros",
+ "tracing",
  "windows-sys 0.61.2",
 ]
 

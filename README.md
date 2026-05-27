@@ -36,17 +36,17 @@ cargo build --release
 ### Basic Usage
 Download a file via HTTP:
 ```bash
-./target/release/aura-cli https://example.com/file.zip
+./target/release/aura https://example.com/file.zip
 ```
 
 Download a BitTorrent magnet link or torrent file:
 ```bash
-./target/release/aura-cli "magnet:?xt=urn:btih:..."
+./target/release/aura "magnet:?xt=urn:btih:..."
 ```
 
 Batch download using globbing:
 ```bash
-./target/release/aura-cli "https://example.com/images/img_[001-100].jpg"
+./target/release/aura "https://example.com/images/img_[001-100].jpg"
 ```
 
 ## 🏗️ Architecture

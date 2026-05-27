@@ -57,15 +57,15 @@ docs-serve:
 
 # Run the CLI (Usage: make run-cli ARGS="https://example.com/file")
 run-cli:
-	cargo run -p aura-cli -- $(ARGS)
+	cargo run -p aura -- $(ARGS)
 
 # Run the background daemon
 run-daemon:
-	cargo run -p aura-daemon
+	cargo run -p aura -- daemon
 
 # Run the TUI dashboard
 run-tui:
-	cargo run -p aura-tui
+	cargo run -p aura -- tui
 
 # --- Cleanup ---
 

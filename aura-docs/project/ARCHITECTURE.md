@@ -227,9 +227,9 @@ This table maps architectural concepts to their primary implementation files in 
 
 | Component | Category | File Path |
 | :--- | :--- | :--- |
-| **Persona Switcher** | Orchestration | `aura-cli/src/main.rs` |
+| **Persona Switcher** | Orchestration | `aura/src/main.rs` |
 | **The Pilot (TUI)** | Interface | `aura-tui/src/app.rs`, `ui.rs` |
-| **Aura Daemon** | Persistent | `aura-daemon/src/main.rs` |
+| **Aura Daemon** | Persistent | `aura-daemon/src/lib.rs` |
 | **Engine Core** | Orchestration | `aura-core/src/orchestrator/engine.rs` |
 | **Task Orchestrator** | Orchestration | `aura-core/src/orchestrator/logic.rs` |
 | **Sequential Aggregator** | Storage | `aura-core/src/storage/logic.rs` |

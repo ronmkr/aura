@@ -55,6 +55,7 @@
 - [x] **Metalink Support (V3/V4)** (Priority parsing and multi-source coordination).
 - [x] **Dynamic TOML Configuration** (Hot-reload via `notify` in engine.rs + `arc-swap`).
 - [x] **Modular Architecture Refactor** (Strict 400-line per file limit enforced).
+- [x] **Unified Binary Architecture** (Single `aura` executable with subcommands).
 - [x] **Power Management** (Thread-isolated `nosleep`, cross-platform).
 
 ## 🚀 Milestone 7: Industrial Hardening (In Progress)
@@ -96,4 +97,5 @@
 - [x] `.github/workflows/codeql.yml` (Weekly security scan).
 - [x] Automated Benchmarking Suite (buffer_bench + storage_bench).
 - [x] Comprehensive Integration Tests (Cucumber BDD suite).
+- [x] Automated Binary Releases (GitHub Actions matrix builds).
 - [ ] CI Docs Deployment (Issue #134).
