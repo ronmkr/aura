@@ -19,7 +19,7 @@ Verify peer discovery and data integrity in large swarms.
 
 ### 3. Resource Governance & Throttling
 Verify that the engine respects system limits and user configuration.
-- **Scenario 3.1**: Global Throttling: Set a 1MB/s limit and verify `aura-cli` does not exceed it.
+- **Scenario 3.1**: Global Throttling: Set a 1MB/s limit and verify `aura` does not exceed it.
 - **Scenario 3.2**: Hierarchical Throttling: Set a global limit of 2MB/s and two tasks at 500KB/s each; verify both are capped correctly.
 - **Scenario 3.3**: Adaptive Scaling: Use a mirror that caps per-connection speed; verify Aura spawns more connections to reach the global limit.
 

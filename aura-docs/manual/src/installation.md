@@ -7,7 +7,34 @@ Currently, Aura is in active development. You can build it from source using Car
 - **Rust**: Version 1.75 or higher.
 - **OpenSSL**: Development headers (for Linux).
 
-## Building from Source
+## Docker (Recommended for Servers & NAS)
+
+We provide an official Dockerfile that packages the unified binary in a minimal, secure container.
+
+### Building the Image
+```bash
+git clone https://github.com/ronmkr/aura.git
+cd aura
+docker build -t ronmkr/aura .
+```
+
+### Running the Daemon
+```bash
+docker run -d \
+  --name aura-daemon \
+  -p 6800:6800 \
+  -v /path/to/your/downloads:/downloads \
+  ronmkr/aura daemon
+```
+
+### Running the CLI
+```bash
+docker run --rm \
+  -v $(pwd):/downloads \
+  ronmkr/aura "https://example.com/file.iso"
+```
+
+## Cargo (From Source)
 
 1. Clone the repository:
    ```bash
@@ -21,6 +48,6 @@ Currently, Aura is in active development. You can build it from source using Car
    ```
 
 The binaries will be available in `target/release/`:
-- `aura-cli`: The command-line interface.
-- `aura-daemon`: The headless background service.
-- `aura-tui`: The interactive terminal dashboard.
+- `aura`: The command-line interface.
+- `aura daemon`: The headless background service.
+- `aura tui`: The interactive terminal dashboard.

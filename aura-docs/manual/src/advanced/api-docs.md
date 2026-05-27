@@ -11,7 +11,7 @@ make docs-api
 ```
 
 This uses `cargo doc` with the following flags:
-- `--workspace`: Generates documentation for all crates in the workspace (`aura-core`, `aura-cli`, etc.).
+- `--workspace`: Generates documentation for all crates in the workspace (`aura-core`, `aura`, etc.).
 - `--no-deps`: Skips generating documentation for external dependencies to speed up the process.
 - `--document-private-items`: Includes internal (non-public) items to provide full visibility for developers.
 

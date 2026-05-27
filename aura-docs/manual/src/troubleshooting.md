@@ -30,13 +30,13 @@ This chapter covers common issues and their solutions when using Aura.
 - **Solution**: Try enabling NAT Traversal or manually forward the BitTorrent port (default: 6881) in your router.
 
 ### RPC Client cannot connect
-- **Cause**: The `aura-daemon` is not running or is bound to a different port.
-- **Solution**: Ensure the daemon is running (`aura-daemon`). Verify the port and `rpc_token` in `Aura.toml` match your client settings.
+- **Cause**: The `aura daemon` is not running or is bound to a different port.
+- **Solution**: Ensure the daemon is running (`aura daemon`). Verify the port and `rpc_token` in `Aura.toml` match your client settings.
 
 ## Debugging
 
 To get more detailed logs, run Aura with the `RUST_LOG` environment variable:
 ```bash
-RUST_LOG=debug aura-cli "URL"
+RUST_LOG=debug aura "URL"
 ```
 Valid levels are `error`, `warn`, `info`, `debug`, and `trace`.

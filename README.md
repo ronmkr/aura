@@ -16,6 +16,33 @@
 - **Powerful CLI**: Supports URL globbing (ranges and sets) for easy batch processing.
 - **Multiple Personas**: Includes a high-speed CLI, a themeable Ratatui TUI, and a headless daemon controllable via JSON-RPC 2.0.
 
+## Usage
+
+Aura features a unified binary (`aura`) that acts as a standalone CLI, a headless daemon, or a TUI dashboard.
+
+### Docker (Recommended for Servers)
+
+You can easily run the Aura daemon inside a Docker container:
+
+```bash
+# Run the background daemon on port 6800
+docker run -d \
+  --name aura-daemon \
+  -p 6800:6800 \
+  -v $(pwd)/downloads:/downloads \
+  ronmkr/aura daemon --rpc-port 6800
+```
+
+Or use the CLI directly via Docker to download a file:
+
+```bash
+docker run --rm \
+  -v $(pwd)/downloads:/downloads \
+  ronmkr/aura "https://example.com/file.zip"
+```
+
+### Native Binary
+
 ## 📖 Documentation
 
 - **[Aura User Manual](aura-docs/manual/src/introduction.md)**: The comprehensive guide to using Aura, covering CLI, TUI, and advanced features.
@@ -36,17 +63,17 @@ cargo build --release
 ### Basic Usage
 Download a file via HTTP:
 ```bash
-./target/release/aura-cli https://example.com/file.zip
+./target/release/aura https://example.com/file.zip
 ```
 
 Download a BitTorrent magnet link or torrent file:
 ```bash
-./target/release/aura-cli "magnet:?xt=urn:btih:..."
+./target/release/aura "magnet:?xt=urn:btih:..."
 ```
 
 Batch download using globbing:
 ```bash
-./target/release/aura-cli "https://example.com/images/img_[001-100].jpg"
+./target/release/aura "https://example.com/images/img_[001-100].jpg"
 ```
 
 ## 🏗️ Architecture
