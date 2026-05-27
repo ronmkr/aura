@@ -239,13 +239,33 @@ impl reqwest::dns::Resolve for ReqwestDnsResolver {
                 .lookup_ip(name_str)
                 .await
                 .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
-            let addrs: Box<dyn Iterator<Item = std::net::SocketAddr> + Send> = Box::new(
-                lookup
-                    .iter()
-                    .map(|ip| std::net::SocketAddr::new(ip, 0))
-                    .collect::<Vec<_>>()
-                    .into_iter(),
-            );
+
+            let mut ipv6_addrs = Vec::new();
+            let mut ipv4_addrs = Vec::new();
+            for ip in lookup.iter() {
+                if ip.is_ipv6() {
+                    ipv6_addrs.push(ip);
+                } else {
+                    ipv4_addrs.push(ip);
+                }
+            }
+
+            let mut resolved_addrs = Vec::new();
+            let mut i = 0;
+            let mut j = 0;
+            while i < ipv6_addrs.len() || j < ipv4_addrs.len() {
+                if i < ipv6_addrs.len() {
+                    resolved_addrs.push(std::net::SocketAddr::new(ipv6_addrs[i], 0));
+                    i += 1;
+                }
+                if j < ipv4_addrs.len() {
+                    resolved_addrs.push(std::net::SocketAddr::new(ipv4_addrs[j], 0));
+                    j += 1;
+                }
+            }
+
+            let addrs: Box<dyn Iterator<Item = std::net::SocketAddr> + Send> =
+                Box::new(resolved_addrs.into_iter());
             Ok(addrs)
         })
     }

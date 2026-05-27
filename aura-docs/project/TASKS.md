@@ -8,7 +8,7 @@ All active development tasks, technical debt, and feature requests are managed e
 - [ ] **Feat: Add peer health scoring, reputation, and eviction to peer registry** (Issue #123) `[status:half-baked, module:core, priority:moderate]`
 - [ ] **feat: implement actual Recursive Crawler (Wget parity)** (Issue #65) `[status:half-baked, module:core, priority:moderate]`
 - [ ] **feat: implement Integrity Scrubber Actor and self-healing** (Issue #4) `[status:half-baked, module:storage, priority:moderate]`
-- [ ] **feat: Dual-Stack Asynchronous DNS Racing (Happy Eyeballs)** (Issue #25) `[status:missing, priority:moderate, module:network]`
+- [x] **feat: Dual-Stack Asynchronous DNS Racing (Happy Eyeballs)** (Issue #25) `[status:completed, priority:moderate, module:network]`
 - [ ] **infra: CI Docs Deployment** (Issue #134) `[enhancement, priority:moderate, infra]`
 - [ ] **Feat: Respect BEP 12 tracker tier ordering** (Issue #128) `[enhancement, module:core, priority:low]`
 - [ ] **Feat: Implement PEX (Peer Exchange) — BEP 11** (Issue #121) `[enhancement, module:core, priority:moderate]`
