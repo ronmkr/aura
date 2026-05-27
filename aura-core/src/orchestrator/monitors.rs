@@ -1,4 +1,4 @@
-use super::structs::Orchestrator;
+use super::Orchestrator;
 
 impl Orchestrator {
     pub(crate) async fn perform_adaptive_scaling(&mut self) {

@@ -1,4 +1,4 @@
-use super::super::structs::Orchestrator;
+use crate::orchestrator::Orchestrator;
 use std::sync::Arc;
 use tracing::{info, warn};
 

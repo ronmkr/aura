@@ -1,4 +1,4 @@
-use super::structs::{Command, Orchestrator};
+use super::{Command, Orchestrator};
 use crate::task::MetaTask;
 use crate::{Error, Result, TaskId};
 use tracing::info;

@@ -1,4 +1,4 @@
-use super::structs::{Event, Orchestrator};
+use super::{Event, Orchestrator};
 use crate::task::DownloadPhase;
 use crate::{Result, TaskId};
 use tracing::{debug, error, info};

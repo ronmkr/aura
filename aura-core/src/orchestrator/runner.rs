@@ -1,4 +1,4 @@
-use super::structs::{Orchestrator, SubTaskEvent};
+use super::{Orchestrator, SubTaskEvent};
 use crate::{Result, TaskId};
 use std::net::{IpAddr, Ipv4Addr};
 
