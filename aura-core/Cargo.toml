@@ -4,53 +4,53 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-tokio = { version = "1", features = ["full"] }
-tracing = "0.1"
-bytes = "1"
-thiserror = "1"
-serde = { version = "1", features = ["derive"] }
-serde_bencode = "0.2"
-serde_json = "1.0.149"
-serde_bytes = "0.11.19"
-md-5 = "0.10"
-sha1 = "0.10"
-sha2 = "0.10"
-async-trait = "0.1"
-reqwest = { version = "0.12", features = ["json", "stream", "cookies"] }
-futures-util = { version = "0.3", features = ["sink"] }
-tokio-util = { version = "0.7", features = ["codec", "rt"] }
-tokio-stream = { version = "0.1", features = ["sync"] }
-rand = { version = "0.10", features = ["std", "std_rng", "thread_rng"] }
-url = "2"
-igd-next = { version = "0.17.0", features = ["aio_tokio", "tokio"] }
-crab_nat = "0.7.6"
-local-ip-address = "0.6.12"
-regex = "1.12.3"
-socket2 = { version = "0.6.3", features = ["all"] }
-suppaftp = { version = "8.0.3", features = ["tokio", "tokio-async-native-tls"] }
-toml = "1.1.2"
-notify = "8.2.0"
-arc-swap = "1.9.1"
-hex = "0.4.3"
-nosleep = "0.2.1"
-chrono = { version = "0.4", features = ["serde"] }
-async-stream = "0.3"
-sled = "0.34"
-tokio-socks = "0.5.2"
-quick-xml = { version = "0.39.4", features = ["serialize"] }
-metrics = "0.24.6"
-metrics-exporter-prometheus = "0.18.3"
-hickory-resolver = { version = "0.26.1", features = ["tokio", "serde", "webpki-roots", "https-aws-lc-rs", "tls-aws-lc-rs", "system-config"] }
-lol_html = "1.2.1"
+tokio = { workspace = true }
+tracing = { workspace = true }
+bytes = { workspace = true }
+thiserror = { workspace = true }
+serde = { workspace = true }
+serde_bencode = { workspace = true }
+serde_json = { workspace = true }
+serde_bytes = { workspace = true }
+md-5 = { workspace = true }
+sha1 = { workspace = true }
+sha2 = { workspace = true }
+async-trait = { workspace = true }
+reqwest = { workspace = true }
+futures-util = { workspace = true }
+tokio-util = { workspace = true }
+tokio-stream = { workspace = true }
+rand = { workspace = true }
+url = { workspace = true }
+igd-next = { workspace = true }
+crab_nat = { workspace = true }
+local-ip-address = { workspace = true }
+regex = { workspace = true }
+socket2 = { workspace = true }
+suppaftp = { workspace = true }
+toml = { workspace = true }
+notify = { workspace = true }
+arc-swap = { workspace = true }
+hex = { workspace = true }
+nosleep = { workspace = true }
+chrono = { workspace = true }
+async-stream = { workspace = true }
+sled = { workspace = true }
+tokio-socks = { workspace = true }
+quick-xml = { workspace = true }
+metrics = { workspace = true }
+metrics-exporter-prometheus = { workspace = true }
+hickory-resolver = { workspace = true }
+lol_html = { workspace = true }
 
 [dev-dependencies]
-tempfile = "3"
-wiremock = "0.6"
-tracing-subscriber = "0.3"
-proptest = "1.6"
-criterion = { version = "0.5", features = ["async_tokio"] }
-cucumber = "0.23.0"
-futures = "0.3.32"
+tempfile = { workspace = true }
+wiremock = { workspace = true }
+tracing-subscriber = { workspace = true }
+proptest = { workspace = true }
+criterion = { workspace = true }
+cucumber = { workspace = true }
+futures = { workspace = true }
 
 [[bench]]
 name = "storage_bench"
