@@ -174,6 +174,14 @@ impl Orchestrator {
                     }
                 }
             }
+            SubTaskEvent::PexPeersDiscovered(info_hash, peers) => {
+                if let Some(meta_id) = self.bt_registry.get(&info_hash) {
+                    if let Some(bt_task) = self.bt_tasks.get(meta_id) {
+                        let mut registry = bt_task.state.registry.lock().await;
+                        registry.add_peers(peers);
+                    }
+                }
+            }
             SubTaskEvent::KillSwitch => {
                 let ids: Vec<TaskId> = self.tasks.keys().cloned().collect();
                 for id in ids {

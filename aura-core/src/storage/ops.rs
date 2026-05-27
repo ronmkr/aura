@@ -89,6 +89,10 @@ impl StorageEngine {
         let part_path = get_part_path(base_path)?;
         let hardened_base = crate::storage::sys::harden_path(base_path);
 
+        // fsync the .part file to ensure all data is on disk before exposing it under the final name
+        let file = fs::OpenOptions::new().read(true).open(&part_path).await?;
+        file.sync_all().await?;
+
         info!(%id, from = ?part_path, to = ?hardened_base, "Performing atomic completion rename");
         fs::rename(&part_path, &hardened_base).await?;
 

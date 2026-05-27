@@ -128,6 +128,16 @@ impl PeerRegistry {
             .collect()
     }
 
+    pub fn get_connected_peers(&self) -> Vec<Peer> {
+        self.peers
+            .values()
+            .filter(|ps| {
+                ps.state == ConnectionState::Handshaked || ps.state == ConnectionState::Connected
+            })
+            .map(|ps| ps.peer.clone())
+            .collect()
+    }
+
     pub fn peer_count(&self) -> usize {
         self.peers.len()
     }

@@ -110,6 +110,7 @@ impl BtWorker {
                     if let Ok(hs) = serde_bencode::from_bytes::<ExtendedHandshake>(&payload) {
                         if let Some(ref m) = hs.m {
                             self.ut_metadata_id = m.get("ut_metadata").copied();
+                            self.ut_pex_id = m.get("ut_pex").copied();
                             if let (Some(size), Some(_)) = (hs.metadata_size, self.ut_metadata_id) {
                                 self.metadata_buffer = Some(BytesMut::zeroed(size));
                                 self.trigger_request(
@@ -182,6 +183,18 @@ impl BtWorker {
                                     }
                                 }
                             }
+                        }
+                    }
+                } else if Some(id) == self.ut_pex_id {
+                    if let Ok(pex_msg) = serde_bencode::from_bytes::<
+                        crate::bt_worker::protocol::PexMessage,
+                    >(&payload)
+                    {
+                        let peers = pex_msg.decode_peers();
+                        if !peers.is_empty() {
+                            let _ = subtask_tx
+                                .send(SubTaskEvent::PexPeersDiscovered(self.info_hash, peers))
+                                .await;
                         }
                     }
                 }
