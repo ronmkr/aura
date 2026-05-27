@@ -66,7 +66,7 @@ jobs:
           Compress-Archive -Path package\* -DestinationPath ${{ matrix.artifact_name }}${{ matrix.archive_ext }}
 
       - name: Upload Build Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.artifact_name }}
           path: ${{ matrix.artifact_name }}${{ matrix.archive_ext }}
