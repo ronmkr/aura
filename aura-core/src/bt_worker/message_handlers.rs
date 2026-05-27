@@ -186,6 +186,9 @@ impl BtWorker {
                         }
                     }
                 } else if Some(id) == self.ut_pex_id {
+                    if !self.pex_enabled {
+                        return Ok(());
+                    }
                     if let Ok(pex_msg) = serde_bencode::from_bytes::<
                         crate::bt_worker::protocol::PexMessage,
                     >(&payload)

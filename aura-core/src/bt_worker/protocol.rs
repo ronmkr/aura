@@ -293,33 +293,47 @@ impl PexMessage {
         added_peers: &[std::net::SocketAddr],
         dropped_peers: &[std::net::SocketAddr],
     ) -> Self {
-        let (added, added6) = Self::encode_address_list(added_peers);
-        let (dropped, dropped6) = Self::encode_address_list(dropped_peers);
+        // BEP 11 mandates we drop excess peers if they exceed 65 to prevent bloat.
+        let added_limited: Vec<_> = added_peers.iter().take(65).copied().collect();
+        let dropped_limited: Vec<_> = dropped_peers.iter().take(65).copied().collect();
+
+        let (added, added6, added_f, added6_f) = Self::encode_address_list(&added_limited);
+        let (dropped, dropped6, _, _) = Self::encode_address_list(&dropped_limited);
 
         Self {
             added,
-            added_f: None, // flags not strictly required for MVP, but can be added later
+            added_f,
             dropped,
             added6,
-            added6_f: None,
+            added6_f,
             dropped6,
         }
     }
 
     fn encode_address_list(
         peers: &[std::net::SocketAddr],
-    ) -> (Option<serde_bytes::ByteBuf>, Option<serde_bytes::ByteBuf>) {
+    ) -> (
+        Option<serde_bytes::ByteBuf>,
+        Option<serde_bytes::ByteBuf>,
+        Option<serde_bytes::ByteBuf>,
+        Option<serde_bytes::ByteBuf>,
+    ) {
         let mut v4 = Vec::new();
         let mut v6 = Vec::new();
+        let mut v4_flags = Vec::new();
+        let mut v6_flags = Vec::new();
+
         for p in peers {
             match p.ip() {
                 std::net::IpAddr::V4(ip) => {
                     v4.extend_from_slice(&ip.octets());
                     v4.extend_from_slice(&p.port().to_be_bytes());
+                    v4_flags.push(0u8); // Default flags: 0x00
                 }
                 std::net::IpAddr::V6(ip) => {
                     v6.extend_from_slice(&ip.octets());
                     v6.extend_from_slice(&p.port().to_be_bytes());
+                    v6_flags.push(0u8);
                 }
             }
         }
@@ -333,6 +347,16 @@ impl PexMessage {
                 None
             } else {
                 Some(serde_bytes::ByteBuf::from(v6))
+            },
+            if v4_flags.is_empty() {
+                None
+            } else {
+                Some(serde_bytes::ByteBuf::from(v4_flags))
+            },
+            if v6_flags.is_empty() {
+                None
+            } else {
+                Some(serde_bytes::ByteBuf::from(v6_flags))
             },
         )
     }
@@ -386,5 +410,26 @@ mod tests {
         assert_eq!(peers[0].port, 8080);
         assert_eq!(peers[1].ip, "2001:db8::1");
         assert_eq!(peers[1].port, 9090);
+
+        // Verify flags were added
+        assert!(decoded.added_f.is_some());
+        assert_eq!(decoded.added_f.unwrap().len(), 1); // 1 IPv4 peer
+        assert!(decoded.added6_f.is_some());
+        assert_eq!(decoded.added6_f.unwrap().len(), 1); // 1 IPv6 peer
+    }
+
+    #[test]
+    fn test_pex_message_encoding_limit() {
+        let mut many_peers = Vec::new();
+        for i in 0..100 {
+            many_peers.push(format!("192.168.1.{}:8080", i % 254 + 1).parse().unwrap());
+        }
+        let msg = PexMessage::encode_peers(&many_peers, &many_peers);
+
+        let decoded = msg.decode_peers();
+        assert_eq!(decoded.len(), 65); // Should be truncated to 65
+
+        assert!(msg.added_f.is_some());
+        assert_eq!(msg.added_f.unwrap().len(), 65);
     }
 }

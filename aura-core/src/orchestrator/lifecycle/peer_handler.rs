@@ -66,6 +66,7 @@ pub async fn handle_incoming_peer(
                 pool.clone(),
                 config.network.proxy.clone(),
                 throttler,
+                config.bittorrent.pex_enabled,
             );
             worker.local_addr = local_addr;
             worker.pipeline_size = config.bittorrent.request_pipeline_size;

@@ -26,15 +26,20 @@ impl Orchestrator {
         let mut save_interval = tokio::time::interval(std::time::Duration::from_secs(
             config_initial.storage.save_session_interval_secs,
         ));
-        let mut scaling_interval = tokio::time::interval(std::time::Duration::from_secs(1));
+        let mut scaling_interval = tokio::time::interval(std::time::Duration::from_millis(
+            config_initial.general.event_poll_interval_ms,
+        ));
+        let mut pex_interval = tokio::time::interval(std::time::Duration::from_secs(60));
 
         // VPN Kill-switch Monitor
         let vpn_watch_rx = self.vpn_watch_tx.subscribe();
         let subtask_tx_monitor = self.subtask_tx.clone();
         let config_monitor = self.config.clone();
 
+        let vpn_check_secs = config_initial.vpn.check_interval_secs;
         tokio::spawn(async move {
-            let mut interval = tokio::time::interval(std::time::Duration::from_secs(2));
+            let mut interval =
+                tokio::time::interval(std::time::Duration::from_secs(vpn_check_secs));
             loop {
                 interval.tick().await;
 
@@ -90,6 +95,21 @@ impl Orchestrator {
             tokio::select! {
                 _ = scaling_interval.tick() => {
                     self.perform_adaptive_scaling().await;
+                }
+                _ = pex_interval.tick() => {
+                    if self.config.load().bittorrent.pex_enabled {
+                        for (sub_id, bt_task) in &self.bt_tasks {
+                            if let Some(tx) = self.worker_command_txs.get(sub_id) {
+                                let active_peers: std::collections::HashSet<std::net::SocketAddr> = {
+                                    let registry = bt_task.state.registry.lock().await;
+                                    registry.get_connected_peers().into_iter().filter_map(|p| {
+                                        format!("{}:{}", p.ip, p.port).parse().ok()
+                                    }).collect()
+                                };
+                                let _ = tx.send(crate::orchestrator::WorkerCommand::PexUpdate(active_peers));
+                            }
+                        }
+                    }
                 }
                 _ = save_interval.tick() => {
                     self.check_seed_limits().await;
