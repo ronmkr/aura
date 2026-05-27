@@ -34,6 +34,8 @@ pub struct BtWorker {
     pub pool: BufferPool,
     pub proxy: Option<String>,
     pub throttler: Arc<crate::throttler::Throttler>,
+    pub ut_pex_id: Option<u8>,
+    pub last_sent_pex_peers: std::collections::HashSet<std::net::SocketAddr>,
 }
 
 impl BtWorker {
@@ -62,6 +64,8 @@ impl BtWorker {
             pool,
             proxy,
             throttler,
+            ut_pex_id: None,
+            last_sent_pex_peers: std::collections::HashSet::new(),
         }
     }
 
@@ -175,6 +179,7 @@ impl BtWorker {
         if ext_support {
             let mut m = std::collections::HashMap::new();
             m.insert("ut_metadata".to_string(), 1);
+            m.insert("ut_pex".to_string(), 2);
             let ext_hs = ExtendedHandshake {
                 m: Some(m),
                 metadata_size: None,
@@ -196,6 +201,9 @@ impl BtWorker {
         let peer_addr = self.peer_addr.clone();
 
         info!(addr = %peer_addr, "Entering main peer message loop");
+        let mut pex_interval = tokio::time::interval(std::time::Duration::from_secs(60));
+        // Give it an initial delay so we don't spam PEX immediately on connect before accumulating peers
+        pex_interval.tick().await;
 
         loop {
             tokio::select! {
@@ -251,6 +259,30 @@ impl BtWorker {
                         }
                         Some(Err(e)) => return Err(e),
                         None => break,
+                    }
+                },
+                _ = pex_interval.tick() => {
+                    if let Some(pex_id) = self.ut_pex_id {
+                        let active_peers: std::collections::HashSet<std::net::SocketAddr> = {
+                            let registry = task.state.registry.lock().await;
+                            registry.get_connected_peers().into_iter().filter_map(|p| {
+                                format!("{}:{}", p.ip, p.port).parse().ok()
+                            }).collect()
+                        };
+
+                        let added: Vec<_> = active_peers.difference(&self.last_sent_pex_peers).copied().collect();
+                        let dropped: Vec<_> = self.last_sent_pex_peers.difference(&active_peers).copied().collect();
+
+                        if !added.is_empty() || !dropped.is_empty() {
+                            let pex_msg = crate::bt_worker::protocol::PexMessage::encode_peers(&added, &dropped);
+                            if let Ok(payload) = serde_bencode::to_bytes(&pex_msg) {
+                                let _ = framed.send(PeerMessage::Extended {
+                                    id: pex_id,
+                                    payload: payload.into(),
+                                }).await;
+                            }
+                            self.last_sent_pex_peers = active_peers;
+                        }
                     }
                 }
             }

@@ -63,6 +63,7 @@ pub enum SubTaskEvent {
         tokio::sync::broadcast::Sender<WorkerCommand>,
     ),
     LpdPeerDiscovered(InfoHash, crate::tracker::Peer),
+    PexPeersDiscovered(InfoHash, Vec<crate::tracker::Peer>),
     KillSwitch,
     Retry(TaskId, TaskId),
 }

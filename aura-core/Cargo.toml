@@ -10,6 +10,8 @@ bytes = "1"
 thiserror = "1"
 serde = { version = "1", features = ["derive"] }
 serde_bencode = "0.2"
+serde_json = "1.0.149"
+serde_bytes = "0.11.19"
 md-5 = "0.10"
 sha1 = "0.10"
 sha2 = "0.10"
@@ -20,7 +22,6 @@ tokio-util = { version = "0.7", features = ["codec", "rt"] }
 tokio-stream = { version = "0.1", features = ["sync"] }
 rand = { version = "0.10", features = ["std", "std_rng", "thread_rng"] }
 url = "2"
-serde_json = "1.0.149"
 igd-next = { version = "0.17.0", features = ["aio_tokio", "tokio"] }
 crab_nat = "0.7.6"
 local-ip-address = "0.6.12"
@@ -30,7 +31,6 @@ suppaftp = { version = "8.0.3", features = ["tokio", "tokio-async-native-tls"] }
 toml = "1.1.2"
 notify = "8.2.0"
 arc-swap = "1.9.1"
-serde_bytes = "0.11.19"
 hex = "0.4.3"
 nosleep = "0.2.1"
 chrono = { version = "0.4", features = ["serde"] }
