@@ -72,6 +72,20 @@ impl Orchestrator {
             }
         });
 
+        if let Some(scrub_command_rx) = self.scrub_rx.take() {
+            let (scrub_event_tx, mut scrub_event_rx) = tokio::sync::mpsc::channel(1024);
+            let scrubber =
+                crate::scrubber::IntegrityScrubber::new(scrub_command_rx, scrub_event_tx);
+            tokio::spawn(scrubber.run());
+
+            let sub_tx_clone = self.subtask_tx.clone();
+            tokio::spawn(async move {
+                while let Some(event) = scrub_event_rx.recv().await {
+                    let _ = sub_tx_clone.send(SubTaskEvent::ScrubberEvent(event)).await;
+                }
+            });
+        }
+
         loop {
             tokio::select! {
                 _ = scaling_interval.tick() => {
@@ -82,6 +96,17 @@ impl Orchestrator {
                     let ids: Vec<TaskId> = self.tasks.keys().cloned().collect();
                     for id in ids {
                         let _ = self.save_task(id).await;
+
+                        // Stall detection for Scrubber (ADR 0024)
+                        if let Some(task) = self.tasks.get(&id) {
+                            if task.phase == crate::task::DownloadPhase::Downloading {
+                                let total_throughput: f64 = task.subtasks.iter().map(|s| s.ewma_throughput).sum();
+                                if total_throughput < 1.0 { // Practically 0
+                                    tracing::info!(%id, "Task stalled (0 throughput). Triggering integrity scrub.");
+                                    let _ = self.handle_command(crate::orchestrator::Command::Scrub(id)).await;
+                                }
+                            }
+                        }
                     }
                 }
                 Ok((stream, addr)) = listener.accept() => {

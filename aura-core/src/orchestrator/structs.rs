@@ -35,6 +35,8 @@ pub enum Command {
     KillSwitch,
     Shutdown,
     RetrySubtask(TaskId, TaskId),
+    Scrub(TaskId),
+    RefreshDiscovery(TaskId),
 }
 
 #[derive(Debug, Clone)]
@@ -66,6 +68,7 @@ pub enum SubTaskEvent {
     PexPeersDiscovered(InfoHash, Vec<crate::tracker::Peer>),
     KillSwitch,
     Retry(TaskId, TaskId),
+    ScrubberEvent(crate::scrubber::ScrubberEvent),
 }
 
 /// Telemetry events published to the Event Bus.
@@ -107,6 +110,8 @@ pub struct Orchestrator {
     pub(crate) subtask_rx: mpsc::Receiver<SubTaskEvent>,
     pub(crate) dht_tx: mpsc::Sender<DhtCommand>,
     pub(crate) lpd_tx: mpsc::Sender<crate::lpd::LpdCommand>,
+    pub(crate) scrub_tx: mpsc::Sender<crate::scrubber::ScrubberCommand>,
+    pub(crate) scrub_rx: Option<mpsc::Receiver<crate::scrubber::ScrubberCommand>>,
     pub(crate) _nat_tx: mpsc::Sender<NatCommand>,
     pub(crate) peer_id: [u8; 20],
     pub(crate) throttler: Arc<Throttler>,
@@ -262,6 +267,7 @@ impl Orchestrator {
     ) -> (Self, broadcast::Sender<Event>) {
         let (event_tx, _event_rx) = broadcast::channel(1024);
         let (subtask_tx, subtask_rx) = mpsc::channel(4096);
+        let (scrub_tx, scrub_rx) = mpsc::channel(1024);
 
         let mut peer_id = [0u8; 20];
         peer_id[..8].copy_from_slice(b"-AR0001-");
@@ -303,6 +309,8 @@ impl Orchestrator {
                 storage_completion_rx,
                 subtask_tx,
                 subtask_rx,
+                scrub_tx,
+                scrub_rx: Some(scrub_rx),
                 dht_tx,
                 lpd_tx,
                 _nat_tx: nat_tx,

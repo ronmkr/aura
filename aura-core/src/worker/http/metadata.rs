@@ -10,8 +10,6 @@ impl HttpWorker {
         let mut redirect_count = 0;
         let max_redirects = 20;
 
-        let link_regex = regex::Regex::new(r#"(?i)<a\s+[^>]*href=["']([^"']+)["']"#).unwrap();
-
         loop {
             current_uri = self.upgrade_url(&current_uri).await;
             let mut attempts = 0;
@@ -128,31 +126,28 @@ impl HttpWorker {
                     .await
                     .map_err(|e| Error::Protocol(format!("Failed to read HTML body: {}", e)))?;
 
-                let base_url = url::Url::parse(&current_uri)
-                    .map_err(|e| Error::Protocol(format!("Invalid current URI for base: {}", e)))?;
-
-                let mut resolved_link = None;
                 let asset_exts = [
                     ".zip", ".tar.gz", ".tgz", ".dmg", ".exe", ".pkg", ".iso", ".rar", ".7z",
                     ".bin", ".msi", ".pdf", ".mp4", ".mkv", ".tar",
                 ];
 
-                for cap in link_regex.captures_iter(&body) {
-                    let href = &cap[1];
-                    if let Ok(resolved) = base_url.join(href) {
-                        let path = resolved.path().to_lowercase();
+                use super::crawler::RecursiveCrawler;
+                if let Ok(mut crawler) = RecursiveCrawler::new(&current_uri, 1, true) {
+                    crawler.enqueue_links(&current_uri, &body, 0);
+                    let mut found = None;
+                    while let Some((link_url, _depth)) = crawler.next_url() {
+                        let path = link_url.to_lowercase();
                         if asset_exts.iter().any(|ext| path.ends_with(ext)) {
-                            resolved_link = Some(resolved.to_string());
+                            found = Some(link_url);
                             break;
                         }
                     }
-                }
-
-                if let Some(link) = resolved_link {
-                    tracing::info!(from = %current_uri, to = %link, "Resolved landing page direct link");
-                    referer = Some(current_uri);
-                    current_uri = link;
-                    continue;
+                    if let Some(link) = found {
+                        tracing::info!(from = %current_uri, to = %link, "Resolved landing page direct link via crawler");
+                        referer = Some(current_uri);
+                        current_uri = link;
+                        continue;
+                    }
                 }
 
                 return Err(Error::Protocol(format!(

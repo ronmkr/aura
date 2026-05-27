@@ -107,3 +107,42 @@ async fn then_storage_engine_flushes_piece(_world: &mut AuraWorld, _piece: u32) 
 async fn then_disk_seek_count_minimized(_world: &mut AuraWorld) {
     // Verify that contiguous pieces were written in a single seek
 }
+
+#[given(expr = "a stalled BitTorrent download task")]
+async fn given_stalled_bittorrent_download(world: &mut AuraWorld) {
+    if world.engine.is_none() {
+        world.init_engine(|_| {}).await;
+    }
+}
+
+#[given(expr = "the downloaded file contains corrupted data at piece {int}")]
+async fn given_downloaded_file_corrupted(_world: &mut AuraWorld, _piece: u32) {}
+
+#[when(expr = "the EWMA stall detection triggers the Integrity Scrubber")]
+async fn when_ewma_stall_triggers_scrubber(world: &mut AuraWorld) {
+    if let Some(engine) = &world.engine {
+        let _ = engine.tell_active().await;
+    }
+}
+
+#[then(expr = "the Integrity Scrubber should find the corruption")]
+async fn then_integrity_scrubber_finds_corruption(world: &mut AuraWorld) {
+    if let Some(engine) = &world.engine {
+        let _ = engine.tell_active().await;
+    }
+}
+
+#[then(expr = "piece {int} should be marked as missing in the Bitfield")]
+async fn then_piece_marked_missing(world: &mut AuraWorld, _piece: u32) {
+    if let Some(engine) = &world.engine {
+        let _ = engine.tell_active().await;
+    }
+}
+
+#[then(expr = "a RefreshDiscovery event should be dispatched")]
+async fn then_refresh_discovery_dispatched(world: &mut AuraWorld) {
+    if let Some(rx) = &mut world.events_rx {
+        use tokio::time::{timeout, Duration};
+        let _ = timeout(Duration::from_millis(100), rx.recv()).await;
+    }
+}

@@ -191,6 +191,47 @@ impl Orchestrator {
             SubTaskEvent::Retry(meta_id, sub_id) => {
                 self.handle_retry_subtask(meta_id, sub_id).await?;
             }
+            SubTaskEvent::ScrubberEvent(event) => {
+                match event {
+                    crate::scrubber::ScrubberEvent::PieceCorrupted(meta_id, piece_index) => {
+                        tracing::warn!(%meta_id, piece_index, "Scrubber reported corrupted piece");
+                        if let Some(task) = self.tasks.get(&meta_id) {
+                            if let Some(bt_sub) = task
+                                .subtasks
+                                .iter()
+                                .find(|s| s.task_type == crate::task::TaskType::BitTorrent)
+                            {
+                                if let Some(bt_task) = self.bt_tasks.get(&bt_sub.id) {
+                                    let mut bf_guard = bt_task.state.bitfield.lock().await;
+                                    if let Some(bf) = bf_guard.as_mut() {
+                                        bf.set(piece_index, false); // Invalidate piece
+                                    }
+                                }
+                                let _ = self
+                                    .handle_command(crate::orchestrator::Command::RefreshDiscovery(
+                                        meta_id,
+                                    ))
+                                    .await;
+                            } else {
+                                // For non-swarm, the whole file is corrupt. We can pause or mark as error.
+                                let _ = self
+                                    .handle_command(crate::orchestrator::Command::Pause(meta_id))
+                                    .await;
+                                let _ = self.event_tx.send(Event::TaskError {
+                                    id: meta_id,
+                                    message: "File corrupted".to_string(),
+                                });
+                            }
+                        }
+                    }
+                    crate::scrubber::ScrubberEvent::ScrubComplete(meta_id) => {
+                        tracing::info!(%meta_id, "Integrity scrub complete");
+                    }
+                    crate::scrubber::ScrubberEvent::ScrubFailed(meta_id, err) => {
+                        tracing::error!(%meta_id, %err, "Integrity scrub failed");
+                    }
+                }
+            }
         }
         Ok(())
     }

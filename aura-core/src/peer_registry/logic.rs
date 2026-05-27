@@ -26,6 +26,22 @@ pub struct PeerState {
     pub last_uploaded_bytes: u64,
     pub upload_rate: f64,
     pub is_optimistic_unchoke: bool,
+    pub last_activity: std::time::Instant,
+    pub error_count: u32,
+}
+
+impl PeerState {
+    pub fn score(&self) -> f64 {
+        let throughput = self.download_rate + self.upload_rate;
+        let error_penalty = (self.error_count as f64) * 100000.0;
+        let idle_secs = self.last_activity.elapsed().as_secs_f64();
+        let idle_penalty = if idle_secs > 60.0 {
+            idle_secs * 100.0
+        } else {
+            0.0
+        };
+        throughput - error_penalty - idle_penalty
+    }
 }
 
 #[derive(Debug)]
@@ -60,9 +76,27 @@ impl PeerRegistry {
                     last_uploaded_bytes: 0,
                     upload_rate: 0.0,
                     is_optimistic_unchoke: false,
+                    last_activity: std::time::Instant::now(),
+                    error_count: 0,
                 }
             });
         }
+
+        // Eviction logic
+        if self.peers.len() > 500 {
+            let mut all_peers: Vec<_> = self
+                .peers
+                .iter()
+                .map(|(addr, ps)| (addr.clone(), ps.score()))
+                .collect();
+            all_peers.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+
+            let to_evict = all_peers.len() / 10; // Bottom 10%
+            for (addr, _) in all_peers.iter().take(to_evict) {
+                self.peers.remove(addr);
+            }
+        }
+
         added
     }
 
@@ -140,6 +174,19 @@ impl PeerRegistry {
 
     pub fn peer_count(&self) -> usize {
         self.peers.len()
+    }
+
+    pub fn record_error(&mut self, addr: &str) {
+        if let Some(ps) = self.peers.get_mut(addr) {
+            ps.error_count = ps.error_count.saturating_add(1);
+            ps.last_activity = std::time::Instant::now();
+        }
+    }
+
+    pub fn record_activity(&mut self, addr: &str) {
+        if let Some(ps) = self.peers.get_mut(addr) {
+            ps.last_activity = std::time::Instant::now();
+        }
     }
 }
 
