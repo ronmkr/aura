@@ -5,8 +5,8 @@ pub use peer_handler::handle_incoming_peer;
 
 use super::{Orchestrator, SubTaskEvent};
 use crate::bitfield::Bitfield;
-use crate::worker::bittorrent::task::BtTask;
 use crate::task::TaskType;
+use crate::worker::bittorrent::task::BtTask;
 use crate::worker::Metadata;
 use crate::{Error, Result, TaskId};
 use std::sync::Arc;

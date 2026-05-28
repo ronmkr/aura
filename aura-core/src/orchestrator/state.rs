@@ -1,9 +1,9 @@
 use super::{Command, Event, SubTaskEvent, WorkerCommand};
-use crate::worker::bittorrent::task::BtTask;
 use crate::dht::DhtCommand;
 use crate::nat::NatCommand;
 use crate::task::MetaTask;
 use crate::throttler::Throttler;
+use crate::worker::bittorrent::task::BtTask;
 use crate::{InfoHash, TaskId};
 use arc_swap::ArcSwap;
 use rand::RngExt;

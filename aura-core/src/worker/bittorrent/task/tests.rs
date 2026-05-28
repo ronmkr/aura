@@ -1,6 +1,6 @@
-use crate::worker::bittorrent::task::BtTask;
 use crate::peer_registry::{ConnectionState, PeerRegistry};
 use crate::tracker::Peer;
+use crate::worker::bittorrent::task::BtTask;
 use tokio::sync::{broadcast, mpsc};
 use tokio_util::sync::CancellationToken;
 

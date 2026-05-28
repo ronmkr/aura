@@ -1,7 +1,7 @@
+use super::messages::PeerMessage;
 use crate::{Error, Result};
 use bytes::{Buf, BytesMut};
 use tokio_util::codec::{Decoder, Encoder};
-use super::messages::PeerMessage;
 
 pub struct PeerCodec;
 

@@ -71,7 +71,11 @@ impl Orchestrator {
                             .iter()
                             .find(|s| s.task_type == crate::task::TaskType::BitTorrent)
                         {
-                            if let Some(bt_task) = meta_task.extensions.get("bittorrent").and_then(|e| e.clone().as_any_arc().downcast::<BtTask>().ok()) {
+                            if let Some(bt_task) = meta_task
+                                .extensions
+                                .get("bittorrent")
+                                .and_then(|e| e.clone().as_any_arc().downcast::<BtTask>().ok())
+                            {
                                 let config = self.config.load();
                                 let path = std::path::Path::new(&config.storage.download_dir)
                                     .join(&meta_task.name);
@@ -107,7 +111,11 @@ impl Orchestrator {
                         .iter()
                         .find(|s| s.task_type == crate::task::TaskType::BitTorrent)
                     {
-                        if let Some(bt_task) = meta_task.extensions.get("bittorrent").and_then(|e| e.clone().as_any_arc().downcast::<BtTask>().ok()) {
+                        if let Some(bt_task) = meta_task
+                            .extensions
+                            .get("bittorrent")
+                            .and_then(|e| e.clone().as_any_arc().downcast::<BtTask>().ok())
+                        {
                             let info_hash = bt_task.state.info_hash;
                             let _ = self
                                 .dht_tx

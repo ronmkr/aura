@@ -1,6 +1,6 @@
-use crate::worker::bittorrent::task::BtTask;
 use crate::orchestrator::{SubTaskEvent, WorkerCommand};
 use crate::storage::StorageRequest;
+use crate::worker::bittorrent::task::BtTask;
 use crate::{Error, InfoHash, Result, TaskId};
 use bytes::BytesMut;
 use futures_util::{SinkExt, StreamExt};

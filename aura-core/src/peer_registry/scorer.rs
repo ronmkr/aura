@@ -59,16 +59,19 @@ impl PeerScorer for AntiSnubbingScorer {
     fn calculate_score(&self, state: &PeerState) -> f64 {
         let base_score = state.download_rate + state.upload_rate;
         let error_penalty = (state.error_count as f64) * 100000.0;
-        
+
         let idle_secs = state.last_activity.elapsed().as_secs_f64();
-        
+
         // Snubbing penalty: we are interested, but download rate is negligible and we haven't seen activity
-        let snubbed_penalty = if state.am_interested && state.download_rate < 1.0 && idle_secs > self.snub_timeout_secs {
+        let snubbed_penalty = if state.am_interested
+            && state.download_rate < 1.0
+            && idle_secs > self.snub_timeout_secs
+        {
             500000.0 + idle_secs * 1000.0
         } else {
             0.0
         };
-        
+
         // Choke penalty: we are interested, but they are choking us
         let choke_penalty = if state.am_interested && state.peer_choking {
             50000.0
@@ -83,8 +86,8 @@ impl PeerScorer for AntiSnubbingScorer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tracker::Peer;
     use crate::peer_registry::ConnectionState;
+    use crate::tracker::Peer;
     use std::time::{Duration, Instant};
 
     fn make_test_peer_state(
@@ -121,34 +124,42 @@ mod tests {
     #[test]
     fn test_throughput_priority_scorer() {
         let scorer = ThroughputPriorityScorer;
-        
+
         // High download rate peer
         let fast_peer = make_test_peer_state(100.0, 10.0, 0, Duration::from_secs(5), false, false);
         // High upload rate peer
         let seed_peer = make_test_peer_state(10.0, 100.0, 0, Duration::from_secs(5), false, false);
-        
+
         let score_fast = scorer.calculate_score(&fast_peer);
         let score_seed = scorer.calculate_score(&seed_peer);
-        
+
         // ThroughputPriorityScorer weights download_rate double
-        assert!(score_fast > score_seed, "Fast download peer should score higher than seed peer");
+        assert!(
+            score_fast > score_seed,
+            "Fast download peer should score higher than seed peer"
+        );
     }
 
     #[test]
     fn test_anti_snubbing_scorer() {
-        let scorer = AntiSnubbingScorer { snub_timeout_secs: 10.0 };
-        
+        let scorer = AntiSnubbingScorer {
+            snub_timeout_secs: 10.0,
+        };
+
         // We are interested, but they haven't sent anything in 15 seconds (snubbed)
         let snubbed_peer = make_test_peer_state(0.0, 0.0, 0, Duration::from_secs(15), true, false);
-        
+
         // We are interested, they haven't sent anything in 5 seconds (not yet snubbed)
         let fine_peer = make_test_peer_state(0.0, 0.0, 0, Duration::from_secs(5), true, false);
-        
+
         let score_snubbed = scorer.calculate_score(&snubbed_peer);
         let score_fine = scorer.calculate_score(&fine_peer);
-        
-        assert!(score_snubbed < score_fine, "Snubbed peer should be heavily penalized");
-        
+
+        assert!(
+            score_snubbed < score_fine,
+            "Snubbed peer should be heavily penalized"
+        );
+
         // We are interested, and they are choking us
         let choked_peer = make_test_peer_state(0.0, 0.0, 0, Duration::from_secs(5), true, true);
         let score_choked = scorer.calculate_score(&choked_peer);

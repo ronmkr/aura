@@ -1,5 +1,5 @@
-pub mod logic;
 pub mod extension;
+pub mod logic;
 
-pub use logic::*;
 pub use extension::*;
+pub use logic::*;

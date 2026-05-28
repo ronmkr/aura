@@ -94,7 +94,11 @@ impl Orchestrator {
                     if let Some(sub) = task.subtasks.iter_mut().find(|s| s.id == sub_id) {
                         sub.recent_bytes_downloaded += bytes;
                     }
-                    if let Some(bt_task) = task.extensions.get("bittorrent").and_then(|e| e.clone().as_any_arc().downcast::<BtTask>().ok()) {
+                    if let Some(bt_task) = task
+                        .extensions
+                        .get("bittorrent")
+                        .and_then(|e| e.clone().as_any_arc().downcast::<BtTask>().ok())
+                    {
                         let mut registry = bt_task.state.registry.lock().await;
                         registry.add_downloaded(&peer_addr, bytes);
                     }
@@ -109,7 +113,11 @@ impl Orchestrator {
             SubTaskEvent::Uploaded(meta_id, _sub_id, bytes, peer_addr) => {
                 if let Some(task) = self.tasks.get_mut(&meta_id) {
                     task.uploaded_length += bytes;
-                    if let Some(bt_task) = task.extensions.get("bittorrent").and_then(|e| e.clone().as_any_arc().downcast::<BtTask>().ok()) {
+                    if let Some(bt_task) = task
+                        .extensions
+                        .get("bittorrent")
+                        .and_then(|e| e.clone().as_any_arc().downcast::<BtTask>().ok())
+                    {
                         let mut registry = bt_task.state.registry.lock().await;
                         registry.add_uploaded(&peer_addr, bytes);
                     }

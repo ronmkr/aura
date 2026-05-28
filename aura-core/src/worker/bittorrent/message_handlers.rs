@@ -1,8 +1,8 @@
 use super::protocol::{ExtendedHandshake, MetadataMessage, PeerCodec, PeerMessage};
 use super::BtWorker;
-use crate::worker::bittorrent::task::BtTask;
 use crate::orchestrator::SubTaskEvent;
 use crate::storage::StorageRequest;
+use crate::worker::bittorrent::task::BtTask;
 use crate::{Result, TaskId};
 use bytes::BytesMut;
 use futures_util::SinkExt;

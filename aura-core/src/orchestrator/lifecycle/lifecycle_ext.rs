@@ -67,7 +67,11 @@ impl Orchestrator {
                         tx
                     });
                 let my_id = self.peer_id;
-                let bt_task = match meta_task.extensions.get("bittorrent").and_then(|e| e.clone().as_any_arc().downcast::<BtTask>().ok()) {
+                let bt_task = match meta_task
+                    .extensions
+                    .get("bittorrent")
+                    .and_then(|e| e.clone().as_any_arc().downcast::<BtTask>().ok())
+                {
                     Some(bt) => bt.clone(),
                     None => break,
                 };

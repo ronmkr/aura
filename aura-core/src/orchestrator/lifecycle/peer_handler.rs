@@ -1,7 +1,7 @@
-use crate::worker::bittorrent::task::BtTask;
-use crate::worker::bittorrent::BtWorker;
 use crate::orchestrator::{SubTaskEvent, WorkerCommand};
 use crate::storage::StorageRequest;
+use crate::worker::bittorrent::task::BtTask;
+use crate::worker::bittorrent::BtWorker;
 use crate::{InfoHash, Result, TaskId};
 use std::sync::Arc;
 use tokio::net::TcpStream;

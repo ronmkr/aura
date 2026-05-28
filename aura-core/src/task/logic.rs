@@ -52,10 +52,10 @@ pub struct SubTask {
     pub retry_count: u32,
 }
 
-use crate::bitfield::Bitfield;
-use std::sync::Arc;
-use std::collections::HashMap;
 use super::extension::TaskExtension;
+use crate::bitfield::Bitfield;
+use std::collections::HashMap;
+use std::sync::Arc;
 
 /// The high-level representation of a logical download operation.
 /// A MetaTask can manage multiple SubTasks (sources).

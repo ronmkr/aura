@@ -1,5 +1,5 @@
-use crate::Result;
 use crate::Error;
+use crate::Result;
 
 pub const HANDSHAKE_LEN: usize = 68;
 pub const PSTR: &[u8] = b"BitTorrent protocol";

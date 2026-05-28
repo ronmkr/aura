@@ -3,9 +3,9 @@
 use crate::bitfield::Bitfield;
 use crate::peer_registry::PeerRegistry;
 use crate::piece_picker::PiecePicker;
+use crate::task::TaskExtension;
 use crate::torrent::Torrent;
 use crate::tracker::Peer;
-use crate::task::TaskExtension;
 use crate::{Error, InfoHash, Result, TaskId};
 use std::sync::Arc;
 use tokio::sync::{mpsc, Mutex};
@@ -210,5 +210,3 @@ impl TaskExtension for BtTask {
         self
     }
 }
-
-
