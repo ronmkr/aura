@@ -48,7 +48,7 @@ futures-util = { version = "0.3", features = ["sink"] }
 hex = "0.4.3"
 hickory-resolver = { version = "0.26.1", features = ["tokio", "serde", "webpki-roots", "https-aws-lc-rs", "tls-aws-lc-rs", "system-config"] }
 igd-next = { version = "0.17.0", features = ["aio_tokio", "tokio"] }
-indicatif = "0.17"
+indicatif = "0.18"
 local-ip-address = "0.6.12"
 lol_html = "2.0"
 md-5 = "0.10"
