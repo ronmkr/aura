@@ -232,6 +232,7 @@ dependencies = [
  "md-5",
  "metrics",
  "metrics-exporter-prometheus",
+ "mime_guess",
  "nosleep",
  "notify",
  "proptest",

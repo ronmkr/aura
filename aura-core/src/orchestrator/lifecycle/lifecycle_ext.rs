@@ -191,7 +191,7 @@ impl Orchestrator {
                             tokio::select! {
                                 _ = token_clone.cancelled() => {
                                 }
-                                res = worker.fetch_segment(meta_id, segment, Some(progress_tx), throttler_clone.clone()) => {
+                                res = worker.fetch_segment(meta_id, segment, Some(progress_tx), Some(storage_tx.clone()), throttler_clone.clone()) => {
                                     // Ensure all progress events are forwarded before finishing the range
                                     let _ = progress_handle.await;
 
@@ -225,7 +225,7 @@ impl Orchestrator {
                             tokio::select! {
                                 _ = token_clone.cancelled() => {
                                 }
-                                res = worker.fetch_segment(meta_id, segment, Some(progress_tx), throttler_clone.clone()) => {
+                                res = worker.fetch_segment(meta_id, segment, Some(progress_tx), Some(storage_tx.clone()), throttler_clone.clone()) => {
                                     match res {
                                         Ok(piece) => {
                                             let _ = storage_tx.send(StorageRequest::Write {

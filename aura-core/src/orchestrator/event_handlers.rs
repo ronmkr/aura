@@ -35,6 +35,7 @@ impl Orchestrator {
             let mut needs_reregister = false;
 
             if meta_task.total_length == 0 {
+                meta_task.range_supported = metadata.range_supported;
                 if let Some(len) = metadata.total_length {
                     info!(%meta_id, %len, "Metadata matured: task initialized");
                     meta_task.total_length = len;
@@ -50,6 +51,7 @@ impl Orchestrator {
                 } else {
                     info!(%meta_id, "Metadata matured but total length is unknown. Falling back to single-stream download.");
                     meta_task.total_length = 0;
+                    meta_task.range_supported = false; // Unknown length implies single stream for now
                     meta_task.pending_ranges.push(crate::task::Range {
                         start: 0,
                         end: u64::MAX,
@@ -58,13 +60,31 @@ impl Orchestrator {
                 }
             }
 
-            // Update name if currently unnamed
-            if (meta_task.name == "unnamed" || meta_task.name.is_empty()) && metadata.name.is_some()
-            {
-                let new_name = metadata.name.clone().unwrap();
-                info!(%meta_id, %new_name, "Updating task name from metadata");
-                meta_task.name = new_name;
-                needs_reregister = true;
+            // Update name if currently unnamed or if server provides a better one (with extension)
+            if let Some(new_name) = metadata.name.clone() {
+                let current_path = std::path::Path::new(&meta_task.name);
+                let new_path = std::path::Path::new(&new_name);
+
+                let current_has_ext = current_path.extension().is_some();
+                let new_has_ext = new_path.extension().is_some();
+
+                // Logic:
+                // 1. If currently "unnamed" or empty, always accept.
+                // 2. If current has no extension but new one does, accept.
+                // 3. If new name is different and has a known mime type that isn't generic octet-stream, accept.
+                let is_better_name = {
+                    let new_guess = mime_guess::from_path(new_path).first();
+                    let current_guess = mime_guess::from_path(current_path).first();
+
+                    new_has_ext
+                        && (!current_has_ext || (new_guess.is_some() && new_guess != current_guess))
+                };
+
+                if meta_task.name == "unnamed" || meta_task.name.is_empty() || is_better_name {
+                    info!(%meta_id, %new_name, "Updating task name from metadata");
+                    meta_task.name = new_name;
+                    needs_reregister = true;
+                }
             }
 
             if needs_reregister {
@@ -320,12 +340,13 @@ mod tests {
             phase: DownloadPhase::Downloading,
             priority: 100,
             streaming_mode: false,
-            subtasks: vec![sub1, sub2],
-            pending_ranges: vec![],
+            range_supported: true,
+            subtasks: vec![sub1.clone(), sub2.clone()],
+            pending_ranges: Vec::new(),
             in_flight_ranges: vec![(sub1_id, range), (sub2_id, range)],
             checksum: None,
             seeding_start_time: None,
-            blacklisted_uris: vec![],
+            blacklisted_uris: Vec::new(),
             extensions: HashMap::new(),
         };
 
