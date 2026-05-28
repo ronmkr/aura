@@ -265,12 +265,22 @@ impl MetaTask {
     }
 
     pub fn is_complete(&self) -> bool {
-        self.completed_length >= self.total_length && self.total_length > 0
+        if self.total_length > 0 {
+            self.completed_length >= self.total_length
+        } else {
+            self.pending_ranges.is_empty()
+                && self.in_flight_ranges.is_empty()
+                && self.completed_length > 0
+        }
     }
 
     pub fn progress(&self) -> f64 {
         if self.total_length == 0 {
-            0.0
+            if self.is_complete() {
+                100.0
+            } else {
+                0.0
+            }
         } else {
             (self.completed_length as f64 / self.total_length as f64) * 100.0
         }
