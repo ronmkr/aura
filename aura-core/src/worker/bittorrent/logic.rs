@@ -58,6 +58,10 @@ impl super::BtWorker {
             };
             if finished {
                 debug!(addr = %self.peer_addr, %piece_idx, "Piece finished by another worker, dropping");
+                if let Some(ref mut guard) = self.active_guard {
+                    guard.complete();
+                }
+                self.active_guard = None;
                 self.current_piece = None;
                 self.bytes_received = 0;
                 self.bytes_requested = 0;
@@ -155,15 +159,17 @@ impl super::BtWorker {
                     }
                     drop(picker_guard);
 
+                    if let Some(ref mut guard) = self.active_guard {
+                        guard.complete();
+                    }
+                    self.active_guard = None;
+
                     let _ = subtask_tx
                         .send(SubTaskEvent::PieceVerified(meta_id, sub_id, piece_idx))
                         .await;
                 } else {
                     error!(addr = %self.peer_addr, %piece_idx, "Piece hash mismatch!");
-                    let mut picker_guard = task.state.picker.lock().await;
-                    if let Some(ref mut picker) = *picker_guard {
-                        picker.release_piece(piece_idx);
-                    }
+                    self.active_guard = None;
                 }
 
                 self.current_piece = None;
@@ -220,6 +226,16 @@ impl super::BtWorker {
                         crate::worker::bittorrent::protocol::BLOCK_SIZE as usize,
                     );
                     self.piece_buffer.resize(piece_total_len as usize, 0);
+
+                    let state_clone = task.state.clone();
+                    let guard = crate::piece_picker::PieceGuard::new(piece_idx, move |idx| {
+                        tokio::spawn(async move {
+                            if let Some(picker) = state_clone.picker.lock().await.as_mut() {
+                                picker.release_piece(idx);
+                            }
+                        });
+                    });
+                    self.active_guard = Some(guard);
 
                     drop(picker_guard);
                     drop(bf_guard);

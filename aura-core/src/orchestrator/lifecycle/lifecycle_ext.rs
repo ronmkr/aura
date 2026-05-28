@@ -90,7 +90,10 @@ impl Orchestrator {
 
                     let storage_tx = self.storage_tx.clone();
                     let subtask_tx = self.subtask_tx.clone();
-                    let token_clone = token.clone();
+                    let child_token = token.child_token();
+                    self.worker_cancellation_tokens
+                        .insert(sub_id, child_token.clone());
+                    let token_clone = child_token;
 
                     let dummy_range = crate::task::Range { start: 0, end: 0 };
                     meta_task.in_flight_ranges.push((sub_id, dummy_range));
@@ -139,7 +142,10 @@ impl Orchestrator {
                 let storage_tx = self.storage_tx.clone();
                 let subtask_tx = self.subtask_tx.clone();
                 let (progress_tx, mut progress_rx) = mpsc::unbounded_channel::<u64>();
-                let token_clone = token.clone();
+                let child_token = token.child_token();
+                self.worker_cancellation_tokens
+                    .insert(sub_id, child_token.clone());
+                let token_clone = child_token;
                 let config_clone = config_arc.clone();
                 let throttler_clone = self.throttler.clone();
                 let provider_clone = self.credential_provider.clone();

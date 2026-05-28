@@ -22,6 +22,7 @@ pub struct BtWorker {
     pub peer_id: [u8; 20],
     pub my_id: [u8; 20],
     pub current_piece: Option<usize>,
+    pub active_guard: Option<crate::piece_picker::PieceGuard>,
     pub bytes_received: u64,
     pub bytes_requested: u64,
     pub piece_buffer: BytesMut,
@@ -53,6 +54,7 @@ impl BtWorker {
             peer_id,
             my_id,
             current_piece: None,
+            active_guard: None,
             bytes_received: 0,
             bytes_requested: 0,
             piece_buffer: BytesMut::new(),
@@ -211,6 +213,10 @@ impl BtWorker {
                         WorkerCommand::CancelPiece(piece_idx) => {
                             if Some(piece_idx) == self.current_piece {
                                 debug!(addr = %peer_addr, %piece_idx, "Received cancellation for current piece");
+                                if let Some(ref mut guard) = self.active_guard {
+                                    guard.complete();
+                                }
+                                self.active_guard = None;
                                 self.current_piece = None;
                                 self.bytes_received = 0;
                                 self.bytes_requested = 0;
@@ -224,6 +230,15 @@ impl BtWorker {
                                 self.current_piece = Some(piece_idx);
                                 self.bytes_received = 0;
                                 self.bytes_requested = 0;
+                                let state_clone = task.state.clone();
+                                let guard = crate::piece_picker::PieceGuard::new(piece_idx, move |idx| {
+                                    tokio::spawn(async move {
+                                        if let Some(picker) = state_clone.picker.lock().await.as_mut() {
+                                            picker.release_piece(idx);
+                                        }
+                                    });
+                                });
+                                self.active_guard = Some(guard);
                                 self.trigger_request(&mut framed, &task, meta_id, sub_id, storage_tx.clone(), subtask_tx.clone()).await?;
                             }
                         }

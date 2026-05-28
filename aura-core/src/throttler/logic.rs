@@ -111,36 +111,6 @@ impl TokenBucket {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::time::Instant;
-
-    #[tokio::test]
-    async fn test_token_bucket_throttling() {
-        let rate = 100; // 100 bytes/sec
-        let bucket = TokenBucket::new(rate);
-
-        // Wait for initial burst to subside and refill to stabilize
-        tokio::time::sleep(Duration::from_millis(500)).await;
-
-        let start = Instant::now();
-        // Acquire 300 bytes.
-        // Initial permits = 10. Refill = 10 every 100ms.
-        // Wait 500ms -> +50 permits. Total ~60.
-        // Acquire 300 -> Needs ~240 more.
-        // Takes ~24 ticks = 2.4 seconds.
-        bucket.acquire(300).await;
-        let elapsed = start.elapsed();
-
-        assert!(
-            elapsed >= Duration::from_millis(1500),
-            "Throttling failed: took only {:?}",
-            elapsed
-        );
-    }
-}
-
 use crate::TaskId;
 
 pub struct Throttler {
@@ -209,5 +179,35 @@ impl Throttler {
         if let Some(bucket) = task_bucket {
             bucket.acquire(amount).await;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::Instant;
+
+    #[tokio::test]
+    async fn test_token_bucket_throttling() {
+        let rate = 100; // 100 bytes/sec
+        let bucket = TokenBucket::new(rate);
+
+        // Wait for initial burst to subside and refill to stabilize
+        tokio::time::sleep(Duration::from_millis(500)).await;
+
+        let start = Instant::now();
+        // Acquire 300 bytes.
+        // Initial permits = 10. Refill = 10 every 100ms.
+        // Wait 500ms -> +50 permits. Total ~60.
+        // Acquire 300 -> Needs ~240 more.
+        // Takes ~24 ticks = 2.4 seconds.
+        bucket.acquire(300).await;
+        let elapsed = start.elapsed();
+
+        assert!(
+            elapsed >= Duration::from_millis(1500),
+            "Throttling failed: took only {:?}",
+            elapsed
+        );
     }
 }

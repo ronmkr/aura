@@ -15,6 +15,12 @@ impl Orchestrator {
                 token.cancel();
             }
 
+            for sub in &task.subtasks {
+                if let Some(w_token) = self.worker_cancellation_tokens.remove(&sub.id) {
+                    w_token.cancel();
+                }
+            }
+
             // Recycle in-flight ranges
             let in_flight = std::mem::take(&mut task.in_flight_ranges);
             for (_sub_id, range) in in_flight {
