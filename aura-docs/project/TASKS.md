@@ -4,13 +4,10 @@ All active development tasks, technical debt, and feature requests are managed e
 
 ## 🟢 Open Tasks
 
-- [ ] **Test: Implement actual BDD step definitions for daemon, networking, storage, swarm features** (Issue #124) `[status:half-baked, priority:moderate, testing]`
-- [ ] **Feat: Add peer health scoring, reputation, and eviction to peer registry** (Issue #123) `[status:half-baked, module:core, priority:moderate]`
 - [ ] **feat: implement actual Recursive Crawler (Wget parity)** (Issue #65) `[status:half-baked, module:core, priority:moderate]`
 - [x] **feat: Dual-Stack Asynchronous DNS Racing (Happy Eyeballs)** (Issue #25) `[status:completed, priority:moderate, module:network]`
 - [ ] **infra: CI Docs Deployment** (Issue #134) `[enhancement, priority:moderate, infra]`
 - [ ] **Feat: Respect BEP 12 tracker tier ordering** (Issue #128) `[enhancement, module:core, priority:low]`
-- [ ] **Feat: Implement PEX (Peer Exchange) — BEP 11** (Issue #121) `[enhancement, module:core, priority:moderate]`
 - [ ] **feat: QR code sharing for magnet links in CLI/TUI** (Issue #74) `[enhancement, module:cli, module:tui, priority:minor]`
 - [ ] **feat: implement Privacy-Enhanced Resolver (DoH/DoT)** (Issue #73) `[enhancement, priority:moderate, module:network]`
 - [ ] **feat: task prioritization and dependency management** (Issue #72) `[enhancement, module:core, priority:moderate]`
@@ -19,7 +16,6 @@ All active development tasks, technical debt, and feature requests are managed e
 - [ ] **feat: Modern Networking: HTTP/3 (QUIC) & Alt-Svc Support** (Issue #23) `[enhancement, module:core, priority:moderate]`
 - [ ] **feat: NNTP (Usenet) Protocol Support** (Issue #22) `[enhancement, module:core, priority:low]`
 - [ ] **feat: Multi-tenancy & Structured Audit Tracing** (Issue #15) `[enhancement, priority:moderate, module:daemon]`
-- [ ] **perf: Advanced Disk I/O Scheduling** (Issue #13) `[enhancement, module:storage, priority:moderate]`
 - [ ] **feat: Network Filesystem (NFS/SMB) Optimizations** (Issue #12) `[enhancement, module:storage, priority:moderate]`
 - [ ] **feat: Task Chaining & Metadata-based Path Mapping** (Issue #11) `[enhancement, module:core, priority:low]`
 - [ ] **feat: Cloud Storage Support (S3, Google Drive)** (Issue #10) `[enhancement, module:core, priority:moderate]`
@@ -27,6 +23,10 @@ All active development tasks, technical debt, and feature requests are managed e
 
 ## ✅ Completed Tasks
 
+- [x] **Test: Implement BDD step definitions for daemon, networking, storage, swarm features** (Issue #124)
+- [x] **Feat: Add peer health scoring, reputation, and eviction to peer registry** (Issue #123)
+- [x] **Feat: Implement PEX (Peer Exchange) — BEP 11** (Issue #121)
+- [x] **perf: Advanced Disk I/O Scheduling** (Issue #13)
 - [x] **Feat: Implement BT choking algorithm (tit-for-tat + optimistic unchoke)** (Issue #120)
 - [x] **feat: Adaptive Connection Scaling & Sourced Aggregation** (Issue #31)
 - [x] **feat: Hierarchical Token Bucket Throttling** (Issue #30)

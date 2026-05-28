@@ -1,7 +1,7 @@
 # ADR 0044: BitTorrent Choking Algorithm (Tit-for-Tat)
 
 ## Status
-Proposed
+Implemented
 
 ## Context
 Aura's BitTorrent worker was acting as a pure leecher, requesting pieces from all peers without ever unchoking them in return. This is inefficient for the swarm and leads to Aura being snubbed or banned by other clients that enforce tit-for-tat fairness. To participate fully in the BitTorrent ecosystem, Aura needs a standard choking algorithm.

@@ -1,7 +1,7 @@
 # ADR 0045: Peer Exchange (PEX) Implementation (BEP 11)
 
 ## Status
-Proposed
+Implemented
 
 ## Context
 Peer Exchange (PEX) allows BitTorrent clients to exchange known peers directly with each other without relying solely on Trackers or the DHT. This reduces tracker load, creates a more robust swarm, and enables faster discovery of active peers.

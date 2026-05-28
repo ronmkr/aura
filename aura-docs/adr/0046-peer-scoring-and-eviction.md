@@ -1,7 +1,7 @@
 # ADR 0046: Peer Registry Health Scoring & Eviction
 
 ## Status
-Accepted
+Implemented
 
 ## Context
 As a BitTorrent swarm grows, the `PeerRegistry` can accumulate a large number of inactive, slow, or error-prone peers. Unbounded growth of the peer list increases memory usage and connection overhead. We need a systematic way to evaluate peer health and evict underperforming peers when capacity limits are reached.
