@@ -199,6 +199,7 @@ impl Orchestrator {
                                 final_uri: uri.clone(),
                                 total_length: Some(total_length),
                                 name: Some(torrent.info.name.clone()),
+                                range_supported: true,
                             };
                             let _ = subtask_tx
                                 .send(SubTaskEvent::Matured(id, sub_id, metadata))

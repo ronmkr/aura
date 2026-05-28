@@ -58,7 +58,7 @@ impl Orchestrator {
                                 if meta_task.total_length == 0 {
                                     if let Some(size) = file.size {
                                         meta_task.total_length = size;
-                                        meta_task.generate_ranges(16);
+                                        meta_task.generate_ranges(128);
                                     }
                                 }
                                 for res in file.resources {

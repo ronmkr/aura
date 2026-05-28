@@ -168,6 +168,7 @@ impl FtpWorker {
             final_uri: self.uri.clone(),
             total_length: Some(size as u64),
             name,
+            range_supported: true,
         })
     }
 }

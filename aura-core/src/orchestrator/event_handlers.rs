@@ -17,6 +17,7 @@ impl Orchestrator {
                 final_uri: format!("magnet:?xt={}", bt_task.state.info_hash.to_magnet_urn()),
                 total_length: Some(torrent.total_length()),
                 name: Some(torrent.info.name.clone()),
+                range_supported: true,
             };
             self.handle_subtask_matured(meta_id, sub_id, metadata)
                 .await?;
@@ -37,7 +38,22 @@ impl Orchestrator {
                 if let Some(len) = metadata.total_length {
                     info!(%meta_id, %len, "Metadata matured: task initialized");
                     meta_task.total_length = len;
-                    meta_task.generate_ranges(16); // Default 16 segments
+                    if metadata.range_supported {
+                        meta_task.generate_ranges(128); // Default 128 segments to allow high concurrency
+                    } else {
+                        info!(%meta_id, "Server does not support Range requests. Falling back to single-stream download.");
+                        meta_task
+                            .pending_ranges
+                            .push(crate::task::Range { start: 0, end: len });
+                    }
+                    needs_reregister = true;
+                } else {
+                    info!(%meta_id, "Metadata matured but total length is unknown. Falling back to single-stream download.");
+                    meta_task.total_length = 0;
+                    meta_task.pending_ranges.push(crate::task::Range {
+                        start: 0,
+                        end: u64::MAX,
+                    });
                     needs_reregister = true;
                 }
             }

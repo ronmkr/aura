@@ -189,7 +189,7 @@ impl MetaTask {
             completed_length: 0,
             active: true,
             phase: DownloadPhase::Downloading,
-            target_concurrency: 1,
+            target_concurrency: 8,
             recent_bytes_downloaded: 0,
             ewma_throughput: 0.0,
             retry_count: 0,

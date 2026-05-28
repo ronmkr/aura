@@ -31,6 +31,7 @@ pub struct Metadata {
     pub final_uri: String,
     pub total_length: Option<u64>,
     pub name: Option<String>,
+    pub range_supported: bool,
 }
 
 use crate::throttler::Throttler;

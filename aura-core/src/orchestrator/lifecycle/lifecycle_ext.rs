@@ -14,6 +14,7 @@ impl Orchestrator {
         meta_id: TaskId,
         sub_id: TaskId,
     ) -> Result<()> {
+        tracing::debug!(%meta_id, %sub_id, "Dispatching next ranges");
         let token = match self.cancellation_tokens.get(&meta_id) {
             Some(t) => t.clone(),
             None => return Ok(()),
@@ -170,6 +171,7 @@ impl Orchestrator {
                     let config = config_clone.load();
                     match ttype {
                         TaskType::Http => {
+                            tracing::debug!(%meta_id, %sub_id, ?range, "Spawning HTTP worker for range");
                             let worker = crate::worker::WorkerBuilder::new(uri)
                                 .local_addr(local_addr)
                                 .dns_resolver(dns_resolver)
