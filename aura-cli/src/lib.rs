@@ -36,11 +36,12 @@ pub async fn run(args: Args) -> Result<()> {
     let current_dir = std::env::current_dir().unwrap();
 
     // Register and add all tasks
+    let mut tasks_to_add = Vec::new();
     for uri in &expanded_uris {
         let path_obj = std::path::Path::new(uri);
         let is_local_file = path_obj.exists() && path_obj.is_file();
 
-        let (name, is_metadata) = if is_local_file
+        let (inferred_name, is_metadata) = if is_local_file
             && (uri.ends_with(".torrent") || uri.ends_with(".metalink") || uri.ends_with(".meta4"))
         {
             ("unnamed".to_string(), true)
@@ -64,25 +65,55 @@ pub async fn run(args: Args) -> Result<()> {
             )
         };
 
-        let path = current_dir.join(&name);
+        tasks_to_add.push((uri.clone(), inferred_name, is_metadata));
+    }
+
+    if tasks_to_add.is_empty() {
+        return Ok(());
+    }
+
+    // If output is specified, we treat all URIs as sources for that one output
+    if let Some(output_name) = &args.output {
         let id = TaskId(rand::rng().random());
-        if !is_metadata {
-            storage.register_task(id, path, 0, None);
+        let path = current_dir.join(output_name);
+        storage.register_task(id, path, 0, None).await;
+
+        let mut sources = Vec::new();
+        for (uri, _, _) in tasks_to_add {
+            let ttype = if uri.ends_with(".torrent") {
+                TaskType::BitTorrent
+            } else if uri.starts_with("ftp://") || uri.starts_with("ftps://") {
+                TaskType::Ftp
+            } else {
+                TaskType::Http
+            };
+            sources.push((uri, ttype));
         }
 
-        let ttype = if uri.ends_with(".torrent") || (is_local_file && uri.ends_with(".torrent")) {
-            TaskType::BitTorrent
-        } else if uri.ends_with(".metalink") || uri.ends_with(".meta4") {
-            // Orchestrator handles parsing if the type is Metalink-compatible (Http is used as a placeholder for parsing)
-            TaskType::Http
-        } else if uri.starts_with("ftp://") || uri.starts_with("ftps://") {
-            TaskType::Ftp
-        } else {
-            TaskType::Http
-        };
         engine
-            .add_task_with_id(id, name, uri.clone(), ttype)
+            .add_task_with_options(id, output_name.clone(), sources, None, 100, false)
             .await?;
+    } else {
+        for (uri, name, is_metadata) in tasks_to_add {
+            let path = current_dir.join(&name);
+            let id = TaskId(rand::rng().random());
+            if !is_metadata {
+                storage.register_task(id, path, 0, None).await;
+            }
+
+            let ttype = if uri.ends_with(".torrent") {
+                TaskType::BitTorrent
+            } else if uri.ends_with(".metalink") || uri.ends_with(".meta4") {
+                TaskType::Http
+            } else if uri.starts_with("ftp://") || uri.starts_with("ftps://") {
+                TaskType::Ftp
+            } else {
+                TaskType::Http
+            };
+            engine
+                .add_task_with_id(id, name, uri.clone(), ttype)
+                .await?;
+        }
     }
 
     // Spawn the actors

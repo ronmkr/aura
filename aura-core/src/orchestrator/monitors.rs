@@ -42,7 +42,8 @@ impl Orchestrator {
 
                 if sub_task.assigned_ranges.len() < sub_task.target_concurrency {
                     to_dispatch.push((task.id, sub_task.id));
-                } else if throughput_per_connection < 256.0 * 1024.0
+                } else if (sub_task.target_concurrency < 16
+                    || throughput_per_connection < 2048.0 * 1024.0)
                     && sub_task.target_concurrency < max_concurrency
                 {
                     sub_task.target_concurrency =
@@ -52,7 +53,7 @@ impl Orchestrator {
                         sub_id = %sub_task.id,
                         target = %sub_task.target_concurrency,
                         throughput = %sub_task.ewma_throughput,
-                        "Scaling up subtask concurrency due to low throughput"
+                        "Scaling up subtask concurrency to optimize throughput"
                     );
 
                     to_dispatch.push((task.id, sub_task.id));

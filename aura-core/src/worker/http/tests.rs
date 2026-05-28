@@ -64,6 +64,7 @@ async fn test_http_worker_referer_propagation() {
                 length: 11,
             },
             None,
+            None,
             throttler,
         )
         .await;
@@ -176,6 +177,7 @@ async fn test_http_worker_retry_on_503() {
                 offset: 0,
                 length: 10,
             },
+            None,
             None,
             throttler,
         )

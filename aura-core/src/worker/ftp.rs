@@ -6,6 +6,7 @@ use suppaftp::tokio::AsyncNativeTlsConnector;
 use suppaftp::tokio::AsyncNativeTlsFtpStream;
 use suppaftp::types::FileType;
 use tokio::io::AsyncReadExt;
+use tokio::sync::mpsc;
 use url::Url;
 
 /// A specialized worker for the FTP(S) protocol.
@@ -168,6 +169,7 @@ impl FtpWorker {
             final_uri: self.uri.clone(),
             total_length: Some(size as u64),
             name,
+            range_supported: true,
         })
     }
 }
@@ -179,6 +181,7 @@ impl ProtocolWorker for FtpWorker {
         task_id: TaskId,
         segment: Segment,
         progress: Option<ProgressSender>,
+        storage_tx: Option<mpsc::Sender<crate::storage::StorageRequest>>,
         throttler: std::sync::Arc<crate::throttler::Throttler>,
     ) -> Result<PieceData> {
         let mut ftp: AsyncNativeTlsFtpStream = self.connect().await?;
@@ -215,7 +218,21 @@ impl ProtocolWorker for FtpWorker {
                 break;
             }
 
-            buffer.extend_from_slice(&chunk[..n]);
+            if let Some(ref s_tx) = storage_tx {
+                let _ = s_tx
+                    .send(crate::storage::StorageRequest::Write {
+                        task_id,
+                        segment: Segment {
+                            offset: segment.offset + total_read,
+                            length: n as u64,
+                        },
+                        data: BytesMut::from(&chunk[..n]),
+                    })
+                    .await;
+            } else {
+                buffer.extend_from_slice(&chunk[..n]);
+            }
+
             total_read += n as u64;
 
             if let Some(ref p_tx) = progress {

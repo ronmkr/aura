@@ -5,6 +5,7 @@ use crate::{Error, Result};
 impl HttpWorker {
     /// Resolves the final direct link and file size in a single pass.
     pub async fn resolve_metadata(&self) -> Result<Metadata> {
+        tracing::debug!(uri = %self.uri, "Resolving metadata");
         let mut current_uri = self.uri.clone();
         let mut referer: Option<String> = None;
         let mut redirect_count = 0;
@@ -180,10 +181,14 @@ impl HttpWorker {
                         .map(|pos| s[pos + 9..].trim_matches('"').to_string())
                 });
 
+            tracing::info!(%current_uri, ?total_length, ?name, "Metadata resolved successfully");
+            let range_supported = response.status() == reqwest::StatusCode::PARTIAL_CONTENT;
+
             return Ok(Metadata {
                 final_uri: current_uri,
                 total_length,
                 name,
+                range_supported,
             });
         }
     }

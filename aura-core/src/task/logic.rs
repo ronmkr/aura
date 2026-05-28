@@ -69,6 +69,7 @@ pub struct MetaTask {
     pub phase: DownloadPhase,
     pub priority: u32, // 0 = highest, 100 = default
     pub streaming_mode: bool,
+    pub range_supported: bool,
     pub subtasks: Vec<SubTask>,
     pub pending_ranges: Vec<Range>,
     pub in_flight_ranges: Vec<(TaskId, Range)>, // (SubTaskID, Range)
@@ -86,6 +87,7 @@ pub struct TaskState {
     pub phase: DownloadPhase,
     pub priority: u32,
     pub streaming_mode: bool,
+    pub range_supported: bool,
     pub total_length: u64,
     pub completed_length: u64,
     pub uploaded_length: u64,
@@ -105,6 +107,7 @@ impl MetaTask {
             phase: self.phase,
             priority: self.priority,
             streaming_mode: self.streaming_mode,
+            range_supported: self.range_supported,
             total_length: self.total_length,
             completed_length: self.completed_length,
             uploaded_length: self.uploaded_length,
@@ -124,6 +127,7 @@ impl MetaTask {
             phase: state.phase,
             priority: state.priority,
             streaming_mode: state.streaming_mode,
+            range_supported: state.range_supported,
             total_length: state.total_length,
             completed_length: state.completed_length,
             uploaded_length: state.uploaded_length,
@@ -147,6 +151,7 @@ impl MetaTask {
             phase: DownloadPhase::Downloading,
             priority: 100,
             streaming_mode: false,
+            range_supported: true, // Assume supported until proven otherwise
             subtasks: Vec::new(),
             pending_ranges: Vec::new(),
             in_flight_ranges: Vec::new(),
@@ -189,7 +194,7 @@ impl MetaTask {
             completed_length: 0,
             active: true,
             phase: DownloadPhase::Downloading,
-            target_concurrency: 1,
+            target_concurrency: 8,
             recent_bytes_downloaded: 0,
             ewma_throughput: 0.0,
             retry_count: 0,
@@ -211,6 +216,10 @@ impl MetaTask {
         // 2. Work Stealing / Racing (ADR 0005)
         // If no pending ranges, look for "lagging" in-flight ranges to race against.
         // A range is lagging if its assigned subtask's throughput is significantly below average.
+        if !self.range_supported {
+            return None;
+        }
+
         let avg_throughput = {
             let active_subs: Vec<_> = self
                 .subtasks
@@ -265,12 +274,22 @@ impl MetaTask {
     }
 
     pub fn is_complete(&self) -> bool {
-        self.completed_length >= self.total_length && self.total_length > 0
+        if self.total_length > 0 {
+            self.completed_length >= self.total_length
+        } else {
+            self.pending_ranges.is_empty()
+                && self.in_flight_ranges.is_empty()
+                && self.completed_length > 0
+        }
     }
 
     pub fn progress(&self) -> f64 {
         if self.total_length == 0 {
-            0.0
+            if self.is_complete() {
+                100.0
+            } else {
+                0.0
+            }
         } else {
             (self.completed_length as f64 / self.total_length as f64) * 100.0
         }

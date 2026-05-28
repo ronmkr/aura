@@ -31,6 +31,7 @@ pub struct Metadata {
     pub final_uri: String,
     pub total_length: Option<u64>,
     pub name: Option<String>,
+    pub range_supported: bool,
 }
 
 use crate::throttler::Throttler;
@@ -45,6 +46,7 @@ pub trait ProtocolWorker: Send + Sync {
         task_id: TaskId,
         segment: Segment,
         progress: Option<ProgressSender>,
+        storage_tx: Option<mpsc::Sender<crate::storage::StorageRequest>>,
         throttler: Arc<Throttler>,
     ) -> Result<PieceData>;
 

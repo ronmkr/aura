@@ -2,6 +2,7 @@ use super::ops::get_part_path;
 use crate::worker::Segment;
 use crate::{Error, Result, TaskId};
 use bytes::{Bytes, BytesMut};
+use sha2::digest::Digest as _;
 use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
 use tokio::fs::{self, File, OpenOptions};
@@ -87,13 +88,36 @@ impl StorageEngine {
         self.db.clone()
     }
 
-    pub fn register_task(
+    pub async fn register_task(
         &mut self,
         id: TaskId,
         path: PathBuf,
         _total_length: u64,
         checksum: Option<crate::Checksum>,
     ) {
+        if let Some(old_path) = self.task_paths.get(&id) {
+            if *old_path != path {
+                info!(%id, ?old_path, ?path, "Task path updated; moving existing data");
+                let old_part = match super::ops::get_part_path(old_path) {
+                    Ok(p) => p,
+                    Err(_) => return,
+                };
+                let new_part = match super::ops::get_part_path(&path) {
+                    Ok(p) => p,
+                    Err(_) => return,
+                };
+
+                // Close handle if open
+                self.handles.pop(&id);
+
+                if old_part.exists() {
+                    if let Err(e) = tokio::fs::rename(&old_part, &new_part).await {
+                        error!(%id, error = %e, "Failed to move .part file during re-registration");
+                    }
+                }
+            }
+        }
+
         self.task_paths.insert(id, path);
         if let Some(c) = checksum {
             self.task_checksums.insert(id, c);
@@ -142,7 +166,8 @@ impl StorageEngine {
                             total_length,
                             checksum,
                         } => {
-                            self.register_task(task_id, path, total_length, checksum);
+                            self.register_task(task_id, path, total_length, checksum)
+                                .await;
                             if let Err(e) = self.preallocate_task(task_id, total_length).await {
                                 error!(%task_id, error = %e, "Failed to pre-allocate file");
                                 let _ = self

@@ -4,6 +4,7 @@ use crate::{Error, Result, TaskId};
 use async_trait::async_trait;
 use bytes::BytesMut;
 use futures_util::StreamExt;
+use tokio::sync::mpsc;
 
 #[async_trait]
 impl ProtocolWorker for HttpWorker {
@@ -12,6 +13,7 @@ impl ProtocolWorker for HttpWorker {
         task_id: TaskId,
         segment: Segment,
         progress: Option<ProgressSender>,
+        storage_tx: Option<mpsc::Sender<crate::storage::StorageRequest>>,
         throttler: std::sync::Arc<crate::throttler::Throttler>,
     ) -> Result<PieceData> {
         let mut attempts = 0;
@@ -19,12 +21,17 @@ impl ProtocolWorker for HttpWorker {
 
         loop {
             let upgraded_uri = self.upgrade_url(&self.uri).await;
-            let range_header = format!(
-                "bytes={}-{}",
-                segment.offset,
-                segment.offset + segment.length - 1
-            );
-            let mut request = self.client.get(&upgraded_uri).header("Range", range_header);
+            let mut request = self.client.get(&upgraded_uri);
+            if segment.length != u64::MAX {
+                let range_header = format!(
+                    "bytes={}-{}",
+                    segment.offset,
+                    segment.offset + segment.length - 1
+                );
+                request = request.header("Range", range_header);
+            } else if segment.offset > 0 {
+                request = request.header("Range", format!("bytes={}-", segment.offset));
+            }
 
             if let Some(ref referer) = self.referer {
                 request = request.header("Referer", referer);
@@ -72,7 +79,21 @@ impl ProtocolWorker for HttpWorker {
 
                                 throttler.acquire_download(task_id, take_len as u64).await;
 
-                                buffer.extend_from_slice(sub_chunk);
+                                if let Some(ref s_tx) = storage_tx {
+                                    let _ = s_tx
+                                        .send(crate::storage::StorageRequest::Write {
+                                            task_id,
+                                            segment: Segment {
+                                                offset: segment.offset + bytes_downloaded,
+                                                length: take_len as u64,
+                                            },
+                                            data: BytesMut::from(sub_chunk),
+                                        })
+                                        .await;
+                                } else {
+                                    buffer.extend_from_slice(sub_chunk);
+                                }
+
                                 bytes_downloaded += take_len as u64;
                                 if let Some(ref p_tx) = progress {
                                     let _ = p_tx.send(take_len as u64);
@@ -128,6 +149,6 @@ impl ProtocolWorker for HttpWorker {
     }
 
     fn available_capacity(&self) -> usize {
-        4 // Allow 4 concurrent requests per HttpWorker
+        32 // Allow 32 concurrent requests per HttpWorker
     }
 }
