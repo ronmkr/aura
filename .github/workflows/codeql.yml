@@ -33,12 +33,14 @@ jobs:
 
     - name: Install Rust Toolchain
       uses: dtolnay/rust-toolchain@stable
+      with:
+        components: rust-src
 
     - name: Rust Cache
       uses: Swatinem/rust-cache@v2
 
-    - name: Fetch Cargo Dependencies
-      run: cargo fetch
+    - name: Compile Proc Macros
+      run: cargo check --all-targets
 
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v4
