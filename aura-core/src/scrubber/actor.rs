@@ -14,7 +14,7 @@ pub enum ScrubberCommand {
     ScrubSwarm {
         task_id: TaskId,
         path: PathBuf,
-        bt_task: Arc<crate::bt_task::BtTask>,
+        bt_task: Arc<crate::worker::bittorrent::task::BtTask>,
     },
 }
 
@@ -166,7 +166,7 @@ impl IntegrityScrubber {
         &mut self,
         task_id: TaskId,
         base_path: PathBuf,
-        bt_task: Arc<crate::bt_task::BtTask>,
+        bt_task: Arc<crate::worker::bittorrent::task::BtTask>,
     ) -> Result<()> {
         let part_path = crate::storage::ops::get_part_path(&base_path)?;
         let mut file = tokio::fs::File::open(&part_path).await?;

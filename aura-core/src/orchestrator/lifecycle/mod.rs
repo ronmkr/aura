@@ -5,8 +5,8 @@ pub use peer_handler::handle_incoming_peer;
 
 use super::{Orchestrator, SubTaskEvent};
 use crate::bitfield::Bitfield;
-use crate::bt_task::BtTask;
 use crate::task::TaskType;
+use crate::worker::bittorrent::task::BtTask;
 use crate::worker::Metadata;
 use crate::{Error, Result, TaskId};
 use std::sync::Arc;
@@ -19,7 +19,7 @@ impl Orchestrator {
             let mut bitfield: Option<Bitfield> = None;
             for sub in &meta_task.subtasks {
                 if sub.task_type == TaskType::BitTorrent {
-                    if let Some(bt) = self.bt_tasks.get(&sub.id) {
+                    if let Some(bt) = self.get_bt_task(sub.id) {
                         let bf: tokio::sync::MutexGuard<Option<crate::bitfield::Bitfield>> =
                             bt.state.bitfield.lock().await;
                         bitfield = bf.clone();
@@ -81,7 +81,7 @@ impl Orchestrator {
             let dns_resolver = self.dns_resolver.clone();
             let hsts_cache = self.hsts_cache.clone();
 
-            let existing_bt = self.bt_tasks.get(&sub_id).cloned();
+            let existing_bt = self.get_bt_task(sub_id);
 
             tokio::spawn(async move {
                 let config = config_clone.load();
@@ -186,13 +186,12 @@ impl Orchestrator {
                         let info_hash = bt_task.state.info_hash;
                         let _ = subtask_tx
                             .send(SubTaskEvent::BtTaskRegistered(
-                                sub_id,
+                                id,
                                 info_hash,
                                 bt_task.clone(),
                                 worker_cmd_tx.clone(),
                             ))
                             .await;
-
                         let torrent_guard = bt_task.state.torrent.lock().await;
                         if let Some(ref torrent) = *torrent_guard {
                             let total_length = torrent.total_length();

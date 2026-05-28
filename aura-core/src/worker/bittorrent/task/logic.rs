@@ -3,6 +3,7 @@
 use crate::bitfield::Bitfield;
 use crate::peer_registry::PeerRegistry;
 use crate::piece_picker::PiecePicker;
+use crate::task::TaskExtension;
 use crate::torrent::Torrent;
 use crate::tracker::Peer;
 use crate::{Error, InfoHash, Result, TaskId};
@@ -197,5 +198,15 @@ impl BtTask {
         });
 
         Ok(())
+    }
+}
+
+impl TaskExtension for BtTask {
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn as_any_arc(self: Arc<Self>) -> Arc<dyn std::any::Any + Send + Sync> {
+        self
     }
 }

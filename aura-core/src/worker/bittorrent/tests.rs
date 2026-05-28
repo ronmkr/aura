@@ -1,5 +1,5 @@
 #[cfg(test)]
-use crate::bt_worker::protocol::{Handshake, PeerCodec, PeerMessage};
+use crate::worker::bittorrent::protocol::{Handshake, PeerCodec, PeerMessage};
 #[cfg(test)]
 use bytes::{Bytes, BytesMut};
 #[cfg(test)]

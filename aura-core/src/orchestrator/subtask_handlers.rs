@@ -1,5 +1,6 @@
 use super::{Event, Orchestrator, SubTaskEvent, WorkerCommand};
 use crate::task::DownloadPhase;
+use crate::worker::bittorrent::task::BtTask;
 use crate::{Result, TaskId};
 use tracing::{debug, info};
 
@@ -93,7 +94,11 @@ impl Orchestrator {
                     if let Some(sub) = task.subtasks.iter_mut().find(|s| s.id == sub_id) {
                         sub.recent_bytes_downloaded += bytes;
                     }
-                    if let Some(bt_task) = self.bt_tasks.get(&sub_id) {
+                    if let Some(bt_task) = task
+                        .extensions
+                        .get("bittorrent")
+                        .and_then(|e| e.clone().as_any_arc().downcast::<BtTask>().ok())
+                    {
                         let mut registry = bt_task.state.registry.lock().await;
                         registry.add_downloaded(&peer_addr, bytes);
                     }
@@ -105,10 +110,14 @@ impl Orchestrator {
                     });
                 }
             }
-            SubTaskEvent::Uploaded(meta_id, sub_id, bytes, peer_addr) => {
+            SubTaskEvent::Uploaded(meta_id, _sub_id, bytes, peer_addr) => {
                 if let Some(task) = self.tasks.get_mut(&meta_id) {
                     task.uploaded_length += bytes;
-                    if let Some(bt_task) = self.bt_tasks.get(&sub_id) {
+                    if let Some(bt_task) = task
+                        .extensions
+                        .get("bittorrent")
+                        .and_then(|e| e.clone().as_any_arc().downcast::<BtTask>().ok())
+                    {
                         let mut registry = bt_task.state.registry.lock().await;
                         registry.add_uploaded(&peer_addr, bytes);
                     }
@@ -128,7 +137,7 @@ impl Orchestrator {
             }
             SubTaskEvent::PieceVerified(meta_id, sub_id, piece_idx) => {
                 debug!(%meta_id, %sub_id, piece_idx, "Broadcasting cancellation for verified piece");
-                if let Some(bt_task) = self.bt_tasks.get(&sub_id) {
+                if let Some(bt_task) = self.get_bt_task(sub_id) {
                     if let Some(tx) = self.worker_command_txs.get(&sub_id) {
                         let _ = tx.send(WorkerCommand::CancelPiece(piece_idx));
                     }
@@ -161,14 +170,16 @@ impl Orchestrator {
                     }
                 }
             }
-            SubTaskEvent::BtTaskRegistered(sub_id, info_hash, task, worker_cmd_tx) => {
-                self.bt_registry.insert(info_hash, sub_id);
-                self.bt_tasks.insert(sub_id, task);
-                self.worker_command_txs.insert(sub_id, worker_cmd_tx);
+            SubTaskEvent::BtTaskRegistered(meta_id, info_hash, task, worker_cmd_tx) => {
+                self.bt_registry.insert(info_hash, meta_id);
+                if let Some(meta_task) = self.tasks.get_mut(&meta_id) {
+                    meta_task.extensions.insert("bittorrent".to_string(), task);
+                }
+                self.worker_command_txs.insert(meta_id, worker_cmd_tx);
             }
             SubTaskEvent::LpdPeerDiscovered(info_hash, peer) => {
                 if let Some(meta_id) = self.bt_registry.get(&info_hash) {
-                    if let Some(bt_task) = self.bt_tasks.get(meta_id) {
+                    if let Some(bt_task) = self.get_bt_task(*meta_id) {
                         let mut registry = bt_task.state.registry.lock().await;
                         registry.add_peers(vec![peer]);
                     }
@@ -176,7 +187,7 @@ impl Orchestrator {
             }
             SubTaskEvent::PexPeersDiscovered(info_hash, peers) => {
                 if let Some(meta_id) = self.bt_registry.get(&info_hash) {
-                    if let Some(bt_task) = self.bt_tasks.get(meta_id) {
+                    if let Some(bt_task) = self.get_bt_task(*meta_id) {
                         let mut registry = bt_task.state.registry.lock().await;
                         registry.add_peers(peers);
                     }
@@ -201,7 +212,7 @@ impl Orchestrator {
                                 .iter()
                                 .find(|s| s.task_type == crate::task::TaskType::BitTorrent)
                             {
-                                if let Some(bt_task) = self.bt_tasks.get(&bt_sub.id) {
+                                if let Some(bt_task) = self.get_bt_task(bt_sub.id) {
                                     let mut bf_guard = bt_task.state.bitfield.lock().await;
                                     if let Some(bf) = bf_guard.as_mut() {
                                         bf.set(piece_index, false); // Invalidate piece

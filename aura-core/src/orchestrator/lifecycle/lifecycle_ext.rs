@@ -2,6 +2,7 @@ use super::SubTaskEvent;
 use crate::orchestrator::Orchestrator;
 use crate::storage::StorageRequest;
 use crate::task::{DownloadPhase, TaskType};
+use crate::worker::bittorrent::task::BtTask;
 use crate::worker::{ProtocolWorker, Segment};
 use crate::{Error, Result, TaskId};
 use tokio::sync::mpsc;
@@ -66,7 +67,11 @@ impl Orchestrator {
                         tx
                     });
                 let my_id = self.peer_id;
-                let bt_task = match self.bt_tasks.get(&sub_id) {
+                let bt_task = match meta_task
+                    .extensions
+                    .get("bittorrent")
+                    .and_then(|e| e.clone().as_any_arc().downcast::<BtTask>().ok())
+                {
                     Some(bt) => bt.clone(),
                     None => break,
                 };
@@ -97,7 +102,7 @@ impl Orchestrator {
 
                     let config_clone = config_arc.clone();
                     tokio::spawn(async move {
-                        let mut worker = crate::bt_worker::BtWorker::new(
+                        let mut worker = crate::worker::bittorrent::BtWorker::new(
                             peer_addr.clone(),
                             info_hash,
                             [0; 20],

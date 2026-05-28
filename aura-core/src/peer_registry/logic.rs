@@ -30,29 +30,24 @@ pub struct PeerState {
     pub error_count: u32,
 }
 
-impl PeerState {
-    pub fn score(&self) -> f64 {
-        let throughput = self.download_rate + self.upload_rate;
-        let error_penalty = (self.error_count as f64) * 100000.0;
-        let idle_secs = self.last_activity.elapsed().as_secs_f64();
-        let idle_penalty = if idle_secs > 60.0 {
-            idle_secs * 100.0
-        } else {
-            0.0
-        };
-        throughput - error_penalty - idle_penalty
-    }
-}
-
 #[derive(Debug)]
 pub struct PeerRegistry {
     peers: HashMap<String, PeerState>, // Key: ip:port
+    scorer: Box<dyn super::scorer::PeerScorer>,
 }
 
 impl PeerRegistry {
     pub fn new() -> Self {
         Self {
             peers: HashMap::new(),
+            scorer: Box::new(super::scorer::DefaultScorer),
+        }
+    }
+
+    pub fn with_scorer(scorer: Box<dyn super::scorer::PeerScorer>) -> Self {
+        Self {
+            peers: HashMap::new(),
+            scorer,
         }
     }
 
@@ -87,7 +82,7 @@ impl PeerRegistry {
             let mut all_peers: Vec<_> = self
                 .peers
                 .iter()
-                .map(|(addr, ps)| (addr.clone(), ps.score()))
+                .map(|(addr, ps)| (addr.clone(), self.scorer.calculate_score(ps)))
                 .collect();
             all_peers.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
 

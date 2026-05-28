@@ -1,7 +1,7 @@
 use crate::bitfield::Bitfield;
-use crate::bt_task::BtTask;
-use crate::bt_worker::PeerId;
 use crate::task::Range;
+use crate::worker::bittorrent::task::BtTask;
+use crate::worker::bittorrent::PeerId;
 use crate::worker::Metadata;
 use crate::{InfoHash, TaskId};
 use std::sync::Arc;

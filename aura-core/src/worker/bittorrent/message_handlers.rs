@@ -1,8 +1,8 @@
 use super::protocol::{ExtendedHandshake, MetadataMessage, PeerCodec, PeerMessage};
 use super::BtWorker;
-use crate::bt_task::BtTask;
 use crate::orchestrator::SubTaskEvent;
 use crate::storage::StorageRequest;
+use crate::worker::bittorrent::task::BtTask;
 use crate::{Result, TaskId};
 use bytes::BytesMut;
 use futures_util::SinkExt;
@@ -190,7 +190,7 @@ impl BtWorker {
                         return Ok(());
                     }
                     if let Ok(pex_msg) = serde_bencode::from_bytes::<
-                        crate::bt_worker::protocol::PexMessage,
+                        crate::worker::bittorrent::protocol::PexMessage,
                     >(&payload)
                     {
                         let peers = pex_msg.decode_peers();

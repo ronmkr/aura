@@ -1,6 +1,6 @@
-use crate::bt_task::BtTask;
 use crate::orchestrator::{SubTaskEvent, WorkerCommand};
 use crate::storage::StorageRequest;
+use crate::worker::bittorrent::task::BtTask;
 use crate::{Error, InfoHash, Result, TaskId};
 use bytes::BytesMut;
 use futures_util::{SinkExt, StreamExt};
@@ -248,7 +248,7 @@ impl BtWorker {
                                 let dropped: Vec<_> = self.last_sent_pex_peers.difference(&active_peers).copied().collect();
 
                                 if !added.is_empty() || !dropped.is_empty() {
-                                    let pex_msg = crate::bt_worker::protocol::PexMessage::encode_peers(&added, &dropped);
+                                    let pex_msg = crate::worker::bittorrent::protocol::PexMessage::encode_peers(&added, &dropped);
                                     if let Ok(payload) = serde_bencode::to_bytes(&pex_msg) {
                                         let _ = framed.send(PeerMessage::Extended {
                                             id: pex_id,
