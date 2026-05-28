@@ -1,20 +1,20 @@
 pub mod command;
 pub mod commands;
 pub mod engine;
-pub mod event;
 pub mod event_handlers;
-pub mod events;
 pub mod lifecycle;
 pub mod monitors;
 pub mod runner;
 pub mod state;
 pub mod subtask_event;
+pub mod subtask_handlers;
+pub mod telemetry;
 pub mod vpn_enforcement;
 pub mod worker_command;
 
 pub use command::Command;
 pub use engine::Engine;
-pub use event::Event;
 pub use state::Orchestrator;
 pub use subtask_event::SubTaskEvent;
+pub use telemetry::Event;
 pub use worker_command::WorkerCommand;

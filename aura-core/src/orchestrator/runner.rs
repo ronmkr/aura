@@ -1,6 +1,8 @@
 use super::{Orchestrator, SubTaskEvent};
+use crate::worker::bittorrent::task::BtTask;
 use crate::{Result, TaskId};
 use std::net::{IpAddr, Ipv4Addr};
+use std::sync::Arc;
 
 impl Orchestrator {
     pub async fn run(mut self) -> Result<()> {
@@ -98,8 +100,8 @@ impl Orchestrator {
                 }
                 _ = pex_interval.tick() => {
                     if self.config.load().bittorrent.pex_enabled {
-                        for (sub_id, bt_task) in &self.bt_tasks {
-                            if let Some(tx) = self.worker_command_txs.get(sub_id) {
+                        for (task_id, bt_task) in self.iter_bt_tasks() {
+                            if let Some(tx) = self.worker_command_txs.get(&task_id) {
                                 let active_peers: std::collections::HashSet<std::net::SocketAddr> = {
                                     let registry = bt_task.state.registry.lock().await;
                                     registry.get_connected_peers().into_iter().filter_map(|p| {
@@ -140,7 +142,7 @@ impl Orchestrator {
                     let config = self.config.load().clone();
                     let throttler = self.throttler.clone();
 
-                    let bt_tasks = self.bt_tasks.clone();
+                    let bt_tasks: std::collections::HashMap<TaskId, Arc<BtTask>> = self.iter_bt_tasks().into_iter().collect();
 
                     tokio::spawn(async move {
                         if let Err(e) = super::lifecycle::handle_incoming_peer(stream, addr, bt_registry, bt_tasks, worker_command_txs, storage_tx, subtask_tx, my_peer_id, cancellation_tokens, local_addr, config, throttler).await {

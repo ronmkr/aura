@@ -4,8 +4,6 @@ use std::fmt;
 
 pub mod api;
 pub mod bitfield;
-pub mod bt_task;
-pub mod bt_worker;
 pub mod dht;
 pub mod glob;
 pub mod hooks;

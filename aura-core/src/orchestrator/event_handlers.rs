@@ -10,7 +10,7 @@ impl Orchestrator {
         sub_id: TaskId,
         torrent: crate::torrent::Torrent,
     ) -> Result<()> {
-        if let Some(bt_task) = self.bt_tasks.get(&sub_id) {
+        if let Some(bt_task) = self.get_bt_task(sub_id) {
             bt_task.state.mature(torrent.clone()).await;
 
             let metadata = crate::worker::Metadata {

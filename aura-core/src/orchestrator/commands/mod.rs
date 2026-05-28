@@ -1,5 +1,6 @@
 use super::{Command, Orchestrator};
 use crate::task::MetaTask;
+use crate::worker::bittorrent::task::BtTask;
 use crate::{Error, Result, TaskId};
 use tracing::info;
 
@@ -64,15 +65,13 @@ impl Orchestrator {
                         .iter()
                         .any(|s| s.task_type == crate::task::TaskType::BitTorrent)
                     {
-                        // For BitTorrent tasks, we might not have a direct mapping from meta_id to bt_task yet.
-                        // But wait, the BtRegistry maps InfoHash to meta_id? Actually, BtTasks are keyed by sub_id in `self.bt_tasks`.
-                        // Let's find the sub_id of the BitTorrent task.
-                        if let Some(bt_sub) = meta_task
+                        // BitTorrent tasks store their protocol-specific state as an extension in the MetaTask.
+                        if let Some(_bt_sub) = meta_task
                             .subtasks
                             .iter()
                             .find(|s| s.task_type == crate::task::TaskType::BitTorrent)
                         {
-                            if let Some(bt_task) = self.bt_tasks.get(&bt_sub.id) {
+                            if let Some(bt_task) = meta_task.extensions.get("bittorrent").and_then(|e| e.clone().as_any_arc().downcast::<BtTask>().ok()) {
                                 let config = self.config.load();
                                 let path = std::path::Path::new(&config.storage.download_dir)
                                     .join(&meta_task.name);
@@ -103,12 +102,12 @@ impl Orchestrator {
             }
             Command::RefreshDiscovery(id) => {
                 if let Some(meta_task) = self.tasks.get(&id) {
-                    if let Some(bt_sub) = meta_task
+                    if let Some(_bt_sub) = meta_task
                         .subtasks
                         .iter()
                         .find(|s| s.task_type == crate::task::TaskType::BitTorrent)
                     {
-                        if let Some(bt_task) = self.bt_tasks.get(&bt_sub.id) {
+                        if let Some(bt_task) = meta_task.extensions.get("bittorrent").and_then(|e| e.clone().as_any_arc().downcast::<BtTask>().ok()) {
                             let info_hash = bt_task.state.info_hash;
                             let _ = self
                                 .dht_tx

@@ -52,9 +52,14 @@ pub struct SubTask {
     pub retry_count: u32,
 }
 
+use crate::bitfield::Bitfield;
+use std::sync::Arc;
+use std::collections::HashMap;
+use super::extension::TaskExtension;
+
 /// The high-level representation of a logical download operation.
 /// A MetaTask can manage multiple SubTasks (sources).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct MetaTask {
     pub id: TaskId, // Unified ID for the logical file
     pub name: String,
@@ -70,9 +75,8 @@ pub struct MetaTask {
     pub checksum: Option<crate::Checksum>,
     pub seeding_start_time: Option<chrono::DateTime<chrono::Utc>>,
     pub blacklisted_uris: Vec<String>,
+    pub extensions: HashMap<String, Arc<dyn TaskExtension>>,
 }
-
-use crate::bitfield::Bitfield;
 
 /// Represents the serializable state of a MetaTask for persistence.
 #[derive(Debug, Serialize, Deserialize)]
@@ -129,6 +133,7 @@ impl MetaTask {
             checksum: state.checksum,
             seeding_start_time: state.seeding_start_time,
             blacklisted_uris: state.blacklisted_uris.unwrap_or_default(),
+            extensions: HashMap::new(),
         }
     }
 
@@ -148,6 +153,7 @@ impl MetaTask {
             checksum: None,
             seeding_start_time: None,
             blacklisted_uris: Vec::new(),
+            extensions: HashMap::new(),
         }
     }
 

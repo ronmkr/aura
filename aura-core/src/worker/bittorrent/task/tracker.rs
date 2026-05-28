@@ -1,4 +1,4 @@
-use crate::bt_task::BtTask;
+use crate::worker::bittorrent::task::BtTask;
 use crate::tracker::TrackerClient;
 use crate::Result;
 use tracing::{debug, info};

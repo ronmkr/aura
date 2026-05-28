@@ -1,4 +1,4 @@
-use crate::bt_task::BtTask;
+use crate::worker::bittorrent::task::BtTask;
 use crate::peer_registry::{ConnectionState, PeerRegistry};
 use crate::tracker::Peer;
 use tokio::sync::{broadcast, mpsc};

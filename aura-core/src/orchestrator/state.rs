@@ -1,5 +1,5 @@
 use super::{Command, Event, SubTaskEvent, WorkerCommand};
-use crate::bt_task::BtTask;
+use crate::worker::bittorrent::task::BtTask;
 use crate::dht::DhtCommand;
 use crate::nat::NatCommand;
 use crate::task::MetaTask;
@@ -15,7 +15,6 @@ use tokio_util::sync::CancellationToken;
 pub struct Orchestrator {
     pub(crate) tasks: HashMap<TaskId, MetaTask>,
     pub(crate) bt_registry: HashMap<InfoHash, TaskId>,
-    pub(crate) bt_tasks: HashMap<TaskId, Arc<BtTask>>,
     pub(crate) worker_command_txs: HashMap<TaskId, tokio::sync::broadcast::Sender<WorkerCommand>>,
     pub(crate) cancellation_tokens: HashMap<TaskId, CancellationToken>,
     pub(crate) command_rx: mpsc::Receiver<Command>,
@@ -43,6 +42,36 @@ pub struct Orchestrator {
 }
 
 impl Orchestrator {
+    pub(crate) fn get_bt_task(&self, id: TaskId) -> Option<Arc<BtTask>> {
+        // Try as meta_id
+        if let Some(task) = self.tasks.get(&id) {
+            if let Some(ext) = task.extensions.get("bittorrent") {
+                return ext.clone().as_any_arc().downcast::<BtTask>().ok();
+            }
+        }
+        // Try as sub_id
+        for task in self.tasks.values() {
+            if task.subtasks.iter().any(|s| s.id == id) {
+                if let Some(ext) = task.extensions.get("bittorrent") {
+                    return ext.clone().as_any_arc().downcast::<BtTask>().ok();
+                }
+            }
+        }
+        None
+    }
+
+    pub(crate) fn iter_bt_tasks(&self) -> Vec<(TaskId, Arc<BtTask>)> {
+        let mut results = Vec::new();
+        for task in self.tasks.values() {
+            if let Some(ext) = task.extensions.get("bittorrent") {
+                if let Ok(bt) = ext.clone().as_any_arc().downcast::<BtTask>() {
+                    results.push((task.id, bt));
+                }
+            }
+        }
+        results
+    }
+
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         command_rx: mpsc::Receiver<Command>,
@@ -90,7 +119,6 @@ impl Orchestrator {
             Self {
                 tasks: HashMap::new(),
                 bt_registry: HashMap::new(),
-                bt_tasks: HashMap::new(),
                 worker_command_txs: HashMap::new(),
                 cancellation_tokens: HashMap::new(),
                 command_rx,

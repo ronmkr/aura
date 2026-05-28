@@ -1,5 +1,5 @@
-use crate::bt_task::BtTask;
-use crate::bt_worker::BtWorker;
+use crate::worker::bittorrent::task::BtTask;
+use crate::worker::bittorrent::BtWorker;
 use crate::orchestrator::{SubTaskEvent, WorkerCommand};
 use crate::storage::StorageRequest;
 use crate::{InfoHash, Result, TaskId};
@@ -27,8 +27,8 @@ pub async fn handle_incoming_peer(
     config: Arc<crate::Config>,
     throttler: Arc<crate::throttler::Throttler>,
 ) -> Result<()> {
-    use crate::bt_worker::Handshake;
-    use crate::bt_worker::HANDSHAKE_LEN;
+    use crate::worker::bittorrent::Handshake;
+    use crate::worker::bittorrent::HANDSHAKE_LEN;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
     let mut buf = [0u8; HANDSHAKE_LEN];

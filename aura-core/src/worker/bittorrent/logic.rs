@@ -1,5 +1,5 @@
 use super::protocol::{MetadataMessage, PeerCodec, PeerMessage, BLOCK_SIZE};
-use crate::bt_task::BtTask;
+use crate::worker::bittorrent::task::BtTask;
 use crate::orchestrator::SubTaskEvent;
 use crate::storage::StorageRequest;
 use crate::{Error, Result, TaskId};
@@ -83,7 +83,7 @@ impl super::BtWorker {
             // Ensure buffer is initialized if it was set via RequestPiece (Endgame)
             if self.piece_buffer.is_empty() {
                 self.piece_buffer =
-                    BytesMut::with_capacity(crate::bt_worker::protocol::BLOCK_SIZE as usize);
+                    BytesMut::with_capacity(crate::worker::bittorrent::protocol::BLOCK_SIZE as usize);
                 self.piece_buffer.resize(piece_total_len as usize, 0);
             }
 
@@ -124,7 +124,7 @@ impl super::BtWorker {
 
                     let finished_data = std::mem::replace(
                         &mut self.piece_buffer,
-                        BytesMut::with_capacity(crate::bt_worker::protocol::BLOCK_SIZE as usize),
+                        BytesMut::with_capacity(crate::worker::bittorrent::protocol::BLOCK_SIZE as usize),
                     );
 
                     let offset = torrent
@@ -214,7 +214,7 @@ impl super::BtWorker {
                     self.bytes_received = 0;
                     self.bytes_requested = 0;
                     self.piece_buffer =
-                        BytesMut::with_capacity(crate::bt_worker::protocol::BLOCK_SIZE as usize);
+                        BytesMut::with_capacity(crate::worker::bittorrent::protocol::BLOCK_SIZE as usize);
                     self.piece_buffer.resize(piece_total_len as usize, 0);
 
                     drop(picker_guard);
