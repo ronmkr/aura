@@ -35,8 +35,13 @@ jobs:
       run: |
         rustup default stable
         rustup component add rust-src rust-analyzer
+        SYSROOT=$(rustc --print sysroot)
         echo "RUSTUP_TOOLCHAIN=stable" >> $GITHUB_ENV
-        echo "RUST_SRC_PATH=$(rustc --print sysroot)/lib/rustlib/src/rust/library" >> $GITHUB_ENV
+        echo "RUST_SRC_PATH=$SYSROOT/lib/rustlib/src/rust/library" >> $GITHUB_ENV
+        echo "CODEQL_EXTRACTOR_RUST_SYSROOT=$SYSROOT" >> $GITHUB_ENV
+        echo "CODEQL_EXTRACTOR_RUST_SYSROOT_SRC=$SYSROOT/lib/rustlib/src/rust/library" >> $GITHUB_ENV
+        echo "CODEQL_EXTRACTOR_RUST_RUSTC_SRC=$SYSROOT/lib/rustlib/src/rust/library" >> $GITHUB_ENV
+        echo "CODEQL_EXTRACTOR_RUST_PROC_MACRO_SERVER=$SYSROOT/libexec/rust-analyzer-proc-macro-srv" >> $GITHUB_ENV
 
     - name: Rust Cache
       uses: Swatinem/rust-cache@v2
