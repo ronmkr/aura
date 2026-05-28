@@ -31,17 +31,20 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y libdbus-1-dev pkg-config
 
-    - name: Initialize CodeQL
-      uses: github/codeql-action/init@v4
-      with:
-        languages: ${{ matrix.language }}
-        build-mode: autobuild
-
     - name: Install Rust Toolchain
       uses: dtolnay/rust-toolchain@stable
 
     - name: Rust Cache
       uses: Swatinem/rust-cache@v2
+
+    - name: Fetch Cargo Dependencies
+      run: cargo fetch
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v4
+      with:
+        languages: ${{ matrix.language }}
+        build-mode: none
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v4
