@@ -235,9 +235,9 @@ This table maps architectural concepts to their primary implementation files in 
 | **Sequential Aggregator** | Storage | `aura-core/src/storage/logic.rs` |
 | **Storage Ops** | Storage | `aura-core/src/storage/ops.rs` |
 | **Buffer Pool** | Memory | `aura-core/src/buffer_pool/logic.rs` |
-| **HTTP Worker** | Protocol | `aura-core/src/worker/http.rs` |
+| **HTTP Worker** | Protocol | `aura-core/src/worker/http/mod.rs` |
 | **FTP Worker** | Protocol | `aura-core/src/worker/ftp.rs` |
-| **BitTorrent Logic** | Protocol | `aura-core/src/bt_worker/worker.rs` |
+| **BitTorrent Logic** | Protocol | `aura-core/src/worker/bittorrent/worker.rs` |
 | **Piece Picker** | Strategy | `aura-core/src/piece_picker/logic.rs` |
 | **Peer Registry** | Strategy | `aura-core/src/peer_registry/logic.rs` |
 | **DHT Node** | Discovery | `aura-core/src/dht/actor/mod.rs` |

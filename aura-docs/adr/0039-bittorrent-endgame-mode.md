@@ -1,7 +1,7 @@
 # ADR 0039: BitTorrent Endgame Mode
 
 ## Status
-Proposed
+Implemented
 
 ## Context
 In a BitTorrent swarm, the final blocks of a download often take much longer to retrieve than the rest. This happens because some peers might be slow, or their connection might drop after we've requested a piece but before it's delivered. This is known as the "99% stall."

@@ -1,7 +1,7 @@
 # ADR 0025: NAT Traversal and LAN Discovery
 
 ## Status
-Accepted
+Implemented
 
 ## Context
 BitTorrent performance is heavily dependent on "reachability"—the ability for other peers to initiate connections to the client. Manual port forwarding is a significant barrier for users. Additionally, high-speed transfers on local networks are often hampered by unnecessary routing through external gateways.

@@ -78,11 +78,10 @@ async fn then_mark_source_after_attempts(world: &mut AuraWorld, state: String, _
         interval.tick().await;
         let active = engine.tell_active().await.unwrap();
         if let Some(task) = active.iter().find(|t| t.id == id) {
-            if state == "Degraded" || state == "Failed" {
-                if task.subtasks.iter().any(|s| !s.active) {
-                    success = true;
-                    break;
-                }
+            if (state == "Degraded" || state == "Failed") && task.subtasks.iter().any(|s| !s.active)
+            {
+                success = true;
+                break;
             }
         } else {
             success = true;

@@ -1,7 +1,7 @@
 # ADR 0047: Automated Release Pipeline
 
 ## Status
-Accepted
+Implemented
 
 ## Context
 Currently, our CI/CD process only runs tests and formatting checks. Users who wish to run `Aura` must build it from source using `cargo`, which is a significant barrier to adoption. To provide a seamless experience, we must automate the generation and distribution of pre-compiled binaries across major platforms (Windows, macOS, Linux).

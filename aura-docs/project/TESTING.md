@@ -41,10 +41,13 @@ Verify disk efficiency and atomic safety.
 | ID | Scenario | Status | Verified Version | Notes |
 | :--- | :--- | :--- | :--- | :--- |
 | 1.1 | Metalink Multi-Source | ✅ Pass | v0.1.0 | Aggregates mixed mirrors correctly. |
-| 3.1 | Global Throttling | ✅ Pass | v0.1.0 | Verified with 10MB test; requires progress batching. |
-| 5.1 | Atomic Completion | ✅ Pass | v0.1.0 | File renamed from .part on 100% completion. |
+| 2.1 | Magnet Link Maturation| ✅ Pass | v0.1.0 | Verified in swarm BDD tests. |
+| 2.3 | BitTorrent v2 Hybrid  | ✅ Pass | v0.1.0 | Merkle tree SHA-256 integrity verified. |
+| 3.1 | Global Throttling     | ✅ Pass | v0.1.0 | Semaphore-based token bucket capping verified. |
+| 4.1 | Pause/Resume          | ✅ Pass | v0.1.0 | State correctly saved/loaded from .aura files. |
+| 4.3 | VPN Kill-switch       | ✅ Pass | v0.1.0 | Pauses all tasks immediately upon interface loss. |
+| 5.1 | Atomic Completion     | ✅ Pass | v0.1.0 | File renamed from .part on 100% completion. |
 | 5.2 | Sequential Aggregation| ✅ Pass | v0.1.0 | Verified correct assembly of out-of-order chunks. |
-| 4.1 | Pause/Resume | ⏳ Pending | | |
 
 ---
 

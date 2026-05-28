@@ -1,7 +1,7 @@
 # ADR 0051: Docker Containerization
 
 ## Status
-Accepted
+Implemented
 
 ## Context
 Aura is designed to be highly portable and capable of running as a headless daemon on servers, NAS devices, or personal workstations. While we provide pre-compiled binaries via GitHub Actions, setting up native runtimes (or dealing with dynamic linking issues related to `libdbus-1`) can still introduce friction for users who prefer containerized workloads. 

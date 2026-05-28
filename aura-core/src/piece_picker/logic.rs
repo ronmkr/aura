@@ -154,10 +154,90 @@ impl PiecePicker {
     }
 }
 
-#[cfg(test)]
+/// An RAII guard that automatically releases a picked piece back to the picker if dropped,
+/// unless explicitly marked as completed.
+pub struct PieceGuard {
+    piece_idx: usize,
+    on_drop: Option<Box<dyn FnOnce(usize) + Send + Sync>>,
+}
+
+impl std::fmt::Debug for PieceGuard {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PieceGuard")
+            .field("piece_idx", &self.piece_idx)
+            .finish()
+    }
+}
+
+impl PieceGuard {
+    pub fn new<F>(piece_idx: usize, on_drop: F) -> Self
+    where
+        F: FnOnce(usize) + Send + Sync + 'static,
+    {
+        Self {
+            piece_idx,
+            on_drop: Some(Box::new(on_drop)),
+        }
+    }
+
+    pub fn piece_idx(&self) -> usize {
+        self.piece_idx
+    }
+
+    pub fn complete(&mut self) {
+        self.on_drop = None;
+    }
+}
+
+impl Drop for PieceGuard {
+    fn drop(&mut self) {
+        if let Some(on_drop) = self.on_drop.take() {
+            on_drop(self.piece_idx);
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_piece_guard_raii_release() {
+        use std::sync::atomic::{AtomicBool, Ordering};
+        use std::sync::Arc;
+
+        let released = Arc::new(AtomicBool::new(false));
+        let released_clone = released.clone();
+
+        {
+            let _guard = PieceGuard::new(5, move |idx| {
+                assert_eq!(idx, 5);
+                released_clone.store(true, Ordering::SeqCst);
+            });
+            assert!(!released.load(Ordering::SeqCst));
+        }
+
+        assert!(released.load(Ordering::SeqCst));
+    }
+
+    #[test]
+    fn test_piece_guard_complete_prevents_release() {
+        use std::sync::atomic::{AtomicBool, Ordering};
+        use std::sync::Arc;
+
+        let released = Arc::new(AtomicBool::new(false));
+        let released_clone = released.clone();
+
+        {
+            let mut guard = PieceGuard::new(5, move |idx| {
+                assert_eq!(idx, 5);
+                released_clone.store(true, Ordering::SeqCst);
+            });
+            guard.complete();
+        }
+
+        assert!(!released.load(Ordering::SeqCst));
+    }
 
     #[test]
     fn test_rarest_first_selection() {

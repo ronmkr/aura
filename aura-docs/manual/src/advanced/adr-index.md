@@ -28,7 +28,7 @@ Aura's design is driven by a series of formal Architecture Decision Records. The
 | [0022](../../../adr/0022-disk-io-scheduling.md) | ADR 0022: Advanced Disk I/O Scheduling and Kernel Hinting | Implemented |
 | [0023](../../../adr/0023-adaptive-scaling-and-aggregation.md) | ADR 0023: Adaptive Connection Scaling and Sourced Aggregation | Accepted |
 | [0024](../../../adr/0024-integrity-scrubbing.md) | ADR 0024: Integrity Scrubbing and Torrent Refreshing | Accepted |
-| [0025](../../../adr/0025-nat-traversal-and-lpd.md) | ADR 0025: NAT Traversal and LAN Discovery | Accepted |
+| [0025](../../../adr/0025-nat-traversal-and-lpd.md) | ADR 0025: NAT Traversal and LAN Discovery | Implemented |
 | [0026](../../../adr/0026-modern-networking.md) | ADR 0026: Modern Networking (Happy Eyeballs, Alt-Svc, Streaming) | Accepted |
 | [0027](../../../adr/0027-power-management.md) | ADR 0027: Power Management and Automated Lifecycle Actions | Accepted |
 | [0028](../../../adr/0028-privacy-dns.md) | ADR 0028: Privacy-Enhanced Resolution and Modern DNS | Accepted |
@@ -42,18 +42,18 @@ Aura's design is driven by a series of formal Architecture Decision Records. The
 | [0036](../../../adr/0036-bittorrent-core.md) | ADR 0036: BitTorrent Core and Swarm Management | Accepted |
 | [0037](../../../adr/0037-redirects-and-validation.md) | ADR 0037: Redirect Handling and Content Validation | Accepted |
 | [0038](../../../adr/0038-vpn-integration.md) | ADR 0038: Native VPN Integration (OpenVPN, WireGuard) | Partially Implemented |
-| [0039](../../../adr/0039-bittorrent-endgame-mode.md) | ADR 0039: BitTorrent Endgame Mode | Proposed |
+| [0039](../../../adr/0039-bittorrent-endgame-mode.md) | ADR 0039: BitTorrent Endgame Mode | Implemented |
 | [0040](../../../adr/0040-task-prioritization.md) | ADR 0040: Task Prioritization and Dependency Chains | Proposed |
-| [0041](../../../adr/0041-non-swarm-integrity.md) | ADR 0041: Integrity Verification for Non-Swarm Protocols | Proposed |
+| [0041](../../../adr/0041-non-swarm-integrity.md) | ADR 0041: Integrity Verification for Non-Swarm Protocols | Implemented |
 | [0042](../../../adr/0042-i18n-architecture.md) | ADR 0042: Internationalization (i18n) Architecture | Proposed |
 | [0043](../../../adr/0043-unified-architecture.md) | ADR 0043: Unified Architecture and CLI-Daemon-TUI Integration | Accepted |
-| [0044](../../../adr/0044-bittorrent-choking-algorithm.md) | ADR 0044: BitTorrent Choking Algorithm (Tit-for-Tat) | Proposed |
-| [0045](../../../adr/0045-peer-exchange-pex.md) | ADR 0045: Peer Exchange (PEX) Implementation (BEP 11) | Proposed |
-| [0046](../../../adr/0046-peer-scoring-and-eviction.md) | ADR 0046: Peer Registry Health Scoring & Eviction | Accepted |
-| [0047](../../../adr/0047-automated-release-pipeline.md) | ADR 0047: Automated Release Pipeline | Accepted |
-| [0048](../../../adr/0048-ftps-tls-support.md) | 48. FTPS (TLS) Support and Retry Logic |  |
-| [0049](../../../adr/0049-browser-bridge.md) | 49. Browser Bridge (Extension Support) |  |
-| [0050](../../../adr/0050-integration-tests-suite.md) | 50. Integration Tests Suite |  |
-| [0051](../../../adr/0051-docker-containerization.md) | ADR 0051: Docker Containerization | Accepted |
+| [0044](../../../adr/0044-bittorrent-choking-algorithm.md) | ADR 0044: BitTorrent Choking Algorithm (Tit-for-Tat) | Implemented |
+| [0045](../../../adr/0045-peer-exchange-pex.md) | ADR 0045: Peer Exchange (PEX) Implementation (BEP 11) | Implemented |
+| [0046](../../../adr/0046-peer-scoring-and-eviction.md) | ADR 0046: Peer Registry Health Scoring & Eviction | Implemented |
+| [0047](../../../adr/0047-automated-release-pipeline.md) | ADR 0047: Automated Release Pipeline | Implemented |
+| [0048](../../../adr/0048-ftps-tls-support.md) | 48. FTPS (TLS) Support and Retry Logic | Implemented |
+| [0049](../../../adr/0049-browser-bridge.md) | 49. Browser Bridge (Extension Support) | Implemented |
+| [0050](../../../adr/0050-integration-tests-suite.md) | 50. Integration Tests Suite | Implemented |
+| [0051](../../../adr/0051-docker-containerization.md) | ADR 0051: Docker Containerization | Implemented |
 
 For a full list of ADRs, see the `aura-docs/adr/` directory in the repository.

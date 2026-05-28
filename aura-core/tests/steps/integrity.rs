@@ -50,7 +50,7 @@ async fn when_add_task_with_checksum(world: &mut AuraWorld) {
     world.last_task_id = Some(id);
 
     let uri = world.mirror_uris.last().unwrap().clone();
-    let name = uri.split('/').last().unwrap().to_string();
+    let name = uri.split('/').next_back().unwrap().to_string();
 
     engine
         .add_task_with_checksum(id, name, uri, TaskType::Http, world.task_checksum.clone())

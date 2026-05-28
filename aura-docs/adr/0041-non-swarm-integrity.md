@@ -1,7 +1,7 @@
 # ADR 0041: Integrity Verification for Non-Swarm Protocols
 
 ## Status
-Proposed
+Implemented
 
 ## Context
 While BitTorrent has built-in hash verification, HTTP and FTP protocols rely on transport-layer reliability, which does not protect against data corruption at rest or mirror-side errors. Modern download managers should provide an optional post-download verification step.

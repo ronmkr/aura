@@ -74,11 +74,11 @@
 - [x] **DNS over HTTPS (DoH/DoT)** (Privacy-enhanced asynchronous resolution).
 - [x] **Integrity Scrubbing & Self-healing Storage** (Issue #4).
 - [x] **Generational Write Buffer & Advanced Caching** (Issue #14).
+- [x] **PEX implementation** (BEP 11 Peer Exchange) (Issue #121).
+- [x] **Peer registry scoring** (Latency/Reputation/Eviction) (Issue #123).
+- [x] **Advanced Disk I/O Scheduling** (Deadline-based writes) (Issue #13).
 
 ### Remaining - Priority
-- [ ] **PEX implementation** (BEP 11 Peer Exchange) (Issue #121) [MODERATE].
-- [ ] **Peer registry scoring** (Latency/Reputation/Eviction) (Issue #123) [MODERATE].
-- [ ] **Advanced Disk I/O Scheduling** (Deadline-based writes) (Issue #13) [MODERATE].
 
 ### Future Backlog
 - [ ] **Recursive Mirroring** (Wget-style site crawling) (Issue #65).

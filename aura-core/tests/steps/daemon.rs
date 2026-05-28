@@ -24,13 +24,10 @@ async fn when_client_sends_command(world: &mut AuraWorld, cmd: String, task_id: 
 async fn then_daemon_broadcasts(world: &mut AuraWorld, event: String) {
     if let Some(rx) = &mut world.events_rx {
         use tokio::time::{timeout, Duration};
-        if let Ok(Some(ev)) = timeout(Duration::from_secs(1), rx.recv()).await {
-            match ev {
-                aura_core::orchestrator::Event::TaskPaused { .. } => {
-                    assert_eq!(event, "TaskPaused")
-                }
-                _ => {}
-            }
+        if let Ok(Some(aura_core::orchestrator::Event::TaskPaused { .. })) =
+            timeout(Duration::from_secs(1), rx.recv()).await
+        {
+            assert_eq!(event, "TaskPaused");
         }
     }
 }

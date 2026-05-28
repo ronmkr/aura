@@ -16,9 +16,11 @@ impl Orchestrator {
                     .await?;
             }
             SubTaskEvent::RangeFinished(meta_id, sub_id, range) => {
+                self.worker_cancellation_tokens.remove(&sub_id);
                 self.handle_range_finished(meta_id, sub_id, range).await?;
             }
             SubTaskEvent::Failed(meta_id, sub_id, err) => {
+                self.worker_cancellation_tokens.remove(&sub_id);
                 info!(%meta_id, %sub_id, %err, "Subtask failed");
                 if let Some(task) = self.tasks.get_mut(&meta_id) {
                     if let Some(sub) = task.subtasks.iter_mut().find(|s| s.id == sub_id) {
