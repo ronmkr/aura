@@ -59,7 +59,7 @@ nosleep = "0.2.1"
 notify = "8.2.0"
 prometheus = "0.14.0"
 proptest = "1.6"
-quick-xml = { version = "0.39.4", features = ["serialize"] }
+quick-xml = { version = "0.40.1", features = ["serialize"] }
 rand = { version = "0.10", features = ["std", "std_rng", "thread_rng"] }
 ratatui = { version = "0.30", features = ["macros", "all-widgets"] }
 regex = "1.12.3"
