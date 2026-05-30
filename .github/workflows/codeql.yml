@@ -47,7 +47,9 @@ jobs:
       uses: Swatinem/rust-cache@v2
 
     - name: Compile Proc Macros
-      run: cargo check --all-targets
+      run: |
+        cargo check --all-targets
+        find target -type f -name "*.rs" -delete
 
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v4

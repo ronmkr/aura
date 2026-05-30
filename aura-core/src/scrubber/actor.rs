@@ -1,5 +1,4 @@
 use crate::{Result, TaskId};
-use sha2::digest::Digest as _;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::mpsc;

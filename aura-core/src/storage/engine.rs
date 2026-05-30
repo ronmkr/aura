@@ -2,7 +2,6 @@ use super::ops::get_part_path;
 use crate::worker::Segment;
 use crate::{Error, Result, TaskId};
 use bytes::{Bytes, BytesMut};
-use sha2::digest::Digest as _;
 use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
 use tokio::fs::{self, File, OpenOptions};
