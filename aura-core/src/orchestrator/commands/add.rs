@@ -104,10 +104,7 @@ impl Orchestrator {
         self.tasks.insert(id, meta_task);
         self.start_task_loops_with_bitfield(id, token, loaded_bitfield)
             .await?;
-
-        let event = Event::TaskAdded(id);
-        let _ = self.event_tx.send(event.clone());
-        self.hook_manager.handle_event(&event).await;
+        let _ = self.event_tx.send(Event::TaskAdded(id));
         Ok(())
     }
 }

@@ -21,8 +21,6 @@ impl Orchestrator {
             self.update_vpn_provider(&new_config);
         }
 
-        self.hook_manager.update_config(new_config.hooks.clone());
-
         // Update CredentialProvider if paths changed
         if self.config.load().credentials.netrc_path != new_config.credentials.netrc_path
             || self.config.load().credentials.cookie_file != new_config.credentials.cookie_file

@@ -212,9 +212,7 @@ impl Orchestrator {
                         total_bytes: task.total_length,
                     });
                 }
-                let event = Event::TaskCompleted(id);
-                let _ = self.event_tx.send(event.clone());
-                self.hook_manager.handle_event(&event).await;
+                let _ = self.event_tx.send(Event::TaskCompleted(id));
             }
             crate::storage::StorageEvent::Error(id, err) => {
                 error!(%id, %err, "Storage reported fatal error; pausing task");
@@ -228,12 +226,10 @@ impl Orchestrator {
                     // Trigger pause logic to cleanup workers
                     let _ = self.handle_pause(id).await;
 
-                    let event = Event::TaskError {
+                    let _ = self.event_tx.send(Event::TaskError {
                         id,
                         message: format!("Storage Error: {}", err),
-                    };
-                    let _ = self.event_tx.send(event.clone());
-                    self.hook_manager.handle_event(&event).await;
+                    });
                 }
             }
         }
