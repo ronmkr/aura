@@ -216,6 +216,7 @@ impl Engine {
             .await
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn add_task_with_options(
         &self,
         id: TaskId,
@@ -224,6 +225,7 @@ impl Engine {
         checksum: Option<crate::Checksum>,
         priority: u32,
         streaming_mode: bool,
+        depends_on: Vec<TaskId>,
     ) -> Result<crate::api::TaskHandle> {
         self.command_tx
             .send(Command::AddTask {
@@ -233,6 +235,7 @@ impl Engine {
                 checksum,
                 priority,
                 streaming_mode,
+                depends_on,
             })
             .await
             .map_err(|e| Error::Engine(format!("Failed to send AddTask command: {}", e)))?;
@@ -246,8 +249,25 @@ impl Engine {
         sources: Vec<(String, TaskType)>,
         checksum: Option<crate::Checksum>,
     ) -> Result<crate::api::TaskHandle> {
-        self.add_task_with_options(id, name, sources, checksum, 100, false)
+        self.add_task_with_options(id, name, sources, checksum, 100, false, Vec::new())
             .await
+    }
+
+    pub async fn change_option(
+        &self,
+        id: TaskId,
+        priority: Option<u32>,
+        depends_on: Option<Vec<TaskId>>,
+    ) -> Result<()> {
+        self.command_tx
+            .send(Command::ChangeOption {
+                id,
+                priority,
+                depends_on,
+            })
+            .await
+            .map_err(|e| Error::Engine(format!("Failed to send ChangeOption command: {}", e)))?;
+        Ok(())
     }
 
     pub async fn tell_active(&self) -> Result<Vec<MetaTask>> {
@@ -309,7 +329,15 @@ impl Engine {
                 let id = state.id;
                 let checksum = state.checksum.clone();
                 let _ = self
-                    .add_task_with_sources(id, state.name, sources, checksum)
+                    .add_task_with_options(
+                        id,
+                        state.name,
+                        sources,
+                        checksum,
+                        state.priority,
+                        state.streaming_mode,
+                        state.depends_on.unwrap_or_default(),
+                    )
                     .await;
             }
         }

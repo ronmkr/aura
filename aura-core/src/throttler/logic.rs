@@ -3,113 +3,9 @@
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
-use tokio::sync::{RwLock, Semaphore};
-use tokio::time::{interval, Duration};
+use tokio::sync::RwLock;
 
-pub struct TokenBucket {
-    rate_per_sec: Arc<AtomicU64>,
-    capacity: Arc<AtomicU64>,
-    available: Arc<Semaphore>,
-}
-
-impl TokenBucket {
-    pub fn new(rate_per_sec: u64) -> Self {
-        // Initial capacity is either the rate or a sensible default for unlimited (1GB)
-        let initial_cap = if rate_per_sec == 0 {
-            1_000_000_000
-        } else {
-            rate_per_sec
-        };
-        // Start with one tick's worth of tokens to avoid massive initial burst in tests
-        let initial_permits = if rate_per_sec == 0 {
-            1_000_000_000
-        } else {
-            rate_per_sec / 10
-        };
-        let available = Arc::new(Semaphore::new(initial_permits as usize));
-        let rate_atomic = Arc::new(AtomicU64::new(rate_per_sec));
-        let capacity_atomic = Arc::new(AtomicU64::new(initial_cap));
-
-        let available_clone = available.clone();
-        let rate_clone = rate_atomic.clone();
-        let cap_clone = capacity_atomic.clone();
-
-        tokio::spawn(async move {
-            let mut tick = interval(Duration::from_millis(100));
-            loop {
-                tick.tick().await;
-                let rate = rate_clone.load(Ordering::Relaxed);
-                let cap = cap_clone.load(Ordering::Relaxed);
-
-                if rate == 0 {
-                    // If unlimited, keep semaphore full
-                    let current = available_clone.available_permits();
-                    if current < 1_000_000_000 {
-                        available_clone.add_permits(1_000_000_000 - current);
-                    }
-                    continue;
-                }
-
-                let refill_amount = rate.div_ceil(10);
-                let current = available_clone.available_permits();
-                if current < cap as usize {
-                    let to_add = std::cmp::min(refill_amount as usize, cap as usize - current);
-                    if to_add > 0 {
-                        available_clone.add_permits(to_add);
-                    }
-                }
-            }
-        });
-
-        Self {
-            rate_per_sec: rate_atomic,
-            capacity: capacity_atomic,
-            available,
-        }
-    }
-
-    pub fn set_rate(&self, new_rate: u64) {
-        self.rate_per_sec.store(new_rate, Ordering::Relaxed);
-        let cap = if new_rate == 0 {
-            1_000_000_000
-        } else {
-            new_rate
-        };
-        self.capacity.store(cap, Ordering::Relaxed);
-
-        // Drain excess permits if we reduced capacity
-        let current = self.available.available_permits();
-        if current > cap as usize {
-            // We can't safely "set" semaphore permits, but we can acquire the excess
-            // We use try_acquire_many to avoid blocking.
-            let excess = current - cap as usize;
-            let _ = self.available.try_acquire_many(excess as u32);
-        }
-    }
-
-    pub async fn acquire(&self, amount: u64) {
-        if self.rate_per_sec.load(Ordering::Relaxed) == 0 {
-            return; // Unlimited
-        }
-        let cap = self.capacity.load(Ordering::Relaxed) as usize;
-        let mut remaining = amount as usize;
-
-        while remaining > 0 {
-            let permits = std::cmp::min(remaining, cap);
-            if permits > 0 {
-                match self.available.acquire_many(permits as u32).await {
-                    Ok(permit) => {
-                        permit.forget();
-                        remaining -= permits;
-                    }
-                    Err(_) => break, // Semaphore closed
-                }
-            } else {
-                break;
-            }
-        }
-    }
-}
+use super::TokenBucket;
 
 use crate::TaskId;
 
@@ -118,6 +14,11 @@ pub struct Throttler {
     global_upload: TokenBucket,
     task_download: Arc<RwLock<HashMap<TaskId, Arc<TokenBucket>>>>,
     task_upload: Arc<RwLock<HashMap<TaskId, Arc<TokenBucket>>>>,
+    global_download_limit: Arc<AtomicU64>,
+    global_upload_limit: Arc<AtomicU64>,
+    task_priorities: Arc<RwLock<HashMap<TaskId, u32>>>,
+    task_dl_configured_limits: Arc<RwLock<HashMap<TaskId, u64>>>,
+    task_ul_configured_limits: Arc<RwLock<HashMap<TaskId, u64>>>,
 }
 
 impl Throttler {
@@ -127,29 +28,201 @@ impl Throttler {
             global_upload: TokenBucket::new(global_upload_rate),
             task_download: Arc::new(RwLock::new(HashMap::new())),
             task_upload: Arc::new(RwLock::new(HashMap::new())),
+            global_download_limit: Arc::new(AtomicU64::new(global_download_rate)),
+            global_upload_limit: Arc::new(AtomicU64::new(global_upload_rate)),
+            task_priorities: Arc::new(RwLock::new(HashMap::new())),
+            task_dl_configured_limits: Arc::new(RwLock::new(HashMap::new())),
+            task_ul_configured_limits: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
     pub fn set_global_download_limit(&self, new_rate: u64) {
         self.global_download.set_rate(new_rate);
+        self.global_download_limit
+            .store(new_rate, Ordering::Relaxed);
+
+        let task_priorities = self.task_priorities.clone();
+        let global_download_limit = self.global_download_limit.clone();
+        let global_upload_limit = self.global_upload_limit.clone();
+        let task_download = self.task_download.clone();
+        let task_upload = self.task_upload.clone();
+        let task_dl_configured_limits = self.task_dl_configured_limits.clone();
+        let task_ul_configured_limits = self.task_ul_configured_limits.clone();
+        tokio::spawn(async move {
+            Self::recalculate_limits_internal(
+                task_priorities,
+                global_download_limit,
+                global_upload_limit,
+                task_download,
+                task_upload,
+                task_dl_configured_limits,
+                task_ul_configured_limits,
+            )
+            .await;
+        });
     }
 
     pub fn set_global_upload_limit(&self, new_rate: u64) {
         self.global_upload.set_rate(new_rate);
+        self.global_upload_limit.store(new_rate, Ordering::Relaxed);
+
+        let task_priorities = self.task_priorities.clone();
+        let global_download_limit = self.global_download_limit.clone();
+        let global_upload_limit = self.global_upload_limit.clone();
+        let task_download = self.task_download.clone();
+        let task_upload = self.task_upload.clone();
+        let task_dl_configured_limits = self.task_dl_configured_limits.clone();
+        let task_ul_configured_limits = self.task_ul_configured_limits.clone();
+        tokio::spawn(async move {
+            Self::recalculate_limits_internal(
+                task_priorities,
+                global_download_limit,
+                global_upload_limit,
+                task_download,
+                task_upload,
+                task_dl_configured_limits,
+                task_ul_configured_limits,
+            )
+            .await;
+        });
     }
 
-    pub async fn register_task(&self, id: TaskId, dl_limit: u64, ul_limit: u64) {
-        let mut dl = self.task_download.write().await;
-        dl.insert(id, Arc::new(TokenBucket::new(dl_limit)));
-        let mut ul = self.task_upload.write().await;
-        ul.insert(id, Arc::new(TokenBucket::new(ul_limit)));
+    pub async fn register_task(&self, id: TaskId, dl_limit: u64, ul_limit: u64, priority: u32) {
+        {
+            let mut priorities = self.task_priorities.write().await;
+            priorities.insert(id, priority);
+        }
+        {
+            let mut dl_conf = self.task_dl_configured_limits.write().await;
+            dl_conf.insert(id, dl_limit);
+        }
+        {
+            let mut ul_conf = self.task_ul_configured_limits.write().await;
+            ul_conf.insert(id, ul_limit);
+        }
+        {
+            let mut dl = self.task_download.write().await;
+            dl.insert(id, Arc::new(TokenBucket::new(dl_limit)));
+        }
+        {
+            let mut ul = self.task_upload.write().await;
+            ul.insert(id, Arc::new(TokenBucket::new(ul_limit)));
+        }
+
+        self.recalculate_limits().await;
     }
 
     pub async fn unregister_task(&self, id: TaskId) {
-        let mut dl = self.task_download.write().await;
-        dl.remove(&id);
-        let mut ul = self.task_upload.write().await;
-        ul.remove(&id);
+        {
+            let mut priorities = self.task_priorities.write().await;
+            priorities.remove(&id);
+        }
+        {
+            let mut dl_conf = self.task_dl_configured_limits.write().await;
+            dl_conf.remove(&id);
+        }
+        {
+            let mut ul_conf = self.task_ul_configured_limits.write().await;
+            ul_conf.remove(&id);
+        }
+        {
+            let mut dl = self.task_download.write().await;
+            dl.remove(&id);
+        }
+        {
+            let mut ul = self.task_upload.write().await;
+            ul.remove(&id);
+        }
+
+        self.recalculate_limits().await;
+    }
+
+    pub async fn update_task_priority(&self, id: TaskId, priority: u32) {
+        {
+            let mut priorities = self.task_priorities.write().await;
+            priorities.insert(id, priority);
+        }
+        self.recalculate_limits().await;
+    }
+
+    pub async fn recalculate_limits(&self) {
+        Self::recalculate_limits_internal(
+            self.task_priorities.clone(),
+            self.global_download_limit.clone(),
+            self.global_upload_limit.clone(),
+            self.task_download.clone(),
+            self.task_upload.clone(),
+            self.task_dl_configured_limits.clone(),
+            self.task_ul_configured_limits.clone(),
+        )
+        .await;
+    }
+
+    async fn recalculate_limits_internal(
+        task_priorities: Arc<RwLock<HashMap<TaskId, u32>>>,
+        global_download_limit: Arc<AtomicU64>,
+        global_upload_limit: Arc<AtomicU64>,
+        task_download: Arc<RwLock<HashMap<TaskId, Arc<TokenBucket>>>>,
+        task_upload: Arc<RwLock<HashMap<TaskId, Arc<TokenBucket>>>>,
+        task_dl_configured_limits: Arc<RwLock<HashMap<TaskId, u64>>>,
+        task_ul_configured_limits: Arc<RwLock<HashMap<TaskId, u64>>>,
+    ) {
+        let priorities = task_priorities.read().await;
+        let dl_limit = global_download_limit.load(Ordering::Relaxed);
+        let ul_limit = global_upload_limit.load(Ordering::Relaxed);
+
+        let mut total_weight = 0u64;
+        for &p in priorities.values() {
+            let clamped_p = p.min(5);
+            let weight = 1 << (5 - clamped_p);
+            total_weight += weight;
+        }
+
+        if total_weight == 0 {
+            return;
+        }
+
+        let dls = task_download.read().await;
+        let uls = task_upload.read().await;
+        let dl_confs = task_dl_configured_limits.read().await;
+        let ul_confs = task_ul_configured_limits.read().await;
+
+        for (id, &p) in priorities.iter() {
+            let clamped_p = p.min(5);
+            let weight = 1 << (5 - clamped_p);
+
+            // Proportional download
+            let dl_conf = dl_confs.get(id).cloned().unwrap_or(0);
+            let dl_rate = if dl_limit == 0 {
+                dl_conf
+            } else {
+                let proportional = (dl_limit * weight) / total_weight;
+                if dl_conf > 0 {
+                    proportional.min(dl_conf)
+                } else {
+                    proportional
+                }
+            };
+            if let Some(bucket) = dls.get(id) {
+                bucket.set_rate(dl_rate);
+            }
+
+            // Proportional upload
+            let ul_conf = ul_confs.get(id).cloned().unwrap_or(0);
+            let ul_rate = if ul_limit == 0 {
+                ul_conf
+            } else {
+                let proportional = (ul_limit * weight) / total_weight;
+                if ul_conf > 0 {
+                    proportional.min(ul_conf)
+                } else {
+                    proportional
+                }
+            };
+            if let Some(bucket) = uls.get(id) {
+                bucket.set_rate(ul_rate);
+            }
+        }
     }
 
     pub async fn acquire_download(&self, id: TaskId, amount: u64) {
@@ -185,29 +258,42 @@ impl Throttler {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::time::Instant;
 
     #[tokio::test]
-    async fn test_token_bucket_throttling() {
-        let rate = 100; // 100 bytes/sec
-        let bucket = TokenBucket::new(rate);
+    async fn test_proportional_throttling() {
+        let throttler = Throttler::new(100_000, 100_000);
 
-        // Wait for initial burst to subside and refill to stabilize
-        tokio::time::sleep(Duration::from_millis(500)).await;
+        // Register 2 tasks:
+        // Task 1: Priority 0 -> Weight = 32
+        // Task 2: Priority 5 -> Weight = 1
+        // Total weight = 33
+        throttler.register_task(TaskId(1), 0, 0, 0).await;
+        throttler.register_task(TaskId(2), 0, 0, 5).await;
 
-        let start = Instant::now();
-        // Acquire 300 bytes.
-        // Initial permits = 10. Refill = 10 every 100ms.
-        // Wait 500ms -> +50 permits. Total ~60.
-        // Acquire 300 -> Needs ~240 more.
-        // Takes ~24 ticks = 2.4 seconds.
-        bucket.acquire(300).await;
-        let elapsed = start.elapsed();
+        let (t1_rate, t2_rate, t1_bucket, t2_bucket) = {
+            let dls = throttler.task_download.read().await;
+            let t1_bucket = dls.get(&TaskId(1)).unwrap().clone();
+            let t2_bucket = dls.get(&TaskId(2)).unwrap().clone();
+            let t1_rate = t1_bucket.rate_per_sec.load(Ordering::Relaxed);
+            let t2_rate = t2_bucket.rate_per_sec.load(Ordering::Relaxed);
+            (t1_rate, t2_rate, t1_bucket, t2_bucket)
+        };
 
-        assert!(
-            elapsed >= Duration::from_millis(1500),
-            "Throttling failed: took only {:?}",
-            elapsed
-        );
+        // Expected proportional rates:
+        // Task 1: (100_000 * 32) / 33 = 96,969
+        // Task 2: (100_000 * 1) / 33 = 3,030
+        assert!(t1_rate > 95_000, "t1_rate was {}", t1_rate);
+        assert!(t2_rate < 4_000, "t2_rate was {}", t2_rate);
+
+        // Update task 2 to priority 0 -> weight = 32
+        // Total weight = 64
+        // Both should get 50,000
+        throttler.update_task_priority(TaskId(2), 0).await;
+
+        let t1_rate_new = t1_bucket.rate_per_sec.load(Ordering::Relaxed);
+        let t2_rate_new = t2_bucket.rate_per_sec.load(Ordering::Relaxed);
+
+        assert_eq!(t1_rate_new, 50_000);
+        assert_eq!(t2_rate_new, 50_000);
     }
 }

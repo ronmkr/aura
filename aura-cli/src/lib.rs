@@ -91,7 +91,15 @@ pub async fn run(args: Args) -> Result<()> {
         }
 
         engine
-            .add_task_with_options(id, output_name.clone(), sources, None, 100, false)
+            .add_task_with_options(
+                id,
+                output_name.clone(),
+                sources,
+                None,
+                100,
+                false,
+                Vec::new(),
+            )
             .await?;
     } else {
         for (uri, name, is_metadata) in tasks_to_add {

@@ -56,6 +56,7 @@ pub async fn handle_jsonrpc(
         "aria2.pause" => handle_pause(&state.engine, payload.params).await,
         "aria2.unpause" => handle_unpause(&state.engine, payload.params).await,
         "aria2.remove" => handle_remove(&state.engine, payload.params).await,
+        "aria2.changeOption" => handle_change_option(&state.engine, payload.params).await,
         "aura.getConfig" => handle_get_config(&state.engine).await,
         _ => Err(json!({ "code": -32601, "message": "Method not found" })),
     };
@@ -95,6 +96,7 @@ async fn handle_add_uri(engine: &Engine, params: Option<Value>) -> Result<Value,
 
     let mut priority = 100;
     let mut streaming_mode = false;
+    let mut depends_on = Vec::new();
 
     if let Some(options) = params.get(1) {
         if let Some(p) = options.get("priority").and_then(|v| v.as_u64()) {
@@ -102,6 +104,21 @@ async fn handle_add_uri(engine: &Engine, params: Option<Value>) -> Result<Value,
         }
         if let Some(s) = options.get("streamingMode").and_then(|v| v.as_bool()) {
             streaming_mode = s;
+        }
+        if let Some(deps) = options
+            .get("depends_on")
+            .or_else(|| options.get("dependsOn"))
+            .and_then(|v| v.as_array())
+        {
+            for dep in deps {
+                if let Some(dep_str) = dep.as_str() {
+                    if let Ok(dep_id) = dep_str.parse::<u64>() {
+                        depends_on.push(TaskId(dep_id));
+                    }
+                } else if let Some(dep_num) = dep.as_u64() {
+                    depends_on.push(TaskId(dep_num));
+                }
+            }
         }
     }
 
@@ -120,7 +137,15 @@ async fn handle_add_uri(engine: &Engine, params: Option<Value>) -> Result<Value,
         .collect();
 
     engine
-        .add_task_with_options(id, name, sources, None, priority, streaming_mode)
+        .add_task_with_options(
+            id,
+            name,
+            sources,
+            None,
+            priority,
+            streaming_mode,
+            depends_on,
+        )
         .await
         .map_err(|e| json!({ "code": -32000, "message": e.to_string() }))?;
 
@@ -192,4 +217,50 @@ fn parse_gid(params: Option<Value>) -> Result<TaskId, Value> {
         .parse::<u64>()
         .map_err(|_| json!({ "code": -32602, "message": "Invalid GID format" }))?;
     Ok(TaskId(gid))
+}
+
+async fn handle_change_option(engine: &Engine, params: Option<Value>) -> Result<Value, Value> {
+    let params = params.ok_or_else(|| json!({ "code": -32602, "message": "Invalid params" }))?;
+    let gid_str: String = serde_json::from_value(params[0].clone())
+        .map_err(|_| json!({ "code": -32602, "message": "Invalid GID" }))?;
+    let id = TaskId(
+        gid_str
+            .parse::<u64>()
+            .map_err(|_| json!({ "code": -32602, "message": "Invalid GID format" }))?,
+    );
+
+    let options = params
+        .get(1)
+        .ok_or_else(|| json!({ "code": -32602, "message": "Missing options" }))?;
+
+    let priority = options
+        .get("priority")
+        .and_then(|v| v.as_u64())
+        .map(|p| p as u32);
+
+    let mut depends_on = None;
+    if let Some(deps) = options
+        .get("depends_on")
+        .or_else(|| options.get("dependsOn"))
+        .and_then(|v| v.as_array())
+    {
+        let mut list = Vec::new();
+        for dep in deps {
+            if let Some(dep_str) = dep.as_str() {
+                if let Ok(dep_id) = dep_str.parse::<u64>() {
+                    list.push(TaskId(dep_id));
+                }
+            } else if let Some(dep_num) = dep.as_u64() {
+                list.push(TaskId(dep_num));
+            }
+        }
+        depends_on = Some(list);
+    }
+
+    engine
+        .change_option(id, priority, depends_on)
+        .await
+        .map_err(|e| json!({ "code": -32000, "message": e.to_string() }))?;
+
+    Ok(json!("OK"))
 }

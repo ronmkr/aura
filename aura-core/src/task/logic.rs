@@ -13,6 +13,7 @@ pub enum DownloadPhase {
     Complete,
     Error,
     Degraded,
+    Waiting,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -67,7 +68,7 @@ pub struct MetaTask {
     pub completed_length: u64,
     pub uploaded_length: u64,
     pub phase: DownloadPhase,
-    pub priority: u32, // 0 = highest, 100 = default
+    pub priority: u32, // 0 = highest, 5 = lowest, default = 3
     pub streaming_mode: bool,
     pub range_supported: bool,
     pub subtasks: Vec<SubTask>,
@@ -77,6 +78,7 @@ pub struct MetaTask {
     pub seeding_start_time: Option<chrono::DateTime<chrono::Utc>>,
     pub blacklisted_uris: Vec<String>,
     pub extensions: HashMap<String, Arc<dyn TaskExtension>>,
+    pub depends_on: Vec<TaskId>,
 }
 
 /// Represents the serializable state of a MetaTask for persistence.
@@ -97,6 +99,7 @@ pub struct TaskState {
     pub checksum: Option<crate::Checksum>,
     pub seeding_start_time: Option<chrono::DateTime<chrono::Utc>>,
     pub blacklisted_uris: Option<Vec<String>>,
+    pub depends_on: Option<Vec<TaskId>>,
 }
 
 impl MetaTask {
@@ -117,6 +120,7 @@ impl MetaTask {
             checksum: self.checksum.clone(),
             seeding_start_time: self.seeding_start_time,
             blacklisted_uris: Some(self.blacklisted_uris.clone()),
+            depends_on: Some(self.depends_on.clone()),
         }
     }
 
@@ -138,6 +142,7 @@ impl MetaTask {
             seeding_start_time: state.seeding_start_time,
             blacklisted_uris: state.blacklisted_uris.unwrap_or_default(),
             extensions: HashMap::new(),
+            depends_on: state.depends_on.unwrap_or_default(),
         }
     }
 
@@ -149,7 +154,7 @@ impl MetaTask {
             completed_length: 0,
             uploaded_length: 0,
             phase: DownloadPhase::Downloading,
-            priority: 100,
+            priority: 3,
             streaming_mode: false,
             range_supported: true, // Assume supported until proven otherwise
             subtasks: Vec::new(),
@@ -159,6 +164,7 @@ impl MetaTask {
             seeding_start_time: None,
             blacklisted_uris: Vec::new(),
             extensions: HashMap::new(),
+            depends_on: Vec::new(),
         }
     }
 
