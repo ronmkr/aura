@@ -35,7 +35,7 @@ pub struct Orchestrator {
     pub(crate) vpn_watch_tx: tokio::sync::watch::Sender<Option<Arc<dyn crate::vpn::VpnProvider>>>,
     pub(crate) config: Arc<ArcSwap<crate::Config>>,
     pub(crate) power_manager: crate::power::PowerManager,
-    pub(crate) hook_manager: crate::hooks::HookManager,
+    pub(crate) _hook_service: crate::hooks::HookServiceHandle,
     pub(crate) credential_provider: Arc<crate::config::credentials::CredentialProvider>,
     pub(crate) dns_resolver: Arc<crate::net_util::TokioResolver>,
     pub(crate) db: sled::Db,
@@ -101,7 +101,12 @@ impl Orchestrator {
 
         let vpn_provider = Self::create_vpn_provider(&initial_config);
         let (vpn_watch_tx, _vpn_watch_rx) = tokio::sync::watch::channel(vpn_provider.clone());
-        let hook_manager = crate::hooks::HookManager::new(initial_config.hooks.clone());
+        let hook_service = crate::hooks::HookManager::boot(
+            event_tx.subscribe(),
+            config.clone(),
+            crate::hooks::ShellExecutor::new(),
+            crate::hooks::HookOptions::default(),
+        );
 
         let mut credential_provider = crate::config::credentials::CredentialProvider::new();
         if let Some(ref netrc) = initial_config.credentials.netrc_path {
@@ -140,7 +145,7 @@ impl Orchestrator {
                 vpn_watch_tx,
                 config,
                 power_manager: crate::power::PowerManager::new(),
-                hook_manager,
+                _hook_service: hook_service,
                 credential_provider,
                 dns_resolver,
                 db,

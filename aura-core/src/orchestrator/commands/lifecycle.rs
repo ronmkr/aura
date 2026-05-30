@@ -35,9 +35,7 @@ impl Orchestrator {
             });
         }
         let _ = self.save_task(id).await;
-        let event = Event::TaskPaused(id);
-        let _ = self.event_tx.send(event.clone());
-        self.hook_manager.handle_event(&event).await;
+        let _ = self.event_tx.send(Event::TaskPaused(id));
         Ok(())
     }
 
@@ -56,9 +54,7 @@ impl Orchestrator {
                 // we assume the in-memory one is correct or will be synced.
                 self.start_task_loops_with_bitfield(id, token, None).await?;
 
-                let event = Event::TaskResumed(id);
-                let _ = self.event_tx.send(event.clone());
-                self.hook_manager.handle_event(&event).await;
+                let _ = self.event_tx.send(Event::TaskResumed(id));
             }
         }
         Ok(())

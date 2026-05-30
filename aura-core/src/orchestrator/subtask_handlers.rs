@@ -70,12 +70,10 @@ impl Orchestrator {
                         .all(|s| s.phase == DownloadPhase::Error)
                     {
                         task.phase = DownloadPhase::Error;
-                        let event = Event::TaskError {
+                        let _ = self.event_tx.send(Event::TaskError {
                             id: meta_id,
                             message: err,
-                        };
-                        let _ = self.event_tx.send(event.clone());
-                        self.hook_manager.handle_event(&event).await;
+                        });
                     } else {
                         // Trigger next range dispatch for other active subtasks
                         let active_subs: Vec<TaskId> = task
