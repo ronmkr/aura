@@ -1,11 +1,10 @@
-use super::ops::get_part_path;
 use crate::worker::Segment;
 use crate::{Error, Result, TaskId};
 use bytes::{Bytes, BytesMut};
 use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
 use std::sync::Arc;
-use tokio::fs::{self, File, OpenOptions};
+use tokio::fs::File;
 use tokio::sync::{mpsc, oneshot};
 use tracing::{error, info};
 
@@ -280,120 +279,5 @@ impl StorageEngine {
         }
 
         Ok(())
-    }
-
-    pub(crate) async fn verify_checksum(&mut self, id: TaskId) -> Result<()> {
-        let checksum = match self.task_checksums.get(&id) {
-            Some(c) => c.clone(),
-            None => return Ok(()),
-        };
-
-        info!(%id, ?checksum, "Verifying file integrity");
-
-        let base_path = self.task_paths.get(&id).ok_or(Error::TaskNotFound(id))?;
-        let part_path = get_part_path(base_path)?;
-
-        let file = File::open(&part_path).await?;
-        let mut reader = tokio::io::BufReader::new(file);
-
-        use md5::Digest;
-        use tokio::io::AsyncReadExt;
-
-        let actual = match checksum {
-            crate::Checksum::Md5(ref expected) => {
-                let mut hasher = md5::Md5::default();
-                let mut buffer = [0u8; 65536];
-                loop {
-                    let n = reader.read(&mut buffer).await?;
-                    if n == 0 {
-                        break;
-                    }
-                    hasher.update(&buffer[..n]);
-                }
-                let hash = hex::encode(hasher.finalize());
-                (expected.clone(), hash)
-            }
-            crate::Checksum::Sha1(ref expected) => {
-                let mut hasher = sha1::Sha1::default();
-                let mut buffer = [0u8; 65536];
-                loop {
-                    let n = reader.read(&mut buffer).await?;
-                    if n == 0 {
-                        break;
-                    }
-                    hasher.update(&buffer[..n]);
-                }
-                let hash = hex::encode(hasher.finalize());
-                (expected.clone(), hash)
-            }
-            crate::Checksum::Sha256(ref expected) => {
-                let mut hasher = sha2::Sha256::default();
-                let mut buffer = [0u8; 65536];
-                loop {
-                    let n = reader.read(&mut buffer).await?;
-                    if n == 0 {
-                        break;
-                    }
-                    hasher.update(&buffer[..n]);
-                }
-                let hash = hex::encode(hasher.finalize());
-                (expected.clone(), hash)
-            }
-            crate::Checksum::Sha512(ref expected) => {
-                let mut hasher = sha2::Sha512::default();
-                let mut buffer = [0u8; 65536];
-                loop {
-                    let n = reader.read(&mut buffer).await?;
-                    if n == 0 {
-                        break;
-                    }
-                    hasher.update(&buffer[..n]);
-                }
-                let hash = hex::encode(hasher.finalize());
-                (expected.clone(), hash)
-            }
-        };
-
-        let (expected, actual_hash) = actual;
-
-        if expected.to_lowercase() != actual_hash.to_lowercase() {
-            return Err(Error::Storage(format!(
-                "Checksum mismatch: expected {}, got {}",
-                expected, actual_hash
-            )));
-        }
-
-        info!(%id, "Integrity verification successful");
-        Ok(())
-    }
-
-    pub(crate) async fn get_or_open_part_file(&mut self, id: TaskId) -> Result<&mut File> {
-        if !self.handles.contains(&id) {
-            let base_path = self.task_paths.get(&id).ok_or(Error::TaskNotFound(id))?;
-            let part_path = get_part_path(base_path)?;
-
-            if let Some(parent) = part_path.parent() {
-                fs::create_dir_all(parent).await?;
-            }
-
-            let file = OpenOptions::new()
-                .write(true)
-                .read(true)
-                .create(true)
-                .truncate(false)
-                .open(&part_path)
-                .await?;
-
-            crate::storage::sys::apply_fadvise_sequential(&file);
-
-            if let Some((_, evicted_file)) = self.handles.push(id, file) {
-                let _ = evicted_file.sync_all().await;
-            }
-        }
-
-        Ok(self
-            .handles
-            .get_mut(&id)
-            .expect("File handle must exist after open/insert"))
     }
 }
