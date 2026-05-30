@@ -8,6 +8,10 @@ on:
   schedule:
     - cron: '21 7 * * 3'
 
+env:
+  CARGO_TARGET_DIR: ${{ github.workspace }}/target
+  CODEQL_EXTRACTOR_RUST_OPTION_CARGO_TARGET_DIR: ${{ github.workspace }}/target
+
 jobs:
   analyze:
     name: Analyze
