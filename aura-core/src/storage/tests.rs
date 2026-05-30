@@ -11,7 +11,7 @@ async fn test_storage_engine_atomic_completion() {
     let file_path = dir.path().join("final_file.bin");
     let (request_tx, request_rx) = mpsc::channel(1);
     let (completion_tx, _completion_rx) = mpsc::channel(1);
-    let mut storage = StorageEngine::new(request_rx, completion_tx, None);
+    let mut storage = StorageEngine::new(request_rx, completion_tx, None, None);
     let id = TaskId(100);
     storage.register_task(id, file_path.clone(), 0, None).await;
 
@@ -47,7 +47,7 @@ async fn test_storage_engine_sequential_aggregation() {
 
     let (request_tx, request_rx) = mpsc::channel(10);
     let (completion_tx, _completion_rx) = mpsc::channel(1);
-    let mut storage = StorageEngine::new(request_rx, completion_tx, None);
+    let mut storage = StorageEngine::new(request_rx, completion_tx, None, None);
     let id = TaskId(200);
     storage.register_task(id, file_path.clone(), 0, None).await;
 
@@ -93,7 +93,7 @@ async fn test_storage_engine_fsync_durability() {
     let file_path = dir.path().join("durable_file.bin");
     let (request_tx, request_rx) = mpsc::channel(1);
     let (completion_tx, mut completion_rx) = mpsc::channel(1);
-    let mut storage = StorageEngine::new(request_rx, completion_tx, None);
+    let mut storage = StorageEngine::new(request_rx, completion_tx, None, None);
     let id = TaskId(300);
     storage.register_task(id, file_path.clone(), 0, None).await;
 

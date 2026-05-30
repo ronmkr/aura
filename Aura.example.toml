@@ -35,6 +35,8 @@ per_task_download_limit = 0            # Speed cap per individual download task
 per_task_upload_limit = 0              # Upload cap per individual download task
 max_concurrent_downloads = 5           # Max active downloads (queued tasks stay in 'Waiting')
 max_active_tasks = 100                 # Total tasks allowed in the engine (active + paused)
+min_connections_per_task = 16          # Minimum connections per individual task (adaptive scaling floor)
+max_connections_per_task = 128         # Maximum connections per individual task (adaptive scaling ceiling)
 
 [bittorrent]
 enabled = true                         # Global BitTorrent protocol toggle

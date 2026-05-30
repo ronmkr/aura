@@ -52,7 +52,12 @@ impl Engine {
         let db_path = std::path::PathBuf::from(&initial_config.storage.download_dir)
             .join(".aura")
             .join("metadata.db");
-        let storage = StorageEngine::new(storage_rx, completion_tx, Some(db_path));
+        let storage = StorageEngine::new(
+            storage_rx,
+            completion_tx,
+            Some(db_path),
+            Some(config.clone()),
+        );
 
         let mut dht_id = [0u8; 20];
         rand::rng().fill(&mut dht_id);
