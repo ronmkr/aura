@@ -53,7 +53,6 @@ jobs:
     - name: Compile Proc Macros
       run: |
         cargo check --all-targets
-        find target -type f -name "*.rs" -delete
 
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v4
