@@ -4,17 +4,28 @@ use crate::Error;
 use crate::{Result, TaskId};
 use bytes::{Bytes, BytesMut};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use tokio::fs;
 use tracing::{debug, info};
 
 impl StorageEngine {
     pub(crate) async fn handle_read(&mut self, id: TaskId, segment: Segment) -> Result<Bytes> {
+        let buffer_size = self
+            .config
+            .as_ref()
+            .map(|cfg: &Arc<arc_swap::ArcSwap<crate::Config>>| {
+                cfg.load().storage.read_ahead_kb as usize * 1024
+            })
+            .unwrap_or(128 * 1024); // Default to 128 KB seeding read buffer capacity
+
         let file = self.get_or_open_part_file(id).await?;
         use tokio::io::AsyncReadExt;
         use tokio::io::AsyncSeekExt;
         file.seek(std::io::SeekFrom::Start(segment.offset)).await?;
+
+        let mut reader = tokio::io::BufReader::with_capacity(buffer_size, file);
         let mut buf = vec![0u8; segment.length as usize];
-        file.read_exact(&mut buf).await?;
+        reader.read_exact(&mut buf).await?;
         Ok(Bytes::from(buf))
     }
 
@@ -60,9 +71,17 @@ impl StorageEngine {
 
             self.next_offsets.insert(id, current_offset);
 
-            // Flush if we hit the 4MB threshold
+            // Flush if we hit the write buffer threshold
+            let threshold = self
+                .config
+                .as_ref()
+                .map(|cfg: &Arc<arc_swap::ArcSwap<crate::Config>>| {
+                    cfg.load().storage.write_buffer_kb as usize * 1024
+                })
+                .unwrap_or(4_194_304); // Default to 4MB if no config provided
+
             if let Some(&size) = self.dirty_sizes.get(&id) {
-                if size >= 4_194_304 {
+                if size >= threshold {
                     self.flush_dirty_buffer(id).await?;
                 }
             }

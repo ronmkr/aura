@@ -4,6 +4,7 @@ use crate::{Error, Result, TaskId};
 use bytes::{Bytes, BytesMut};
 use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
+use std::sync::Arc;
 use tokio::fs::{self, File, OpenOptions};
 use tokio::sync::{mpsc, oneshot};
 use tracing::{error, info};
@@ -51,6 +52,7 @@ pub struct StorageEngine {
     pub(crate) next_offsets: HashMap<TaskId, u64>,
     pub(crate) db: sled::Db,
     pub(crate) scheduler: super::scheduler::IoScheduler,
+    pub(crate) config: Option<Arc<arc_swap::ArcSwap<crate::Config>>>,
 }
 
 impl StorageEngine {
@@ -58,6 +60,7 @@ impl StorageEngine {
         request_rx: mpsc::Receiver<StorageRequest>,
         completion_tx: mpsc::Sender<StorageEvent>,
         db_path: Option<PathBuf>,
+        config: Option<Arc<arc_swap::ArcSwap<crate::Config>>>,
     ) -> Self {
         let db = if let Some(path) = db_path {
             sled::open(&path).expect("Failed to open metadata database")
@@ -80,6 +83,7 @@ impl StorageEngine {
             next_offsets: HashMap::new(),
             db,
             scheduler: super::scheduler::IoScheduler::new(),
+            config,
         }
     }
 
