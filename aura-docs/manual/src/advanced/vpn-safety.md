@@ -26,3 +26,21 @@ Aura can act as a **VPN Controller** (ADR 0038). It can monitor the health of Wi
 To prevent ISP-level tracking of your download sources, Aura uses **DNS over HTTPS**.
 - **Hickory DNS**: Uses the `hickory-resolver` for non-blocking, encrypted DNS resolution.
 - **Bootstrapping**: Aura bypasses local system resolvers and queries Cloudflare or Google DNS directly over port 443.
+
+## Interface Roaming Reconnector
+
+Aura includes a robust **Interface Roaming Reconnector** (ADR 0034) that monitors system routing tables and netlink events.
+- **Auto-Pause**: If your network interface drops or changes (e.g., disconnecting from office Wi-Fi), Aura instantly pauses all protocol worker actors to avoid leaking data or wasting bandwidth.
+- **Auto-Resume**: When a new default route or interface is established (e.g., switching to mobile data or home Wi-Fi), Aura automatically rebinds the sockets to the new route and resumes all operations seamlessly.
+
+## Captive Portal Protection
+
+Hostile network environments (like hotel or Starbucks Wi-Fi) often redirect download requests to landing pages. Aura's **Captive Portal Detector** prevents download file corruption:
+- **Redirection Interception**: Aura intercepts initial HTTP/HTTPS redirect chains and inspects HTML bodies when expecting binary payloads (e.g., `.iso`, `.zip`).
+- **Graceful Pausing**: If a captive login/redirect page is detected, the task is safely paused with a descriptive state warning rather than writing the HTML payload to disk and corrupting your download.
+
+## Kernel TLS (kTLS)
+
+For zero-copy, line-rate performance on supported systems (Linux/FreeBSD), Aura supports **Kernel TLS (kTLS)**:
+- **Offloading Encryption/Decryption**: Symmetric decryption/encryption of HTTPS streams is handled directly in the kernel space.
+- **Zero-Copy Piping**: Bypasses user-space memory copies entirely by piping data directly from the network card to the storage engine (e.g., using `sendfile` or direct page splicing), eliminating CPU and memory bandwidth bottlenecks.

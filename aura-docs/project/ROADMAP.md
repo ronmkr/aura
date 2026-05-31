@@ -77,6 +77,8 @@
 - [x] **PEX implementation** (BEP 11 Peer Exchange) (Issue #121).
 - [x] **Peer registry scoring** (Latency/Reputation/Eviction) (Issue #123).
 - [x] **Advanced Disk I/O Scheduling** (Deadline-based writes) (Issue #13).
+- [x] **Advanced Networking (kTLS, Captive Portals, Roaming)** (Issue #8).
+- [x] **Multi-tenancy & Structured Audit Tracing** (Issue #15).
 
 ### Remaining - Priority
 
@@ -98,4 +100,4 @@
 - [x] Automated Benchmarking Suite (buffer_bench + storage_bench).
 - [x] Comprehensive Integration Tests (Cucumber BDD suite).
 - [x] Automated Binary Releases (GitHub Actions matrix builds).
-- [ ] CI Docs Deployment (Issue #134).
+- [x] CI Docs Deployment (Issue #134).

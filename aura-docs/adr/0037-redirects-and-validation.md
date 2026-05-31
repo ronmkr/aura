@@ -1,7 +1,7 @@
 # ADR 0037: Redirect Handling and Content Validation
 
 ## Status
-Accepted
+Implemented
 
 ## Context
 When a user provides a URI, it may not be a direct link to a file. It could be a 3xx redirect chain, or a landing page containing a download button. Naively following these can lead to "poisoning" where the engine saves HTML landing pages as binary data.
