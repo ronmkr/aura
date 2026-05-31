@@ -101,6 +101,7 @@ async fn when_add_cred_task(world: &mut AuraWorld) {
     engine
         .add_task_with_sources(
             id,
+            None,
             "cred-task".to_string(),
             vec![(uri, TaskType::Http)],
             None,
@@ -143,6 +144,7 @@ async fn when_add_specific_task(world: &mut AuraWorld, uri_placeholder: String) 
     engine
         .add_task_with_sources(
             id,
+            None,
             uri_placeholder,
             vec![(actual_uri, TaskType::Http)],
             None,

@@ -201,7 +201,14 @@ impl Orchestrator {
                     priority_changed = true;
                 }
             }
-            self.throttler.update_task_priority(id, p).await;
+            let t = self
+                .tasks
+                .get(&id)
+                .and_then(|t| t.tenant_id.as_ref())
+                .and_then(|tid| self.tenants.get(tid))
+                .map(|c| &c.throttler)
+                .unwrap_or(&self.throttler);
+            t.update_task_priority(id, p).await;
         }
 
         if let Some(ref deps) = depends_on {

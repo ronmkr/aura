@@ -116,6 +116,7 @@ mod tests {
 
         let mut orchestrator = Orchestrator {
             tasks: std::collections::HashMap::new(),
+            tenants: std::collections::HashMap::new(),
             bt_registry: std::collections::HashMap::new(),
             worker_command_txs: std::collections::HashMap::new(),
             cancellation_tokens: std::collections::HashMap::new(),
@@ -166,7 +167,8 @@ mod tests {
 
         let task = MetaTask {
             id: TaskId(1),
-            name: "test_task".to_string(),
+            tenant_id: None,
+            name: "test".to_string(),
             phase: DownloadPhase::Downloading,
             total_length: 1000,
             completed_length: 0,

@@ -4,7 +4,7 @@ use crate::nat::NatCommand;
 use crate::task::MetaTask;
 use crate::throttler::Throttler;
 use crate::worker::bittorrent::task::BtTask;
-use crate::{InfoHash, TaskId};
+use crate::{InfoHash, TaskId, TenantId};
 use arc_swap::ArcSwap;
 use rand::RngExt;
 use std::collections::HashMap;
@@ -12,8 +12,15 @@ use std::sync::Arc;
 use tokio::sync::{broadcast, mpsc};
 use tokio_util::sync::CancellationToken;
 
+pub struct TenantContext {
+    pub throttler: Arc<Throttler>,
+    pub max_tasks: Option<usize>,
+    pub disk_path_root: Option<std::path::PathBuf>,
+}
+
 pub struct Orchestrator {
     pub(crate) tasks: HashMap<TaskId, MetaTask>,
+    pub(crate) tenants: HashMap<TenantId, TenantContext>,
     pub(crate) bt_registry: HashMap<InfoHash, TaskId>,
     pub(crate) worker_command_txs: HashMap<TaskId, tokio::sync::broadcast::Sender<WorkerCommand>>,
     pub(crate) cancellation_tokens: HashMap<TaskId, CancellationToken>,
@@ -124,6 +131,7 @@ impl Orchestrator {
         (
             Self {
                 tasks: HashMap::new(),
+                tenants: HashMap::new(),
                 bt_registry: HashMap::new(),
                 worker_command_txs: HashMap::new(),
                 cancellation_tokens: HashMap::new(),

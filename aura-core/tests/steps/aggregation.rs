@@ -140,7 +140,7 @@ pub async fn when_download_starts(world: &mut AuraWorld) {
         .collect();
     let id = TaskId(rand::rng().random());
     let handle = engine
-        .add_task_with_sources(id, "racing-task".to_string(), sources, None)
+        .add_task_with_sources(id, None, "racing-task".to_string(), sources, None)
         .await
         .unwrap();
     world.last_task_id = Some(handle.id());

@@ -1,5 +1,4 @@
 use super::*;
-use crate::orchestrator::SubTaskEvent;
 use crate::task::{DownloadPhase, MetaTask, Range, SubTask, TaskType};
 use crate::TaskId;
 use std::collections::HashMap;
@@ -89,6 +88,7 @@ async fn test_racing_workers_are_cancelled_on_range_finished() {
 
     let meta = MetaTask {
         id: meta_id,
+        tenant_id: None,
         name: "test".to_string(),
         total_length: 1000,
         completed_length: 0,
@@ -144,6 +144,7 @@ async fn test_dependency_cycle_detection() {
     // Add Task A
     let meta_a = MetaTask {
         id: TaskId(1),
+        tenant_id: None,
         name: "task_a".to_string(),
         total_length: 1000,
         completed_length: 0,
@@ -166,6 +167,7 @@ async fn test_dependency_cycle_detection() {
     // Add Task B
     let meta_b = MetaTask {
         id: TaskId(2),
+        tenant_id: None,
         name: "task_b".to_string(),
         total_length: 1000,
         completed_length: 0,
@@ -190,6 +192,7 @@ async fn test_dependency_cycle_detection() {
     // Try handle_change_option introducing a cycle
     let meta_c = MetaTask {
         id: TaskId(3),
+        tenant_id: None,
         name: "task_c".to_string(),
         total_length: 1000,
         completed_length: 0,
@@ -227,6 +230,7 @@ async fn test_dependency_waiting_state_and_unblocking() {
     // 1. Add Task A (no deps)
     let meta_a = MetaTask {
         id: TaskId(1),
+        tenant_id: None,
         name: "task_a".to_string(),
         total_length: 1000,
         completed_length: 0,
@@ -250,6 +254,7 @@ async fn test_dependency_waiting_state_and_unblocking() {
     let res = orch
         .handle_add_task(
             TaskId(2),
+            None,
             "task_b".to_string(),
             Vec::new(),
             None,
@@ -278,238 +283,5 @@ async fn test_dependency_waiting_state_and_unblocking() {
     assert_eq!(task_b_new.phase, DownloadPhase::Downloading);
 }
 
-#[tokio::test]
-async fn test_resource_preemption_logic() {
-    let (mut orch, _storage_rx, _temp_dir) = make_test_orchestrator();
-
-    // Setup config: max concurrent downloads = 2, min connections per task = 2
-    {
-        let mut config = crate::Config::default();
-        config.bandwidth.max_concurrent_downloads = 2;
-        config.bandwidth.min_connections_per_task = 2;
-        config.bandwidth.max_connections_per_task = 10;
-        orch.config = Arc::new(arc_swap::ArcSwap::from_pointee(config));
-    }
-
-    // Add active Task A (prio 3, downloading)
-    let meta_a = MetaTask {
-        id: TaskId(1),
-        name: "task_a".to_string(),
-        total_length: 1000,
-        completed_length: 0,
-        uploaded_length: 0,
-        phase: DownloadPhase::Downloading,
-        priority: 3,
-        streaming_mode: false,
-        range_supported: true,
-        subtasks: vec![SubTask {
-            id: TaskId(101),
-            task_type: TaskType::Http,
-            uri: "http://uri".to_string(),
-            assigned_ranges: Vec::new(),
-            total_length: 1000,
-            completed_length: 0,
-            active: true,
-            phase: DownloadPhase::Downloading,
-            target_concurrency: 8,
-            recent_bytes_downloaded: 0,
-            ewma_throughput: 0.0,
-            retry_count: 0,
-        }],
-        pending_ranges: Vec::new(),
-        in_flight_ranges: Vec::new(),
-        checksum: None,
-        seeding_start_time: None,
-        blacklisted_uris: Vec::new(),
-        extensions: HashMap::new(),
-        depends_on: Vec::new(),
-    };
-    orch.tasks.insert(TaskId(1), meta_a);
-
-    // Add active Task B (prio 4, downloading)
-    let meta_b = MetaTask {
-        id: TaskId(2),
-        name: "task_b".to_string(),
-        total_length: 1000,
-        completed_length: 0,
-        uploaded_length: 0,
-        phase: DownloadPhase::Downloading,
-        priority: 4,
-        streaming_mode: false,
-        range_supported: true,
-        subtasks: vec![SubTask {
-            id: TaskId(102),
-            task_type: TaskType::Http,
-            uri: "http://uri".to_string(),
-            assigned_ranges: Vec::new(),
-            total_length: 1000,
-            completed_length: 0,
-            active: true,
-            phase: DownloadPhase::Downloading,
-            target_concurrency: 6,
-            recent_bytes_downloaded: 0,
-            ewma_throughput: 0.0,
-            retry_count: 0,
-        }],
-        pending_ranges: Vec::new(),
-        in_flight_ranges: Vec::new(),
-        checksum: None,
-        seeding_start_time: None,
-        blacklisted_uris: Vec::new(),
-        extensions: HashMap::new(),
-        depends_on: Vec::new(),
-    };
-    orch.tasks.insert(TaskId(2), meta_b);
-
-    // Register cancellation tokens
-    orch.cancellation_tokens
-        .insert(TaskId(1), CancellationToken::new());
-    orch.cancellation_tokens
-        .insert(TaskId(2), CancellationToken::new());
-
-    // 3. Add High Priority (Prio 0) Task C (needs a slot!)
-    // Since max_concurrent_downloads is 2, and we have A and B active,
-    // B (the lowest priority active task with prio 4) should be preempted to Waiting!
-    // A (prio 3) target concurrency should be scaled down to min (2)!
-    let res = orch
-        .handle_add_task(
-            TaskId(3),
-            "task_c".to_string(),
-            Vec::new(),
-            None,
-            0,
-            false,
-            Vec::new(),
-        )
-        .await;
-    assert!(res.is_ok());
-
-    // Verify Task B was preempted to Waiting state
-    let task_b = orch.tasks.get(&TaskId(2)).unwrap();
-    assert_eq!(task_b.phase, DownloadPhase::Waiting);
-
-    // Verify Task A was scaled down to min_connections_per_task (2)
-    let task_a = orch.tasks.get(&TaskId(1)).unwrap();
-    assert_eq!(task_a.subtasks[0].target_concurrency, 2);
-
-    // Task C is Downloading
-    let task_c = orch.tasks.get(&TaskId(3)).unwrap();
-    assert_eq!(task_c.phase, DownloadPhase::Downloading);
-}
-
-#[tokio::test]
-async fn test_captive_portal_pausing() {
-    let (mut orch, _storage_rx, _temp_dir) = make_test_orchestrator();
-
-    let meta_id = TaskId(1);
-    let sub_id = TaskId(101);
-
-    let sub = SubTask {
-        id: sub_id,
-        task_type: TaskType::Http,
-        uri: "http://example.com/download.zip".to_string(),
-        assigned_ranges: Vec::new(),
-        total_length: 0,
-        completed_length: 0,
-        active: true,
-        phase: DownloadPhase::Downloading,
-        target_concurrency: 1,
-        recent_bytes_downloaded: 0,
-        ewma_throughput: 0.0,
-        retry_count: 0,
-    };
-
-    let meta = MetaTask {
-        id: meta_id,
-        name: "test".to_string(),
-        total_length: 0,
-        completed_length: 0,
-        uploaded_length: 0,
-        phase: DownloadPhase::Downloading,
-        priority: 3,
-        streaming_mode: false,
-        range_supported: true,
-        subtasks: vec![sub],
-        pending_ranges: Vec::new(),
-        in_flight_ranges: Vec::new(),
-        checksum: None,
-        seeding_start_time: None,
-        blacklisted_uris: Vec::new(),
-        extensions: HashMap::new(),
-        depends_on: Vec::new(),
-    };
-
-    orch.tasks.insert(meta_id, meta);
-    orch.cancellation_tokens
-        .insert(meta_id, CancellationToken::new());
-
-    // Fire captive portal failure
-    let event = SubTaskEvent::Failed(
-        meta_id,
-        sub_id,
-        "Captive portal detected: landing page redirect".to_string(),
-    );
-    let res = orch.handle_subtask_event(event).await;
-    assert!(res.is_ok());
-
-    // Verify task is safely Paused
-    let task = orch.tasks.get(&meta_id).unwrap();
-    assert_eq!(task.phase, DownloadPhase::Paused);
-    assert_eq!(task.subtasks[0].phase, DownloadPhase::Paused);
-}
-
-#[tokio::test]
-async fn test_interface_roaming_reconnector() {
-    let (mut orch, _storage_rx, _temp_dir) = make_test_orchestrator();
-
-    let meta_id = TaskId(1);
-    let sub_id = TaskId(101);
-
-    let sub = SubTask {
-        id: sub_id,
-        task_type: TaskType::Http,
-        uri: "http://example.com/file.zip".to_string(),
-        assigned_ranges: Vec::new(),
-        total_length: 1000,
-        completed_length: 0,
-        active: true,
-        phase: DownloadPhase::Downloading,
-        target_concurrency: 1,
-        recent_bytes_downloaded: 0,
-        ewma_throughput: 0.0,
-        retry_count: 0,
-    };
-
-    let meta = MetaTask {
-        id: meta_id,
-        name: "test".to_string(),
-        total_length: 1000,
-        completed_length: 0,
-        uploaded_length: 0,
-        phase: DownloadPhase::Downloading,
-        priority: 3,
-        streaming_mode: false,
-        range_supported: true,
-        subtasks: vec![sub],
-        pending_ranges: Vec::new(),
-        in_flight_ranges: Vec::new(),
-        checksum: None,
-        seeding_start_time: None,
-        blacklisted_uris: Vec::new(),
-        extensions: HashMap::new(),
-        depends_on: Vec::new(),
-    };
-
-    orch.tasks.insert(meta_id, meta);
-    orch.cancellation_tokens
-        .insert(meta_id, CancellationToken::new());
-
-    // Trigger interface roaming reconnector event
-    let event = SubTaskEvent::RoamingDetected;
-    let res = orch.handle_subtask_event(event).await;
-    assert!(res.is_ok());
-
-    // Verify tasks are automatically resumed (still Downloading phase)
-    let task = orch.tasks.get(&meta_id).unwrap();
-    assert_eq!(task.phase, DownloadPhase::Downloading);
-}
+#[path = "advanced_net_and_tenant_tests.rs"]
+mod advanced_net_and_tenant_tests;

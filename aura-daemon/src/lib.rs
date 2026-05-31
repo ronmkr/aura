@@ -13,6 +13,7 @@ use aura_core::orchestrator::Engine;
 use std::sync::Arc;
 use tower_http::cors::CorsLayer;
 use tracing::info;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 pub struct Args {
     pub rpc_port: u16,
@@ -22,6 +23,14 @@ pub struct Args {
 }
 
 pub async fn run(args: Args) -> Result<(), Box<dyn std::error::Error>> {
+    // Setup JSON tracing for audit logs if not already set
+    let _ = tracing_subscriber::registry()
+        .with(tracing_subscriber::EnvFilter::new(
+            std::env::var("RUST_LOG").unwrap_or_else(|_| "info".into()),
+        ))
+        .with(tracing_subscriber::fmt::layer().json())
+        .try_init();
+
     info!("Starting Aura Daemon");
 
     // Bootstrap the engine

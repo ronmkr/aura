@@ -60,6 +60,7 @@ async fn when_task_completes(world: &mut AuraWorld) {
     engine
         .add_task_with_sources(
             id,
+            None,
             "hook-test".to_string(),
             vec![(uri, aura_core::task::TaskType::Http)],
             None,

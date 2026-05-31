@@ -8,6 +8,7 @@ impl Orchestrator {
     pub(crate) async fn handle_add_task(
         &mut self,
         id: TaskId,
+        tenant_id: Option<crate::TenantId>,
         name: String,
         sources: Vec<(String, crate::task::TaskType)>,
         checksum: Option<crate::Checksum>,
@@ -18,11 +19,42 @@ impl Orchestrator {
         // Enforce mandatory tunnel
         self.verify_vpn_connectivity().await?;
 
+        // Enforce per-tenant task count quotas
+        if let Some(ref tid) = tenant_id {
+            if let Some(ctx) = self.tenants.get(tid) {
+                if let Some(max) = ctx.max_tasks {
+                    let active_tasks = self
+                        .tasks
+                        .values()
+                        .filter(|t| t.tenant_id == Some(tid.clone()))
+                        .count();
+                    if active_tasks >= max {
+                        return Err(crate::Error::Engine(format!(
+                            "Tenant task limit reached: {}",
+                            max
+                        )));
+                    }
+                }
+            }
+        }
+
         info!(%id, %name, "Adding MetaTask with {} sources", sources.len());
 
         let config = self.config.load();
-        let download_dir = &config.storage.download_dir;
-        let control_path = std::path::Path::new(download_dir).join(format!("{}.aura", name));
+        let base_dir = if let Some(ref tid) = tenant_id {
+            if let Some(ctx) = self.tenants.get(tid) {
+                if let Some(ref root) = ctx.disk_path_root {
+                    root.clone()
+                } else {
+                    std::path::PathBuf::from(&config.storage.download_dir)
+                }
+            } else {
+                std::path::PathBuf::from(&config.storage.download_dir)
+            }
+        } else {
+            std::path::PathBuf::from(&config.storage.download_dir)
+        };
+        let control_path = base_dir.join(format!("{}.aura", name));
 
         let (mut meta_task, loaded_bitfield) = if let Ok(data) = std::fs::read(&control_path) {
             match serde_json::from_slice::<crate::task::TaskState>(&data) {
@@ -47,6 +79,7 @@ impl Orchestrator {
         }
         meta_task.priority = priority;
         meta_task.streaming_mode = streaming_mode;
+        meta_task.tenant_id = tenant_id.clone();
 
         if meta_task.subtasks.is_empty() {
             for (uri, ttype) in sources {
@@ -100,7 +133,17 @@ impl Orchestrator {
         self.cancellation_tokens.insert(id, token.clone());
 
         let config = self.config.load();
-        self.throttler
+        let throttler = if let Some(ref tid) = meta_task.tenant_id {
+            if let Some(ctx) = self.tenants.get(tid) {
+                ctx.throttler.clone()
+            } else {
+                self.throttler.clone()
+            }
+        } else {
+            self.throttler.clone()
+        };
+
+        throttler
             .register_task(
                 id,
                 config.bandwidth.per_task_download_limit,
@@ -109,7 +152,20 @@ impl Orchestrator {
             )
             .await;
 
-        let path = std::path::Path::new(download_dir).join(&meta_task.name);
+        let base_dir = if let Some(ref tid) = meta_task.tenant_id {
+            if let Some(ctx) = self.tenants.get(tid) {
+                if let Some(ref root) = ctx.disk_path_root {
+                    root.clone()
+                } else {
+                    std::path::PathBuf::from(&config.storage.download_dir)
+                }
+            } else {
+                std::path::PathBuf::from(&config.storage.download_dir)
+            }
+        } else {
+            std::path::PathBuf::from(&config.storage.download_dir)
+        };
+        let path = base_dir.join(&meta_task.name);
         let _ = self
             .storage_tx
             .send(crate::storage::StorageRequest::RegisterTask {

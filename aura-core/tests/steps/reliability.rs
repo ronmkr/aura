@@ -29,6 +29,7 @@ async fn given_active_download(world: &mut AuraWorld, percent: u32) {
     let handle = engine
         .add_task_with_sources(
             id,
+            None,
             "reliability-task".to_string(),
             vec![(format!("{}/file", server.uri()), TaskType::Http)],
             None,

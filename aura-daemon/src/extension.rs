@@ -39,7 +39,7 @@ pub async fn handle_extension_add(
 
     match state
         .engine
-        .add_task_with_sources(id, name, sources, None)
+        .add_task_with_sources(id, None, name, sources, None)
         .await
     {
         Ok(_) => (

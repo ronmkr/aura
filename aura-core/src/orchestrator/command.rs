@@ -1,5 +1,5 @@
 use crate::task::MetaTask;
-use crate::TaskId;
+use crate::{TaskId, TenantId};
 use std::sync::Arc;
 use tokio::sync::mpsc;
 
@@ -8,6 +8,7 @@ use tokio::sync::mpsc;
 pub enum Command {
     AddTask {
         id: TaskId,
+        tenant_id: Option<TenantId>,
         name: String,
         sources: Vec<(String, crate::task::TaskType)>,
         checksum: Option<crate::Checksum>,

@@ -139,6 +139,7 @@ async fn handle_add_uri(engine: &Engine, params: Option<Value>) -> Result<Value,
     engine
         .add_task_with_options(
             id,
+            None,
             name,
             sources,
             None,

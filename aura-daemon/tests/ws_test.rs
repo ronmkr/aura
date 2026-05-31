@@ -49,6 +49,7 @@ async fn test_ws_telemetry() {
     engine
         .add_task_with_sources(
             id,
+            None,
             "test-task".to_string(),
             vec![("http://example.com".to_string(), TaskType::Http)],
             None,
