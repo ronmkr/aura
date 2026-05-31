@@ -1,7 +1,6 @@
 [book]
 authors = ["ronmkr"]
 language = "en"
-multilingual = false
 src = "src"
 title = "Aura User Manual"
 
