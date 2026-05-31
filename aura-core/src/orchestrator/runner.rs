@@ -79,6 +79,37 @@ impl Orchestrator {
             }
         });
 
+        // Network Interface Roaming Reconnector Monitor
+        let subtask_tx_roaming = self.subtask_tx.clone();
+        tokio::spawn(async move {
+            let mut last_ip = local_ip_address::local_ip().ok();
+            let mut interval = tokio::time::interval(std::time::Duration::from_secs(5));
+            loop {
+                interval.tick().await;
+
+                let current_ip = local_ip_address::local_ip().ok();
+                if current_ip != last_ip {
+                    tracing::warn!(
+                        ?last_ip,
+                        ?current_ip,
+                        "Interface Roaming detected! Active network interface IP changed."
+                    );
+                    last_ip = current_ip;
+                    if subtask_tx_roaming
+                        .send(SubTaskEvent::RoamingDetected)
+                        .await
+                        .is_err()
+                    {
+                        break;
+                    }
+                }
+
+                if subtask_tx_roaming.is_closed() {
+                    break;
+                }
+            }
+        });
+
         if let Some(scrub_command_rx) = self.scrub_rx.take() {
             let (scrub_event_tx, mut scrub_event_rx) = tokio::sync::mpsc::channel(1024);
             let scrubber =

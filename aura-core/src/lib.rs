@@ -111,6 +111,9 @@ pub enum Error {
     #[error("Protocol error: {0}")]
     Protocol(String),
 
+    #[error("Captive portal detected: {0}")]
+    CaptivePortal(String),
+
     #[error("Task not found: {0}")]
     TaskNotFound(TaskId),
 

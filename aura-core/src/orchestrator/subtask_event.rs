@@ -28,4 +28,5 @@ pub enum SubTaskEvent {
     KillSwitch,
     Retry(TaskId, TaskId),
     ScrubberEvent(crate::scrubber::ScrubberEvent),
+    RoamingDetected,
 }
