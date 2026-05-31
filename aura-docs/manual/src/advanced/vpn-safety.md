@@ -1,43 +1,42 @@
 # VPN Safety & Privacy
 
-Privacy is a core pillar of Aura. Unlike traditional downloaders that rely on the OS to route traffic, Aura proactively monitors the network environment to prevent data leaks.
+Privacy is a core pillar of Aura. Unlike traditional downloaders that rely on the OS to route traffic (which can fail silently), Aura proactively monitors the network environment to prevent sensitive data leaks.
 
-## The Active Kill-switch
+## The Active Kill-switch (ADR 0038)
 
-Aura implements a **Network Interface Lock** (ADR 0035/0038). When enabled, Aura will *only* send traffic over a specific authorized interface (e.g., `tun0` for VPNs).
+Aura implements an **Active Network Interface Lock**. When `force_tunnel = true` is enabled in `Aura.toml`, Aura enforces a strict hardware-level isolation.
 
-### How it works:
-1. **Interface Monitoring**: The Orchestrator spawns a background monitor that pings the OS for active interfaces every 2 seconds.
-2. **Immediate Halting**: If the authorized interface disappears or becomes unreachable, the Orchestrator sends a `KillSwitch` event.
-3. **Atomic Suspension**: All Protocol Workers immediately drop their sockets and clear their memory buffers. No data is sent over the default (unprotected) gateway.
+### Implementation Mechanism:
+1.  **Interface Heartbeat**: The Orchestrator spawns a background monitor that pings the OS kernel for active network interfaces every `vpn.check_interval_secs` (default: 5s).
+2.  **State Verification**: Aura verifies that the authorized interface (e.g., `tun0` for WireGuard, `utun3` for OpenVPN) is in the `UP` and `RUNNING` state.
+3.  **Atomic Suspension**: If the interface vanishes (e.g., VPN tunnel crashes), the Orchestrator instantly dispatches a `KillSwitch` broadcast to all actors.
+4.  **Socket Termination**: All Protocol Workers immediately drop their TCP/UDP sockets and flush their memory buffers. No further data is transmitted, even if the OS tries to route it over the default (unprotected) gateway.
 
 ## SOCKS5 Proxy Support
 
-For users without a full-system VPN, Aura supports global and per-task **SOCKS5 Proxies**.
-- **Peer Traffic**: All BitTorrent peer connections are routed through the proxy.
-- **Tracker Anonymity**: Tracker announcements (HTTP/UDP) are also proxied to prevent IP exposure to trackers.
+For users who prefer proxying over a full-system VPN:
+- **Unified Proxy Connector**: Supports HTTP, HTTPS, and SOCKS5 (with authentication).
+- **BitTorrent Anonymity**: Both the Tracker announcements and the peer-to-peer data transfers are routed through the proxy.
+- **Credential Integration**: Proxy usernames and passwords can be safely stored in the `[credentials]` section or a `.netrc` file.
 
-## Native VPN Integration (Experimental)
+## DNS over HTTPS (DoH) & TLS (DoT)
 
-Aura can act as a **VPN Controller** (ADR 0038). It can monitor the health of WireGuard or OpenVPN tunnels and attempt to trigger a reconnect if the connection drops, providing a "set and forget" experience.
+To prevent ISP-level tracking of your download sources via DNS logs:
+- **Encrypted Resolution**: Aura uses the `hickory-resolver` to query upstream resolvers (Cloudflare/Google) over port 443 (DoH) or 853 (DoT).
+- **Bootstrap IPs**: Bypasses local system resolvers entirely by using hardcoded bootstrap IPs to find the encrypted resolvers, preventing "DNS hijacking."
 
-## DNS over HTTPS (DoH)
+## Interface Roaming Reconnector (ADR 0034)
 
-To prevent ISP-level tracking of your download sources, Aura uses **DNS over HTTPS**.
-- **Hickory DNS**: Uses the `hickory-resolver` for non-blocking, encrypted DNS resolution.
-- **Bootstrapping**: Aura bypasses local system resolvers and queries Cloudflare or Google DNS directly over port 443.
-
-## Interface Roaming Reconnector
-
-Aura includes a robust **Interface Roaming Reconnector** (ADR 0034) that monitors system routing tables and netlink events.
-- **Auto-Pause**: If your network interface drops or changes (e.g., disconnecting from office Wi-Fi), Aura instantly pauses all protocol worker actors to avoid leaking data or wasting bandwidth.
-- **Auto-Resume**: When a new default route or interface is established (e.g., switching to mobile data or home Wi-Fi), Aura automatically rebinds the sockets to the new route and resumes all operations seamlessly.
+Aura handles network transitions (e.g., switching from Wi-Fi to Ethernet) gracefully:
+- **Event Monitoring**: Uses `rtnetlink` (on Linux) to listen for routing table changes.
+- **Auto-Pause**: Instantly pauses workers when the default gateway changes to prevent partial data writes during the transition.
+- **Auto-Resume**: Re-binds sockets and resumes downloads as soon as a stable internet connection is restored.
 
 ## Captive Portal Protection
 
-Hostile network environments (like hotel or Starbucks Wi-Fi) often redirect download requests to landing pages. Aura's **Captive Portal Detector** prevents download file corruption:
-- **Redirection Interception**: Aura intercepts initial HTTP/HTTPS redirect chains and inspects HTML bodies when expecting binary payloads (e.g., `.iso`, `.zip`).
-- **Graceful Pausing**: If a captive login/redirect page is detected, the task is safely paused with a descriptive state warning rather than writing the HTML payload to disk and corrupting your download.
+Hostile environments (like public Wi-Fi) often redirect download requests to HTML login pages. 
+- **MIME Inspection**: Aura inspects the first few bytes of every HTTP response.
+- **Redirection Logic**: If Aura expects a binary payload (e.g., a `.zip` or `.iso`) but receives an `html/text` body from a redirected URL, it automatically pauses the task with a `CaptivePortal` warning to prevent your file from being corrupted with login page data.
 
 ## Kernel TLS (kTLS)
 

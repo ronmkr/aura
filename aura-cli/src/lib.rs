@@ -1,5 +1,5 @@
 use aura_core::orchestrator::{Engine, Event};
-use aura_core::task::TaskType;
+use aura_core::task::{FollowOnAction, TaskType};
 use aura_core::{Result, TaskId};
 
 use indicatif::{ProgressBar, ProgressStyle};
@@ -9,6 +9,7 @@ use rand::RngExt;
 pub struct Args {
     pub uris: Vec<String>,
     pub output: Option<String>,
+    pub follow_on: Option<String>,
 }
 
 pub async fn run(args: Args) -> Result<()> {
@@ -100,7 +101,7 @@ pub async fn run(args: Args) -> Result<()> {
                 100,
                 false,
                 Vec::new(),
-                None,
+                args.follow_on.map(FollowOnAction::Custom),
             )
             .await?;
     } else {
@@ -121,7 +122,17 @@ pub async fn run(args: Args) -> Result<()> {
                 TaskType::Http
             };
             engine
-                .add_task_with_id(id, name, uri.clone(), ttype)
+                .add_task_with_options(
+                    id,
+                    None,
+                    name,
+                    vec![(uri.clone(), ttype)],
+                    None,
+                    100,
+                    false,
+                    Vec::new(),
+                    args.follow_on.clone().map(FollowOnAction::Custom),
+                )
                 .await?;
         }
     }

@@ -29,6 +29,9 @@ A unique fingerprint for a BitTorrent swarm. BitTorrent v1 uses 20-byte SHA-1 ha
 ### Merkle Tree
 A tree structure where every leaf node is the hash of a data block, and every non-leaf node is the hash of its children. BitTorrent v2 uses Merkle trees for efficient per-file verification.
 
+### Mapping Engine
+The logic core of the Resource Mapper that evaluates rules based on file extension, domain, protocol, or regex to determine the final download path on disk.
+
 ### Metalink
 An XML-based file format that describes a file and its mirrors (HTTP, FTP, P2P). Aura uses Metalinks to automatically orchestrate multi-source downloads.
 
@@ -43,3 +46,9 @@ The component in the **Storage Engine** that reorders out-of-order blocks in mem
 
 ### Sourced Model
 The design where a single download task (MetaTask) can have multiple sources (Subtasks) across different protocols.
+
+### Task Chaining
+A high-level logic that allows one download task to automatically trigger another upon completion (e.g., automatically launching a `.torrent` file downloaded via HTTP).
+
+### Tenant
+An isolated environment within the Aura Daemon (ADR 0032) that provides dedicated bandwidth limits, task quotas, and directory roots for multi-user shared hosting.

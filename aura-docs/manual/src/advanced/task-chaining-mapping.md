@@ -21,6 +21,27 @@ You can attach a follow-on action to a task. Currently supported actions include
 
 This allows you to download a torrent file via HTTP and have Aura automatically start downloading the actual torrent content without any manual intervention.
 
+## Task Dependencies (depends_on)
+
+Aura supports complex **Task Dependency Graphs**. Unlike Chaining (which triggers after completion), Dependencies prevent a task from starting until its "parents" are finished.
+
+### Use Cases:
+- **Prerequisite Data**: Download a library or shared assets before starting a specific application build.
+- **Ordered Batches**: Ensure `Part 1` is 100% finished and verified before dedicating bandwidth to `Part 2`.
+
+### Configuration:
+In the JSON-RPC API or CLI (multi-task mode), you can specify `depends_on`:
+```json
+{
+    "method": "aura.addUri",
+    "params": [
+        ["https://example.com/part2.zip"],
+        {"depends_on": ["GID_OF_PART_1"]}
+    ]
+}
+```
+Tasks with unmet dependencies will stay in the **Waiting** phase until all parent GIDs are marked as `Complete`.
+
 ## Metadata-based Path Mapping
 
 Aura's path mapping engine allows you to define flexible rules to automatically route downloaded files to specific subdirectories based on their metadata (such as file extensions, domains, protocol type, or regex matches).

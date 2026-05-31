@@ -66,3 +66,17 @@ aura "https://server.com/archive.tar.gz" --output backup.tgz
 ```
 
 To change the download directory, use the `Aura.toml` configuration file. See the [Configuration](./configuration.md) chapter for details.
+
+## Automation & Mapping
+
+Aura can automatically organize your downloads based on their metadata (extension, domain, etc.) using the **Mapping Engine**.
+
+### Example: Auto-sorting Videos
+Configure Aura to move all `.mp4` files to a `videos/` folder:
+```toml
+[[resource_mapping.rules]]
+condition = { Extension = "mp4" }
+target = "videos/{name}"
+```
+
+Aura also supports **Task Chaining**, allowing one download to trigger another (e.g., auto-launching a downloaded torrent). See the [Advanced](./advanced/task-chaining-mapping.md) section for more.

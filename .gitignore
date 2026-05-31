@@ -46,3 +46,5 @@ unused_deps.txt
 # Antigravity CLI artifacts
 .antigravitycli/
 
+# mdBook generated ADRs
+aura-docs/manual/src/adr/
