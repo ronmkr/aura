@@ -1,8 +1,8 @@
+use super::logic::Torrent;
+use super::metadata::V2File;
 use crate::{Error, Result};
 use sha2::Digest;
 use sha2::Sha256;
-use super::metadata::V2File;
-use super::logic::Torrent;
 
 impl Torrent {
     pub fn flatten_v2_files(&self) -> Option<Vec<V2File>> {

@@ -1,7 +1,7 @@
 pub mod logic;
 pub mod metadata;
-pub mod v2;
 #[cfg(test)]
 mod tests;
+pub mod v2;
 pub use logic::*;
 pub use metadata::*;

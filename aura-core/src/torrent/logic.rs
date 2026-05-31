@@ -66,8 +66,6 @@ impl Torrent {
         }
     }
 
-
-
     pub fn pieces_count(&self) -> usize {
         if let Some(pieces) = &self.info.pieces {
             pieces.len() / 20
@@ -106,5 +104,4 @@ impl Torrent {
         hash.copy_from_slice(&pieces[start..start + 20]);
         Ok(hash)
     }
-
 }
