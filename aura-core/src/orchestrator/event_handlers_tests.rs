@@ -1,4 +1,5 @@
 use super::*;
+use crate::orchestrator::SubTaskEvent;
 use crate::task::{DownloadPhase, MetaTask, Range, SubTask, TaskType};
 use crate::TaskId;
 use std::collections::HashMap;
@@ -394,4 +395,121 @@ async fn test_resource_preemption_logic() {
     // Task C is Downloading
     let task_c = orch.tasks.get(&TaskId(3)).unwrap();
     assert_eq!(task_c.phase, DownloadPhase::Downloading);
+}
+
+#[tokio::test]
+async fn test_captive_portal_pausing() {
+    let (mut orch, _storage_rx, _temp_dir) = make_test_orchestrator();
+
+    let meta_id = TaskId(1);
+    let sub_id = TaskId(101);
+
+    let sub = SubTask {
+        id: sub_id,
+        task_type: TaskType::Http,
+        uri: "http://example.com/download.zip".to_string(),
+        assigned_ranges: Vec::new(),
+        total_length: 0,
+        completed_length: 0,
+        active: true,
+        phase: DownloadPhase::Downloading,
+        target_concurrency: 1,
+        recent_bytes_downloaded: 0,
+        ewma_throughput: 0.0,
+        retry_count: 0,
+    };
+
+    let meta = MetaTask {
+        id: meta_id,
+        name: "test".to_string(),
+        total_length: 0,
+        completed_length: 0,
+        uploaded_length: 0,
+        phase: DownloadPhase::Downloading,
+        priority: 3,
+        streaming_mode: false,
+        range_supported: true,
+        subtasks: vec![sub],
+        pending_ranges: Vec::new(),
+        in_flight_ranges: Vec::new(),
+        checksum: None,
+        seeding_start_time: None,
+        blacklisted_uris: Vec::new(),
+        extensions: HashMap::new(),
+        depends_on: Vec::new(),
+    };
+
+    orch.tasks.insert(meta_id, meta);
+    orch.cancellation_tokens
+        .insert(meta_id, CancellationToken::new());
+
+    // Fire captive portal failure
+    let event = SubTaskEvent::Failed(
+        meta_id,
+        sub_id,
+        "Captive portal detected: landing page redirect".to_string(),
+    );
+    let res = orch.handle_subtask_event(event).await;
+    assert!(res.is_ok());
+
+    // Verify task is safely Paused
+    let task = orch.tasks.get(&meta_id).unwrap();
+    assert_eq!(task.phase, DownloadPhase::Paused);
+    assert_eq!(task.subtasks[0].phase, DownloadPhase::Paused);
+}
+
+#[tokio::test]
+async fn test_interface_roaming_reconnector() {
+    let (mut orch, _storage_rx, _temp_dir) = make_test_orchestrator();
+
+    let meta_id = TaskId(1);
+    let sub_id = TaskId(101);
+
+    let sub = SubTask {
+        id: sub_id,
+        task_type: TaskType::Http,
+        uri: "http://example.com/file.zip".to_string(),
+        assigned_ranges: Vec::new(),
+        total_length: 1000,
+        completed_length: 0,
+        active: true,
+        phase: DownloadPhase::Downloading,
+        target_concurrency: 1,
+        recent_bytes_downloaded: 0,
+        ewma_throughput: 0.0,
+        retry_count: 0,
+    };
+
+    let meta = MetaTask {
+        id: meta_id,
+        name: "test".to_string(),
+        total_length: 1000,
+        completed_length: 0,
+        uploaded_length: 0,
+        phase: DownloadPhase::Downloading,
+        priority: 3,
+        streaming_mode: false,
+        range_supported: true,
+        subtasks: vec![sub],
+        pending_ranges: Vec::new(),
+        in_flight_ranges: Vec::new(),
+        checksum: None,
+        seeding_start_time: None,
+        blacklisted_uris: Vec::new(),
+        extensions: HashMap::new(),
+        depends_on: Vec::new(),
+    };
+
+    orch.tasks.insert(meta_id, meta);
+    orch.cancellation_tokens
+        .insert(meta_id, CancellationToken::new());
+
+    // Trigger interface roaming reconnector event
+    let event = SubTaskEvent::RoamingDetected;
+    let res = orch.handle_subtask_event(event).await;
+    assert!(res.is_ok());
+
+    // Verify tasks are automatically resumed (still Downloading phase)
+    let task = orch.tasks.get(&meta_id).unwrap();
+    assert_eq!(task.phase, DownloadPhase::Downloading);
 }

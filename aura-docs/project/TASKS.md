@@ -18,10 +18,10 @@ All active development tasks, technical debt, and feature requests are managed e
 - [ ] **feat: Network Filesystem (NFS/SMB) Optimizations** (Issue #12) `[enhancement, module:storage, priority:moderate]`
 - [ ] **feat: Task Chaining & Metadata-based Path Mapping** (Issue #11) `[enhancement, module:core, priority:low]`
 - [ ] **feat: Cloud Storage Support (S3, Google Drive)** (Issue #10) `[enhancement, module:core, priority:moderate]`
-- [ ] **feat: Advanced Networking (kTLS, Captive Portals, Roaming)** (Issue #8) `[enhancement, priority:low, module:network]`
 
 ## ✅ Completed Tasks
 
+- [x] **feat: Advanced Networking (kTLS, Captive Portals, Roaming)** (Issue #8) `[enhancement, priority:low, module:network]`
 - [x] **feat: task prioritization and dependency management** (Issue #72)
 - [x] **Test: Implement BDD step definitions for daemon, networking, storage, swarm features** (Issue #124)
 - [x] **Feat: Add peer health scoring, reputation, and eviction to peer registry** (Issue #123)

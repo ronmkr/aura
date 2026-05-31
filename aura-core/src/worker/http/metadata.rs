@@ -132,6 +132,38 @@ impl HttpWorker {
                     ".bin", ".msi", ".pdf", ".mp4", ".mkv", ".tar",
                 ];
 
+                // --- CAPTIVE PORTAL INTERCEPTION ---
+                let ends_with_asset = asset_exts
+                    .iter()
+                    .any(|ext| self.uri.to_lowercase().ends_with(ext));
+                if ends_with_asset {
+                    let body_lower = body.to_lowercase();
+                    let keywords = [
+                        "login",
+                        "signin",
+                        "captive",
+                        "wifi",
+                        "portal",
+                        "hotspot",
+                        "accept terms",
+                        "gateway",
+                    ];
+                    let has_captive_keyword = keywords.iter().any(|&kw| body_lower.contains(kw));
+                    let url_lower = current_uri.to_lowercase();
+                    let has_captive_url = url_lower.contains("login")
+                        || url_lower.contains("portal")
+                        || url_lower.contains("wifi")
+                        || url_lower.contains("captive");
+
+                    if has_captive_keyword || has_captive_url {
+                        return Err(Error::CaptivePortal(format!(
+                            "Captive portal landing page detected at {}",
+                            current_uri
+                        )));
+                    }
+                }
+                // ------------------------------------
+
                 use super::crawler::RecursiveCrawler;
                 if let Ok(mut crawler) = RecursiveCrawler::new(&current_uri, 1, true) {
                     crawler.enqueue_links(&current_uri, &body, 0);

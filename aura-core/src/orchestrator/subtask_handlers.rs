@@ -20,73 +20,7 @@ impl Orchestrator {
                 self.handle_range_finished(meta_id, sub_id, range).await?;
             }
             SubTaskEvent::Failed(meta_id, sub_id, err) => {
-                self.worker_cancellation_tokens.remove(&sub_id);
-                info!(%meta_id, %sub_id, %err, "Subtask failed");
-                if let Some(task) = self.tasks.get_mut(&meta_id) {
-                    if let Some(sub) = task.subtasks.iter_mut().find(|s| s.id == sub_id) {
-                        sub.active = false;
-                        let is_fatal =
-                            err.contains("404") || err.contains("403") || err.contains("401");
-                        sub.retry_count += 1;
-
-                        let config = self.config.load();
-                        let max_retries = config.network.http_retry_count;
-                        let delay_base = config.network.http_retry_delay_secs;
-
-                        if sub.retry_count < max_retries && !is_fatal {
-                            sub.phase = DownloadPhase::Degraded;
-                            tracing::warn!(%meta_id, %sub_id, count = sub.retry_count, "Mirror degraded, recycling ranges");
-
-                            // Self-healing: Schedule retry with exponential backoff
-                            let subtask_tx = self.subtask_tx.clone();
-                            let retry_delay =
-                                std::time::Duration::from_secs(sub.retry_count as u64 * delay_base);
-                            tokio::spawn(async move {
-                                tokio::time::sleep(retry_delay).await;
-                                let _ = subtask_tx.send(SubTaskEvent::Retry(meta_id, sub_id)).await;
-                            });
-                        } else {
-                            sub.phase = DownloadPhase::Error;
-                            if is_fatal {
-                                tracing::error!(%meta_id, %sub_id, "Mirror permanently failed due to fatal error: {}", err);
-                            } else {
-                                tracing::error!(%meta_id, %sub_id, "Mirror permanently failed after {} retries", max_retries);
-                            }
-                            task.blacklisted_uris.push(sub.uri.clone());
-                        }
-
-                        // Failover: Return assigned ranges to the pending pool
-                        let failed_ranges = std::mem::take(&mut sub.assigned_ranges);
-                        for r in failed_ranges {
-                            task.pending_ranges.push(r);
-                            task.in_flight_ranges
-                                .retain(|(sid, rng)| *sid != sub_id || *rng != r);
-                        }
-                    }
-
-                    if task
-                        .subtasks
-                        .iter()
-                        .all(|s| s.phase == DownloadPhase::Error)
-                    {
-                        task.phase = DownloadPhase::Error;
-                        let _ = self.event_tx.send(Event::TaskError {
-                            id: meta_id,
-                            message: err,
-                        });
-                    } else {
-                        // Trigger next range dispatch for other active subtasks
-                        let active_subs: Vec<TaskId> = task
-                            .subtasks
-                            .iter()
-                            .filter(|s| s.active)
-                            .map(|s| s.id)
-                            .collect();
-                        for aid in active_subs {
-                            let _ = self.dispatch_next_ranges(meta_id, aid).await;
-                        }
-                    }
-                }
+                self.handle_subtask_failed(meta_id, sub_id, err).await?;
             }
             SubTaskEvent::Downloaded(meta_id, sub_id, bytes, peer_addr) => {
                 if let Some(task) = self.tasks.get_mut(&meta_id) {
@@ -240,6 +174,45 @@ impl Orchestrator {
                     }
                     crate::scrubber::ScrubberEvent::ScrubFailed(meta_id, err) => {
                         tracing::error!(%meta_id, %err, "Integrity scrub failed");
+                    }
+                }
+            }
+            SubTaskEvent::RoamingDetected => {
+                info!("Orchestrator handling network interface roaming event");
+                let downloading_tasks: Vec<TaskId> = self
+                    .tasks
+                    .iter()
+                    .filter(|(_, t)| {
+                        t.phase == DownloadPhase::Downloading
+                            || t.phase == DownloadPhase::MetadataExchange
+                    })
+                    .map(|(&id, _)| id)
+                    .collect();
+
+                if !downloading_tasks.is_empty() {
+                    info!(
+                        "Pausing {} active tasks to recycle connections for interface roaming",
+                        downloading_tasks.len()
+                    );
+                    for id in &downloading_tasks {
+                        let _ = self.handle_pause(*id).await;
+                    }
+
+                    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+
+                    info!(
+                        "Resuming {} tasks on the new default route",
+                        downloading_tasks.len()
+                    );
+                    for id in downloading_tasks {
+                        if let Some(task) = self.tasks.get_mut(&id) {
+                            task.phase = DownloadPhase::Downloading;
+                            let _ = self.save_task(id).await;
+
+                            let token = tokio_util::sync::CancellationToken::new();
+                            self.cancellation_tokens.insert(id, token.clone());
+                            let _ = self.start_task_loops_with_bitfield(id, token, None).await;
+                        }
                     }
                 }
             }

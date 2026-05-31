@@ -5,6 +5,38 @@ use socket2::{Domain, Protocol, Socket, Type};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use tokio::net::{TcpStream, UdpSocket};
 
+/// Attempts to negotiate Kernel TLS (kTLS) on a TCP socket for zero-copy performance.
+/// Acting as a no-op on non-supported platforms (macOS/Windows).
+#[cfg(unix)]
+pub fn try_enable_ktls<S: std::os::unix::io::AsRawFd>(_stream: &S) -> std::io::Result<()> {
+    #[cfg(target_os = "linux")]
+    {
+        let fd = _stream.as_raw_fd();
+        let tls = b"tls\0";
+        let ret = unsafe {
+            libc::setsockopt(
+                fd,
+                libc::SOL_TCP,
+                libc::TCP_ULP,
+                tls.as_ptr() as *const libc::c_void,
+                tls.len() as libc::socklen_t,
+            )
+        };
+        if ret < 0 {
+            let err = std::io::Error::last_os_error();
+            tracing::warn!("Failed to negotiate kTLS (TCP_ULP): {}", err);
+            return Err(err);
+        }
+        tracing::info!("Successfully negotiated kTLS (TCP_ULP) on socket");
+    }
+    Ok(())
+}
+
+#[cfg(not(unix))]
+pub fn try_enable_ktls<S>(_stream: &S) -> std::io::Result<()> {
+    Ok(())
+}
+
 /// Binds a socket to a specific network interface or local IP.
 pub fn bind_socket(
     socket: &Socket,
@@ -52,9 +84,11 @@ async fn race_connect(
         socket
             .set_nonblocking(true)
             .map_err(|e| Error::Config(format!("Failed to set non-blocking: {}", e)))?;
-        return TcpStream::connect(addr)
+        let stream = TcpStream::connect(addr)
             .await
-            .map_err(|e| Error::Protocol(format!("Failed to connect to {}: {}", addr, e)));
+            .map_err(|e| Error::Protocol(format!("Failed to connect to {}: {}", addr, e)))?;
+        let _ = try_enable_ktls(&stream);
+        return Ok(stream);
     }
 
     // Race addresses with a 250ms staggered start
@@ -78,7 +112,10 @@ async fn race_connect(
             let _ = bind_socket(&socket, iface.as_deref(), l_addr);
             let _ = socket.set_nonblocking(true);
 
-            TcpStream::connect(addr).await.ok().map(|s| (s, addr))
+            TcpStream::connect(addr).await.ok().map(|s| {
+                let _ = try_enable_ktls(&s);
+                (s, addr)
+            })
         });
     }
 
@@ -254,51 +291,5 @@ pub async fn bind_udp_bound(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use std::net::{Ipv4Addr, SocketAddrV4};
-
-    #[tokio::test]
-    async fn test_unsupported_proxy_scheme() {
-        let remote_addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 80));
-        let result = connect_tcp_bound(
-            remote_addr,
-            None,
-            None,
-            Some("http://proxy.example.com:8080"),
-        )
-        .await;
-
-        assert!(result.is_err());
-        let err = result.unwrap_err();
-        match err {
-            Error::Config(msg) => {
-                assert!(msg.contains("Unsupported proxy scheme for TCP"));
-            }
-            _ => panic!("Expected Error::Config"),
-        }
-    }
-
-    #[tokio::test]
-    async fn test_connect_tcp_bound_host_invalid() {
-        let result =
-            connect_tcp_bound_host("nonexistent-domain-name-aura.local", 80, None, None, None)
-                .await;
-
-        assert!(result.is_err());
-    }
-
-    #[tokio::test]
-    async fn test_connect_tcp_bound_host_localhost() {
-        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-        let port = listener.local_addr().unwrap().port();
-
-        let result = connect_tcp_bound_host("127.0.0.1", port, None, None, None).await;
-
-        assert!(
-            result.is_ok(),
-            "Failed to connect to 127.0.0.1: {:?}",
-            result.err()
-        );
-    }
-}
+#[path = "logic_tests.rs"]
+mod tests;

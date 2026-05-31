@@ -8,6 +8,7 @@ pub mod monitors;
 pub mod runner;
 pub mod state;
 pub mod subtask_event;
+pub mod subtask_failure;
 pub mod subtask_handlers;
 pub mod telemetry;
 pub mod vpn_enforcement;
