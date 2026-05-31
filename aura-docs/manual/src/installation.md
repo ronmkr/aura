@@ -48,6 +48,14 @@ docker run --rm \
    ```
 
 The binaries will be available in `target/release/`:
-- `aura`: The command-line interface.
-- `aura daemon`: The headless background service.
-- `aura tui`: The interactive terminal dashboard.
+- `aura`: The unified binary.
+- `aura daemon`: Start in background service mode.
+- `aura tui`: Start the interactive dashboard.
+
+## Verification
+
+After installing, verify the version:
+```bash
+aura --version
+```
+You should see `Aura v0.1.0` (or higher).

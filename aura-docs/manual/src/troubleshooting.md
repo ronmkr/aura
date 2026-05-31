@@ -1,42 +1,61 @@
-# Troubleshooting
+# Troubleshooting & Common Issues
 
-This chapter covers common issues and their solutions when using Aura.
+Aura is designed to be self-healing, but certain network or system conditions may require manual intervention. This guide details common error states and recovery procedures.
 
-## Common Log Messages
+## Common Error Messages
 
-### "VPN Kill-switch triggered! Connection lost."
-- **Meaning**: Aura is configured to only use a specific network interface (e.g., `tun0`), and that interface has disappeared.
-- **Solution**: Check your VPN connection. Once the interface is restored, Aura will automatically attempt to resume. If you are not using a VPN, set `vpn_kill_switch = false` in `Aura.toml`.
+### 🛡️ VPN & Network Safety
+- **`"VPN Kill-switch triggered! Connection lost."`**
+    - **Context**: `force_tunnel = true` is set, and the authorized interface (e.g., `tun0`) vanished.
+    - **Action**: Aura has atomically paused all tasks to prevent data leaks. Check your VPN client. Aura will automatically resume once the interface is restored.
+- **`"Captive portal detected; pausing task."`**
+    - **Context**: You are on a public Wi-Fi (Hotel/Cafe) that redirected the download to a login page.
+    - **Action**: Complete the login in your browser, then **Resume** the task. Aura intercepts these to prevent your download from being corrupted by HTML login pages.
 
-### "All NAT traversal methods failed for port..."
-- **Meaning**: Aura attempted to open a port on your router via UPnP and NAT-PMP but failed.
-- **Solution**:
-    1. Ensure UPnP is enabled in your router settings.
-    2. Check if your system firewall is blocking Aura.
-    3. You can safely ignore this if you are not seeding or if you have manually forwarded the port.
+### 💾 Storage & I/O
+- **`"Failed to pre-allocate file: No space left on device"`**
+    - **Context**: The `StorageEngine` failed to reserve contiguous blocks via `fallocate`.
+    - **Action**: Free up space or move the `download_dir`. Aura verifies space *before* starting to prevent mid-download failures.
+- **`"Integrity verification failed: Checksum mismatch"`**
+    - **Context**: The downloaded file does not match the provided SHA-256/MD5 hash.
+    - **Action**: Aura preserves the corrupted file. Check the source mirror. If using BitTorrent, the **Integrity Scrubber** will automatically re-download corrupt pieces.
 
-### "Failed to pre-allocate file: No space left on device"
-- **Meaning**: The destination drive is full.
-- **Solution**: Free up space or change the `download_dir` in `Aura.toml`. Aura uses sparse files by default but still checks for sufficient capacity.
+### 🕸️ BitTorrent Swarm
+- **`"All NAT traversal methods failed for port 6881"`**
+    - **Context**: UPnP and NAT-PMP/PCP requests were rejected by your router.
+    - **Action**: You can still download, but you may have fewer peers (cannot receive incoming connections). Manually forward port `6881` in your router settings for "Green" status.
+- **`"DHT bootstrap failed; using internal fallback"`**
+    - **Context**: Primary bootstrap nodes are unreachable.
+    - **Action**: Aura will automatically try a secondary list of high-uptime nodes learned from previous sessions.
 
-### "Task Error: Protocol error: Invalid redirect"
-- **Meaning**: An HTTP mirror redirected Aura to an invalid URL or a captive portal.
-- **Solution**: Verify the source URI. If it's a "Wait for download" page, Aura cannot currently bypass the human interaction required.
+---
 
-## Connectivity Issues
+## Performance Debugging
 
-### BitTorrent downloads are slow
-- **Cause**: No open ports for incoming peer connections.
-- **Solution**: Try enabling NAT Traversal or manually forward the BitTorrent port (default: 6881) in your router.
+### High CPU Usage
+- **Cause**: Extremely low `event_poll_interval_ms` (e.g., < 100ms) or high `max_peers_per_torrent`.
+- **Solution**: Increase poll interval to `500ms` and cap peers to `100` in `Aura.toml`.
 
-### RPC Client cannot connect
-- **Cause**: The `aura daemon` is not running or is bound to a different port.
-- **Solution**: Ensure the daemon is running (`aura daemon`). Verify the port and `rpc_token` in `Aura.toml` match your client settings.
+### Slow Download Speeds
+1.  **Adaptive Scaling**: Check `max_connections_per_task`. If a mirror is slow, Aura may need more connections to saturate your link.
+2.  **Choking**: In BitTorrent, ensure you are uploading. Aura uses a **Tit-for-Tat** algorithm; peers will "choke" you if you don't share back.
+3.  **Bufferbloat**: If your whole internet slows down, set a `global_upload_limit` (usually 80% of your ISP's rated upload).
 
-## Debugging
+---
 
-To get more detailed logs, run Aura with the `RUST_LOG` environment variable:
+## Advanced Logging (The Senior Way)
+
+If you encounter an obscure bug, run Aura with structured JSON logging enabled:
+
 ```bash
-RUST_LOG=debug aura "URL"
+# Run with Trace level for deep protocol inspection
+RUST_LOG=aura=trace aura "URL"
 ```
-Valid levels are `error`, `warn`, `info`, `debug`, and `trace`.
+
+To capture internal actor state transitions:
+```bash
+# Filter for specific components
+RUST_LOG=aura_core::orchestrator=debug,aura_core::storage=info aura daemon
+```
+
+**Note**: `trace` logs are massive. Use them only for short reproduction sessions.

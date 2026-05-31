@@ -33,13 +33,22 @@ By default, it attempts to connect to `127.0.0.1:6800`.
 
 ## Theming
 
-The TUI supports fully customizable themes via `Aura.toml`.
+The TUI supports fully customizable themes via `Aura.toml`. Aura also includes several built-in presets:
+
+- **Galactic** (Default): A high-contrast space theme with deep blues and nebula cyans.
+- **Matrix**: A classic retro-hacker theme with terminal greens and black backgrounds.
 
 ```toml
-[theme]
+[general]
+theme = "Matrix" # or "Galactic" (default)
+```
+
+For custom colors:
+```toml
+[general.theme]
 primary = "#00FF00" # Emerald
 background = "#0A0A0A" # Deep Space
-accent = "#FF00FF" # Pulsar Pink
+...
 ```
 
 See the [Configuration](./configuration.md) chapter for all themeable keys.

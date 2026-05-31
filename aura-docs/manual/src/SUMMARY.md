@@ -16,6 +16,9 @@
 - [VPN Kill-switch & Safety](./advanced/vpn-safety.md)
 - [RPC & Daemon Mode](./advanced/rpc-daemon.md)
 - [Task Chaining & Path Mapping](./advanced/task-chaining-mapping.md)
+- [Multi-Tenancy & Isolation](./advanced/multi-tenancy.md)
+- [Telemetry & Metrics](./advanced/telemetry.md)
+- [Built-in Web UI](./advanced/web-ui.md)
 
 ---
 
