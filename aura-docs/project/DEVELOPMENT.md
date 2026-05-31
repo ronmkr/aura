@@ -43,9 +43,10 @@ make green-loop
 ```
 
 This target runs:
-1. `cargo clippy -- -D warnings` (Strict linting)
-2. `cargo fmt -- --check` (Formatting)
-4. `cargo bench --workspace --no-run` (Ensures benchmarks compile)
+1. `cargo fmt --all -- --check` (Style/formatting compliance)
+2. `cargo clippy --workspace -- -D warnings` (Strict linting for zero warnings)
+3. `cargo test --workspace` (Unit & integration test suites)
+4. `cargo bench --workspace --no-run` (Ensures performance benchmarks compile)
 
 ### Cargo Extensions (Optional but Recommended)
 - **`cargo-watch`**: `cargo install cargo-watch` (Auto-recompile on file changes)
@@ -62,6 +63,7 @@ Aura uses **GitHub Actions** for CI. Our pipeline enforces the same standards as
 - **Test Matrix**: Runs `cargo test` across multiple operating systems (Ubuntu, macOS, Windows) to ensure cross-platform compatibility.
 - **Security Audit**: Runs `cargo audit` to check for dependencies with known security vulnerabilities.
 - **CodeQL**: Automated semantic code analysis to catch memory leaks or logic bugs.
+- **Deploy Documentation**: Automatically builds the mdBook manual and rustdoc API documentation upon pushes to `main`, publishing the unified portal directly to GitHub Pages.
 
 ### Pull Request Requirements
 
