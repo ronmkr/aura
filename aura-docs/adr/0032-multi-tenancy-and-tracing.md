@@ -1,7 +1,7 @@
 # ADR 0032: Multi-Tenancy and Observability
 
 ## Status
-Accepted
+Implemented
 
 ## Context
 As a headless daemon, `Aura` may be shared by multiple users or applications. We need a way to isolate their tasks and provide deep visibility into the performance of the engine's many concurrent actors.

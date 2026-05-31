@@ -2,21 +2,21 @@
 
 > Last updated: 2026-05-26 (post-audit & gap-fix session)
 
-## ✅ Milestone 1: The Atomic Download (Completed)
+## Milestone 1: The Atomic Download (Completed)
 - [x] Basic Actor Skeleton (Orchestrator, StorageEngine).
 - [x] Protocol Abstraction (`ProtocolWorker` trait).
 - [x] HTTP Single-source retrieval.
 - [x] Engine API for high-level control.
 - [x] Basic CLI Persona (`Aura-cli`).
 
-## ✅ Milestone 2: The "Smart" Buffer (Completed)
+## Milestone 2: The "Smart" Buffer (Completed)
 - [x] Real Disk I/O with `tokio::fs`.
 - [x] Atomic Completion (`.part` file rename logic).
 - [x] Sequential Write Aggregation (in-memory reordering).
 - [x] Buffer Pool (memory reuse).
 - [x] Bi-directional Actor Signaling (Storage -> Orchestrator completion).
 
-## ✅ Milestone 3: The Swarm (BitTorrent) (Completed)
+## Milestone 3: The Swarm (BitTorrent) (Completed)
 - [x] **Bitfield Implementation** (TDD: Unit tests first).
 - [x] **Piece Selection Logic** (Rarest-First strategy).
 - [x] **BitTorrent Protocol Worker** (Handshake, Message parsing, Codec).
@@ -29,14 +29,14 @@
 - [x] **Magnet Link Support** (BEP 9 Metadata Exchange).
 - [x] **Local Peer Discovery (LPD)** (BEP 14 Multicast).
 
-## ✅ Milestone 4: Hyper-Scale (Aggregator) (Completed)
+## Milestone 4: Hyper-Scale (Aggregator) (Completed)
 - [x] **Sourced Aggregator** (Multi-protocol task merging).
 - [x] **Work Stealing & Racing** (EWMA-based speculative execution in `task/logic.rs`).
 - [x] **Endgame Mode** (Parallel final block fetching, <1% or ≤3 pieces trigger).
 - [x] **Adaptive Connection Scaling** (Spawns connections when throughput/connection < 256 KB/s).
 - [x] **Hierarchical Throttling** (Semaphore-based token bucket, global + per-task).
 
-## ✅ Milestone 5: Personas & UX (Completed)
+## Milestone 5: Personas & UX (Completed)
 - [x] **RPC Server** (Axum/JSON-RPC 2.0: addUri, tellActive, pause, unpause, remove, getConfig).
 - [x] **Themeable TUI** (Ratatui + JSON-RPC client, 8 theme tokens from config).
 - [x] **Public Rust API** (TaskHandle with filtered event stream).
@@ -44,7 +44,7 @@
 - [x] **Headless Daemon Mode** (`Aura-daemon`).
 - [x] **Web UI Dashboard** (Embedded SPA via `rust-embed`, Catppuccin dark theme).
 
-## ✅ Milestone 6: Persistence & Advanced Protocols (Completed)
+## Milestone 6: Persistence & Advanced Protocols (Completed)
 - [x] **Pause/Resume Support** (Cancellation tokens, state persistence).
 - [x] **Task Persistence** (`.aura` JSON control files + sled DB for bitfields).
 - [x] **NAT Traversal** (UPnP/NAT-PMP with 30-min refresh cycle).
@@ -58,7 +58,7 @@
 - [x] **Unified Binary Architecture** (Single `aura` executable with subcommands).
 - [x] **Power Management** (Thread-isolated `nosleep`, cross-platform).
 
-## 🚀 Milestone 7: Industrial Hardening (In Progress)
+## Milestone 7: Industrial Hardening (In Progress)
 
 ### Completed
 - [x] **Non-Swarm Integrity** (MD5/SHA-1/SHA-256/SHA-512 checksum at storage layer).
@@ -77,6 +77,8 @@
 - [x] **PEX implementation** (BEP 11 Peer Exchange) (Issue #121).
 - [x] **Peer registry scoring** (Latency/Reputation/Eviction) (Issue #123).
 - [x] **Advanced Disk I/O Scheduling** (Deadline-based writes) (Issue #13).
+- [x] **Advanced Networking (kTLS, Captive Portals, Roaming)** (Issue #8).
+- [x] **Multi-tenancy & Structured Audit Tracing** (Issue #15).
 
 ### Remaining - Priority
 
@@ -89,7 +91,7 @@
 - [ ] **i18n Architecture** (Issue #71).
 - [ ] **Cloud Storage Support (S3, Google Drive)** (Issue #10).
 
-## 🛡️ Infrastructure & DevSecOps
+## Infrastructure & DevSecOps
 - [x] `GEMINI.md` (Engineering Mandates).
 - [x] `design.md` (System Design & Visuals).
 - [x] `CONTEXT.md` (Ubiquitous Language).
@@ -98,4 +100,4 @@
 - [x] Automated Benchmarking Suite (buffer_bench + storage_bench).
 - [x] Comprehensive Integration Tests (Cucumber BDD suite).
 - [x] Automated Binary Releases (GitHub Actions matrix builds).
-- [ ] CI Docs Deployment (Issue #134).
+- [x] CI Docs Deployment (Issue #134).

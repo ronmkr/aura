@@ -58,9 +58,10 @@ If the `aura` binary is in your `PATH` (or using the compiled binary `./target/r
 
 ## Documentation
 
-- **[Aura User Manual](aura-docs/manual/src/introduction.md)**: The comprehensive guide to using Aura, covering CLI, TUI, and advanced features.
-- **[Architecture Deep Dive](aura-docs/project/ARCHITECTURE.md)**: Detailed mapping of our actor model and data flows.
-- **[ADR Index](aura-docs/manual/src/advanced/adr-index.md)**: The "why" behind our technical decisions.
+- **[Aura User Manual](https://ronmkr.github.io/aura/)**: The comprehensive online guide to using Aura, covering CLI, TUI, and advanced features.
+- **[Rust API Docs](https://ronmkr.github.io/aura/api/aura_core/)**: Technical documentation for developers embedding the engine.
+- **[Architecture Deep Dive](https://ronmkr.github.io/aura/advanced/architecture.html)**: Detailed mapping of our actor model and data flows.
+- **[ADR Index](https://ronmkr.github.io/aura/advanced/adr-index.html)**: The "why" behind our technical decisions.
 
 ## Getting Started
 

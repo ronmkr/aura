@@ -1,8 +1,8 @@
-# Aura Real-World Verification Suite 🧪
+# Aura Real-World Verification Suite
 
 This document defines the manual and automated test scenarios required to verify the engine's performance, stability, and protocol compliance in production environments.
 
-## 🏗️ Test Categories
+## Test Categories
 
 ### 1. Protocol Aggregation (The "Hyper-Scale" Check)
 Verify that the engine can combine disparate sources into a single consistent file.
@@ -36,22 +36,25 @@ Verify disk efficiency and atomic safety.
 
 ---
 
-## 🛠️ Execution Log (Current Milestone)
+## Execution Log (Current Milestone)
 
 | ID | Scenario | Status | Verified Version | Notes |
 | :--- | :--- | :--- | :--- | :--- |
-| 1.1 | Metalink Multi-Source | ✅ Pass | v0.1.0 | Aggregates mixed mirrors correctly. |
-| 2.1 | Magnet Link Maturation| ✅ Pass | v0.1.0 | Verified in swarm BDD tests. |
-| 2.3 | BitTorrent v2 Hybrid  | ✅ Pass | v0.1.0 | Merkle tree SHA-256 integrity verified. |
-| 3.1 | Global Throttling     | ✅ Pass | v0.1.0 | Semaphore-based token bucket capping verified. |
-| 4.1 | Pause/Resume          | ✅ Pass | v0.1.0 | State correctly saved/loaded from .aura files. |
-| 4.3 | VPN Kill-switch       | ✅ Pass | v0.1.0 | Pauses all tasks immediately upon interface loss. |
-| 5.1 | Atomic Completion     | ✅ Pass | v0.1.0 | File renamed from .part on 100% completion. |
-| 5.2 | Sequential Aggregation| ✅ Pass | v0.1.0 | Verified correct assembly of out-of-order chunks. |
+| 1.1 | Metalink Multi-Source | Pass | v0.1.0 | Aggregates mixed mirrors correctly. |
+| 1.3 | Racing/Work Stealing | Pass | v0.1.0 | Speculative connection racing verifies slow mirror mitigation. |
+| 2.1 | Magnet Link Maturation| Pass | v0.1.0 | Verified in swarm BDD tests. |
+| 2.3 | BitTorrent v2 Hybrid  | Pass | v0.1.0 | Merkle tree SHA-256 integrity verified. |
+| 3.1 | Global Throttling     | Pass | v0.1.0 | Semaphore-based token bucket capping verified. |
+| 3.2 | Hierarchical Throttling| Pass | v0.1.0 | Tenant-level throttling validated. |
+| 3.3 | Adaptive Connection Scaling| Pass | v0.1.0 | Dynamic scaling when connection throughput drops. |
+| 4.1 | Pause/Resume          | Pass | v0.1.0 | State correctly saved/loaded from .aura files. |
+| 4.3 | VPN Kill-switch       | Pass | v0.1.0 | Pauses all tasks immediately upon interface loss. |
+| 5.1 | Atomic Completion     | Pass | v0.1.0 | File renamed from .part on 100% completion. |
+| 5.2 | Sequential Aggregation| Pass | v0.1.0 | Verified correct assembly of out-of-order chunks. |
 
 ---
 
-## 🤖 Future Automation Strategy
+## Future Automation Strategy
 We aim to automate these scenarios using:
 1. **Local Infrastructure**: Docker containers for mock HTTP/FTP/SOCKS5 servers (using `nginx` and `dante`).
 2. **Mock Swarm**: A local private tracker and peer set for BitTorrent verification.

@@ -1,37 +1,37 @@
-# Aura Architectural Map 🌌
+# Aura Architectural Map
 
 This document provides a high-level overview of the Aura architecture using Mermaid diagrams to visualize component interactions and data flow.
 
-## 🏛️ System Overview
+## System Overview
 
 Aura is built on a decoupled, actor-based architecture where protocol-specific logic is isolated from the core orchestration and storage engines.
 
 ```mermaid
 flowchart TD
-    subgraph Clients ["🚀 User Interfaces"]
+    subgraph Clients ["User Interfaces"]
         CLI["The Sprinter (CLI)"]
         TUI["The Pilot (TUI)"]
         Web["Web/Remote (e.g. AriaNg)"]
     end
 
-    subgraph Unified_RPC ["🔌 Unified RPC & Background Service"]
+    subgraph Unified_RPC ["Unified RPC & Background Service"]
         Daemon["Aura Daemon (Background)"]
         RPC["Shared JSON-RPC Server"]
     end
 
-    subgraph Core ["🧠 Aura Core"]
+    subgraph Core ["Aura Core"]
         direction TB
         Orchestrator["Task Orchestrator"]
         Storage["Storage Engine"]
         BufferPool["Buffer Pool (Zero-Copy)"]
         
-        subgraph Workers ["🛠️ Protocol Workers"]
+        subgraph Workers ["Protocol Workers"]
             HTTP["HTTP Worker"]
             BT["BitTorrent Worker"]
             FTP["FTP Worker"]
         end
 
-        subgraph BT_Logic ["🐝 Swarm Logic"]
+        subgraph BT_Logic ["Swarm Logic"]
             DHT["DHT / PEX"]
             Tracker["Tracker Client"]
             PeerReg["Peer Registry"]
@@ -39,7 +39,7 @@ flowchart TD
         end
     end
 
-    subgraph Hardware ["💻 System Resources"]
+    subgraph Hardware ["System Resources"]
         Disk["Disk I/O"]
         Network["Network (TCP/UDP)"]
         Power["Power Management"]
@@ -120,7 +120,7 @@ sequenceDiagram
     O-->>U: UI Update (TUI/CLI)
 ```
 
-## 🔄 Task Lifecycle (State Machine)
+## Task Lifecycle (State Machine)
 
 Aura tasks are phase-aware actors that transition through various maturation levels.
 
@@ -149,20 +149,20 @@ stateDiagram-v2
     Failed --> [*]
 ```
 
-## 🐝 BitTorrent Swarm Discovery
+## BitTorrent Swarm Discovery
 
 The discovery process is a multi-channel orchestration to maximize peer density.
 
 ```mermaid
 graph LR
-    subgraph Discovery ["🔍 Discovery Channels"]
+    subgraph Discovery ["Discovery Channels"]
         DHT["DHT (Kademlia)"]
         PEX["PEX (Peer Exchange)"]
         Trackers["HTTP/UDP Trackers"]
         LPD["LPD (Local Peer Discovery)"]
     end
 
-    subgraph Core ["🧠 Orchestration"]
+    subgraph Core ["Orchestration"]
         Registry["Peer Registry"]
         Reputation["Reputation Engine"]
     end
@@ -173,19 +173,19 @@ graph LR
     Worker -- "New Peers Found" --> PEX
 ```
 
-## 💾 Storage Engine Internals
+## Storage Engine Internals
 
 The storage engine optimizes for high-throughput sequential I/O to protect hardware health.
 
 ```mermaid
 graph TD
-    subgraph RAM ["🧠 Volatile Memory"]
+    subgraph RAM ["Volatile Memory"]
         BP["Buffer Pool (Pre-allocated)"]
         Agg["Sequential Aggregator"]
         Journal["Piece-Buffer Journal (Partial)"]
     end
 
-    subgraph Disk ["💾 Persistent Storage"]
+    subgraph Disk ["Persistent Storage"]
         Part[".part File"]
         Final["Final File"]
         Merkle["Merkle Tree Store (BTv2)"]
@@ -199,29 +199,31 @@ graph TD
     Final -- "Hash Tree" --> Merkle
 ```
 
-## 🛡️ Security & Isolation
+## Security & Isolation
 
-Aura enforces strict boundaries between the network and the host system.
+Aura enforces strict boundaries between the network and the host system, and isolates tenants from each other when running in shared daemon mode.
 
 ```mermaid
 flowchart LR
-    Network["🌐 Untrusted Network"]
+    Network["Untrusted Network"]
     
-    subgraph Sandbox ["🏗️ Aura Security Sandbox"]
+    subgraph Sandbox ["Aura Security Sandbox"]
         RG["Resource Governor"]
-        RBAC["Tenant Context (Auth)"]
+        RBAC["Tenant Context (Auth & Quotas)"]
         Root["Sandbox Root (FS)"]
+        Audit["Structured Audit Tracing (JSON)"]
     end
     
-    Host["💻 Host OS"]
+    Host["Host OS"]
 
     Network -- "Traffic Kill-switch" --> RG
     RG -- "MIME/Port Filtering" --> RBAC
     RBAC -- "Path Normalization" --> Root
     Root -- "Authorized I/O Only" --> Host
+    RBAC -. "Logs" .-> Audit
 ```
 
-## 🗺️ Implementation Map
+## Implementation Map
 
 This table maps architectural concepts to their primary implementation files in the Aura workspace.
 
