@@ -58,6 +58,13 @@ use crate::bitfield::Bitfield;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum FollowOnAction {
+    AutoStartTorrent,
+    AutoStartMetalink,
+    Custom(String),
+}
+
 /// The high-level representation of a logical download operation.
 /// A MetaTask can manage multiple SubTasks (sources).
 #[derive(Debug, Clone)]
@@ -72,6 +79,7 @@ pub struct MetaTask {
     pub priority: u32, // 0 = highest, 5 = lowest, default = 3
     pub streaming_mode: bool,
     pub range_supported: bool,
+    pub follow_on: Option<FollowOnAction>,
     pub subtasks: Vec<SubTask>,
     pub pending_ranges: Vec<Range>,
     pub in_flight_ranges: Vec<(TaskId, Range)>, // (SubTaskID, Range)
@@ -92,6 +100,7 @@ pub struct TaskState {
     pub priority: u32,
     pub streaming_mode: bool,
     pub range_supported: bool,
+    pub follow_on: Option<FollowOnAction>,
     pub total_length: u64,
     pub completed_length: u64,
     pub uploaded_length: u64,
@@ -114,6 +123,7 @@ impl MetaTask {
             priority: self.priority,
             streaming_mode: self.streaming_mode,
             range_supported: self.range_supported,
+            follow_on: self.follow_on.clone(),
             total_length: self.total_length,
             completed_length: self.completed_length,
             uploaded_length: self.uploaded_length,
@@ -136,6 +146,7 @@ impl MetaTask {
             priority: state.priority,
             streaming_mode: state.streaming_mode,
             range_supported: state.range_supported,
+            follow_on: state.follow_on,
             total_length: state.total_length,
             completed_length: state.completed_length,
             uploaded_length: state.uploaded_length,
@@ -162,6 +173,7 @@ impl MetaTask {
             priority: 3,
             streaming_mode: false,
             range_supported: true, // Assume supported until proven otherwise
+            follow_on: None,
             subtasks: Vec::new(),
             pending_ranges: Vec::new(),
             in_flight_ranges: Vec::new(),

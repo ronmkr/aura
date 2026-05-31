@@ -4,6 +4,7 @@ pub mod engine;
 pub mod engine_api;
 pub mod event_handlers;
 pub mod lifecycle;
+pub mod mapping;
 pub mod monitors;
 pub mod runner;
 pub mod state;
@@ -16,6 +17,7 @@ pub mod worker_command;
 
 pub use command::Command;
 pub use engine::Engine;
+pub use mapping::{MappingEngine, ResourceMappingConfig};
 pub use state::Orchestrator;
 pub use subtask_event::SubTaskEvent;
 pub use telemetry::Event;

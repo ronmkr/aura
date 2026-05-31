@@ -104,7 +104,7 @@ impl Orchestrator {
                     } else {
                         std::path::PathBuf::from(&config.storage.download_dir)
                     };
-                    base_dir.join(&meta_task.name)
+                    self.mapping_engine.resolve_path(meta_task, &base_dir)
                 };
                 let _ = self
                     .storage_tx
@@ -223,6 +223,108 @@ impl Orchestrator {
                         uploaded_bytes: task.uploaded_length,
                         total_bytes: task.total_length,
                     });
+
+                    let (follow_on, tenant_id, priority, streaming_mode, task_name) =
+                        if let Some(task) = self.tasks.get(&id) {
+                            (
+                                task.follow_on.clone(),
+                                task.tenant_id.clone(),
+                                task.priority,
+                                task.streaming_mode,
+                                task.name.clone(),
+                            )
+                        } else {
+                            (None, None, 0, false, String::new())
+                        };
+
+                    // Handle follow-on actions (ADR 0029)
+                    if let Some(follow_on) = follow_on {
+                        let config = self.config.load();
+                        let base_dir = if let Some(ref tid) = tenant_id {
+                            if let Some(ctx) = self.tenants.get(tid) {
+                                ctx.disk_path_root.clone().unwrap_or_else(|| {
+                                    std::path::PathBuf::from(&config.storage.download_dir)
+                                })
+                            } else {
+                                std::path::PathBuf::from(&config.storage.download_dir)
+                            }
+                        } else {
+                            std::path::PathBuf::from(&config.storage.download_dir)
+                        };
+                        let file_path = base_dir.join(&task_name);
+
+                        match follow_on {
+                            crate::task::FollowOnAction::AutoStartTorrent => {
+                                if file_path
+                                    .extension()
+                                    .map(|e| e == "torrent")
+                                    .unwrap_or(false)
+                                {
+                                    info!(%id, ?file_path, "Auto-starting follow-on Torrent task");
+                                    let new_id = TaskId(rand::random());
+                                    let _ = self
+                                        .handle_add_task(
+                                            new_id,
+                                            tenant_id.clone(),
+                                            "unnamed".to_string(),
+                                            vec![(
+                                                file_path.to_string_lossy().to_string(),
+                                                crate::task::TaskType::BitTorrent,
+                                            )],
+                                            None,
+                                            priority,
+                                            streaming_mode,
+                                            Vec::new(),
+                                            None,
+                                        )
+                                        .await;
+                                }
+                            }
+                            crate::task::FollowOnAction::AutoStartMetalink => {
+                                if file_path
+                                    .extension()
+                                    .map(|e| e == "metalink" || e == "meta4")
+                                    .unwrap_or(false)
+                                {
+                                    info!(%id, ?file_path, "Auto-starting follow-on Metalink task");
+                                    let new_id = TaskId(rand::random());
+                                    let _ = self
+                                        .handle_add_task(
+                                            new_id,
+                                            tenant_id.clone(),
+                                            "unnamed".to_string(),
+                                            vec![(
+                                                file_path.to_string_lossy().to_string(),
+                                                crate::task::TaskType::Http,
+                                            )], // Task type doesn't strictly matter for metalink entry point
+                                            None,
+                                            priority,
+                                            streaming_mode,
+                                            Vec::new(),
+                                            None,
+                                        )
+                                        .await;
+                                }
+                            }
+                            crate::task::FollowOnAction::Custom(uri) => {
+                                info!(%id, %uri, "Starting custom follow-on task");
+                                let new_id = TaskId(rand::random());
+                                let _ = self
+                                    .handle_add_task(
+                                        new_id,
+                                        tenant_id.clone(),
+                                        "unnamed".to_string(),
+                                        vec![(uri, crate::task::TaskType::Http)],
+                                        None,
+                                        priority,
+                                        streaming_mode,
+                                        Vec::new(),
+                                        None,
+                                    )
+                                    .await;
+                            }
+                        }
+                    }
                 }
                 let _ = self.event_tx.send(Event::TaskCompleted(id));
                 self.check_waiting_tasks().await;

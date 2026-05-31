@@ -61,6 +61,37 @@ save_session_interval_secs = 10        # Interval to sync .aura control files to
 read_ahead_kb = 128                    # Size of read-ahead buffer for seeding
 write_buffer_kb = 256                  # Size of sequential write aggregation buffer
 
+[resource_mapping]
+# Default policy for file name collisions: "AutoRename", "Overwrite", "Skip"
+default_conflict_policy = "AutoRename"
+
+[[resource_mapping.rules]]
+# Sort videos by domain and year
+condition = { Extension = "mp4" }
+target = "videos/{domain}/{year}/{name}"
+
+[[resource_mapping.rules]]
+# Sort ISOs by protocol and host
+condition = { Extension = "iso" }
+target = "images/{protocol}/{host}/{name}"
+
+[[resource_mapping.rules]]
+# Sandbox FTP downloads
+condition = { Protocol = "Ftp" }
+target = "untrusted/ftp/{host}/{name}"
+
+[hooks]
+# Script hooks triggered by task events (ADR 0016)
+# on_download_start = "/path/to/script.sh"
+# on_download_complete = "notify-send 'Download Complete'"
+# on_download_error = "curl -X POST https://alert.me"
+# on_download_pause = ""
+
+[credentials]
+# Authentication storage (ADR 0021)
+# netrc_path = "~/.netrc"
+# cookie_file = "/path/to/cookies.txt"
+
 [vpn]
 # Native VPN integration (ADR 0038)
 # type_name = "wireguard"              # "openvpn" or "wireguard"

@@ -1,3 +1,4 @@
+use super::mapping::MappingEngine;
 use super::{Command, Event, SubTaskEvent, WorkerCommand};
 use crate::dht::DhtCommand;
 use crate::nat::NatCommand;
@@ -22,6 +23,7 @@ pub struct Orchestrator {
     pub(crate) tasks: HashMap<TaskId, MetaTask>,
     pub(crate) tenants: HashMap<TenantId, TenantContext>,
     pub(crate) bt_registry: HashMap<InfoHash, TaskId>,
+    pub(crate) mapping_engine: MappingEngine,
     pub(crate) worker_command_txs: HashMap<TaskId, tokio::sync::broadcast::Sender<WorkerCommand>>,
     pub(crate) cancellation_tokens: HashMap<TaskId, CancellationToken>,
     pub(crate) worker_cancellation_tokens: HashMap<TaskId, CancellationToken>,
@@ -133,6 +135,7 @@ impl Orchestrator {
                 tasks: HashMap::new(),
                 tenants: HashMap::new(),
                 bt_registry: HashMap::new(),
+                mapping_engine: MappingEngine::new(initial_config.resource_mapping.clone()),
                 worker_command_txs: HashMap::new(),
                 cancellation_tokens: HashMap::new(),
                 worker_cancellation_tokens: HashMap::new(),

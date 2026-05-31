@@ -11,7 +11,7 @@ user_agent = "Aura/0.1.0"              # Custom User-Agent string
 connect_timeout_secs = 30              # Connection timeout for all protocols
 tcp_keepalive_secs = 60                # TCP keepalive interval
 # proxy = "http://127.0.0.1:8080"      # Optional global proxy
-# dns_resolver = "system"              # DNS resolver: "system", "cloudflare", "google", or an IP address
+dns_resolver = "system"              # DNS resolver: "system", "cloudflare", "google", or an IP address
 
 # [network.dns_resolver]               # DNS-over-HTTPS (DoH) example
 # type = "doh"
@@ -31,6 +31,9 @@ global_upload_limit = 0                # Total upload speed cap
 per_task_download_limit = 0            # Per-download speed cap
 per_task_upload_limit = 0              # Per-download upload cap
 max_concurrent_downloads = 5           # Max active downloads (queued tasks stay in 'Waiting')
+max_active_tasks = 100                 # Total tasks allowed in the engine (active + paused)
+min_connections_per_task = 16          # Minimum connections per individual task
+max_connections_per_task = 128         # Maximum connections per individual task
 
 [bittorrent]
 enabled = true                         # Enable BitTorrent protocol
@@ -41,8 +44,10 @@ dht_enabled = true                     # Enable Distributed Hash Table
 pex_enabled = true                     # Enable Peer Exchange
 lpd_enabled = false                    # Enable Local Peer Discovery (Multicast)
 seed_ratio = 1.0                       # Default seed ratio target
-seed_time_mins = 0                     # Seed time limit (0 for infinite if ratio not met)
+seed_time_mins = 0                     # Seed time limit (0 for infinite)
 endgame_mode_enabled = true            # Enable parallel fetching for final blocks
+min_split_size_mb = 20                 # Minimum piece/segment size for splitting
+max_connections_per_torrent = 100      # Hard cap on connections for a single swarm
 
 [storage]
 download_dir = "."                     # Default directory for finished files
@@ -50,12 +55,44 @@ cache_size_mb = 16                     # In-memory write-back cache size
 preallocate = true                     # Pre-allocate disk space before starting
 allocation_mode = "falloc"             # "none", "prealloc" (zeros), "falloc" (sparse)
 save_session_interval_secs = 10        # Interval to sync .aura control files
+read_ahead_kb = 128                    # Size of read-ahead buffer for seeding
+write_buffer_kb = 256                  # Size of sequential write aggregation buffer
+
+[resource_mapping]
+# Default policy for file name collisions: "AutoRename", "Overwrite", "Skip"
+default_conflict_policy = "AutoRename"
+
+[[resource_mapping.rules]]
+# Sort videos by domain and year
+condition = { Extension = "mp4" }
+target = "videos/{domain}/{year}/{name}"
+
+[[resource_mapping.rules]]
+# Sort ISOs by protocol and host
+condition = { Extension = "iso" }
+target = "images/{protocol}/{host}/{name}"
+
+[hooks]
+# on_download_complete = "notify-send 'Aura: Download Complete'"
+
+[credentials]
+# netrc_path = "~/.netrc"
+# cookie_file = "/path/to/cookies.txt"
+
+[vpn]
+# Native VPN integration (ADR 0038)
+# type_name = "wireguard"              # "openvpn" or "wireguard"
+# profile_path = "/etc/wireguard/wg0.conf"
+# auto_connect = false                 # Attempt to trigger VPN connection on startup
+# check_interval_secs = 5              # Frequency of tunnel health checks
+# force_tunnel = true                  # Kill-switch: Refuse traffic if VPN tunnel is down
 
 [general]
 log_level = "info"                     # "trace", "debug", "info", "warn", "error"
 # log_path = "aura.log"                # Optional path to log file
 check_integrity = true                 # Verify piece hashes during download
 event_poll_interval_ms = 500           # TUI/CLI UI update frequency
+daemon_mode = false                    # Start in background as a system service
 
 [general.theme]
 primary = "#0000FF"

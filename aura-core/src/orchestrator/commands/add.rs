@@ -15,6 +15,7 @@ impl Orchestrator {
         priority: u32,
         streaming_mode: bool,
         depends_on: Vec<TaskId>,
+        follow_on: Option<crate::task::FollowOnAction>,
     ) -> Result<()> {
         // Enforce mandatory tunnel
         self.verify_vpn_connectivity().await?;
@@ -80,6 +81,8 @@ impl Orchestrator {
         meta_task.priority = priority;
         meta_task.streaming_mode = streaming_mode;
         meta_task.tenant_id = tenant_id.clone();
+        meta_task.follow_on = follow_on.clone();
+        meta_task.depends_on = depends_on.clone();
 
         if meta_task.subtasks.is_empty() {
             for (uri, ttype) in sources {

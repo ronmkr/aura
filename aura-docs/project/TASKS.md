@@ -16,7 +16,7 @@ All active development tasks, technical debt, and feature requests are managed e
 - [ ] **feat: NNTP (Usenet) Protocol Support** (Issue #22) `[enhancement, module:core, priority:low]`
 - [x] **feat: Multi-tenancy & Structured Audit Tracing** (Issue #15) `[enhancement, priority:moderate, module:daemon]`
 - [ ] **feat: Network Filesystem (NFS/SMB) Optimizations** (Issue #12) `[enhancement, module:storage, priority:moderate]`
-- [ ] **feat: Task Chaining & Metadata-based Path Mapping** (Issue #11) `[enhancement, module:core, priority:low]`
+- [x] **feat: Task Chaining & Metadata-based Path Mapping** (Issue #11) `[status:completed, module:core, priority:low]`
 - [ ] **feat: Cloud Storage Support (S3, Google Drive)** (Issue #10) `[enhancement, module:core, priority:moderate]`
 
 ## ✅ Completed Tasks

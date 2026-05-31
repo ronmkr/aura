@@ -15,6 +15,7 @@
 - [BitTorrent v2 & Merkle Trees](./advanced/bittorrent-v2.md)
 - [VPN Kill-switch & Safety](./advanced/vpn-safety.md)
 - [RPC & Daemon Mode](./advanced/rpc-daemon.md)
+- [Task Chaining & Path Mapping](./advanced/task-chaining-mapping.md)
 
 ---
 

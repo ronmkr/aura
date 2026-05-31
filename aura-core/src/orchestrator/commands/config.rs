@@ -53,6 +53,9 @@ impl Orchestrator {
             }
         }
 
+        self.mapping_engine =
+            crate::orchestrator::MappingEngine::new(new_config.resource_mapping.clone());
+
         self.config.store(new_config);
         let _ = resp_tx.send(());
     }
