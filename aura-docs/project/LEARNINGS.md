@@ -17,6 +17,13 @@
 - **Iron-Clad Networking**: Standard HTTP clients are too permissive for download managers. Implementing manual redirect management and **Content Sniffing** (identifying HTML even when the server lies about MIME types) is mandatory for robustness.
 - **TDD with Wiremock**: Using `wiremock` for actor integration tests allows simulating hostile network environments (redirect loops, slow streams) that are difficult to reproduce with real servers.
 
-### Milestone 6: Persistence & Advanced Protocols (In Progress)
+### Milestone 6: Persistence & Advanced Protocols (Completed)
 - **Task Persistence Architecture**: Saving task state (`.aura` files) allows for session recovery. The most complex part is reconstructing the **BitTorrent Piece Picker** and **Global Bitfield** from disk to avoid re-downloading validated data.
 - **NAT Traversal Resilience**: Production-grade BitTorrent requires reachability. Implementing a dual-stack fallback (UPnP via `igd-next` and NAT-PMP/PCP via `crab_nat`) ensures the client is connectable in most consumer network environments. Discovery of the gateway IP is a prerequisite; while UPnP handles this internally, NAT-PMP/PCP often requires manual gateway detection or assuming the `.1` address in the local subnet.
+
+### Milestone 7: Industrial Hardening (In Progress)
+- **Kernel TLS (kTLS)**: Offloading TLS symmetric decryption directly to kernel-space enables a true zero-copy pipe from the NIC to disk via page-splicing (`sendfile`), circumventing user-space memory copies and making 10Gbps+ links highly CPU-efficient.
+- **Starbucks WiFi & Captive Portals**: Redirected HTTP requests are a silent corruption vector. Programmatic validation of landing-page/login HTML bodies during large binary downloads protects files from being overwritten with HTML login pages.
+- **Interface Roaming**: Interface changes (e.g., undocking a laptop or moving to a different Wi-Fi network) are best handled by monitoring OS netlink routing events, automatically pausing workers, and seamlessly rebuilding sockets on the new default interface without failing the active task.
+- **Resource-Aware Multi-Tenancy**: Supporting multiple users on a single daemon demands robust `TenantContext` isolation. Wiring independent speed limits (`Throttler`), task bounds, and sandbox directory roots directly into orchestrator events guarantees multi-user security.
+- **Observability Spans**: Structured trace logging (`tracing-subscriber` JSON formatting) is essential for asynchronous actor-based systems where standard logs become an unreadable mix of concurrent events.

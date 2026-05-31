@@ -2,6 +2,8 @@
 
 Aura isn't just a daemon; it is designed to be highly embeddable via the `aura-core` crate. This document outlines the primary interfaces available for developers looking to integrate Aura's download engine into their own Rust applications.
 
+> **Live API Documentation**: You can browse the generated `rustdoc` API reference for the latest version at [ronmkr.github.io/aura/api/aura_core/](https://ronmkr.github.io/aura/api/aura_core/).
+
 ## 1. Engine & Orchestrator
 
 The entry point for embedding Aura is the `Engine`. The engine manages the background worker threads, connection pools, and orchestrates tasks.
@@ -12,6 +14,32 @@ use aura_core::config::Config;
 
 let config = Config::default();
 let engine = Engine::new(config).await?;
+```
+
+### Adding a Task
+
+Tasks can be added using simple URLs, or with detailed options for multi-tenancy and priority.
+
+```rust
+use aura_core::{TaskId, TenantId};
+
+// Simple usage
+let handle = engine.add_task("https://example.com/file.iso").await?;
+
+// Advanced multi-tenant usage
+let sources = vec![("https://example.com/file.iso".to_string(), aura_core::task::TaskType::Http)];
+let tenant = Some(TenantId("user_123".to_string()));
+
+let handle = engine.add_task_with_options(
+    TaskId(1),
+    tenant,
+    "file.iso".to_string(),
+    sources,
+    None,  // checksum
+    100,   // priority
+    false, // streaming mode
+    vec![] // dependencies
+).await?;
 ```
 
 ## 2. The `TaskHandle`

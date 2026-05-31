@@ -1,7 +1,7 @@
 # ADR 0036: BitTorrent Core and Swarm Management
 
 ## Status
-Accepted
+Implemented
 
 ## Context
 Adding BitTorrent support requires managing complex piece-level progress (Bitfields) and highly concurrent peer discovery and communication. We need to integrate this into our existing actor model without creating a monolithic "Torrent" object.

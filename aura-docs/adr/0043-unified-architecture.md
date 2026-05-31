@@ -1,7 +1,7 @@
 # ADR 0043: Unified Architecture and CLI-Daemon-TUI Integration
 
 ## Status
-Accepted
+Implemented
 
 ## Context
 Currently, `aura-cli`, `aura-daemon`, and `aura-tui` operate somewhat independently:

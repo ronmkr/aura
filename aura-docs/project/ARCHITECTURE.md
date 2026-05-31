@@ -201,7 +201,7 @@ graph TD
 
 ## 🛡️ Security & Isolation
 
-Aura enforces strict boundaries between the network and the host system.
+Aura enforces strict boundaries between the network and the host system, and isolates tenants from each other when running in shared daemon mode.
 
 ```mermaid
 flowchart LR
@@ -209,8 +209,9 @@ flowchart LR
     
     subgraph Sandbox ["🏗️ Aura Security Sandbox"]
         RG["Resource Governor"]
-        RBAC["Tenant Context (Auth)"]
+        RBAC["Tenant Context (Auth & Quotas)"]
         Root["Sandbox Root (FS)"]
+        Audit["Structured Audit Tracing (JSON)"]
     end
     
     Host["💻 Host OS"]
@@ -219,6 +220,7 @@ flowchart LR
     RG -- "MIME/Port Filtering" --> RBAC
     RBAC -- "Path Normalization" --> Root
     Root -- "Authorized I/O Only" --> Host
+    RBAC -. "Logs" .-> Audit
 ```
 
 ## 🗺️ Implementation Map

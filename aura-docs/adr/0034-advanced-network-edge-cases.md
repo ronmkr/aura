@@ -1,7 +1,7 @@
 # ADR 0034: Advanced Network Edge Cases (kTLS, Roaming, Captive Portals)
 
 ## Status
-Accepted
+Implemented
 
 ## Context
 Real-world networking involves hostile environments (Captive Portals), mobile users (Interface Roaming), and the need to maintain zero-copy performance even when traffic is encrypted (HTTPS).
