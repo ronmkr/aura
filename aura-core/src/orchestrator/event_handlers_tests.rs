@@ -89,6 +89,7 @@ async fn test_racing_workers_are_cancelled_on_range_finished() {
 
     let meta = MetaTask {
         id: meta_id,
+        tenant_id: None,
         name: "test".to_string(),
         total_length: 1000,
         completed_length: 0,
@@ -144,6 +145,7 @@ async fn test_dependency_cycle_detection() {
     // Add Task A
     let meta_a = MetaTask {
         id: TaskId(1),
+        tenant_id: None,
         name: "task_a".to_string(),
         total_length: 1000,
         completed_length: 0,
@@ -166,6 +168,7 @@ async fn test_dependency_cycle_detection() {
     // Add Task B
     let meta_b = MetaTask {
         id: TaskId(2),
+        tenant_id: None,
         name: "task_b".to_string(),
         total_length: 1000,
         completed_length: 0,
@@ -190,6 +193,7 @@ async fn test_dependency_cycle_detection() {
     // Try handle_change_option introducing a cycle
     let meta_c = MetaTask {
         id: TaskId(3),
+        tenant_id: None,
         name: "task_c".to_string(),
         total_length: 1000,
         completed_length: 0,
@@ -227,6 +231,7 @@ async fn test_dependency_waiting_state_and_unblocking() {
     // 1. Add Task A (no deps)
     let meta_a = MetaTask {
         id: TaskId(1),
+        tenant_id: None,
         name: "task_a".to_string(),
         total_length: 1000,
         completed_length: 0,
@@ -250,6 +255,7 @@ async fn test_dependency_waiting_state_and_unblocking() {
     let res = orch
         .handle_add_task(
             TaskId(2),
+            None,
             "task_b".to_string(),
             Vec::new(),
             None,
@@ -294,6 +300,7 @@ async fn test_resource_preemption_logic() {
     // Add active Task A (prio 3, downloading)
     let meta_a = MetaTask {
         id: TaskId(1),
+        tenant_id: None,
         name: "task_a".to_string(),
         total_length: 1000,
         completed_length: 0,
@@ -329,6 +336,7 @@ async fn test_resource_preemption_logic() {
     // Add active Task B (prio 4, downloading)
     let meta_b = MetaTask {
         id: TaskId(2),
+        tenant_id: None,
         name: "task_b".to_string(),
         total_length: 1000,
         completed_length: 0,
@@ -374,6 +382,7 @@ async fn test_resource_preemption_logic() {
     let res = orch
         .handle_add_task(
             TaskId(3),
+            None,
             "task_c".to_string(),
             Vec::new(),
             None,
@@ -421,6 +430,7 @@ async fn test_captive_portal_pausing() {
 
     let meta = MetaTask {
         id: meta_id,
+        tenant_id: None,
         name: "test".to_string(),
         total_length: 0,
         completed_length: 0,
@@ -482,6 +492,7 @@ async fn test_interface_roaming_reconnector() {
 
     let meta = MetaTask {
         id: meta_id,
+        tenant_id: None,
         name: "test".to_string(),
         total_length: 1000,
         completed_length: 0,
@@ -512,4 +523,80 @@ async fn test_interface_roaming_reconnector() {
     // Verify tasks are automatically resumed (still Downloading phase)
     let task = orch.tasks.get(&meta_id).unwrap();
     assert_eq!(task.phase, DownloadPhase::Downloading);
+}
+
+#[tokio::test]
+async fn test_multi_tenant_task_limits() {
+    let (mut orch, _storage_rx, _temp_dir) = make_test_orchestrator();
+
+    let tenant_id = crate::TenantId("tenant_1".to_string());
+
+    // Configure tenant context
+    orch.tenants.insert(
+        tenant_id.clone(),
+        crate::orchestrator::state::TenantContext {
+            throttler: Arc::new(crate::throttler::Throttler::new(0, 0)),
+            max_tasks: Some(1),
+            disk_path_root: None,
+        },
+    );
+
+    // Add first task (should succeed)
+    let res1 = orch
+        .handle_add_task(
+            TaskId(1),
+            Some(tenant_id.clone()),
+            "task_1".to_string(),
+            vec![("http://example.com/file1".to_string(), TaskType::Http)],
+            None,
+            3,
+            false,
+            vec![],
+        )
+        .await;
+    assert!(res1.is_ok());
+
+    // Add second task for the same tenant (should fail due to max_tasks = 1)
+    let res2 = orch
+        .handle_add_task(
+            TaskId(2),
+            Some(tenant_id.clone()),
+            "task_2".to_string(),
+            vec![("http://example.com/file2".to_string(), TaskType::Http)],
+            None,
+            3,
+            false,
+            vec![],
+        )
+        .await;
+    assert!(res2.is_err());
+    assert!(res2
+        .unwrap_err()
+        .to_string()
+        .contains("Tenant task limit reached"));
+
+    // Add third task for a different tenant (should succeed)
+    let tenant_id_2 = crate::TenantId("tenant_2".to_string());
+    orch.tenants.insert(
+        tenant_id_2.clone(),
+        crate::orchestrator::state::TenantContext {
+            throttler: Arc::new(crate::throttler::Throttler::new(0, 0)),
+            max_tasks: Some(1),
+            disk_path_root: None,
+        },
+    );
+
+    let res3 = orch
+        .handle_add_task(
+            TaskId(3),
+            Some(tenant_id_2),
+            "task_3".to_string(),
+            vec![("http://example.com/file3".to_string(), TaskType::Http)],
+            None,
+            3,
+            false,
+            vec![],
+        )
+        .await;
+    assert!(res3.is_ok());
 }

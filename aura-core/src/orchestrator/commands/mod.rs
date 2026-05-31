@@ -15,6 +15,7 @@ impl Orchestrator {
         match cmd {
             Command::AddTask {
                 id,
+                tenant_id,
                 name,
                 sources,
                 checksum,
@@ -24,6 +25,7 @@ impl Orchestrator {
             } => {
                 self.handle_add_task(
                     id,
+                    tenant_id,
                     name,
                     sources,
                     checksum,

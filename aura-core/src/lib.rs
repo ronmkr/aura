@@ -51,6 +51,16 @@ impl fmt::Display for TaskId {
     }
 }
 
+/// Identifier for multi-tenant isolation.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct TenantId(pub String);
+
+impl fmt::Display for TenantId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "tenant-{}", self.0)
+    }
+}
+
 /// BitTorrent Info Hash (supports v1 20-byte and v2 32-byte).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, PartialOrd, Ord)]
 pub enum InfoHash {

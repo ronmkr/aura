@@ -1,6 +1,6 @@
 //! task: Core representations of download tasks and their lifecycles.
 
-use crate::TaskId;
+use crate::{TaskId, TenantId};
 use serde::{Deserialize, Serialize};
 
 /// Represents the current lifecycle state of a Download Task.
@@ -63,6 +63,7 @@ use std::sync::Arc;
 #[derive(Debug, Clone)]
 pub struct MetaTask {
     pub id: TaskId, // Unified ID for the logical file
+    pub tenant_id: Option<TenantId>,
     pub name: String,
     pub total_length: u64,
     pub completed_length: u64,
@@ -85,6 +86,7 @@ pub struct MetaTask {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TaskState {
     pub id: TaskId,
+    pub tenant_id: Option<TenantId>,
     pub name: String,
     pub phase: DownloadPhase,
     pub priority: u32,
@@ -106,6 +108,7 @@ impl MetaTask {
     pub fn to_state(&self, bitfield: Option<Bitfield>) -> TaskState {
         TaskState {
             id: self.id,
+            tenant_id: self.tenant_id.clone(),
             name: self.name.clone(),
             phase: self.phase,
             priority: self.priority,
@@ -127,6 +130,7 @@ impl MetaTask {
     pub fn from_state(state: TaskState) -> Self {
         Self {
             id: state.id,
+            tenant_id: state.tenant_id,
             name: state.name,
             phase: state.phase,
             priority: state.priority,
@@ -149,6 +153,7 @@ impl MetaTask {
     pub fn new(id: TaskId, name: String, total_length: u64) -> Self {
         Self {
             id,
+            tenant_id: None,
             name,
             total_length,
             completed_length: 0,

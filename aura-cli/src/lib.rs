@@ -93,6 +93,7 @@ pub async fn run(args: Args) -> Result<()> {
         engine
             .add_task_with_options(
                 id,
+                None,
                 output_name.clone(),
                 sources,
                 None,

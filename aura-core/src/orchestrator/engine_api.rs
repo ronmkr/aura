@@ -18,7 +18,7 @@ impl Engine {
         task_type: TaskType,
     ) -> Result<crate::api::TaskHandle> {
         let id = TaskId(rand::rng().random());
-        self.add_task_with_sources(id, name, vec![(uri, task_type)], None)
+        self.add_task_with_sources(id, None, name, vec![(uri, task_type)], None)
             .await
     }
 
@@ -29,7 +29,7 @@ impl Engine {
         uri: String,
         task_type: TaskType,
     ) -> Result<crate::api::TaskHandle> {
-        self.add_task_with_sources(id, name, vec![(uri, task_type)], None)
+        self.add_task_with_sources(id, None, name, vec![(uri, task_type)], None)
             .await
     }
 
@@ -41,7 +41,7 @@ impl Engine {
         task_type: TaskType,
         checksum: Option<crate::Checksum>,
     ) -> Result<crate::api::TaskHandle> {
-        self.add_task_with_sources(id, name, vec![(uri, task_type)], checksum)
+        self.add_task_with_sources(id, None, name, vec![(uri, task_type)], checksum)
             .await
     }
 
@@ -49,6 +49,7 @@ impl Engine {
     pub async fn add_task_with_options(
         &self,
         id: TaskId,
+        tenant_id: Option<crate::TenantId>,
         name: String,
         sources: Vec<(String, TaskType)>,
         checksum: Option<crate::Checksum>,
@@ -59,6 +60,7 @@ impl Engine {
         self.command_tx
             .send(Command::AddTask {
                 id,
+                tenant_id,
                 name,
                 sources,
                 checksum,
@@ -74,12 +76,22 @@ impl Engine {
     pub async fn add_task_with_sources(
         &self,
         id: TaskId,
+        tenant_id: Option<crate::TenantId>,
         name: String,
         sources: Vec<(String, TaskType)>,
         checksum: Option<crate::Checksum>,
     ) -> Result<crate::api::TaskHandle> {
-        self.add_task_with_options(id, name, sources, checksum, 100, false, Vec::new())
-            .await
+        self.add_task_with_options(
+            id,
+            tenant_id,
+            name,
+            sources,
+            checksum,
+            100,
+            false,
+            Vec::new(),
+        )
+        .await
     }
 
     pub async fn change_option(
@@ -160,6 +172,7 @@ impl Engine {
                 let _ = self
                     .add_task_with_options(
                         id,
+                        state.tenant_id,
                         state.name,
                         sources,
                         checksum,

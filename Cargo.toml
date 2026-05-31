@@ -84,6 +84,6 @@ tokio-util = { version = "0.7", features = ["codec", "rt"] }
 toml = "1.1.2"
 tower-http = { version = "0.6", features = ["cors"] }
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 url = "2"
 wiremock = "0.6"

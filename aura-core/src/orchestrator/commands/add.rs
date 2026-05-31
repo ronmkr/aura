@@ -8,6 +8,7 @@ impl Orchestrator {
     pub(crate) async fn handle_add_task(
         &mut self,
         id: TaskId,
+        tenant_id: Option<crate::TenantId>,
         name: String,
         sources: Vec<(String, crate::task::TaskType)>,
         checksum: Option<crate::Checksum>,
@@ -17,6 +18,25 @@ impl Orchestrator {
     ) -> Result<()> {
         // Enforce mandatory tunnel
         self.verify_vpn_connectivity().await?;
+
+        // Enforce per-tenant task count quotas
+        if let Some(ref tid) = tenant_id {
+            if let Some(ctx) = self.tenants.get(tid) {
+                if let Some(max) = ctx.max_tasks {
+                    let active_tasks = self
+                        .tasks
+                        .values()
+                        .filter(|t| t.tenant_id == Some(tid.clone()))
+                        .count();
+                    if active_tasks >= max {
+                        return Err(crate::Error::Engine(format!(
+                            "Tenant task limit reached: {}",
+                            max
+                        )));
+                    }
+                }
+            }
+        }
 
         info!(%id, %name, "Adding MetaTask with {} sources", sources.len());
 
@@ -47,6 +67,7 @@ impl Orchestrator {
         }
         meta_task.priority = priority;
         meta_task.streaming_mode = streaming_mode;
+        meta_task.tenant_id = tenant_id.clone();
 
         if meta_task.subtasks.is_empty() {
             for (uri, ttype) in sources {
