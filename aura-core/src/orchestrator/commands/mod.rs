@@ -50,7 +50,20 @@ impl Orchestrator {
             }
             Command::Remove(id) => {
                 let _ = self.handle_pause(id).await;
-                self.throttler.unregister_task(id).await;
+                let throttler = if let Some(task) = self.tasks.get(&id) {
+                    if let Some(ref tid) = task.tenant_id {
+                        if let Some(ctx) = self.tenants.get(tid) {
+                            ctx.throttler.clone()
+                        } else {
+                            self.throttler.clone()
+                        }
+                    } else {
+                        self.throttler.clone()
+                    }
+                } else {
+                    self.throttler.clone()
+                };
+                throttler.unregister_task(id).await;
                 self.tasks.remove(&id);
             }
             Command::ListActive(reply_tx) => {
@@ -96,8 +109,20 @@ impl Orchestrator {
                                 .and_then(|e| e.clone().as_any_arc().downcast::<BtTask>().ok())
                             {
                                 let config = self.config.load();
-                                let path = std::path::Path::new(&config.storage.download_dir)
-                                    .join(&meta_task.name);
+                                let base_dir = if let Some(ref tid) = meta_task.tenant_id {
+                                    if let Some(ctx) = self.tenants.get(tid) {
+                                        if let Some(ref root) = ctx.disk_path_root {
+                                            root.clone()
+                                        } else {
+                                            std::path::PathBuf::from(&config.storage.download_dir)
+                                        }
+                                    } else {
+                                        std::path::PathBuf::from(&config.storage.download_dir)
+                                    }
+                                } else {
+                                    std::path::PathBuf::from(&config.storage.download_dir)
+                                };
+                                let path = base_dir.join(&meta_task.name);
                                 let _ = self
                                     .scrub_tx
                                     .send(crate::scrubber::ScrubberCommand::ScrubSwarm {
@@ -110,8 +135,20 @@ impl Orchestrator {
                         }
                     } else if let Some(checksum) = meta_task.checksum.clone() {
                         let config = self.config.load();
-                        let path = std::path::Path::new(&config.storage.download_dir)
-                            .join(&meta_task.name);
+                        let base_dir = if let Some(ref tid) = meta_task.tenant_id {
+                            if let Some(ctx) = self.tenants.get(tid) {
+                                if let Some(ref root) = ctx.disk_path_root {
+                                    root.clone()
+                                } else {
+                                    std::path::PathBuf::from(&config.storage.download_dir)
+                                }
+                            } else {
+                                std::path::PathBuf::from(&config.storage.download_dir)
+                            }
+                        } else {
+                            std::path::PathBuf::from(&config.storage.download_dir)
+                        };
+                        let path = base_dir.join(&meta_task.name);
                         let _ = self
                             .scrub_tx
                             .send(crate::scrubber::ScrubberCommand::ScrubNonSwarm {

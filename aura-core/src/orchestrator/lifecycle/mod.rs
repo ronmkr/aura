@@ -38,8 +38,20 @@ impl Orchestrator {
             let state = meta_task.to_state(bitfield);
             if let Ok(json) = serde_json::to_vec_pretty(&state) {
                 let config = self.config.load();
-                let path = std::path::Path::new(&config.storage.download_dir)
-                    .join(format!("{}.aura", meta_task.name));
+                let base_dir = if let Some(ref tid) = meta_task.tenant_id {
+                    if let Some(ctx) = self.tenants.get(tid) {
+                        if let Some(ref root) = ctx.disk_path_root {
+                            root.clone()
+                        } else {
+                            std::path::PathBuf::from(&config.storage.download_dir)
+                        }
+                    } else {
+                        std::path::PathBuf::from(&config.storage.download_dir)
+                    }
+                } else {
+                    std::path::PathBuf::from(&config.storage.download_dir)
+                };
+                let path = base_dir.join(format!("{}.aura", meta_task.name));
                 if let Err(e) = std::fs::write(&path, json) {
                     warn!(%id, ?path, error = %e, "Failed to write control file");
                 }
@@ -62,7 +74,15 @@ impl Orchestrator {
         let my_peer_id = self.peer_id;
         let local_addr = self.resolve_local_addr();
         let config_arc = self.config.clone();
-        let throttler_arc = self.throttler.clone();
+        let throttler_arc = if let Some(ref tid) = meta_task.tenant_id {
+            if let Some(ctx) = self.tenants.get(tid) {
+                ctx.throttler.clone()
+            } else {
+                self.throttler.clone()
+            }
+        } else {
+            self.throttler.clone()
+        };
 
         for sub_task in subtasks {
             let sub_id = sub_task.id;

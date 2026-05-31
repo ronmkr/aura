@@ -89,11 +89,23 @@ impl Orchestrator {
 
             if needs_reregister {
                 // Update storage engine
-                let download_dir = {
+                let path = {
                     let config = self.config.load();
-                    config.storage.download_dir.clone()
+                    let base_dir = if let Some(ref tid) = meta_task.tenant_id {
+                        if let Some(ctx) = self.tenants.get(tid) {
+                            if let Some(ref root) = ctx.disk_path_root {
+                                root.clone()
+                            } else {
+                                std::path::PathBuf::from(&config.storage.download_dir)
+                            }
+                        } else {
+                            std::path::PathBuf::from(&config.storage.download_dir)
+                        }
+                    } else {
+                        std::path::PathBuf::from(&config.storage.download_dir)
+                    };
+                    base_dir.join(&meta_task.name)
                 };
-                let path = std::path::Path::new(&download_dir).join(&meta_task.name);
                 let _ = self
                     .storage_tx
                     .send(crate::storage::StorageRequest::RegisterTask {

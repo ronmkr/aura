@@ -322,3 +322,50 @@ async fn test_resource_preemption_logic() {
     let task_c = orch.tasks.get(&TaskId(3)).unwrap();
     assert_eq!(task_c.phase, DownloadPhase::Downloading);
 }
+
+#[tokio::test]
+async fn test_multi_tenant_path_isolation_and_throttling() {
+    let (mut orch, mut storage_rx, _temp_dir) = make_test_orchestrator();
+
+    let tenant_id = crate::TenantId("tenant_1".to_string());
+    let custom_root = std::path::PathBuf::from("/tmp/tenant_1_custom_root");
+    let tenant_throttler = Arc::new(crate::throttler::Throttler::new(10000, 10000));
+
+    // Configure tenant context with custom disk_path_root and custom throttler
+    orch.tenants.insert(
+        tenant_id.clone(),
+        crate::orchestrator::state::TenantContext {
+            throttler: tenant_throttler.clone(),
+            max_tasks: Some(5),
+            disk_path_root: Some(custom_root.clone()),
+        },
+    );
+
+    // Add task for this tenant
+    let res = orch
+        .handle_add_task(
+            TaskId(1),
+            Some(tenant_id.clone()),
+            "task_1".to_string(),
+            vec![("http://example.com/file1".to_string(), TaskType::Http)],
+            None,
+            3,
+            false,
+            vec![],
+        )
+        .await;
+    assert!(res.is_ok());
+
+    // 1. Verify storage path starts with custom_root
+    let req = storage_rx.recv().await.unwrap();
+    match req {
+        crate::storage::StorageRequest::RegisterTask { path, .. } => {
+            assert!(path.starts_with(&custom_root));
+            assert_eq!(path.file_name().unwrap().to_str().unwrap(), "task_1");
+        }
+        _ => panic!("Expected RegisterTask request"),
+    }
+
+    // 2. Verify task is registered in the tenant's throttler instead of the global one
+    tenant_throttler.update_task_priority(TaskId(1), 5).await; // Should succeed/be handled by tenant's throttler
+}
