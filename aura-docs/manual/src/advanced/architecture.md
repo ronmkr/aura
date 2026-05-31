@@ -17,13 +17,14 @@ The "brain" of Aura. It is the single source of truth for the entire engine.
 A centralized actor responsible for all disk interactions.
 - **Sequential Write Aggregation**: Reorders out-of-order blocks (common in BitTorrent) in RAM before performing large, sequential disk writes.
 - **Atomic Operations**: Manages `.part` files and renames them only after successful hash verification and `fsync`.
-- **Buffer Pool**: Reuses memory-aligned buffers to minimize heap allocations and CPU cache misses.
+- **Zero-Copy Intent**: Uses `BytesMut` from the `bytes` crate for efficient, reference-counted memory management without the overhead of manual pooling (Issue #160).
 - **No-COW Aware**: Automatically disables Copy-on-Write for Btrfs/ZFS to maintain high random-write performance.
 
 ### 3. Protocol Workers
 Lightweight, disposable actors spawned for each download source.
 - **Stateless Logic**: Workers are isolated; they only know about their assigned ranges and the central Orchestrator.
-- **Adaptive Racing**: Workers monitor their own latency and report it to the Orchestrator, which may trigger "Work Stealing" if they lag.
+- **Fine-Grained Cancellation**: Every worker has a dedicated `CancellationToken`. When a "Work Stealing" race is lost, the Orchestrator instantly aborts the specific worker's I/O task, preventing bandwidth leaks (Issue #162).
+- **Adaptive Racing**: Workers monitor their own latency and report it to the Orchestrator.
 
 ## Data Flow (The Green Path)
 
