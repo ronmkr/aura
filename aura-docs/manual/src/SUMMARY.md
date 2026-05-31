@@ -20,6 +20,7 @@
 - [Real-World Examples](./advanced/examples.md)
 - [Telemetry & Metrics](./advanced/telemetry.md)
 - [Built-in Web UI](./advanced/web-ui.md)
+- [Safety & Data Integrity](./advanced/safety-integrity.md)
 
 ---
 
