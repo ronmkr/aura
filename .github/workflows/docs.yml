@@ -44,6 +44,8 @@ jobs:
 
       - name: Build mdBook
         run: |
+          mkdir -p aura-docs/manual/src/adr
+          cp aura-docs/adr/*.md aura-docs/manual/src/adr/
           cd aura-docs/manual
           mdbook build
           cd ../..

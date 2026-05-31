@@ -46,3 +46,4 @@ unused_deps.txt
 # Antigravity CLI artifacts
 .antigravitycli/
 
+\n# mdBook generated ADRs\naura-docs/manual/src/adr/
