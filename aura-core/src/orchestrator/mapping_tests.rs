@@ -87,7 +87,10 @@ mod tests {
         };
         let engine = MappingEngine::new(config);
         let mut task = MetaTask::new(TaskId(1), "ubuntu.iso".to_string(), 1000);
-        task.add_subtask("https://releases.ubuntu.com/22.04/ubuntu.iso".to_string(), crate::task::TaskType::Http);
+        task.add_subtask(
+            "https://releases.ubuntu.com/22.04/ubuntu.iso".to_string(),
+            crate::task::TaskType::Http,
+        );
         let base = Path::new("/downloads");
 
         let path = engine.resolve_path(&task, base);
@@ -95,7 +98,10 @@ mod tests {
         let year = now.format("%Y").to_string();
         assert_eq!(
             path,
-            PathBuf::from(format!("/downloads/https/releases.ubuntu.com/{}/ubuntu.iso", year))
+            PathBuf::from(format!(
+                "/downloads/https/releases.ubuntu.com/{}/ubuntu.iso",
+                year
+            ))
         );
     }
 
