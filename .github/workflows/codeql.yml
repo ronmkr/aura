@@ -3,8 +3,16 @@ name: "CodeQL"
 on:
   push:
     branches: [ "main" ]
+    paths-ignore:
+      - 'aura-docs/**'
+      - '*.md'
+      - '.github/workflows/docs.yml'
   pull_request:
     branches: [ "main" ]
+    paths-ignore:
+      - 'aura-docs/**'
+      - '*.md'
+      - '.github/workflows/docs.yml'
   schedule:
     - cron: '21 7 * * 3'
 

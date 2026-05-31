@@ -3,6 +3,9 @@ name: Deploy Documentation
 on:
   push:
     branches: ["main"]
+    paths:
+      - 'aura-docs/**'
+      - '.github/workflows/docs.yml'
   workflow_dispatch:
 
 permissions:
@@ -32,9 +35,12 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+
       - name: Install mdBook
         run: |
-          cargo install mdbook
+          curl -sSL https://github.com/rust-lang/mdBook/releases/download/v0.4.37/mdbook-v0.4.37-x86_64-unknown-linux-gnu.tar.gz | tar -xz -C /usr/local/bin
 
       - name: Build mdBook
         run: |
