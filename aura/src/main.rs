@@ -13,6 +13,10 @@ struct Cli {
     /// Output filename (for CLI mode)
     #[arg(short, long)]
     output: Option<String>,
+
+    /// URI to automatically download after current tasks complete (Task Chaining)
+    #[arg(long)]
+    follow_on: Option<String>,
 }
 
 #[derive(Subcommand, Debug)]
@@ -59,6 +63,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let args = aura_cli::Args {
                     uris,
                     output: cli.output,
+                    follow_on: cli.follow_on,
                 };
                 aura_cli::run(args).await?;
             } else {

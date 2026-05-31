@@ -17,6 +17,7 @@
 - [RPC & Daemon Mode](./advanced/rpc-daemon.md)
 - [Task Chaining & Path Mapping](./advanced/task-chaining-mapping.md)
 - [Multi-Tenancy & Isolation](./advanced/multi-tenancy.md)
+- [Real-World Examples](./advanced/examples.md)
 - [Telemetry & Metrics](./advanced/telemetry.md)
 - [Built-in Web UI](./advanced/web-ui.md)
 
