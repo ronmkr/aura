@@ -105,6 +105,7 @@ async fn test_racing_workers_are_cancelled_on_range_finished() {
         blacklisted_uris: Vec::new(),
         extensions: HashMap::new(),
         depends_on: Vec::new(),
+        follow_on: None,
     };
 
     orch.tasks.insert(meta_id, meta);
@@ -153,6 +154,7 @@ async fn test_dependency_cycle_detection() {
         priority: 3,
         streaming_mode: false,
         range_supported: true,
+        follow_on: None,
         subtasks: Vec::new(),
         pending_ranges: Vec::new(),
         in_flight_ranges: Vec::new(),
@@ -176,6 +178,7 @@ async fn test_dependency_cycle_detection() {
         priority: 3,
         streaming_mode: false,
         range_supported: true,
+        follow_on: None,
         subtasks: Vec::new(),
         pending_ranges: Vec::new(),
         in_flight_ranges: Vec::new(),
@@ -209,6 +212,7 @@ async fn test_dependency_cycle_detection() {
         blacklisted_uris: Vec::new(),
         extensions: HashMap::new(),
         depends_on: Vec::new(),
+        follow_on: None,
     };
     orch.tasks.insert(TaskId(3), meta_c);
 
@@ -247,6 +251,7 @@ async fn test_dependency_waiting_state_and_unblocking() {
         blacklisted_uris: Vec::new(),
         extensions: HashMap::new(),
         depends_on: Vec::new(),
+        follow_on: None,
     };
     orch.tasks.insert(TaskId(1), meta_a);
 
@@ -261,6 +266,7 @@ async fn test_dependency_waiting_state_and_unblocking() {
             3,
             false,
             vec![TaskId(1)],
+            None,
         )
         .await;
     assert!(res.is_ok());
@@ -281,6 +287,56 @@ async fn test_dependency_waiting_state_and_unblocking() {
     // B should be unblocked and transition to Downloading!
     let task_b_new = orch.tasks.get(&TaskId(2)).unwrap();
     assert_eq!(task_b_new.phase, DownloadPhase::Downloading);
+}
+
+#[tokio::test]
+async fn test_follow_on_custom_trigger() {
+    let (mut orch, _storage_rx, _temp_dir) = make_test_orchestrator();
+
+    let meta_id = TaskId(1);
+    let follow_on_uri = "https://example.com/next_task".to_string();
+
+    let meta = MetaTask {
+        id: meta_id,
+        tenant_id: None,
+        name: "initial_task".to_string(),
+        total_length: 1000,
+        completed_length: 1000, // already finished
+        uploaded_length: 0,
+        phase: DownloadPhase::Downloading,
+        priority: 3,
+        streaming_mode: false,
+        range_supported: true,
+        subtasks: Vec::new(),
+        pending_ranges: Vec::new(),
+        in_flight_ranges: Vec::new(),
+        checksum: None,
+        seeding_start_time: None,
+        blacklisted_uris: Vec::new(),
+        extensions: HashMap::new(),
+        depends_on: Vec::new(),
+        follow_on: Some(crate::task::FollowOnAction::Custom(follow_on_uri.clone())),
+    };
+
+    orch.tasks.insert(meta_id, meta);
+
+    // Trigger storage completion event for Task 1
+    let storage_event = crate::storage::StorageEvent::Completed(meta_id);
+    let res = orch.handle_storage_event(storage_event).await;
+    assert!(res.is_ok());
+
+    // Verify that a new task was added (total tasks = 2)
+    assert_eq!(orch.tasks.len(), 2);
+
+    // Find the new task
+    let new_task = orch
+        .tasks
+        .values()
+        .find(|t| t.id != meta_id)
+        .expect("A new task should have been added");
+
+    assert_eq!(new_task.subtasks.len(), 1);
+    assert_eq!(new_task.subtasks[0].uri, follow_on_uri);
 }
 
 #[path = "advanced_net_and_tenant_tests.rs"]

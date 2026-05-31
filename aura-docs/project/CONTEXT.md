@@ -38,7 +38,7 @@ A high-level service that monitors the engine and executes automated system-leve
 The component responsible for resolving file name collisions using policies like **Overwrite**, **Auto-rename**, or **Skip**.
 
 #### Chain Orchestrator
-A high-level logic that allows one **Download Task** to spawn another (e.g., HTTP -> BitTorrent).
+A high-level logic that allows one **Download Task** to spawn another (e.g., HTTP -> BitTorrent). It supports automated actions like **AutoStartTorrent**, **AutoStartMetalink**, and **Custom** URI triggers.
 
 #### Temporal Scheduler
 A service that allows users to define time-based policies for **Download Tasks**.
@@ -207,7 +207,10 @@ A centralized memory management system for caching piece data and enabling **Zer
 A component that optimizes disk operations using **Async I/O (io-uring)** and **FADV Strategy**.
 
 #### Resource Mapper
-A per-task component that maps logical file structures to physical paths, supporting renaming and mirroring.
+A per-task component that maps logical file structures to physical paths. It supports renaming via the **Mapping Engine**, utilizing placeholders like `{name}`, `{id}`, `{ext}`, `{protocol}`, `{domain}`, `{host}`, and `{year}/{month}/{day}`.
+
+#### Mapping Engine
+The logic core of the **Resource Mapper** that evaluates rules based on file extension, domain, protocol, or regex to determine the final download path.
 
 #### Filesystem Adapter
 A component that detects storage capabilities (NFS/SMB, sparse files) and applies **Adaptive I/O**. It uses an **Allocation Prober** for performance diagnostics.
