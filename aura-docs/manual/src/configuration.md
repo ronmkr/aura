@@ -13,14 +13,51 @@ By default, Aura looks for `Aura.toml` in the current working directory. On star
 [bandwidth]
 global_download_limit = 0 # 0 for unlimited
 global_upload_limit = 1048576 # 1 MB/s
-max_connections_per_task = 16
+max_concurrent_downloads = 5
+max_active_tasks = 100
+min_connections_per_task = 16
+max_connections_per_task = 128
 ```
 
 ### Storage
 ```toml
 [storage]
-download_dir = "downloads/"
-save_session_interval_secs = 60
+download_dir = "."
+cache_size_mb = 16
+preallocate = true
+allocation_mode = "falloc"             # "none", "prealloc", "falloc"
+save_session_interval_secs = 10
+read_ahead_kb = 128
+write_buffer_kb = 256
+```
+
+### Resource Mapping
+```toml
+[resource_mapping]
+default_conflict_policy = "AutoRename" # "AutoRename", "Overwrite", "Skip"
+
+[[resource_mapping.rules]]
+condition = { Extension = "mp4" }
+target = "videos/{domain}/{year}/{name}"
+
+[[resource_mapping.rules]]
+condition = { Protocol = "Ftp" }
+target = "untrusted/ftp/{host}/{name}"
+```
+
+### Lifecycle Hooks
+```toml
+[hooks]
+on_download_start = "/path/to/start_script.sh"
+on_download_complete = "notify-send 'Download Complete'"
+on_download_error = "curl -X POST https://alerts.local"
+```
+
+### Credentials
+```toml
+[credentials]
+netrc_path = "~/.netrc"
+cookie_file = "/path/to/cookies.txt"
 ```
 
 ### Privacy & Network
