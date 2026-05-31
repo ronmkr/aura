@@ -13,6 +13,12 @@ pub enum Command {
         checksum: Option<crate::Checksum>,
         priority: u32,
         streaming_mode: bool,
+        depends_on: Vec<TaskId>,
+    },
+    ChangeOption {
+        id: TaskId,
+        priority: Option<u32>,
+        depends_on: Option<Vec<TaskId>>,
     },
     Pause(TaskId),
     Resume(TaskId),

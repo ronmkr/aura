@@ -6,6 +6,7 @@ use tracing::info;
 
 pub(crate) mod add;
 pub(crate) mod config;
+pub(crate) mod dependency;
 pub(crate) mod lifecycle;
 pub(crate) mod retry;
 
@@ -19,9 +20,25 @@ impl Orchestrator {
                 checksum,
                 priority,
                 streaming_mode,
+                depends_on,
             } => {
-                self.handle_add_task(id, name, sources, checksum, priority, streaming_mode)
-                    .await?;
+                self.handle_add_task(
+                    id,
+                    name,
+                    sources,
+                    checksum,
+                    priority,
+                    streaming_mode,
+                    depends_on,
+                )
+                .await?;
+            }
+            Command::ChangeOption {
+                id,
+                priority,
+                depends_on,
+            } => {
+                self.handle_change_option(id, priority, depends_on).await?;
             }
             Command::Pause(id) => {
                 self.handle_pause(id).await?;

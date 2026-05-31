@@ -1,6 +1,7 @@
 pub mod command;
 pub mod commands;
 pub mod engine;
+pub mod engine_api;
 pub mod event_handlers;
 pub mod lifecycle;
 pub mod monitors;

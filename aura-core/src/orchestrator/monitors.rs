@@ -181,6 +181,7 @@ mod tests {
             seeding_start_time: None,
             blacklisted_uris: Vec::new(),
             extensions: std::collections::HashMap::new(),
+            depends_on: Vec::new(),
         };
 
         orchestrator.tasks.insert(TaskId(1), task);

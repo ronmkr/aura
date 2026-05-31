@@ -4,6 +4,7 @@ use crate::{Result, TaskId};
 use tracing::info;
 
 impl Orchestrator {
+    #[allow(clippy::too_many_arguments)]
     pub(crate) async fn handle_add_task(
         &mut self,
         id: TaskId,
@@ -12,6 +13,7 @@ impl Orchestrator {
         checksum: Option<crate::Checksum>,
         priority: u32,
         streaming_mode: bool,
+        depends_on: Vec<TaskId>,
     ) -> Result<()> {
         // Enforce mandatory tunnel
         self.verify_vpn_connectivity().await?;
@@ -78,6 +80,22 @@ impl Orchestrator {
             }
         }
 
+        meta_task.depends_on = depends_on.clone();
+
+        // Perform cycle detection!
+        let original_task = self.tasks.insert(id, meta_task.clone());
+        if self.has_cycle() {
+            if let Some(orig) = original_task {
+                self.tasks.insert(id, orig);
+            } else {
+                self.tasks.remove(&id);
+            }
+            return Err(crate::Error::Engine(
+                "Dependency cycle detected".to_string(),
+            ));
+        }
+        self.tasks.remove(&id);
+
         let token = tokio_util::sync::CancellationToken::new();
         self.cancellation_tokens.insert(id, token.clone());
 
@@ -87,6 +105,7 @@ impl Orchestrator {
                 id,
                 config.bandwidth.per_task_download_limit,
                 config.bandwidth.per_task_upload_limit,
+                meta_task.priority,
             )
             .await;
 
@@ -101,9 +120,34 @@ impl Orchestrator {
             })
             .await;
 
+        let is_blocked = {
+            let mut blocked = false;
+            for &parent_id in &depends_on {
+                if let Some(parent) = self.tasks.get(&parent_id) {
+                    if parent.phase != crate::task::DownloadPhase::Complete {
+                        blocked = true;
+                        break;
+                    }
+                } else {
+                    blocked = true;
+                    break;
+                }
+            }
+            blocked
+        };
+
+        if is_blocked {
+            meta_task.phase = crate::task::DownloadPhase::Waiting;
+        }
+
         self.tasks.insert(id, meta_task);
-        self.start_task_loops_with_bitfield(id, token, loaded_bitfield)
-            .await?;
+
+        if !is_blocked {
+            self.preempt_resources_for_high_priority(id).await;
+            self.start_task_loops_with_bitfield(id, token, loaded_bitfield)
+                .await?;
+        }
+
         let _ = self.event_tx.send(Event::TaskAdded(id));
         Ok(())
     }
