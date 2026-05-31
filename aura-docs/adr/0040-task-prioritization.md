@@ -1,7 +1,7 @@
 # ADR 0040: Task Prioritization and Dependency Chains
 
 ## Status
-Proposed
+Implemented
 
 ## Context
 As the number of active tasks increases, Aura needs a way to intelligently allocate system resources (bandwidth, disk I/O, connection slots). Users often have high-priority downloads that should finish before others, or sequences of downloads where one depends on the success of another.

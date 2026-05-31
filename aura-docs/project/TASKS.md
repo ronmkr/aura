@@ -10,7 +10,6 @@ All active development tasks, technical debt, and feature requests are managed e
 - [ ] **Feat: Respect BEP 12 tracker tier ordering** (Issue #128) `[enhancement, module:core, priority:low]`
 - [ ] **feat: QR code sharing for magnet links in CLI/TUI** (Issue #74) `[enhancement, module:cli, module:tui, priority:minor]`
 - [ ] **feat: implement Privacy-Enhanced Resolver (DoH/DoT)** (Issue #73) `[enhancement, priority:moderate, module:network]`
-- [ ] **feat: task prioritization and dependency management** (Issue #72) `[enhancement, module:core, priority:moderate]`
 - [ ] **feat: i18n support for CLI and TUI** (Issue #71) `[enhancement, module:cli, module:tui, priority:minor]`
 - [ ] **feat: Prioritized Streaming Mode for Media Playback** (Issue #28) `[enhancement, module:core, priority:moderate]`
 - [ ] **feat: Modern Networking: HTTP/3 (QUIC) & Alt-Svc Support** (Issue #23) `[enhancement, module:core, priority:moderate]`
@@ -23,6 +22,7 @@ All active development tasks, technical debt, and feature requests are managed e
 
 ## ✅ Completed Tasks
 
+- [x] **feat: task prioritization and dependency management** (Issue #72)
 - [x] **Test: Implement BDD step definitions for daemon, networking, storage, swarm features** (Issue #124)
 - [x] **Feat: Add peer health scoring, reputation, and eviction to peer registry** (Issue #123)
 - [x] **Feat: Implement PEX (Peer Exchange) — BEP 11** (Issue #121)

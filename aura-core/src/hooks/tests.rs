@@ -2,9 +2,11 @@ use super::*;
 use crate::TaskId;
 use std::sync::Mutex;
 
+type HookCall = (String, TaskId, String, String);
+
 #[derive(Default, Clone)]
 struct MockExecutor {
-    calls: Arc<Mutex<Vec<(String, TaskId, String, String)>>>,
+    calls: Arc<Mutex<Vec<HookCall>>>,
 }
 
 #[async_trait::async_trait]
@@ -59,18 +61,20 @@ async fn test_hook_manager_boot_and_trigger() {
     tokio::time::sleep(std::time::Duration::from_millis(50)).await;
 
     // Verify calls captured
-    let calls = mock_executor.calls.lock().unwrap();
-    assert_eq!(calls.len(), 2);
+    {
+        let calls = mock_executor.calls.lock().unwrap();
+        assert_eq!(calls.len(), 2);
 
-    assert_eq!(calls[0].0, "notify_start.sh");
-    assert_eq!(calls[0].1, TaskId(42));
-    assert_eq!(calls[0].2, "start");
-    assert_eq!(calls[0].3, "");
+        assert_eq!(calls[0].0, "notify_start.sh");
+        assert_eq!(calls[0].1, TaskId(42));
+        assert_eq!(calls[0].2, "start");
+        assert_eq!(calls[0].3, "");
 
-    assert_eq!(calls[1].0, "notify_error.sh");
-    assert_eq!(calls[1].1, TaskId(42));
-    assert_eq!(calls[1].2, "error");
-    assert_eq!(calls[1].3, "Disk Full");
+        assert_eq!(calls[1].0, "notify_error.sh");
+        assert_eq!(calls[1].1, TaskId(42));
+        assert_eq!(calls[1].2, "error");
+        assert_eq!(calls[1].3, "Disk Full");
+    }
 
     // Shutdown
     handle.shutdown().await.unwrap();
