@@ -39,6 +39,7 @@ async fn test_captive_portal_pausing() {
         priority: 3,
         streaming_mode: false,
         range_supported: true,
+        follow_on: None,
         subtasks: vec![sub],
         pending_ranges: Vec::new(),
         in_flight_ranges: Vec::new(),
@@ -101,6 +102,7 @@ async fn test_interface_roaming_reconnector() {
         priority: 3,
         streaming_mode: false,
         range_supported: true,
+        follow_on: None,
         subtasks: vec![sub],
         pending_ranges: Vec::new(),
         in_flight_ranges: Vec::new(),
@@ -152,6 +154,7 @@ async fn test_multi_tenant_task_limits() {
             3,
             false,
             vec![],
+            None,
         )
         .await;
     assert!(res1.is_ok());
@@ -167,6 +170,7 @@ async fn test_multi_tenant_task_limits() {
             3,
             false,
             vec![],
+            None,
         )
         .await;
     assert!(res2.is_err());
@@ -196,6 +200,7 @@ async fn test_multi_tenant_task_limits() {
             3,
             false,
             vec![],
+            None,
         )
         .await;
     assert!(res3.is_ok());
@@ -247,6 +252,7 @@ async fn test_resource_preemption_logic() {
         blacklisted_uris: Vec::new(),
         extensions: HashMap::new(),
         depends_on: Vec::new(),
+        follow_on: None,
     };
     orch.tasks.insert(TaskId(1), meta_a);
 
@@ -283,6 +289,7 @@ async fn test_resource_preemption_logic() {
         blacklisted_uris: Vec::new(),
         extensions: HashMap::new(),
         depends_on: Vec::new(),
+        follow_on: None,
     };
     orch.tasks.insert(TaskId(2), meta_b);
 
@@ -306,6 +313,7 @@ async fn test_resource_preemption_logic() {
             0,
             false,
             Vec::new(),
+            None,
         )
         .await;
     assert!(res.is_ok());
@@ -352,6 +360,7 @@ async fn test_multi_tenant_path_isolation_and_throttling() {
             3,
             false,
             vec![],
+            None,
         )
         .await;
     assert!(res.is_ok());

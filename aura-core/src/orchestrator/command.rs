@@ -15,6 +15,7 @@ pub enum Command {
         priority: u32,
         streaming_mode: bool,
         depends_on: Vec<TaskId>,
+        follow_on: Option<crate::task::FollowOnAction>,
     },
     ChangeOption {
         id: TaskId,

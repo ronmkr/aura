@@ -56,6 +56,7 @@ impl Engine {
         priority: u32,
         streaming_mode: bool,
         depends_on: Vec<TaskId>,
+        follow_on: Option<crate::task::FollowOnAction>,
     ) -> Result<crate::api::TaskHandle> {
         self.command_tx
             .send(Command::AddTask {
@@ -67,6 +68,7 @@ impl Engine {
                 priority,
                 streaming_mode,
                 depends_on,
+                follow_on,
             })
             .await
             .map_err(|e| Error::Engine(format!("Failed to send AddTask command: {}", e)))?;
@@ -90,6 +92,7 @@ impl Engine {
             100,
             false,
             Vec::new(),
+            None,
         )
         .await
     }
@@ -179,6 +182,7 @@ impl Engine {
                         state.priority,
                         state.streaming_mode,
                         state.depends_on.unwrap_or_default(),
+                        state.follow_on,
                     )
                     .await;
             }

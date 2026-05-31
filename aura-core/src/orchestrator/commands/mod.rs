@@ -22,6 +22,7 @@ impl Orchestrator {
                 priority,
                 streaming_mode,
                 depends_on,
+                follow_on,
             } => {
                 self.handle_add_task(
                     id,
@@ -32,6 +33,7 @@ impl Orchestrator {
                     priority,
                     streaming_mode,
                     depends_on,
+                    follow_on,
                 )
                 .await?;
             }

@@ -84,7 +84,7 @@ impl Orchestrator {
 
 #[cfg(test)]
 mod tests {
-    use crate::orchestrator::Orchestrator;
+    use crate::orchestrator::{MappingEngine, Orchestrator, ResourceMappingConfig};
     use crate::task::{DownloadPhase, MetaTask, SubTask};
     use crate::{Config, TaskId};
     use arc_swap::ArcSwap;
@@ -118,6 +118,7 @@ mod tests {
             tasks: std::collections::HashMap::new(),
             tenants: std::collections::HashMap::new(),
             bt_registry: std::collections::HashMap::new(),
+            mapping_engine: MappingEngine::new(ResourceMappingConfig::default()),
             worker_command_txs: std::collections::HashMap::new(),
             cancellation_tokens: std::collections::HashMap::new(),
             worker_cancellation_tokens: std::collections::HashMap::new(),
@@ -176,6 +177,7 @@ mod tests {
             priority: 100,
             streaming_mode: false,
             range_supported: true,
+            follow_on: None,
             subtasks: vec![sub_task],
             pending_ranges: Vec::new(),
             in_flight_ranges: Vec::new(),

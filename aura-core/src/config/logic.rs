@@ -1,3 +1,4 @@
+use crate::orchestrator::ResourceMappingConfig;
 use crate::{Error, Result};
 use serde::{Deserialize, Serialize};
 
@@ -8,6 +9,7 @@ pub struct Config {
     pub bandwidth: BandwidthConfig,
     pub bittorrent: BitTorrentConfig,
     pub storage: StorageConfig,
+    pub resource_mapping: ResourceMappingConfig,
     pub vpn: VpnConfig,
     pub hooks: HookConfig,
     pub general: GeneralConfig,

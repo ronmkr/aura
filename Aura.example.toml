@@ -61,6 +61,21 @@ save_session_interval_secs = 10        # Interval to sync .aura control files to
 read_ahead_kb = 128                    # Size of read-ahead buffer for seeding
 write_buffer_kb = 256                  # Size of sequential write aggregation buffer
 
+[[resource_mapping.rules]]
+# Sort videos by domain and year
+condition = { Extension = "mp4" }
+target = "videos/{domain}/{year}/{name}"
+
+[[resource_mapping.rules]]
+# Sort ISOs by protocol and host
+condition = { Extension = "iso" }
+target = "images/{protocol}/{host}/{name}"
+
+[[resource_mapping.rules]]
+# Sandbox FTP downloads
+condition = { Protocol = "Ftp" }
+target = "untrusted/ftp/{host}/{name}"
+
 [vpn]
 # Native VPN integration (ADR 0038)
 # type_name = "wireguard"              # "openvpn" or "wireguard"

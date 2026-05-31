@@ -146,6 +146,7 @@ async fn handle_add_uri(engine: &Engine, params: Option<Value>) -> Result<Value,
             priority,
             streaming_mode,
             depends_on,
+            None, // follow_on
         )
         .await
         .map_err(|e| json!({ "code": -32000, "message": e.to_string() }))?;
