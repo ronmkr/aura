@@ -117,6 +117,9 @@ A privacy feature within the **Interface Binder** that halts all network operati
 #### Secret Scrubber
 A security utility that automatically redacts sensitive information (passwords, API keys) from logs and telemetry events.
 
+#### Structured Audit Tracing
+A robust observability mechanism that uses JSON-formatted trace logs to track actors and task execution lifecycles, enabling multi-tenant auditing and precise performance debugging.
+
 #### Backpressure Controller
 A safety mechanism that manages actor mailbox sizes and pauses data ingestion when the storage engine is congested to prevent OOM.
 

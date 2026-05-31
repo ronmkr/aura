@@ -6,7 +6,7 @@ All active development tasks, technical debt, and feature requests are managed e
 
 - [ ] **feat: implement actual Recursive Crawler (Wget parity)** (Issue #65) `[status:half-baked, module:core, priority:moderate]`
 - [x] **feat: Dual-Stack Asynchronous DNS Racing (Happy Eyeballs)** (Issue #25) `[status:completed, priority:moderate, module:network]`
-- [ ] **infra: CI Docs Deployment** (Issue #134) `[enhancement, priority:moderate, infra]`
+- [x] **infra: CI Docs Deployment** (Issue #134) `[enhancement, priority:moderate, infra]`
 - [ ] **Feat: Respect BEP 12 tracker tier ordering** (Issue #128) `[enhancement, module:core, priority:low]`
 - [ ] **feat: QR code sharing for magnet links in CLI/TUI** (Issue #74) `[enhancement, module:cli, module:tui, priority:minor]`
 - [ ] **feat: implement Privacy-Enhanced Resolver (DoH/DoT)** (Issue #73) `[enhancement, priority:moderate, module:network]`
@@ -14,7 +14,7 @@ All active development tasks, technical debt, and feature requests are managed e
 - [ ] **feat: Prioritized Streaming Mode for Media Playback** (Issue #28) `[enhancement, module:core, priority:moderate]`
 - [ ] **feat: Modern Networking: HTTP/3 (QUIC) & Alt-Svc Support** (Issue #23) `[enhancement, module:core, priority:moderate]`
 - [ ] **feat: NNTP (Usenet) Protocol Support** (Issue #22) `[enhancement, module:core, priority:low]`
-- [ ] **feat: Multi-tenancy & Structured Audit Tracing** (Issue #15) `[enhancement, priority:moderate, module:daemon]`
+- [x] **feat: Multi-tenancy & Structured Audit Tracing** (Issue #15) `[enhancement, priority:moderate, module:daemon]`
 - [ ] **feat: Network Filesystem (NFS/SMB) Optimizations** (Issue #12) `[enhancement, module:storage, priority:moderate]`
 - [ ] **feat: Task Chaining & Metadata-based Path Mapping** (Issue #11) `[enhancement, module:core, priority:low]`
 - [ ] **feat: Cloud Storage Support (S3, Google Drive)** (Issue #10) `[enhancement, module:core, priority:moderate]`
