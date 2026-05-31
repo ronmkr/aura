@@ -16,9 +16,18 @@ pub struct MappingRule {
     pub target: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub enum ConflictPolicy {
+    #[default]
+    AutoRename,
+    Overwrite,
+    Skip,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ResourceMappingConfig {
     pub rules: Vec<MappingRule>,
+    pub default_conflict_policy: ConflictPolicy,
 }
 
 pub struct MappingEngine {
@@ -45,7 +54,46 @@ impl MappingEngine {
             }
         }
 
-        final_path
+        self.resolve_conflict(final_path)
+    }
+
+    fn resolve_conflict(&self, mut path: PathBuf) -> PathBuf {
+        if !path.exists() {
+            return path;
+        }
+
+        match self.config.default_conflict_policy {
+            ConflictPolicy::Overwrite => path,
+            ConflictPolicy::Skip => {
+                // Return original path, higher layers will decide how to handle "Skip"
+                // (e.g. by checking if it exists before opening)
+                path
+            }
+            ConflictPolicy::AutoRename => {
+                let stem = path
+                    .file_stem()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or("file")
+                    .to_string();
+                let extension = path
+                    .extension()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or("")
+                    .to_string();
+
+                let mut counter = 1;
+                while path.exists() {
+                    let new_name = if extension.is_empty() {
+                        format!("{}.{}", stem, counter)
+                    } else {
+                        format!("{}.{}.{}", stem, counter, extension)
+                    };
+                    path.set_file_name(new_name);
+                    counter += 1;
+                }
+                path
+            }
+        }
     }
 
     fn matches(&self, task: &MetaTask, condition: &MappingCondition) -> bool {

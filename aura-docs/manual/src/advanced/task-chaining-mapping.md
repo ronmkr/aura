@@ -66,3 +66,18 @@ target = "archives/{id}_{ext}/{name}"
 To guarantee system safety, the mapping engine strictly sanitizes the final mapped path:
 - **Sandbox Isolation**: All relative path segments like `..` (parent directory) or absolute prefixes (like `/`) are neutralized.
 - **Component Filtering**: Only normal directory and file names are preserved, making it impossible for a malicious template or task name to escape the authorized download directory boundary.
+
+## Conflict Resolution
+
+When the resolved path already exists on disk, Aura applies a `ConflictPolicy` to determine the next step. This can be configured globally in `Aura.toml`:
+
+### Supported Policies
+- **AutoRename** (Default): Appends a numeric suffix to the filename (e.g., `movie.1.mp4`) until a unique path is found.
+- **Overwrite**: Overwrites the existing file. Use with caution.
+- **Skip**: Prevents the download if the file already exists.
+
+#### Example Configuration
+```toml
+[resource_mapping]
+default_conflict_policy = "AutoRename"
+```

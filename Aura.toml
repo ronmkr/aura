@@ -51,6 +51,9 @@ preallocate = true                     # Pre-allocate disk space before starting
 allocation_mode = "falloc"             # "none", "prealloc" (zeros), "falloc" (sparse)
 save_session_interval_secs = 10        # Interval to sync .aura control files
 
+[resource_mapping]
+default_conflict_policy = "AutoRename"
+
 [[resource_mapping.rules]]
 # Sort videos by domain and year
 condition = { Extension = "mp4" }
@@ -60,6 +63,9 @@ target = "videos/{domain}/{year}/{name}"
 # Sort ISOs by protocol and host
 condition = { Extension = "iso" }
 target = "images/{protocol}/{host}/{name}"
+
+[hooks]
+# on_download_complete = "notify-send 'Aura: Download Complete'"
 
 [general]
 log_level = "info"                     # "trace", "debug", "info", "warn", "error"
