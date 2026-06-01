@@ -4,7 +4,11 @@ All active development tasks, technical debt, and feature requests are managed e
 
 ## 🟢 Open Tasks
 
-- [ ] **feat: implement actual Recursive Crawler (Wget parity)** (Issue #65) `[status:half-baked, module:core, priority:moderate]`
+- [x] **feat: Implement Bit-Bucket virtual files (BEP 47)** (Issue #183) `[completed, module:storage]`
+- [x] **docs: Synchronize ARCHITECTURE.md with source tree** (Issue #186) `[completed, module:docs]`
+- [ ] **feat: Graduate VPN Providers to full Controller Mode** (Issue #185) `[module:vpn, priority:high]`
+- [ ] **chore: Decompose monolithic files to enforce 400-line limit** (Issue #184) `[module:storage, priority:moderate]`
+- [ ] **feat: implement actual Recursive Crawler (Wget parity)** (Issue #65)
 - [x] **feat: Dual-Stack Asynchronous DNS Racing (Happy Eyeballs)** (Issue #25) `[status:completed, priority:moderate, module:network]`
 - [x] **infra: CI Docs Deployment** (Issue #134) `[enhancement, priority:moderate, infra]`
 - [ ] **Feat: Respect BEP 12 tracker tier ordering** (Issue #128) `[enhancement, module:core, priority:low]`

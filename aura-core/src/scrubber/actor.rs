@@ -83,7 +83,7 @@ impl IntegrityScrubber {
         base_path: PathBuf,
         checksum: crate::Checksum,
     ) -> Result<()> {
-        let part_path = crate::storage::ops::get_part_path(&base_path)?;
+        let part_path = crate::storage::utils::get_part_path(&base_path)?;
         let file = tokio::fs::File::open(&part_path).await?;
         let mut reader = tokio::io::BufReader::new(file);
 
@@ -168,7 +168,7 @@ impl IntegrityScrubber {
         base_path: PathBuf,
         bt_task: Arc<crate::worker::bittorrent::task::BtTask>,
     ) -> Result<()> {
-        let part_path = crate::storage::ops::get_part_path(&base_path)?;
+        let part_path = crate::storage::utils::get_part_path(&base_path)?;
         let mut file = tokio::fs::File::open(&part_path).await?;
 
         use sha1::Digest;

@@ -26,12 +26,13 @@ pub struct PieceData {
 }
 
 /// Metadata discovered about a resource (size, filename, etc.).
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Metadata {
     pub final_uri: String,
     pub total_length: Option<u64>,
     pub name: Option<String>,
     pub range_supported: bool,
+    pub padding_ranges: Vec<crate::task::Range>,
 }
 
 use crate::throttler::Throttler;

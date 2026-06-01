@@ -145,7 +145,7 @@ async fn then_task_fails_with_error(world: &mut AuraWorld, _error_msg: String) {
 #[then(expr = "the {string} file should be preserved")]
 async fn then_file_preserved(world: &mut AuraWorld, filename: String) {
     let base_path = world.temp_dir.path().join(filename);
-    let part_path = aura_core::storage::ops::get_part_path(&base_path).unwrap();
+    let part_path = aura_core::storage::utils::get_part_path(&base_path).unwrap();
     assert!(
         part_path.exists(),
         "Part file {:?} was not preserved",

@@ -77,7 +77,7 @@ pub async fn run(args: Args) -> Result<()> {
     if let Some(output_name) = &args.output {
         let id = TaskId(rand::rng().random());
         let path = current_dir.join(output_name);
-        storage.register_task(id, path, 0, None).await;
+        storage.register_task(id, path, 0, None, Vec::new()).await;
 
         let mut sources = Vec::new();
         for (uri, _, _) in tasks_to_add {
@@ -109,7 +109,7 @@ pub async fn run(args: Args) -> Result<()> {
             let path = current_dir.join(&name);
             let id = TaskId(rand::rng().random());
             if !is_metadata {
-                storage.register_task(id, path, 0, None).await;
+                storage.register_task(id, path, 0, None, Vec::new()).await;
             }
 
             let ttype = if uri.ends_with(".torrent") {

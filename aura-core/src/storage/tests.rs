@@ -3,7 +3,7 @@ use crate::worker::Segment;
 use crate::TaskId;
 use bytes::Bytes;
 use tempfile::tempdir;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, oneshot};
 
 #[tokio::test]
 async fn test_storage_engine_atomic_completion() {
@@ -13,7 +13,9 @@ async fn test_storage_engine_atomic_completion() {
     let (completion_tx, _completion_rx) = mpsc::channel(1);
     let mut storage = StorageEngine::new(request_rx, completion_tx, None, None);
     let id = TaskId(100);
-    storage.register_task(id, file_path.clone(), 0, None).await;
+    storage
+        .register_task(id, file_path.clone(), 0, None, Vec::new())
+        .await;
 
     tokio::spawn(async move {
         storage.run().await.unwrap();
@@ -49,7 +51,9 @@ async fn test_storage_engine_sequential_aggregation() {
     let (completion_tx, _completion_rx) = mpsc::channel(1);
     let mut storage = StorageEngine::new(request_rx, completion_tx, None, None);
     let id = TaskId(200);
-    storage.register_task(id, file_path.clone(), 0, None).await;
+    storage
+        .register_task(id, file_path.clone(), 0, None, Vec::new())
+        .await;
 
     tokio::spawn(async move {
         storage.run().await.unwrap();
@@ -95,7 +99,9 @@ async fn test_storage_engine_fsync_durability() {
     let (completion_tx, mut completion_rx) = mpsc::channel(1);
     let mut storage = StorageEngine::new(request_rx, completion_tx, None, None);
     let id = TaskId(300);
-    storage.register_task(id, file_path.clone(), 0, None).await;
+    storage
+        .register_task(id, file_path.clone(), 0, None, Vec::new())
+        .await;
 
     tokio::spawn(async move {
         storage.run().await.unwrap();
@@ -129,4 +135,142 @@ async fn test_storage_engine_fsync_durability() {
     assert!(file_path.exists());
     let content = std::fs::read_to_string(&file_path).unwrap();
     assert_eq!(content, "durable data");
+}
+
+#[tokio::test]
+async fn test_storage_engine_bit_bucket() {
+    let dir = tempdir().unwrap();
+    let file_path = dir.path().join("bit_bucket.bin");
+    let (request_tx, request_rx) = mpsc::channel(1);
+    let (completion_tx, _completion_rx) = mpsc::channel(1);
+    let mut storage = StorageEngine::new(request_rx, completion_tx, None, None);
+    let id = TaskId(400);
+
+    // Register task with a padding range from offset 10 to 20
+    let padding_ranges = vec![crate::task::Range { start: 10, end: 20 }];
+    storage
+        .register_task(id, file_path.clone(), 30, None, padding_ranges)
+        .await;
+
+    tokio::spawn(async move {
+        storage.run().await.unwrap();
+    });
+
+    // 1. Write to non-padding range (0-10)
+    request_tx
+        .send(StorageRequest::Write {
+            task_id: id,
+            segment: Segment {
+                offset: 0,
+                length: 10,
+            },
+            data: bytes::BytesMut::from(&b"1234567890"[..]),
+        })
+        .await
+        .unwrap();
+
+    // 2. Write to padding range (10-20) - SHOULD BE DISCARDED
+    request_tx
+        .send(StorageRequest::Write {
+            task_id: id,
+            segment: Segment {
+                offset: 10,
+                length: 10,
+            },
+            data: bytes::BytesMut::from(&b"PAD_DATA__"[..]),
+        })
+        .await
+        .unwrap();
+
+    // 3. Write to non-padding range (20-30)
+    // 3. Write to non-padding range (20-30)
+    request_tx
+        .send(StorageRequest::Write {
+            task_id: id,
+            segment: Segment {
+                offset: 20,
+                length: 10,
+            },
+            data: bytes::BytesMut::from(&b"ABCDEFGHIJ"[..]),
+        })
+        .await
+        .unwrap();
+
+    // Ensure all dirty buffers are flushed
+    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+
+    // 4. Verify explicit Read zeroing
+    let (reply_tx, reply_rx) = oneshot::channel();
+    request_tx
+        .send(StorageRequest::Read {
+            task_id: id,
+            segment: Segment {
+                offset: 5,
+                length: 20,
+            }, // Overlaps half of padding
+            reply_tx,
+        })
+        .await
+        .unwrap();
+
+    let read_data = reply_rx.await.unwrap().unwrap();
+    // 5-10 is "67890", 10-20 is padding (\0), 20-25 is "ABCDE"
+    assert_eq!(&read_data[0..5], b"67890");
+    assert_eq!(&read_data[5..15], b"\0\0\0\0\0\0\0\0\0\0");
+    assert_eq!(&read_data[15..20], b"ABCDE");
+
+    request_tx.send(StorageRequest::Complete(id)).await.unwrap();
+    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+
+    assert!(file_path.exists());
+    let content = std::fs::read(&file_path).unwrap();
+    assert_eq!(&content[0..10], b"1234567890");
+    assert_eq!(&content[10..20], b"\0\0\0\0\0\0\0\0\0\0");
+    assert_eq!(&content[20..30], b"ABCDEFGHIJ");
+}
+
+#[tokio::test]
+async fn test_storage_engine_bit_bucket_complex() {
+    let dir = tempdir().unwrap();
+    let file_path = dir.path().join("bit_bucket_complex.bin");
+    let (request_tx, request_rx) = mpsc::channel(1);
+    let (completion_tx, _completion_rx) = mpsc::channel(1);
+    let mut storage = StorageEngine::new(request_rx, completion_tx, None, None);
+    let id = TaskId(401);
+
+    // Multiple padding ranges
+    let padding_ranges = vec![
+        crate::task::Range { start: 5, end: 10 },
+        crate::task::Range { start: 15, end: 20 },
+    ];
+    storage
+        .register_task(id, file_path.clone(), 25, None, padding_ranges)
+        .await;
+
+    tokio::spawn(async move {
+        storage.run().await.unwrap();
+    });
+
+    // Write a large block covering data-pad-data-pad-data
+    request_tx
+        .send(StorageRequest::Write {
+            task_id: id,
+            segment: Segment {
+                offset: 0,
+                length: 25,
+            },
+            data: bytes::BytesMut::from(&b"12345PPPPP67890XXXXXabcde"[..]),
+        })
+        .await
+        .unwrap();
+
+    request_tx.send(StorageRequest::Complete(id)).await.unwrap();
+    tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+
+    let content = std::fs::read(&file_path).unwrap();
+    assert_eq!(&content[0..5], b"12345");
+    assert_eq!(&content[5..10], b"\0\0\0\0\0");
+    assert_eq!(&content[10..15], b"67890");
+    assert_eq!(&content[15..20], b"\0\0\0\0\0");
+    assert_eq!(&content[20..25], b"abcde");
 }

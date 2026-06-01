@@ -23,7 +23,6 @@ flowchart TD
         direction TB
         Orchestrator["Task Orchestrator"]
         Storage["Storage Engine"]
-        BufferPool["Buffer Pool (Zero-Copy)"]
         
         subgraph Workers ["Protocol Workers"]
             HTTP["HTTP Worker"]
@@ -55,7 +54,7 @@ flowchart TD
     Orchestrator -- "Spawns" --> Workers
     Orchestrator -- "Requests Allocation" --> Storage
     
-    Workers -- "Requests Buffer" --> BufferPool
+    Workers -- "Allocate BytesMut" --> Network
     Workers -- "Fetch Data" --> Network
     Workers -- "Write Chunk" --> Storage
     
@@ -81,7 +80,7 @@ flowchart TD
 
 ### 3. Storage & Memory
 - **Storage Engine**: Handles all disk operations. It uses a **Sequential Aggregator** to reorder out-of-order network chunks into contiguous disk writes, minimizing head movement on HDDs and wear on SSDs.
-- **Buffer Pool**: A centralized memory management system that uses pre-allocated `Bytes` chunks to ensure **zero-copy** data transfer from the network to the storage engine.
+- **Locality-based Memory**: Instead of a centralized pool, Aura leverages the `bytes` crate's atomic reference counting. Workers allocate `BytesMut` buffers which are passed to the storage engine, ensuring **zero-copy** transfer from network to disk.
 
 ### 4. Protocol Workers
 - **HTTP/FTP**: Handles mirror racing and multi-segmented downloads.
@@ -102,7 +101,6 @@ sequenceDiagram
     participant U as User
     participant O as Orchestrator
     participant W as Worker
-    participant B as Buffer Pool
     participant S as Storage
     participant D as Disk
 
@@ -110,11 +108,10 @@ sequenceDiagram
     O->>S: Pre-allocate File
     S->>D: Create Sparse File
     O->>W: Spawn Workers
-    W->>B: Request Buffer
-    B-->>W: Chunk Pointer
+    W->>W: Allocate BytesMut
     W->>W: Fetch Data (Network)
-    W->>S: Push Chunk to Aggregator
-    S->>S: Reorder Chunks
+    W->>S: Push Chunk (StorageRequest::Write)
+    S->>S: Reorder Chunks (Aggregator)
     S->>D: Flush Contiguous Block
     D-->>O: Progress Update
     O-->>U: UI Update (TUI/CLI)
@@ -180,23 +177,21 @@ The storage engine optimizes for high-throughput sequential I/O to protect hardw
 ```mermaid
 graph TD
     subgraph RAM ["Volatile Memory"]
-        BP["Buffer Pool (Pre-allocated)"]
-        Agg["Sequential Aggregator"]
-        Journal["Piece-Buffer Journal (Partial)"]
+        Agg["Sequential Aggregator (pending_writes)"]
+        Dirty["Dirty Buffer (dirty_buffers)"]
     end
 
     subgraph Disk ["Persistent Storage"]
         Part[".part File"]
         Final["Final File"]
-        Merkle["Merkle Tree Store (BTv2)"]
+        Sled["Sled DB (v2 Metadata)"]
     end
 
     Workers["Protocol Workers"] -- "Zero-Copy Write" --> Agg
-    Agg -- "Sort & Align" --> BP
-    BP -- "Contiguous Flush" --> Part
-    Journal -. "Resume State" .-> Agg
+    Agg -- "Sort & Align" --> Dirty
+    Dirty -- "Contiguous Flush" --> Part
     Part -- "Integrity OK" --> Final
-    Final -- "Hash Tree" --> Merkle
+    Final -- "Hash Tree" --> Sled
 ```
 
 ## Security & Isolation
@@ -233,10 +228,10 @@ This table maps architectural concepts to their primary implementation files in 
 | **The Pilot (TUI)** | Interface | `aura-tui/src/app.rs`, `ui.rs` |
 | **Aura Daemon** | Persistent | `aura-daemon/src/lib.rs` |
 | **Engine Core** | Orchestration | `aura-core/src/orchestrator/engine.rs` |
-| **Task Orchestrator** | Orchestration | `aura-core/src/orchestrator/logic.rs` |
-| **Sequential Aggregator** | Storage | `aura-core/src/storage/logic.rs` |
-| **Storage Ops** | Storage | `aura-core/src/storage/ops.rs` |
-| **Buffer Pool** | Memory | `aura-core/src/buffer_pool/logic.rs` |
+| **Task Orchestrator** | Orchestration | `aura-core/src/orchestrator/runner.rs` |
+| **Sequential Aggregator** | Storage | `aura-core/src/storage/ops.rs` |
+| **Storage Ops** | Storage | `aura-core/src/storage/engine.rs` |
+| **Locality Memory** | Memory | `aura-core/src/worker/types.rs` (BytesMut) |
 | **HTTP Worker** | Protocol | `aura-core/src/worker/http/mod.rs` |
 | **FTP Worker** | Protocol | `aura-core/src/worker/ftp.rs` |
 | **BitTorrent Logic** | Protocol | `aura-core/src/worker/bittorrent/worker.rs` |
@@ -251,5 +246,3 @@ This table maps architectural concepts to their primary implementation files in 
 ---
 
 > **Note**: This map is current as of Milestone 6. As the project matures, new mappings will be added for Merkle Tree stores and End-game mode logic. See the [ROADMAP.md](ROADMAP.md) for full status.
-
-

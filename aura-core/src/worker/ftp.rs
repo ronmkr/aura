@@ -170,6 +170,7 @@ impl FtpWorker {
             total_length: Some(size as u64),
             name,
             range_supported: true,
+            padding_ranges: Vec::new(),
         })
     }
 }
