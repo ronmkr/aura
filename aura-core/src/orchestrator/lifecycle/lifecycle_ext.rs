@@ -117,6 +117,9 @@ impl Orchestrator {
 
             if let Some(sub_task) = meta_task.subtasks.iter_mut().find(|s| s.id == sub_id) {
                 sub_task.phase = DownloadPhase::Downloading;
+                if let Some(len) = metadata.total_length {
+                    sub_task.total_length = len;
+                }
             }
         }
 

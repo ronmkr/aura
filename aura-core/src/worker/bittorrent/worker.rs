@@ -129,21 +129,36 @@ impl BtWorker {
         command_rx: tokio::sync::broadcast::Receiver<WorkerCommand>,
         token: CancellationToken,
     ) -> Result<()> {
-        let (stream, peer_id, ext_support) = self.connect_and_handshake().await?;
+        let res = self.connect_and_handshake().await;
+        let (stream, peer_id, ext_support) = match res {
+            Ok(val) => val,
+            Err(e) => {
+                task.update_peer_state(&self.peer_addr, crate::peer_registry::ConnectionState::Disconnected)
+                    .await;
+                return Err(e);
+            }
+        };
         self.peer_id = peer_id;
 
-        self.run_loop_with_stream_and_ext(
+        let peer_addr = self.peer_addr.clone();
+        let res = self.run_loop_with_stream_and_ext(
             stream,
             meta_id,
             sub_id,
-            task,
+            task.clone(),
             storage_tx,
             subtask_tx,
             command_rx,
             token,
             ext_support,
         )
-        .await
+        .await;
+
+        if res.is_err() {
+            task.update_peer_state(&peer_addr, crate::peer_registry::ConnectionState::Disconnected)
+                .await;
+        }
+        res
     }
 
     #[allow(clippy::too_many_arguments)]

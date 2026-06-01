@@ -33,6 +33,8 @@ pub async fn run(args: Args) -> Result<()> {
     let config = aura_core::Config::from_file("Aura.toml").unwrap_or_default();
     let (engine, orchestrator, mut storage) = Engine::new(config).await?;
 
+    let mut events = engine.subscribe();
+
     // Inferred directory
     let current_dir = std::env::current_dir().unwrap();
 
@@ -150,8 +152,6 @@ pub async fn run(args: Args) -> Result<()> {
         }
     });
 
-    let mut events = engine.subscribe();
-
     // Multi-progress bar setup
     use indicatif::MultiProgress;
     let mp = MultiProgress::new();
@@ -206,7 +206,7 @@ pub async fn run(args: Args) -> Result<()> {
                 if let Some(pb) = bars.get(&id) {
                     pb.finish_with_message(format!("Task {} complete", id));
                 }
-                if bars.values().all(|b| b.is_finished()) {
+                if !bars.is_empty() && bars.values().all(|b| b.is_finished()) {
                     break;
                 }
             }
@@ -214,7 +214,7 @@ pub async fn run(args: Args) -> Result<()> {
                 if let Some(pb) = bars.get(&id) {
                     pb.abandon_with_message(format!("Task {} error: {}", id, message));
                 }
-                if bars.values().all(|b| b.is_finished()) {
+                if !bars.is_empty() && bars.values().all(|b| b.is_finished()) {
                     break;
                 }
             }
