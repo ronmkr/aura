@@ -1,4 +1,4 @@
-# Aura 🌌 Makefile
+# Aura Makefile
 
 .PHONY: all build test check fmt clippy clean docs run-cli run-daemon run-tui
 

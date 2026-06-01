@@ -67,7 +67,7 @@ flowchart TD
     Engine -- "Keep Awake" --> Power
 ```
 
-## 🧩 Component Definitions
+## Component Definitions
 
 ### 1. User Interfaces (Personas)
 - **Aura CLI**: High-speed, one-off download tool. It can operate as a standalone instance (spinning up its own core and RPC server) or act as a client connecting to an existing `aura-daemon`.
@@ -94,7 +94,7 @@ flowchart TD
 - **Power Management**: Prevents the OS from entering sleep mode while active downloads are in progress.
 - **VPN Kill-switch**: Ensures traffic only flows through authorized network interfaces.
 
-## 🔄 Core Data Flow (Download)
+## Core Data Flow (Download)
 
 ```mermaid
 sequenceDiagram

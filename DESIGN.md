@@ -54,14 +54,14 @@ tokens:
       duration:
         value: '100ms'
       sequence:
-        value: ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
+        value: ['', '', '', '', '', '', '', '', '', '']
 ---
 
-# Aura 🌌 Design System
+# Aura  Design System
 
 Aura is designed to feel fast, modern, and atmospheric. It uses a **Token-based Theming Engine** to allow users to customize their cockpit.
 
-## 🎭 The Three Personas
+##  The Three Personas
 
 Aura adapts its interface based on the user's current mission.
 
@@ -86,13 +86,13 @@ Aura adapts its interface based on the user's current mission.
 - **RPC Server**: Built on Axum/Tokio (JSON-RPC 2.0 and WebSockets).
 - **Compatibility**: Standardized to allow existing `aria2` frontends (like **AriaNg**) to connect with minimal adaptation.
 
-## 🧠 Core Engine Mandates
+##  Core Engine Mandates
 - **Actor Integrity**: Strict decoupling via type-safe channels.
 - **TDD First**: Every component must be developed using Red-Green-Refactor.
 - **Zero-Copy**: Optimize for minimal memory movements via the `Buffer Pool`.
 - **Atomic Completion**: Writing to `.part` files ensures no partial files are exposed.
 
-## 🎨 Visual Identity: The Galactic Vibe
+##  Visual Identity: The Galactic Vibe
 
 The default visual language is "Galactic". It uses high-contrast ANSI colors to ensure readability across all terminal emulators while maintaining a distinctive "precision" aesthetic.
 
@@ -100,7 +100,7 @@ The default visual language is "Galactic". It uses high-contrast ANSI colors to 
 - **Star Yellow**: highlights the structure and critical metadata.
 - **Galactic Blue**: provide a deep, stable frame for the Pilot (TUI).
 
-## 🎭 Theming Architecture
+##  Theming Architecture
 
 Aura supports full palette customization via `Aura.toml`. A theme is a collection of hex color mappings for the UI components.
 
@@ -124,7 +124,7 @@ warning = "#FFFF00"                    # Retrying tasks
 2.  **Matrix**: Shades of neon green on black for a retro-hacker aesthetic.
 3.  **Classic**: High-contrast grayscale for maximum accessibility.
 
-## 🧱 Components
+##  Components
 
 ### Progress Indicators
 1.  **The Pulse (Spinner)**: A fast, 100ms rhythmic animation.
@@ -134,10 +134,10 @@ warning = "#FFFF00"                    # Retrying tasks
 - **Headers**: Fixed at the top with a high-contrast background.
 - **Selection**: Uses color inversion (Reversed) and the `>> ` glyph.
 
-## 📐 Spacing & Layout
+##  Spacing & Layout
 - **Horizontal Split**: 40/20/20/20 layout for the Task Board.
 - **Vertical Rhythm**: 1-cell margins between panels.
 
-## ⌨️ Interaction
+##  Interaction
 - **Hotkeys**: `a` (Add), `p` (Pause), `r` (Resume), `d` (Delete), `q` (Quit).
 - **Update Frequency**: 500ms UI ticks.

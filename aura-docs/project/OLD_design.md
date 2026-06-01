@@ -2,7 +2,7 @@
 
 This document details the visual and architectural design for the `Aura` personas: CLI, TUI, and Headless/Web.
 
-## 🎭 The Three Personas
+##  The Three Personas
 
 ### 1. The Sprinter (CLI)
 - **Goal**: High-speed, one-off downloads.
@@ -26,7 +26,7 @@ This document details the visual and architectural design for the `Aura` persona
     - **Compatibility**: Standardized to allow existing `aria2` frontends (like **AriaNg**) to connect with minimal adaptation.
 - **Docker Design**: Multi-stage build providing a slim alpine/distroless image.
 
-## 🧠 Core Engine Components
+##  Core Engine Components
 
 ### Buffer Pool & Storage
 - **Memory**: Centralized `Bytes` pool with pre-allocated chunks.
@@ -38,14 +38,14 @@ This document details the visual and architectural design for the `Aura` persona
 - **Privacy DNS**: Built-in DoH support to bypass ISP censorship.
 - **NAT Traversal**: Automatic UPnP/NAT-PMP mapping.
 
-## 🏗️ Core Engineering Mandates
+##  Core Engineering Mandates
 - **Actor Integrity**: Strict decoupling via type-safe channels.
 - **TDD First**: Every component must be developed using Red-Green-Refactor.
 - **Zero-Copy**: Optimize for minimal memory movements.
 
-## 🚀 Implementation Roadmap
+##  Implementation Roadmap
 
-### Milestone 1: The Atomic Download (Completed ✅)
+### Milestone 1: The Atomic Download (Completed )
 - Fundamental Actor skeleton and HTTP single-source download.
 
 ### Milestone 2: The "Smart" Buffer (Current)

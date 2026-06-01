@@ -2,7 +2,7 @@
 
 Thank you for your interest in contributing to Aura! We welcome contributions from everyone.
 
-## 🧠 Engineering Standards
+##  Engineering Standards
 
 We maintain a high bar for code quality. All contributions must adhere to:
 
@@ -14,7 +14,7 @@ We maintain a high bar for code quality. All contributions must adhere to:
 3.  **No Panics**: Use `Result` and `Error` types. Never use `unwrap()` or `expect()` in library code.
 4.  **Zero Warnings**: All compiler and Clippy warnings must be resolved.
 
-## 🏗️ Pull Request Protocol
+##  Pull Request Protocol
 
 1.  **Fork the Repository**: Create your own fork and work on a feature branch.
 2.  **Architecture (ADRs)**: Significant architectural changes require a new Architecture Decision Record in `aura-docs/adr/`.
@@ -27,10 +27,10 @@ We maintain a high bar for code quality. All contributions must adhere to:
     ```
 5.  **Small PRs**: Prefer small, focused PRs over massive ones.
 
-## 🛡️ Security
+##  Security
 
 If you find a security vulnerability, please do **not** open a public issue. Refer to our [Security Policy](SECURITY.md) for reporting instructions.
 
-## 🤝 Code of Conduct
+##  Code of Conduct
 
 Please be respectful and professional in all interactions. See [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for details.

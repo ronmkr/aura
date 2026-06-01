@@ -1,8 +1,8 @@
-# Aura Project Management & Issue Tracking 📈
+# Aura Project Management & Issue Tracking 
 
 To ensure high-quality implementation and avoid "stub features," we use the following management strategy for all open and future issues.
 
-## 🏷️ Issue Labeling System
+##  Issue Labeling System
 
 We use precise labels to track the *maturity* of a feature, not just its intent.
 
@@ -15,7 +15,7 @@ We use precise labels to track the *maturity* of a feature, not just its intent.
 | `module:core` | Affects the core orchestration or worker logic. |
 | `module:storage` | Affects disk I/O, aggregation, or memory management. |
 
-## 🛠️ Definition of Done (DoD)
+##  Definition of Done (DoD)
 
 An issue is not considered "Closed" unless it meets these criteria:
 1.  **Code**: Implementation follows ADR specs.
@@ -23,13 +23,13 @@ An issue is not considered "Closed" unless it meets these criteria:
 3.  **Tests**: At least one unit test and one integration test (in `tests/`) are added.
 4.  **Formatting**: `cargo fmt` and `cargo clippy -- -D warnings` pass.
 
-## 🗺️ Implementation Linkage
+##  Implementation Linkage
 
 Every Issue description must include an **Implementation Map**:
 - **ADR**: Link to the relevant ADR.
 - **Primary File**: The main file where logic resides.
 - **Test File**: The file containing verification logic.
 
-## 📅 Milestone Alignment
+##  Milestone Alignment
 
 Issues are grouped into GitHub Milestones corresponding to `ROADMAP.md`. PRs should only be merged into `main` if they fulfill an active milestone's requirements.

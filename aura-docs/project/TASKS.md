@@ -2,12 +2,12 @@
 
 All active development tasks, technical debt, and feature requests are managed exclusively via [GitHub Issues](https://github.com/ronmkr/aura/issues).
 
-## 🟢 Open Tasks
+## Open Tasks
 
 - [x] **feat: Implement Bit-Bucket virtual files (BEP 47)** (Issue #183) `[completed, module:storage]`
 - [x] **docs: Synchronize ARCHITECTURE.md with source tree** (Issue #186) `[completed, module:docs]`
 - [ ] **feat: Graduate VPN Providers to full Controller Mode** (Issue #185) `[module:vpn, priority:high]`
-- [ ] **chore: Decompose monolithic files to enforce 400-line limit** (Issue #184) `[module:storage, priority:moderate]`
+- [x] **chore: Decompose monolithic files to enforce 400-line limit** (Issue #184) `[completed, module:storage]`
 - [ ] **chore: Refactor FTPS to use rustls (ADR 0048 parity)** (Issue #189) `[module:worker, priority:moderate]`
 - [ ] **chore: Add automated CI check for 400-line file limit** (Issue #188) `[module:ci, priority:moderate]`
 - [ ] **feat: Implement Allocation Prober diagnostic tool** (Issue #191) `[module:storage, priority:low]`
@@ -15,7 +15,7 @@ All active development tasks, technical debt, and feature requests are managed e
 - [ ] **feat: Implement i18n Architecture (ADR 0042)** (Issue #190) `[module:i18n, priority:low]`
 - [x] **feat: Dual-Stack Asynchronous DNS Racing (Happy Eyeballs)** (Issue #25) `[status:completed, priority:moderate, module:network]`
 - [x] **infra: CI Docs Deployment** (Issue #134) `[enhancement, priority:moderate, infra]`
-- [ ] **Feat: Respect BEP 12 tracker tier ordering** (Issue #128) `[enhancement, module:core, priority:low]`
+- [ ] **feat: Respect BEP 12 tracker tier ordering** (Issue #128) `[enhancement, module:core, priority:low]`
 - [ ] **feat: QR code sharing for magnet links in CLI/TUI** (Issue #74) `[enhancement, module:cli, module:tui, priority:minor]`
 - [ ] **feat: implement Privacy-Enhanced Resolver (DoH/DoT)** (Issue #73) `[enhancement, priority:moderate, module:network]`
 - [ ] **feat: i18n support for CLI and TUI** (Issue #71) `[enhancement, module:cli, module:tui, priority:minor]`
@@ -27,13 +27,14 @@ All active development tasks, technical debt, and feature requests are managed e
 - [x] **feat: Task Chaining & Metadata-based Path Mapping** (Issue #11) `[status:completed, module:core, priority:low]`
 - [ ] **feat: Cloud Storage Support (S3, Google Drive)** (Issue #10) `[enhancement, module:core, priority:moderate]`
 
-## ✅ Completed Tasks
+## Completed Tasks
+
 
 - [x] **feat: Advanced Networking (kTLS, Captive Portals, Roaming)** (Issue #8) `[enhancement, priority:low, module:network]`
 - [x] **feat: task prioritization and dependency management** (Issue #72)
 - [x] **Test: Implement BDD step definitions for daemon, networking, storage, swarm features** (Issue #124)
 - [x] **Feat: Add peer health scoring, reputation, and eviction to peer registry** (Issue #123)
-- [x] **Feat: Implement PEX (Peer Exchange) — BEP 11** (Issue #121)
+- [x] **Feat: Implement PEX (Peer Exchange) -- BEP 11** (Issue #121)
 - [x] **perf: Advanced Disk I/O Scheduling** (Issue #13)
 - [x] **Feat: Implement BT choking algorithm (tit-for-tat + optimistic unchoke)** (Issue #120)
 - [x] **feat: Adaptive Connection Scaling & Sourced Aggregation** (Issue #31)
@@ -41,13 +42,13 @@ All active development tasks, technical debt, and feature requests are managed e
 - [x] **feat: Racing Work Stealer for Slow Stream Mitigation** (Issue #29)
 - [x] **perf: Generational Write Buffer & Advanced Caching** (Issue #14)
 - [x] **feat: implement Integrity Scrubber Actor and self-healing** (Issue #4)
-- [x] **Bug: DNS resolver config is a facade — DoH/DoT not wired** (Issue #135)
-- [x] **Bug: BT block size is 32KB — non-standard (spec is 16KB)** (Issue #127) `[bug]`
+- [x] **Bug: DNS resolver config is a facade -- DoH/DoT not wired** (Issue #135)
+- [x] **Bug: BT block size is 32KB -- non-standard (spec is 16KB)** (Issue #127) `[bug]`
 - [x] **Bug: Metalink parser has debug eprintln and hardcoded priority** (Issue #126) `[bug]`
-- [x] **Bug: Daemon ignores rpc_port config — hardcoded to 6800** (Issue #125) `[bug]`
+- [x] **Bug: Daemon ignores rpc_port config -- hardcoded to 6800** (Issue #125) `[bug]`
 - [x] **Feat: Add FTPS (TLS) support and retry logic to FTP worker** (Issue #122) `[enhancement]`
-- [x] **Bug: VPN kill-switch (force_tunnel) is dead code — not enforced** (Issue #119) `[bug]`
-- [x] **Bug: DHT token is hardcoded [1,2,3,4] — security vulnerability** (Issue #118) `[bug]`
+- [x] **Bug: VPN kill-switch (force_tunnel) is dead code -- not enforced** (Issue #119) `[bug]`
+- [x] **Bug: DHT token is hardcoded [1,2,3,4] -- security vulnerability** (Issue #118) `[bug]`
 - [x] **Bug: Add fsync/fdatasync before atomic .part rename to prevent data loss** (Issue #117) `[bug, module:storage]`
 - [x] **Feature: NAT Traversal Mapping Refresh** (Issue #114) `[enhancement]`
 - [x] **feat: WebSocket Telemetry for RPC (ADR 0016 Edge Case)** (Issue #104)
