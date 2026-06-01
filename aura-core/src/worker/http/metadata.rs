@@ -221,6 +221,7 @@ impl HttpWorker {
                 total_length,
                 name,
                 range_supported,
+                padding_ranges: Vec::new(),
             });
         }
     }

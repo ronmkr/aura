@@ -1,23 +1,30 @@
 # ADR 0019: Buffer Pool and Write-Back Caching
 
 ## Status
-Accepted
+Superceded (by Issue #160)
 
 ## Context
 Efficiently handling high-speed downloads (1Gbps+) requires minimizing disk I/O and CPU overhead. The original `aria2` uses a `WrDiskCache` to aggregate small writes into larger, more efficient disk operations.
 
-## Decision
+## Decision (Original)
 1. **Buffer Pool**: We will implement a centralized `Buffer Pool` using the `bytes` crate. 
 2. **Write-Back Strategy**: Data received from **Protocol Workers** will be stored in the Buffer Pool. The **Storage Engine** will only flush this data to disk when:
     - A full **Piece** is received and verified.
     - The total Buffer Pool size exceeds a user-defined limit.
     - A periodic flush timer expires.
-3. **Memory Alignment**: Buffers will be aligned to disk sector boundaries where possible to enable Direct I/O optimizations.
+
+## Resolution (2026-05-27)
+Following an architectural audit (Issue #160), the dedicated `BufferPool` actor was **removed**. 
+
+### Rationale:
+- **Redundancy**: The `bytes` crate (`BytesMut`) already provides atomic reference counting and efficient memory management. Wrapping it in a shallow pool added significant cross-module coupling without measurable performance gains.
+- **Locality**: Workers now allocate `BytesMut` directly. The `StorageEngine` processes these and allows them to fall out of scope for automatic cleanup.
+- **Zero-Copy**: Zero-copy is still achieved by passing the `BytesMut` buffer from the worker to the storage engine via async channels.
 
 ## Alternatives Considered
-- **Direct Writing**: Writing every packet to disk immediately. *Rejected:* Leads to high disk fragmentation and poor performance on slow disks or at high speeds.
-- **System Page Cache**: Relying entirely on the OS page cache. *Rejected:* Doesn't allow us to perform hash verification *before* the data hits the disk, which is a key integrity goal.
+- **Centralized Pool**: (Rejected) High complexity, low reward for the current scale.
+- **System Page Cache**: Relying entirely on the OS page cache. (Rejected) Still need write-back aggregation for sequential I/O.
 
 ## Consequences
-- **Pros**: Reduced disk I/O, better throughput on high-latency storage, and centralized memory management.
-- **Cons**: Risk of data loss for un-flushed buffers during a crash (mitigated by the `.aura` control file tracking).
+- **Pros**: Simplified codebase, reduced coupling, same zero-copy performance.
+- **Cons**: Global memory limits must now be enforced by the `ResourceGovernor` tracking outstanding `BytesMut` allocations rather than a single pool.

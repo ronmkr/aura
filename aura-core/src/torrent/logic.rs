@@ -104,4 +104,31 @@ impl Torrent {
         hash.copy_from_slice(&pieces[start..start + 20]);
         Ok(hash)
     }
+
+    /// Returns a list of byte ranges that correspond to padding files (BEP 47).
+    pub fn get_padding_ranges(&self) -> Vec<crate::task::Range> {
+        let mut ranges = Vec::new();
+        let mut current_offset = 0;
+
+        if let Some(files) = &self.info.files {
+            for file in files {
+                let is_padding = if let Some(ref attr) = file.attr {
+                    attr.contains('p')
+                } else {
+                    // Fallback: many tools use .pad/ as a convention
+                    file.path.first().map(|s| s == ".pad").unwrap_or(false)
+                };
+
+                if is_padding {
+                    ranges.push(crate::task::Range {
+                        start: current_offset,
+                        end: current_offset + file.length,
+                    });
+                }
+                current_offset += file.length;
+            }
+        }
+
+        ranges
+    }
 }

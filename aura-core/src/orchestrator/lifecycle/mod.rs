@@ -1,3 +1,4 @@
+pub mod dispatch;
 pub mod lifecycle_ext;
 pub mod peer_handler;
 
@@ -220,6 +221,7 @@ impl Orchestrator {
                                 total_length: Some(total_length),
                                 name: Some(torrent.info.name.clone()),
                                 range_supported: true,
+                                padding_ranges: torrent.get_padding_ranges(),
                             };
                             let _ = subtask_tx
                                 .send(SubTaskEvent::Matured(id, sub_id, metadata))

@@ -1,5 +1,5 @@
 use crate::worker::Segment;
-use crate::{Error, Result, TaskId};
+use crate::{Result, TaskId};
 use bytes::{Bytes, BytesMut};
 use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
@@ -15,6 +15,7 @@ pub enum StorageRequest {
         path: PathBuf,
         total_length: u64,
         checksum: Option<crate::Checksum>,
+        padding_ranges: Vec<crate::task::Range>,
     },
     Write {
         task_id: TaskId,
@@ -44,6 +45,7 @@ pub struct StorageEngine {
     pub(crate) completion_tx: mpsc::Sender<StorageEvent>,
     pub(crate) task_paths: HashMap<TaskId, PathBuf>,
     pub(crate) task_checksums: HashMap<TaskId, crate::Checksum>,
+    pub(crate) task_padding_ranges: HashMap<TaskId, Vec<crate::task::Range>>,
     pub(crate) handles: lru::LruCache<TaskId, File>,
     pub(crate) pending_writes: HashMap<TaskId, BTreeMap<u64, BytesMut>>,
     pub(crate) dirty_buffers: HashMap<TaskId, Vec<(u64, BytesMut)>>,
@@ -75,6 +77,7 @@ impl StorageEngine {
             completion_tx,
             task_paths: HashMap::new(),
             task_checksums: HashMap::new(),
+            task_padding_ranges: HashMap::new(),
             handles: lru::LruCache::new(std::num::NonZeroUsize::new(256).unwrap()),
             pending_writes: HashMap::new(),
             dirty_buffers: HashMap::new(),
@@ -88,62 +91,6 @@ impl StorageEngine {
 
     pub fn get_db(&self) -> sled::Db {
         self.db.clone()
-    }
-
-    pub async fn register_task(
-        &mut self,
-        id: TaskId,
-        path: PathBuf,
-        _total_length: u64,
-        checksum: Option<crate::Checksum>,
-    ) {
-        if let Some(old_path) = self.task_paths.get(&id) {
-            if *old_path != path {
-                info!(%id, ?old_path, ?path, "Task path updated; moving existing data");
-                let old_part = match super::ops::get_part_path(old_path) {
-                    Ok(p) => p,
-                    Err(_) => return,
-                };
-                let new_part = match super::ops::get_part_path(&path) {
-                    Ok(p) => p,
-                    Err(_) => return,
-                };
-
-                // Close handle if open
-                self.handles.pop(&id);
-
-                if old_part.exists() {
-                    if let Err(e) = tokio::fs::rename(&old_part, &new_part).await {
-                        error!(%id, error = %e, "Failed to move .part file during re-registration");
-                    }
-                }
-            }
-        }
-
-        self.task_paths.insert(id, path);
-        if let Some(c) = checksum {
-            self.task_checksums.insert(id, c);
-        }
-        self.next_offsets.entry(id).or_insert(0);
-        self.pending_writes.entry(id).or_default();
-        self.dirty_buffers.entry(id).or_default();
-        self.dirty_sizes.entry(id).or_insert(0);
-    }
-
-    pub(crate) async fn preallocate_task(&mut self, id: TaskId, length: u64) -> Result<()> {
-        if length == 0 {
-            return Ok(());
-        }
-        let file = self.get_or_open_part_file(id).await?;
-
-        let file_clone = file.try_clone().await?.into_std().await;
-        let length_clone = length;
-        let _ = tokio::task::spawn_blocking(move || {
-            let _ = crate::storage::sys::harden_file(&file_clone, length_clone);
-        })
-        .await;
-
-        file.set_len(length).await.map_err(Error::from)
     }
 
     pub async fn run(mut self) -> Result<()> {
@@ -167,8 +114,9 @@ impl StorageEngine {
                             path,
                             total_length,
                             checksum,
+                            padding_ranges,
                         } => {
-                            self.register_task(task_id, path, total_length, checksum)
+                            self.register_task(task_id, path, total_length, checksum, padding_ranges)
                                 .await;
                             if let Err(e) = self.preallocate_task(task_id, total_length).await {
                                 error!(%task_id, error = %e, "Failed to pre-allocate file");
@@ -208,49 +156,11 @@ impl StorageEngine {
                             let _ = self.db.flush();
                         }
                         StorageRequest::Complete(task_id) => {
-                            if let Err(e) = self.flush_all_pending(task_id).await {
-                                error!(%task_id, error = %e, "Failed to flush pending writes on completion");
-                            }
-
-                            // Execute all queued I/O tasks for this task synchronously before verification
-                            let tasks = self.scheduler.extract_all_for_task(task_id);
-                            for task in tasks {
-                                if let Err(e) = self.execute_io_task(task).await {
-                                    error!(%task_id, error = %e, "Failed to execute IO task on completion");
-                                }
-                            }
-
-                            // Flush all buffered data to disk and update metadata of the .part file
-                            if let Some(file) = self.handles.get_mut(&task_id) {
-                                if let Err(e) = file.sync_all().await {
-                                    error!(%task_id, error = %e, "Failed to sync file data on completion");
-                                }
-                            }
-
-                            // Close the write handle before verification to ensure all data is committed
-                            // and to allow clean read-only access.
-                            self.handles.pop(&task_id);
-
-                            // Perform integrity verification if a checksum was provided
-                            if let Err(e) = self.verify_checksum(task_id).await {
-                                error!(%task_id, error = %e, "Integrity verification failed");
-                                let _ = self
-                                    .completion_tx
-                                    .send(StorageEvent::Error(task_id, e.to_string()))
-                                    .await;
-                                continue;
-                            }
-
                             if let Err(e) = self.handle_complete(task_id).await {
                                 error!(%task_id, error = %e, "Failed to complete task");
                                 let _ = self
                                     .completion_tx
                                     .send(StorageEvent::Error(task_id, e.to_string()))
-                                    .await;
-                            } else {
-                                let _ = self
-                                    .completion_tx
-                                    .send(StorageEvent::Completed(task_id))
                                     .await;
                             }
                         }
@@ -280,4 +190,76 @@ impl StorageEngine {
 
         Ok(())
     }
+}
+
+pub(crate) fn get_non_padding_subranges_impl(
+    padding_ranges: &[crate::task::Range],
+    offset: u64,
+    length: u64,
+) -> Vec<crate::task::Range> {
+    if padding_ranges.is_empty() {
+        return vec![crate::task::Range {
+            start: offset,
+            end: offset + length,
+        }];
+    }
+
+    let mut current_offset = offset;
+    let end_offset = offset + length;
+    let mut result = Vec::new();
+
+    while current_offset < end_offset {
+        // Find the next padding range that overlaps with [current_offset, end_offset)
+        let next_pad = padding_ranges
+            .iter()
+            .filter(|r| r.end > current_offset && r.start < end_offset)
+            .min_by_key(|r| r.start);
+
+        match next_pad {
+            Some(pad) => {
+                if pad.start > current_offset {
+                    // There's a gap of real data before the padding starts
+                    result.push(crate::task::Range {
+                        start: current_offset,
+                        end: pad.start,
+                    });
+                }
+                // Skip the padding part
+                current_offset = pad.end;
+            }
+            None => {
+                // No more overlapping padding ranges
+                result.push(crate::task::Range {
+                    start: current_offset,
+                    end: end_offset,
+                });
+                break;
+            }
+        }
+    }
+    result
+}
+
+/// Identifies the sub-ranges of a buffer that ARE padding and should be zeroed out.
+pub(crate) fn get_padding_subranges_impl(
+    padding_ranges: &[crate::task::Range],
+    offset: u64,
+    length: u64,
+) -> Vec<crate::task::Range> {
+    let mut result = Vec::new();
+    let end_offset = offset + length;
+
+    for pad in padding_ranges {
+        // Calculate the intersection of [pad.start, pad.end) and [offset, end_offset)
+        let intersect_start = std::cmp::max(pad.start, offset);
+        let intersect_end = std::cmp::min(pad.end, end_offset);
+
+        if intersect_start < intersect_end {
+            result.push(crate::task::Range {
+                start: intersect_start,
+                end: intersect_end,
+            });
+        }
+    }
+    result
 }

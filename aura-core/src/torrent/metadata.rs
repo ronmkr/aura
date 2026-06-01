@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 pub struct File {
     pub length: u64,
     pub path: Vec<String>,
+    #[serde(default)]
+    pub attr: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

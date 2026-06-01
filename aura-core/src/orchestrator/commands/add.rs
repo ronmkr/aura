@@ -176,6 +176,7 @@ impl Orchestrator {
                 path,
                 total_length: meta_task.total_length,
                 checksum: meta_task.checksum.clone(),
+                padding_ranges: Vec::new(),
             })
             .await;
 

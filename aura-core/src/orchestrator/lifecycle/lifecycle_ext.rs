@@ -1,255 +1,206 @@
-use super::SubTaskEvent;
 use crate::orchestrator::Orchestrator;
-use crate::storage::StorageRequest;
-use crate::task::{DownloadPhase, TaskType};
-use crate::worker::bittorrent::task::BtTask;
-use crate::worker::{ProtocolWorker, Segment};
-use crate::{Error, Result, TaskId};
-use tokio::sync::mpsc;
-use tracing::debug;
+use crate::task::DownloadPhase;
+use crate::{Result, TaskId};
+use tracing::{debug, info};
 
 impl Orchestrator {
-    pub(crate) async fn dispatch_next_ranges(
+    pub(crate) async fn handle_bt_metadata_received(
         &mut self,
         meta_id: TaskId,
         sub_id: TaskId,
+        torrent: crate::torrent::Torrent,
     ) -> Result<()> {
-        tracing::debug!(%meta_id, %sub_id, "Dispatching next ranges");
-        let token = match self.cancellation_tokens.get(&meta_id) {
-            Some(t) => t.clone(),
-            None => return Ok(()),
-        };
+        if let Some(bt_task) = self.get_bt_task(sub_id) {
+            bt_task.state.mature(torrent.clone()).await;
 
-        if token.is_cancelled() {
-            return Ok(());
-        }
-
-        let local_addr = self.resolve_local_addr();
-        let config_arc = self.config.clone();
-        loop {
-            if token.is_cancelled() {
-                break;
-            }
-
-            let meta_task = self
-                .tasks
-                .get_mut(&meta_id)
-                .ok_or(Error::TaskNotFound(meta_id))?;
-
-            if meta_task.phase == DownloadPhase::Error {
-                break;
-            }
-
-            let (uri, ttype, current_concurrency, target_concurrency) = {
-                let sub_task = meta_task
-                    .subtasks
-                    .iter()
-                    .find(|s| s.id == sub_id)
-                    .ok_or_else(|| Error::Task(meta_id, "Subtask not found".to_string()))?;
-                (
-                    sub_task.uri.clone(),
-                    sub_task.task_type.clone(),
-                    sub_task.assigned_ranges.len(),
-                    sub_task.target_concurrency,
-                )
+            let metadata = crate::worker::Metadata {
+                final_uri: format!("magnet:?xt={}", bt_task.state.info_hash.to_magnet_urn()),
+                total_length: Some(torrent.total_length()),
+                name: Some(torrent.info.name.clone()),
+                range_supported: true,
+                padding_ranges: torrent.get_padding_ranges(),
             };
-
-            if current_concurrency >= target_concurrency {
-                break;
-            }
-
-            if ttype == TaskType::BitTorrent {
-                let worker_tx = self
-                    .worker_command_txs
-                    .get(&sub_id)
-                    .cloned()
-                    .unwrap_or_else(|| {
-                        let (tx, _) = tokio::sync::broadcast::channel(1024);
-                        tx
-                    });
-                let my_id = self.peer_id;
-                let bt_task = match meta_task
-                    .extensions
-                    .get("bittorrent")
-                    .and_then(|e| e.clone().as_any_arc().downcast::<BtTask>().ok())
-                {
-                    Some(bt) => bt.clone(),
-                    None => break,
-                };
-
-                let peer_opt = {
-                    let mut registry: tokio::sync::MutexGuard<crate::peer_registry::PeerRegistry> =
-                        bt_task.state.registry.lock().await;
-                    registry.get_peer_to_connect()
-                };
-
-                if let Some(peer) = peer_opt {
-                    let peer_addr = format!("{}:{}", peer.ip, peer.port);
-                    let info_hash = bt_task.state.info_hash;
-                    let proxy = config_arc.load().network.proxy.clone();
-                    let throttler_clone = self.throttler.clone();
-
-                    let storage_tx = self.storage_tx.clone();
-                    let subtask_tx = self.subtask_tx.clone();
-                    let child_token = token.child_token();
-                    self.worker_cancellation_tokens
-                        .insert(sub_id, child_token.clone());
-                    let token_clone = child_token;
-
-                    let dummy_range = crate::task::Range { start: 0, end: 0 };
-                    meta_task.in_flight_ranges.push((sub_id, dummy_range));
-                    if let Some(sub) = meta_task.subtasks.iter_mut().find(|s| s.id == sub_id) {
-                        sub.assigned_ranges.push(dummy_range);
-                    }
-
-                    tracing::debug!(%meta_id, %sub_id, %peer_addr, "Spawning worker for peer");
-
-                    let config_clone = config_arc.clone();
-                    tokio::spawn(async move {
-                        let mut worker = crate::worker::bittorrent::BtWorker::new(
-                            peer_addr.clone(),
-                            info_hash,
-                            [0; 20],
-                            my_id,
-                            proxy,
-                            throttler_clone,
-                            config_clone.load().bittorrent.pex_enabled,
-                        );
-                        worker.local_addr = local_addr;
-
-                        tokio::select! {
-                            _ = token_clone.cancelled() => {}
-                            res = worker.run_loop(
-                                meta_id,
-                                sub_id,
-                                bt_task,
-                                storage_tx,
-                                subtask_tx.clone(),
-                                worker_tx.subscribe(),
-                                token_clone.clone(),
-                            ) => {
-                                if let Err(e) = res {
-                                    tracing::debug!(%meta_id, %sub_id, error = %e, "BtWorker failed");
-                                }
-                                let _ = subtask_tx.send(SubTaskEvent::RangeFinished(meta_id, sub_id, dummy_range)).await;
-                            }
-                        }
-                    });
-                } else {
-                    tracing::debug!(%meta_id, %sub_id, "peer_opt is None, breaking from dispatch_next_ranges");
-                    break;
-                }
-            } else if let Some(range) = meta_task.pick_range_for_subtask(sub_id) {
-                let storage_tx = self.storage_tx.clone();
-                let subtask_tx = self.subtask_tx.clone();
-                let (progress_tx, mut progress_rx) = mpsc::unbounded_channel::<u64>();
-                let child_token = token.child_token();
-                self.worker_cancellation_tokens
-                    .insert(sub_id, child_token.clone());
-                let token_clone = child_token;
-                let config_clone = config_arc.clone();
-                let throttler_clone = self.throttler.clone();
-                let provider_clone = self.credential_provider.clone();
-                let dns_resolver = self.dns_resolver.clone();
-                let hsts_cache = self.hsts_cache.clone();
-
-                let subtask_tx_progress = subtask_tx.clone();
-                let progress_handle = tokio::spawn(async move {
-                    while let Some(bytes) = progress_rx.recv().await {
-                        let _ = subtask_tx_progress
-                            .send(SubTaskEvent::Downloaded(
-                                meta_id,
-                                sub_id,
-                                bytes,
-                                String::new(),
-                            ))
-                            .await;
-                    }
-                });
-
-                tokio::spawn(async move {
-                    let config = config_clone.load();
-                    match ttype {
-                        TaskType::Http => {
-                            tracing::debug!(%meta_id, %sub_id, ?range, "Spawning HTTP worker for range");
-                            let worker = crate::worker::WorkerBuilder::new(uri)
-                                .local_addr(local_addr)
-                                .dns_resolver(dns_resolver)
-                                .user_agent(Some(config.network.user_agent.clone()))
-                                .connect_timeout(Some(config.network.connect_timeout_secs))
-                                .proxy(config.network.proxy.clone())
-                                .retry_count(config.network.http_retry_count)
-                                .retry_delay_secs(config.network.http_retry_delay_secs)
-                                .credential_provider(provider_clone)
-                                .hsts_cache(hsts_cache)
-                                .build_http();
-                            let segment = Segment {
-                                offset: range.start,
-                                length: range.length(),
-                            };
-
-                            tokio::select! {
-                                _ = token_clone.cancelled() => {
-                                }
-                                res = worker.fetch_segment(meta_id, segment, Some(progress_tx), Some(storage_tx.clone()), throttler_clone.clone()) => {
-                                    // Ensure all progress events are forwarded before finishing the range
-                                    let _ = progress_handle.await;
-
-                                    match res {
-                                        Ok(piece) => {
-                                            let _ = storage_tx.send(StorageRequest::Write {
-                                                task_id: meta_id,
-                                                segment: piece.segment,
-                                                data: piece.data,
-                                            }).await;
-                                            let _ = subtask_tx.send(SubTaskEvent::RangeFinished(meta_id, sub_id, range)).await;
-                                        }
-                                        Err(e) => {
-                                            debug!(%meta_id, %sub_id, error = %e, "Range fetch failed");
-                                            let _ = subtask_tx.send(crate::orchestrator::SubTaskEvent::Failed(meta_id, sub_id, e.to_string())).await;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        TaskType::Ftp => {
-                            let worker = crate::worker::WorkerBuilder::new(uri)
-                                .local_addr(local_addr)
-                                .credential_provider(provider_clone)
-                                .build_ftp();
-                            let segment = Segment {
-                                offset: range.start,
-                                length: range.length(),
-                            };
-
-                            tokio::select! {
-                                _ = token_clone.cancelled() => {
-                                }
-                                res = worker.fetch_segment(meta_id, segment, Some(progress_tx), Some(storage_tx.clone()), throttler_clone.clone()) => {
-                                    match res {
-                                        Ok(piece) => {
-                                            let _ = storage_tx.send(StorageRequest::Write {
-                                                task_id: meta_id,
-                                                segment: piece.segment,
-                                                data: piece.data,
-                                            }).await;
-                                            let _ = subtask_tx.send(SubTaskEvent::RangeFinished(meta_id, sub_id, range)).await;
-                                        }
-                                        Err(e) => {
-                                            debug!(%meta_id, %sub_id, error = %e, "Range fetch failed");
-                                            let _ = subtask_tx.send(crate::orchestrator::SubTaskEvent::Failed(meta_id, sub_id, e.to_string())).await;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        _ => {}
-                    }
-                });
-            } else {
-                break;
-            }
+            self.handle_subtask_matured(meta_id, sub_id, metadata)
+                .await?;
         }
         Ok(())
+    }
+
+    pub(crate) async fn handle_subtask_matured(
+        &mut self,
+        meta_id: TaskId,
+        sub_id: TaskId,
+        metadata: crate::worker::Metadata,
+    ) -> Result<()> {
+        if let Some(meta_task) = self.tasks.get_mut(&meta_id) {
+            let mut needs_reregister = false;
+
+            if meta_task.total_length == 0 {
+                meta_task.range_supported = metadata.range_supported;
+                if let Some(len) = metadata.total_length {
+                    info!(%meta_id, %len, "Metadata matured: task initialized");
+                    meta_task.total_length = len;
+                    if metadata.range_supported {
+                        meta_task.generate_ranges(128); // Default 128 segments to allow high concurrency
+                    } else {
+                        info!(%meta_id, "Server does not support Range requests. Falling back to single-stream download.");
+                        meta_task
+                            .pending_ranges
+                            .push(crate::task::Range { start: 0, end: len });
+                    }
+                    needs_reregister = true;
+                } else {
+                    info!(%meta_id, "Metadata matured but total length is unknown. Falling back to single-stream download.");
+                    meta_task.total_length = 0;
+                    meta_task.range_supported = false; // Unknown length implies single stream for now
+                    meta_task.pending_ranges.push(crate::task::Range {
+                        start: 0,
+                        end: u64::MAX,
+                    });
+                    needs_reregister = true;
+                }
+            }
+
+            // Update name if currently unnamed or if server provides a better one (with extension)
+            if let Some(new_name) = metadata.name.clone() {
+                let current_path = std::path::Path::new(&meta_task.name);
+                let new_path = std::path::Path::new(&new_name);
+
+                let current_has_ext = current_path.extension().is_some();
+                let new_has_ext = new_path.extension().is_some();
+
+                let is_better_name = {
+                    let new_guess = mime_guess::from_path(new_path).first();
+                    let current_guess = mime_guess::from_path(current_path).first();
+
+                    new_has_ext
+                        && (!current_has_ext || (new_guess.is_some() && new_guess != current_guess))
+                };
+
+                if meta_task.name == "unnamed" || meta_task.name.is_empty() || is_better_name {
+                    info!(%meta_id, %new_name, "Updating task name from metadata");
+                    meta_task.name = new_name;
+                    needs_reregister = true;
+                }
+            }
+
+            if needs_reregister {
+                // Update storage engine
+                let path = {
+                    let config = self.config.load();
+                    let base_dir = if let Some(ref tid) = meta_task.tenant_id {
+                        if let Some(ctx) = self.tenants.get(tid) {
+                            if let Some(ref root) = ctx.disk_path_root {
+                                root.clone()
+                            } else {
+                                std::path::PathBuf::from(&config.storage.download_dir)
+                            }
+                        } else {
+                            std::path::PathBuf::from(&config.storage.download_dir)
+                        }
+                    } else {
+                        std::path::PathBuf::from(&config.storage.download_dir)
+                    };
+                    self.mapping_engine.resolve_path(meta_task, &base_dir)
+                };
+                let _ = self
+                    .storage_tx
+                    .send(crate::storage::StorageRequest::RegisterTask {
+                        task_id: meta_id,
+                        path,
+                        total_length: meta_task.total_length,
+                        checksum: meta_task.checksum.clone(),
+                        padding_ranges: metadata.padding_ranges.clone(),
+                    })
+                    .await;
+            }
+
+            if let Some(sub_task) = meta_task.subtasks.iter_mut().find(|s| s.id == sub_id) {
+                sub_task.phase = DownloadPhase::Downloading;
+            }
+        }
+
+        let (should_notify, final_uri, total_length, name) =
+            if let Some(meta_task) = self.tasks.get(&meta_id) {
+                (
+                    meta_task.total_length > 0,
+                    metadata.final_uri,
+                    meta_task.total_length,
+                    metadata.name,
+                )
+            } else {
+                (false, String::new(), 0, None)
+            };
+
+        if should_notify {
+            let _ = self
+                .event_tx
+                .send(crate::orchestrator::Event::MetadataResolved {
+                    id: meta_id,
+                    final_uri,
+                    total_length,
+                    name,
+                });
+        }
+
+        self.dispatch_next_ranges(meta_id, sub_id).await
+    }
+
+    pub(crate) async fn handle_range_finished(
+        &mut self,
+        meta_id: TaskId,
+        sub_id: TaskId,
+        range: crate::task::Range,
+    ) -> Result<()> {
+        let mut completed = false;
+        if let Some(meta_task) = self.tasks.get_mut(&meta_id) {
+            // Racing coordination: check if other subtasks were also working on this range
+            let racing_sub_ids: Vec<TaskId> = meta_task
+                .in_flight_ranges
+                .iter()
+                .filter(|(sid, r)| *r == range && *sid != sub_id)
+                .map(|(sid, _)| *sid)
+                .collect();
+
+            if !racing_sub_ids.is_empty() {
+                debug!(%meta_id, ?range, racing = racing_sub_ids.len(), "Range finished; canceling racing workers");
+                for racing_sid in racing_sub_ids {
+                    if let Some(sub) = meta_task.subtasks.iter_mut().find(|s| s.id == racing_sid) {
+                        sub.assigned_ranges.retain(|r| *r != range);
+                    }
+                    if let Some(w_token) = self.worker_cancellation_tokens.remove(&racing_sid) {
+                        w_token.cancel();
+                    }
+                }
+            }
+
+            meta_task.mark_range_complete(sub_id, range);
+
+            if meta_task.is_complete()
+                && meta_task.phase != DownloadPhase::Verifying
+                && meta_task.phase != DownloadPhase::Complete
+            {
+                if meta_task.checksum.is_some() {
+                    info!(%meta_id, "All ranges complete for MetaTask, entering Verifying phase");
+                    meta_task.phase = DownloadPhase::Verifying;
+                } else {
+                    info!(%meta_id, "All ranges complete for MetaTask, entering seeding phase");
+                    meta_task.phase = DownloadPhase::Complete;
+                    if meta_task.seeding_start_time.is_none() {
+                        meta_task.seeding_start_time = Some(chrono::Utc::now());
+                    }
+                }
+                completed = true;
+            }
+        }
+
+        if completed {
+            let _ = self
+                .storage_tx
+                .send(crate::storage::StorageRequest::Complete(meta_id))
+                .await;
+        }
+
+        self.dispatch_next_ranges(meta_id, sub_id).await
     }
 }
