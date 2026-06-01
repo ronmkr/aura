@@ -219,31 +219,8 @@ impl super::BtWorker {
                     };
 
                     // Check if we need to request block hashes for this file
-                    if let Some(root) = torrent.get_pieces_root_for_piece(piece_idx) {
-                        if !self.requested_hashes.contains(&root) {
-                            // Check if already in DB
-                            let mut key = Vec::with_capacity(36);
-                            key.extend_from_slice(&root);
-                            key.extend_from_slice(&0u32.to_be_bytes()); // Layer 0 (leaves)
-
-                            let in_db = task.state.db.contains_key(&key).unwrap_or(false);
-
-                            if !in_db {
-                                debug!(addr = %self.peer_addr, %piece_idx, "Requesting block hashes for v2 file");
-                                // Request all leaf hashes for this file
-                                framed
-                                    .send(PeerMessage::HashRequest {
-                                        pieces_root: root,
-                                        index: 0,
-                                        base: 0,
-                                        length: 0, // BEP 52: 0 means all hashes in the layer
-                                        proof_layers: 0,
-                                    })
-                                    .await?;
-                                self.requested_hashes.insert(root);
-                            }
-                        }
-                    }
+                    self.check_and_request_hashes(framed, task, piece_idx)
+                        .await?;
 
                     info!(addr = %self.peer_addr, %piece_idx, "Starting piece download");
                     self.current_piece = Some(piece_idx);

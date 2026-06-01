@@ -6,9 +6,8 @@ use crate::worker::bittorrent::task::BtTask;
 use crate::{Result, TaskId};
 use bytes::BytesMut;
 use futures_util::SinkExt;
-use sha2::Digest;
 use tokio_util::codec::Framed;
-use tracing::{debug, error};
+use tracing::debug;
 
 impl BtWorker {
     #[allow(clippy::too_many_arguments)]
@@ -271,30 +270,7 @@ impl BtWorker {
                 self.throttler.acquire_download(meta_id, len as u64).await;
 
                 // Block-level Merkle verification for v2
-                let mut corrupted = false;
-                let torrent_guard = task.state.torrent.lock().await;
-                if let Some(ref torrent) = *torrent_guard {
-                    if torrent.info.meta_version == Some(2) {
-                        let block_idx_in_piece = (begin / 16384) as usize;
-                        if let Ok(expected_block_hash) = torrent.block_hash_v2(
-                            index as usize,
-                            block_idx_in_piece,
-                            Some(&task.state.db),
-                        ) {
-                            let mut hasher = sha2::Sha256::new();
-                            hasher.update(&block);
-                            let actual_block_hash: [u8; 32] = hasher.finalize().into();
-
-                            if actual_block_hash != expected_block_hash {
-                                error!(addr = %peer_addr, %index, begin, "Block hash mismatch! Discarding block.");
-                                corrupted = true;
-                            }
-                        }
-                    }
-                }
-                drop(torrent_guard);
-
-                if corrupted {
+                if !self.verify_block_v2(task, index, begin, &block).await? {
                     // Reset piece download state to force re-request
                     if let Some(ref mut guard) = self.active_guard {
                         guard.complete();
