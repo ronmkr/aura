@@ -30,6 +30,21 @@ pub enum PeerMessage {
         id: u8,
         payload: Bytes,
     },
+    HashRequest {
+        pieces_root: [u8; 32],
+        index: u32,
+        base: u32,
+        length: u32,
+        proof_layers: u32,
+    },
+    Hashes {
+        pieces_root: [u8; 32],
+        index: u32,
+        base: u32,
+        length: u32,
+        proof_layers: u32,
+        hashes: Vec<[u8; 32]>,
+    },
 }
 
 impl PeerMessage {
@@ -104,6 +119,40 @@ impl PeerMessage {
                 buf.put_u8(*id);
                 buf.extend_from_slice(payload);
             }
+            PeerMessage::HashRequest {
+                pieces_root,
+                index,
+                base,
+                length,
+                proof_layers,
+            } => {
+                buf.put_u32(49);
+                buf.put_u8(21);
+                buf.extend_from_slice(pieces_root);
+                buf.put_u32(*index);
+                buf.put_u32(*base);
+                buf.put_u32(*length);
+                buf.put_u32(*proof_layers);
+            }
+            PeerMessage::Hashes {
+                pieces_root,
+                index,
+                base,
+                length,
+                proof_layers,
+                hashes,
+            } => {
+                buf.put_u32(49 + (hashes.len() * 32) as u32);
+                buf.put_u8(22);
+                buf.extend_from_slice(pieces_root);
+                buf.put_u32(*index);
+                buf.put_u32(*base);
+                buf.put_u32(*length);
+                buf.put_u32(*proof_layers);
+                for hash in hashes {
+                    buf.extend_from_slice(hash);
+                }
+            }
         }
         buf
     }
@@ -142,6 +191,43 @@ impl PeerMessage {
                 Ok(PeerMessage::Extended {
                     id: extended_id,
                     payload: Bytes::copy_from_slice(data_ref),
+                })
+            }
+            21 => {
+                let mut pieces_root = [0u8; 32];
+                data_ref.copy_to_slice(&mut pieces_root);
+                let index = data_ref.get_u32();
+                let base = data_ref.get_u32();
+                let length = data_ref.get_u32();
+                let proof_layers = data_ref.get_u32();
+                Ok(PeerMessage::HashRequest {
+                    pieces_root,
+                    index,
+                    base,
+                    length,
+                    proof_layers,
+                })
+            }
+            22 => {
+                let mut pieces_root = [0u8; 32];
+                data_ref.copy_to_slice(&mut pieces_root);
+                let index = data_ref.get_u32();
+                let base = data_ref.get_u32();
+                let length = data_ref.get_u32();
+                let proof_layers = data_ref.get_u32();
+                let mut hashes = Vec::new();
+                while data_ref.has_remaining() {
+                    let mut hash = [0u8; 32];
+                    data_ref.copy_to_slice(&mut hash);
+                    hashes.push(hash);
+                }
+                Ok(PeerMessage::Hashes {
+                    pieces_root,
+                    index,
+                    base,
+                    length,
+                    proof_layers,
+                    hashes,
                 })
             }
             _ => Err(Error::Protocol(format!("Unknown message ID: {}", id))),

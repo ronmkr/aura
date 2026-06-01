@@ -35,6 +35,7 @@ pub struct BtWorker {
     pub ut_pex_id: Option<u8>,
     pub pex_enabled: bool,
     pub last_sent_pex_peers: std::collections::HashSet<std::net::SocketAddr>,
+    pub requested_hashes: std::collections::HashSet<[u8; 32]>,
 }
 
 impl BtWorker {
@@ -67,6 +68,7 @@ impl BtWorker {
             ut_pex_id: None,
             pex_enabled,
             last_sent_pex_peers: std::collections::HashSet::new(),
+            requested_hashes: std::collections::HashSet::new(),
         }
     }
 

@@ -6,8 +6,9 @@ use crate::worker::bittorrent::task::BtTask;
 use crate::{Result, TaskId};
 use bytes::BytesMut;
 use futures_util::SinkExt;
+use sha2::Digest;
 use tokio_util::codec::Framed;
-use tracing::debug;
+use tracing::{debug, error};
 
 impl BtWorker {
     #[allow(clippy::too_many_arguments)]
@@ -269,6 +270,43 @@ impl BtWorker {
                 // Admission Control: Wait for bandwidth tokens before processing the piece block
                 self.throttler.acquire_download(meta_id, len as u64).await;
 
+                // Block-level Merkle verification for v2
+                let mut corrupted = false;
+                let torrent_guard = task.state.torrent.lock().await;
+                if let Some(ref torrent) = *torrent_guard {
+                    if torrent.info.meta_version == Some(2) {
+                        let block_idx_in_piece = (begin / 16384) as usize;
+                        if let Ok(expected_block_hash) = torrent.block_hash_v2(
+                            index as usize,
+                            block_idx_in_piece,
+                            Some(&task.state.db),
+                        ) {
+                            let mut hasher = sha2::Sha256::new();
+                            hasher.update(&block);
+                            let actual_block_hash: [u8; 32] = hasher.finalize().into();
+
+                            if actual_block_hash != expected_block_hash {
+                                error!(addr = %peer_addr, %index, begin, "Block hash mismatch! Discarding block.");
+                                corrupted = true;
+                            }
+                        }
+                    }
+                }
+                drop(torrent_guard);
+
+                if corrupted {
+                    // Reset piece download state to force re-request
+                    if let Some(ref mut guard) = self.active_guard {
+                        guard.complete();
+                    }
+                    self.active_guard = None;
+                    self.current_piece = None;
+                    self.bytes_received = 0;
+                    self.bytes_requested = 0;
+                    self.piece_buffer.clear();
+                    return Ok(());
+                }
+
                 self.piece_buffer[begin as usize..begin as usize + len].copy_from_slice(&block);
                 self.bytes_received += len as u64;
 
@@ -293,6 +331,33 @@ impl BtWorker {
                     )
                     .await?;
                 }
+            }
+            PeerMessage::Hashes {
+                pieces_root,
+                index,
+                base: _,
+                length: _,
+                proof_layers: _,
+                hashes,
+            } => {
+                debug!(addr = %peer_addr, ?pieces_root, index, "Received Merkle hashes from peer");
+                let _ = storage_tx
+                    .send(StorageRequest::StoreMerkleLayer {
+                        pieces_root,
+                        index,
+                        hashes,
+                    })
+                    .await;
+            }
+            PeerMessage::HashRequest {
+                pieces_root,
+                index: _,
+                base: _,
+                length: _,
+                proof_layers: _,
+            } => {
+                // TODO: Implement serving hashes to peers (Seed Mode)
+                debug!(addr = %peer_addr, ?pieces_root, "Peer requested Merkle hashes (unsupported)");
             }
             _ => {}
         }

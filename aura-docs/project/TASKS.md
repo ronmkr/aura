@@ -8,7 +8,11 @@ All active development tasks, technical debt, and feature requests are managed e
 - [x] **docs: Synchronize ARCHITECTURE.md with source tree** (Issue #186) `[completed, module:docs]`
 - [ ] **feat: Graduate VPN Providers to full Controller Mode** (Issue #185) `[module:vpn, priority:high]`
 - [ ] **chore: Decompose monolithic files to enforce 400-line limit** (Issue #184) `[module:storage, priority:moderate]`
+- [ ] **chore: Refactor FTPS to use rustls (ADR 0048 parity)** (Issue #189) `[module:worker, priority:moderate]`
+- [ ] **chore: Add automated CI check for 400-line file limit** (Issue #188) `[module:ci, priority:moderate]`
+- [ ] **feat: Implement Allocation Prober diagnostic tool** (Issue #191) `[module:storage, priority:low]`
 - [ ] **feat: implement actual Recursive Crawler (Wget parity)** (Issue #65)
+- [ ] **feat: Implement i18n Architecture (ADR 0042)** (Issue #190) `[module:i18n, priority:low]`
 - [x] **feat: Dual-Stack Asynchronous DNS Racing (Happy Eyeballs)** (Issue #25) `[status:completed, priority:moderate, module:network]`
 - [x] **infra: CI Docs Deployment** (Issue #134) `[enhancement, priority:moderate, infra]`
 - [ ] **Feat: Respect BEP 12 tracker tier ordering** (Issue #128) `[enhancement, module:core, priority:low]`

@@ -109,3 +109,74 @@ fn test_flatten_v2_files() {
     assert_eq!(f2.length, 200);
     assert_eq!(f2.pieces_root.as_ref().unwrap(), &vec![2; 32]);
 }
+
+#[test]
+fn test_compute_piece_merkle_root() {
+    let data = vec![0u8; 32768]; // 2 blocks of 16KB
+    let root = Torrent::compute_piece_merkle_root(&data);
+    assert_ne!(root, [0; 32]);
+
+    let data2 = vec![0u8; 16384]; // 1 block
+    let root2 = Torrent::compute_piece_merkle_root(&data2);
+    assert_ne!(root2, [0; 32]);
+    assert_ne!(root, root2);
+}
+
+#[test]
+fn test_block_hash_v2_lookup() {
+    use serde_bencode::value::Value;
+    use std::collections::HashMap;
+
+    let pieces_root = [1u8; 32];
+    let mut file_props = HashMap::new();
+    file_props.insert(b"length".to_vec(), Value::Int(32768));
+    file_props.insert(b"pieces root".to_vec(), Value::Bytes(pieces_root.to_vec()));
+
+    let mut file_entry = HashMap::new();
+    file_entry.insert(b"".to_vec(), Value::Dict(file_props));
+
+    let mut file_tree = HashMap::new();
+    file_tree.insert(b"file1.bin".to_vec(), Value::Dict(file_entry));
+
+    let info = Info {
+        name: "test".to_string(),
+        piece_length: 32768,
+        pieces: None,
+        length: None,
+        files: None,
+        meta_version: Some(2),
+        file_tree: Some(Value::Dict(file_tree)),
+    };
+
+    let torrent = Torrent {
+        announce: "http://tracker.com/announce".to_string(),
+        info,
+        announce_list: None,
+        comment: None,
+        created_by: None,
+        creation_date: None,
+        piece_layers: None,
+    };
+
+    // Setup temporary sled DB
+    let db = sled::Config::new().temporary(true).open().unwrap();
+    let block0_hash = [2u8; 32];
+    let block1_hash = [3u8; 32];
+
+    let mut key = Vec::with_capacity(36);
+    key.extend_from_slice(&pieces_root);
+    key.extend_from_slice(&0u32.to_be_bytes()); // Layer 0
+
+    let mut data = Vec::with_capacity(64);
+    data.extend_from_slice(&block0_hash);
+    data.extend_from_slice(&block1_hash);
+
+    db.insert(key, data).unwrap();
+
+    // Verify lookup
+    let h0 = torrent.block_hash_v2(0, 0, Some(&db)).unwrap();
+    assert_eq!(h0, block0_hash);
+
+    let h1 = torrent.block_hash_v2(0, 1, Some(&db)).unwrap();
+    assert_eq!(h1, block1_hash);
+}

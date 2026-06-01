@@ -39,3 +39,32 @@ fn test_piece_message_serialization() {
     let decoded = codec.decode(&mut buf).unwrap().unwrap();
     assert_eq!(msg, decoded);
 }
+
+#[test]
+fn test_hash_request_serialization() {
+    let msg = PeerMessage::HashRequest {
+        pieces_root: [1u8; 32],
+        index: 0,
+        base: 0,
+        length: 10,
+        proof_layers: 0,
+    };
+    let serialized = msg.serialize();
+    let deserialized = PeerMessage::deserialize(&serialized[4..]).unwrap();
+    assert_eq!(msg, deserialized);
+}
+
+#[test]
+fn test_hashes_message_serialization() {
+    let msg = PeerMessage::Hashes {
+        pieces_root: [1u8; 32],
+        index: 0,
+        base: 0,
+        length: 2,
+        proof_layers: 0,
+        hashes: vec![[2u8; 32], [3u8; 32]],
+    };
+    let serialized = msg.serialize();
+    let deserialized = PeerMessage::deserialize(&serialized[4..]).unwrap();
+    assert_eq!(msg, deserialized);
+}

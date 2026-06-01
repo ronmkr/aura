@@ -57,9 +57,17 @@ impl BtTaskState {
 
         // If v2, persist piece layers to DB
         if torrent.info.meta_version == Some(2) {
+            let layer_index = torrent.get_piece_layer_index();
             if let Some(serde_bencode::value::Value::Dict(dict)) = &torrent.piece_layers {
                 for (root, hashes) in dict {
                     if let serde_bencode::value::Value::Bytes(hash_bytes) = hashes {
+                        // 1. Store under composite key (pieces_root + index)
+                        let mut key = Vec::with_capacity(36);
+                        key.extend_from_slice(root);
+                        key.extend_from_slice(&layer_index.to_be_bytes());
+                        let _ = self.db.insert(key, hash_bytes.clone());
+
+                        // 2. Fallback to legacy key (pieces_root only)
                         let _ = self.db.insert(root, hash_bytes.clone());
                     }
                 }
