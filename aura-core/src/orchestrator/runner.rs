@@ -43,33 +43,66 @@ impl Orchestrator {
         tokio::spawn(async move {
             let mut interval =
                 tokio::time::interval(std::time::Duration::from_secs(vpn_check_secs));
+            let mut last_status = crate::vpn::VpnStatus::Disconnected;
+
             loop {
                 interval.tick().await;
 
-                let force_tunnel = config_monitor.load().vpn.force_tunnel;
+                let config = config_monitor.load();
+                let force_tunnel = config.vpn.force_tunnel;
+                let auto_connect = config.vpn.auto_connect;
 
                 // Pick up the latest provider
                 let vpn_opt = vpn_watch_rx.borrow().clone();
 
                 if let Some(vpn) = vpn_opt {
-                    if force_tunnel {
-                        match vpn.status().await {
-                            Ok(crate::vpn::VpnStatus::Disconnected)
-                            | Ok(crate::vpn::VpnStatus::Error(_)) => {
-                                tracing::warn!(
+                    match vpn.status().await {
+                        Ok(status) => {
+                            if status != last_status {
+                                tracing::info!(
                                     provider = %vpn.name(),
-                                    interface = ?vpn.interface(),
-                                    "VPN Kill-switch triggered! Connection lost. Stopping all tasks."
+                                    from = ?last_status,
+                                    to = ?status,
+                                    "VPN status transition detected"
                                 );
-                                if subtask_tx_monitor
-                                    .send(SubTaskEvent::KillSwitch)
-                                    .await
-                                    .is_err()
-                                {
-                                    break;
+                                last_status = status.clone();
+                            }
+
+                            match status {
+                                crate::vpn::VpnStatus::Disconnected
+                                | crate::vpn::VpnStatus::Error(_) => {
+                                    if force_tunnel {
+                                        tracing::warn!(
+                                            provider = %vpn.name(),
+                                            interface = ?vpn.interface(),
+                                            "VPN Kill-switch triggered! Connection lost. Stopping all tasks."
+                                        );
+                                        if subtask_tx_monitor
+                                            .send(SubTaskEvent::KillSwitch)
+                                            .await
+                                            .is_err()
+                                        {
+                                            break;
+                                        }
+                                    }
+
+                                    if auto_connect {
+                                        tracing::info!(provider = %vpn.name(), "VPN disconnected, attempting auto-connect...");
+                                        if let Err(e) = vpn.connect().await {
+                                            tracing::error!(provider = %vpn.name(), error = %e, "VPN auto-connect failed");
+                                        }
+                                    }
+                                }
+                                crate::vpn::VpnStatus::Connecting => {
+                                    tracing::debug!(provider = %vpn.name(), "VPN is connecting...");
+                                }
+                                crate::vpn::VpnStatus::Connected => {
+                                    // Connection secure
                                 }
                             }
-                            _ => {}
+                        }
+                        Err(e) => {
+                            tracing::error!(provider = %vpn.name(), error = %e, "Failed to query VPN status");
                         }
                     }
                 }
