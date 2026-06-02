@@ -6,7 +6,7 @@ All active development tasks, technical debt, and feature requests are managed e
 
 - [x] **feat: Implement Bit-Bucket virtual files (BEP 47)** (Issue #183) `[completed, module:storage]`
 - [x] **docs: Synchronize ARCHITECTURE.md with source tree** (Issue #186) `[completed, module:docs]`
-- [ ] **feat: Graduate VPN Providers to full Controller Mode** (Issue #185) `[module:vpn, priority:high]`
+- [x] **feat: Graduate VPN Providers to full Controller Mode** (Issue #185) `[completed, module:vpn, priority:high]`
 - [x] **chore: Decompose monolithic files to enforce 400-line limit** (Issue #184) `[completed, module:storage]`
 - [ ] **chore: Refactor FTPS to use rustls (ADR 0048 parity)** (Issue #189) `[module:worker, priority:moderate]`
 - [ ] **chore: Add automated CI check for 400-line file limit** (Issue #188) `[module:ci, priority:moderate]`
