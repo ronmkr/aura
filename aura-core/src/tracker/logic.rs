@@ -21,6 +21,8 @@ pub struct TrackerClient {
     pub(crate) local_addr: Option<std::net::IpAddr>,
     pub(crate) _user_agent: Option<String>,
     pub(crate) proxy: Option<String>,
+    pub(crate) tracker_tiers:
+        std::sync::Mutex<std::collections::HashMap<[u8; 20], Vec<Vec<String>>>>,
 }
 
 impl TrackerClient {
@@ -62,54 +64,148 @@ impl TrackerClient {
             local_addr,
             _user_agent: user_agent,
             proxy,
+            tracker_tiers: std::sync::Mutex::new(std::collections::HashMap::new()),
         }
     }
 
     pub async fn announce(&self, torrent: &Torrent) -> Result<Vec<Peer>> {
-        let mut trackers = Vec::new();
-        trackers.push(torrent.announce.clone());
-        if let Some(announce_list) = &torrent.announce_list {
-            for list in announce_list {
-                for url in list {
-                    if !trackers.contains(url) {
-                        trackers.push(url.clone());
+        let info_hash = if let Some(h2) = torrent.info_hash_v2()? {
+            let mut truncated = [0u8; 20];
+            truncated.copy_from_slice(&h2[..20]);
+            truncated
+        } else {
+            torrent
+                .info_hash_v1()?
+                .ok_or_else(|| Error::Protocol("No info hash available".to_string()))?
+        };
+
+        // 1. Get or initialize our tiers
+        let tiers = {
+            let mut map = self.tracker_tiers.lock().unwrap();
+            if let Some(cached) = map.get(&info_hash) {
+                cached.clone()
+            } else {
+                let mut seen = std::collections::HashSet::new();
+                let mut parsed_tiers: Vec<Vec<String>> = Vec::new();
+                if let Some(announce_list) = &torrent.announce_list {
+                    for tier in announce_list {
+                        let mut filtered_tier = Vec::new();
+                        for url in tier {
+                            if !url.is_empty() && seen.insert(url.clone()) {
+                                filtered_tier.push(url.clone());
+                            }
+                        }
+                        if !filtered_tier.is_empty() {
+                            parsed_tiers.push(filtered_tier);
+                        }
+                    }
+                }
+
+                if parsed_tiers.is_empty()
+                    && !torrent.announce.is_empty()
+                    && seen.insert(torrent.announce.clone())
+                {
+                    parsed_tiers.push(vec![torrent.announce.clone()]);
+                }
+
+                // Shuffle each tier (BEP 12)
+                use rand::seq::SliceRandom;
+                let mut rng = rand::rng();
+                for tier in &mut parsed_tiers {
+                    tier.shuffle(&mut rng);
+                }
+
+                map.insert(info_hash, parsed_tiers.clone());
+                parsed_tiers
+            }
+        };
+
+        if tiers.is_empty() {
+            return Err(Error::Protocol("No tracker URLs available".to_string()));
+        }
+
+        let mut all_peers = Vec::new();
+        let mut overall_success = false;
+
+        // Keep track of which trackers succeeded per tier to promote them later
+        let mut successful_trackers_by_tier = Vec::new();
+
+        for tier in &tiers {
+            if tier.is_empty() {
+                successful_trackers_by_tier.push(Vec::new());
+                continue;
+            }
+
+            // Contact all trackers within this tier in parallel (BEP 12)
+            let mut futures = Vec::new();
+            for url in tier {
+                futures.push(self.announce_single(url.clone(), torrent));
+            }
+
+            let results = join_all(futures).await;
+            let mut tier_successful_urls = Vec::new();
+            let mut tier_success = false;
+
+            for (i, res) in results.into_iter().enumerate() {
+                let url = &tier[i];
+                match res {
+                    Ok(peers) => {
+                        tracing::info!(url = %url, count = peers.len(), "Tracker returned peers");
+                        all_peers.extend(peers);
+                        tier_successful_urls.push(url.clone());
+                        tier_success = true;
+                        overall_success = true;
+                    }
+                    Err(e) => {
+                        tracing::debug!(url = %url, error = %e, "Tracker announce failed");
                     }
                 }
             }
-        }
 
-        let mut futures = Vec::new();
-        for url in &trackers {
-            futures.push(self.announce_single(url.clone(), torrent));
-        }
+            successful_trackers_by_tier.push(tier_successful_urls);
 
-        let results = join_all(futures).await;
-        let mut all_peers = Vec::new();
-        let mut success = false;
-
-        for (i, res) in results.into_iter().enumerate() {
-            let url = &trackers[i];
-            match res {
-                Ok(peers) => {
-                    tracing::info!(url = %url, count = peers.len(), "Tracker returned peers");
-                    all_peers.extend(peers);
-                    success = true;
-                }
-                Err(e) => {
-                    tracing::debug!(url = %url, error = %e, "Tracker announce failed");
-                }
+            // BEP 12: If we successfully connected to a tracker in this tier,
+            // we stop and do not try subsequent tiers.
+            if tier_success {
+                break;
             }
         }
 
-        if success {
+        if overall_success {
+            // Update the tier order: move successful trackers to the front of their tier (BEP 12)
+            let mut map = self.tracker_tiers.lock().unwrap();
+            if let Some(cached_tiers) = map.get_mut(&info_hash) {
+                for (tier_idx, successful_urls) in
+                    successful_trackers_by_tier.into_iter().enumerate()
+                {
+                    if tier_idx < cached_tiers.len() && !successful_urls.is_empty() {
+                        let tier = &mut cached_tiers[tier_idx];
+                        let mut new_tier = Vec::with_capacity(tier.len());
+                        // Add successful ones
+                        for url in &successful_urls {
+                            if tier.contains(url) {
+                                new_tier.push(url.clone());
+                            }
+                        }
+                        // Add others
+                        for url in tier.iter() {
+                            if !successful_urls.contains(url) {
+                                new_tier.push(url.clone());
+                            }
+                        }
+                        *tier = new_tier;
+                    }
+                }
+            }
+
             tracing::info!(
                 total = all_peers.len(),
-                "Discovered peers from all trackers"
+                "Discovered peers from successful tracker tier(s)"
             );
             Ok(all_peers)
         } else {
             Err(Error::Protocol(
-                "All tracker announcements failed".to_string(),
+                "All tracker announcements failed across all tiers".to_string(),
             ))
         }
     }

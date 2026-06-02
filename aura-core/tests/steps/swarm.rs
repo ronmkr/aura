@@ -17,7 +17,7 @@ async fn when_add_task(world: &mut AuraWorld) {
     }
 }
 
-#[then(expr = "the Engine should enter {string} phase")]
+#[then(expr = "the engine should enter {string} phase")]
 async fn then_engine_enter_phase(world: &mut AuraWorld, _phase: String) {
     if let Some(engine) = &world.engine {
         if let Some(_id) = world.last_task_id {
