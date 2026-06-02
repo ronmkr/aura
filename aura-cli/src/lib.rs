@@ -2,6 +2,8 @@ use aura_core::orchestrator::{Engine, Event};
 use aura_core::task::{FollowOnAction, TaskType};
 use aura_core::{Result, TaskId};
 
+pub mod commands;
+
 use indicatif::{ProgressBar, ProgressStyle};
 use rand::RngExt;
 

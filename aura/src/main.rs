@@ -37,6 +37,12 @@ enum Commands {
     },
     /// Start the Terminal UI dashboard
     Tui,
+    /// Probe the optimal allocation strategy for a given directory
+    Probe {
+        /// The directory to probe
+        #[arg(default_value = ".")]
+        dir: String,
+    },
 }
 
 #[tokio::main]
@@ -74,6 +80,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some(Commands::Tui) => {
             // Run TUI
             aura_tui::run().await?;
+        }
+        Some(Commands::Probe { dir }) => {
+            aura_cli::commands::probe::run_probe(Some(dir)).await?;
         }
         None => {
             // Default CLI behavior

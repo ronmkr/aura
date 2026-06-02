@@ -52,15 +52,43 @@ impl StorageEngine {
         if length == 0 {
             return Ok(());
         }
+
+        let path = self.task_paths.get(&id).unwrap().clone();
+        let dir = path
+            .parent()
+            .unwrap_or(std::path::Path::new("."))
+            .to_path_buf();
+
+        // Dynamic Allocation Prober Integration (ADR 0052)
+        let method = if let Some(&m) = self.cached_allocations.get(&dir) {
+            m
+        } else {
+            let m = match crate::storage::prober::AllocationProber::probe(&dir).await {
+                Ok((m, _dur)) => m,
+                Err(_) => crate::storage::prober::AllocationMethod::Sparse, // fallback
+            };
+            self.cached_allocations.insert(dir.clone(), m);
+            m
+        };
+
         let file: &mut File = self.get_or_open_part_file(id).await?;
 
-        let file_clone = file.try_clone().await?.into_std().await;
-        let length_clone = length;
-        let _ = tokio::task::spawn_blocking(move || {
-            let _ = crate::storage::sys::harden_file(&file_clone, length_clone);
-        })
-        .await;
+        match method {
+            crate::storage::prober::AllocationMethod::Sparse
+            | crate::storage::prober::AllocationMethod::ZeroFill => {
+                file.set_len(length).await.map_err(Error::from)?;
+            }
+            crate::storage::prober::AllocationMethod::Fallocate => {
+                let file_clone = file.try_clone().await?.into_std().await;
+                let length_clone = length;
+                let _ = tokio::task::spawn_blocking(move || {
+                    let _ = crate::storage::sys::harden_file(&file_clone, length_clone);
+                })
+                .await;
+                file.set_len(length).await.map_err(Error::from)?;
+            }
+        }
 
-        file.set_len(length).await.map_err(Error::from)
+        Ok(())
     }
 }

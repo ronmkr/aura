@@ -151,13 +151,18 @@ impl StorageEngine {
             self.next_offsets.insert(id, current_offset);
 
             // Flush if we hit the write buffer threshold
-            let threshold = self
+            let mut threshold = self
                 .config
                 .as_ref()
                 .map(|cfg: &Arc<arc_swap::ArcSwap<crate::Config>>| {
                     cfg.load().storage.write_buffer_kb as usize * 1024
                 })
                 .unwrap_or(4_194_304); // Default to 4MB if no config provided
+
+            // ADR 0021: Automatically increase the sequential write buffer size for high-latency network storage
+            if self.network_shares.contains(&id) {
+                threshold *= 4;
+            }
 
             if let Some(&size) = self.dirty_sizes.get(&id) {
                 if size >= threshold {
@@ -291,6 +296,10 @@ impl StorageEngine {
                 .truncate(false)
                 .open(&part_path)
                 .await?;
+
+            if crate::storage::sys::is_network_share(&file) {
+                self.network_shares.insert(id);
+            }
 
             crate::storage::sys::apply_fadvise_sequential(&file);
 

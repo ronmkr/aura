@@ -10,9 +10,9 @@ pub(crate) fn harden_file(file: &File, length: u64) -> Result<()> {
     unsafe {
         let mut stat: libc::statfs = std::mem::zeroed();
         if libc::fstatfs(fd, &mut stat) == 0 {
+            let f_type = stat.f_type as i64;
             // BTRFS_SUPER_MAGIC = 0x9123683E
             // ZFS_SUPER_MAGIC = 0x2FC12FC1
-            let f_type = stat.f_type as i64;
             if f_type == 0x9123683E || f_type == 0x2FC12FC1 {
                 // Disable COW (FS_NOCOW_FL)
                 let mut flags: libc::c_long = 0;
@@ -27,6 +27,12 @@ pub(crate) fn harden_file(file: &File, length: u64) -> Result<()> {
                 // Skip fallocate on COW filesystems as per ADR 0035
                 return Ok(());
             }
+
+            // Check for network shares to skip fallocate (ADR 0021)
+            // NFS = 0x6969, SMB = 0x517B, CIFS = 0xFF534D42
+            if f_type == 0x6969 || f_type == 0x517B || f_type == 0xFF534D42 {
+                return Ok(());
+            }
         }
 
         // Standard ext4/xfs: Fallocate for actual block allocation
@@ -36,10 +42,69 @@ pub(crate) fn harden_file(file: &File, length: u64) -> Result<()> {
     Ok(())
 }
 
+#[cfg(target_os = "linux")]
+pub(crate) fn is_network_share_fd(fd: std::os::unix::io::RawFd) -> bool {
+    unsafe {
+        let mut stat: libc::statfs = std::mem::zeroed();
+        if libc::fstatfs(fd, &mut stat) == 0 {
+            let f_type = stat.f_type as i64;
+            if f_type == 0x6969 || f_type == 0x517B || f_type == 0xFF534D42 {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+#[cfg(target_os = "macos")]
+pub(crate) fn is_network_share_fd(fd: std::os::unix::io::RawFd) -> bool {
+    unsafe {
+        let mut stat: libc::statfs = std::mem::zeroed();
+        if libc::fstatfs(fd, &mut stat) == 0 {
+            let fstype = &stat.f_fstypename;
+            let mut len = 0;
+            while len < fstype.len() && fstype[len] != 0 {
+                len += 1;
+            }
+            if let Ok(name) = std::str::from_utf8(std::slice::from_raw_parts(
+                fstype.as_ptr() as *const u8,
+                len,
+            )) {
+                if name == "nfs" || name == "smbfs" || name == "afpfs" {
+                    return true;
+                }
+            }
+        }
+    }
+    false
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
+pub(crate) fn is_network_share_fd(_fd: std::os::unix::io::RawFd) -> bool {
+    false
+}
+
+pub(crate) fn is_network_share(file: &tokio::fs::File) -> bool {
+    #[cfg(unix)]
+    {
+        use std::os::unix::io::AsRawFd;
+        is_network_share_fd(file.as_raw_fd())
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = file;
+        false
+    }
+}
+
 #[cfg(target_os = "macos")]
 pub(crate) fn harden_file(file: &File, length: u64) -> Result<()> {
     use std::os::unix::io::AsRawFd;
     let fd = file.as_raw_fd();
+
+    if is_network_share_fd(fd) {
+        return Ok(());
+    }
 
     unsafe {
         let mut store = libc::fstore_t {
