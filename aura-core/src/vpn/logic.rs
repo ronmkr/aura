@@ -1,9 +1,11 @@
 use crate::{Error, Result};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+use std::time::Duration;
+use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::net::TcpStream;
 use tokio::process::Command;
+use tokio::time::timeout;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum VpnStatus {
@@ -90,6 +92,35 @@ impl WireGuardProvider {
     pub fn new(interface: String) -> Self {
         Self { interface }
     }
+
+    async fn run_cmd(&self, program: &str, args: &[&str]) -> Result<std::process::Output> {
+        let mut cmd = Command::new(program);
+        for arg in args {
+            cmd.arg(arg);
+        }
+
+        let child_fut = cmd.output();
+        match timeout(Duration::from_secs(5), child_fut).await {
+            Ok(Ok(output)) => Ok(output),
+            Ok(Err(e)) => {
+                if e.kind() == std::io::ErrorKind::NotFound {
+                    Err(Error::Engine(format!(
+                        "VPN CLI utility '{}' is not installed or not in the system PATH.",
+                        program
+                    )))
+                } else {
+                    Err(Error::Engine(format!(
+                        "Failed to execute VPN CLI '{}': {}",
+                        program, e
+                    )))
+                }
+            }
+            Err(_) => Err(Error::Engine(format!(
+                "VPN CLI '{}' execution timed out",
+                program
+            ))),
+        }
+    }
 }
 
 #[async_trait]
@@ -99,48 +130,50 @@ impl VpnProvider for WireGuardProvider {
     }
 
     async fn connect(&self) -> Result<()> {
-        let output = Command::new("wg-quick")
-            .arg("up")
-            .arg(&self.interface)
-            .output()
-            .await?;
+        let output = self.run_cmd("wg-quick", &["up", &self.interface]).await?;
 
         if output.status.success() {
             Ok(())
         } else {
             Err(Error::Engine(format!(
                 "wg-quick up failed: {}",
-                String::from_utf8_lossy(&output.stderr)
+                String::from_utf8_lossy(&output.stderr).trim()
             )))
         }
     }
 
     async fn disconnect(&self) -> Result<()> {
-        let _ = Command::new("wg-quick")
-            .arg("down")
-            .arg(&self.interface)
-            .output()
-            .await;
-        Ok(())
+        let output = self.run_cmd("wg-quick", &["down", &self.interface]).await?;
+
+        if output.status.success() {
+            Ok(())
+        } else {
+            Err(Error::Engine(format!(
+                "wg-quick down failed: {}",
+                String::from_utf8_lossy(&output.stderr).trim()
+            )))
+        }
     }
 
     async fn status(&self) -> Result<VpnStatus> {
-        let output = Command::new("wg")
-            .arg("show")
-            .arg(&self.interface)
-            .output()
-            .await;
-
-        match output {
-            Ok(out) if out.status.success() => {
-                let stdout = String::from_utf8_lossy(&out.stdout);
+        match self.run_cmd("wg", &["show", &self.interface]).await {
+            Ok(output) if output.status.success() => {
+                let stdout = String::from_utf8_lossy(&output.stdout);
                 if stdout.contains("latest handshake") {
                     Ok(VpnStatus::Connected)
                 } else {
                     Ok(VpnStatus::Connecting)
                 }
             }
-            _ => Ok(VpnStatus::Disconnected),
+            Ok(output) => {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                if stderr.contains("does not exist") {
+                    Ok(VpnStatus::Disconnected)
+                } else {
+                    Ok(VpnStatus::Error(stderr.trim().to_string()))
+                }
+            }
+            Err(_) => Ok(VpnStatus::Disconnected),
         }
     }
 
@@ -152,31 +185,123 @@ impl VpnProvider for WireGuardProvider {
 /// OpenVPN controller using the Management Interface.
 pub struct OpenVpnProvider {
     mgmt_addr: String,
+    password: Option<String>,
 }
 
 impl OpenVpnProvider {
     pub fn new(mgmt_addr: String) -> Self {
-        Self { mgmt_addr }
+        Self {
+            mgmt_addr,
+            password: None,
+        }
+    }
+
+    pub fn with_password(mut self, password: String) -> Self {
+        self.password = Some(password);
+        self
+    }
+
+    async fn read_until_prompt(&self, reader: &mut BufReader<TcpStream>) -> Result<()> {
+        let mut line = String::new();
+        loop {
+            let mut buf = [0u8; 256];
+            let n = reader.read(&mut buf).await.map_err(|e| {
+                Error::Engine(format!("Failed to read from OpenVPN management: {}", e))
+            })?;
+            if n == 0 {
+                return Err(Error::Engine(
+                    "OpenVPN management connection closed by peer".to_string(),
+                ));
+            }
+            let chunk = String::from_utf8_lossy(&buf[..n]);
+            line.push_str(&chunk);
+
+            if line.contains("ENTER PASSWORD:") {
+                if let Some(ref pwd) = self.password {
+                    let stream = reader.get_mut();
+                    stream
+                        .write_all(format!("{}\n", pwd).as_bytes())
+                        .await
+                        .map_err(|e| {
+                            Error::Engine(format!(
+                                "Failed to send password to OpenVPN management: {}",
+                                e
+                            ))
+                        })?;
+                    line.clear();
+                } else {
+                    return Err(Error::Engine(
+                        "OpenVPN management requires authentication password".to_string(),
+                    ));
+                }
+            }
+
+            if line.contains(">INFO:") || line.contains("SUCCESS: password is correct") {
+                break;
+            }
+        }
+        Ok(())
     }
 
     async fn send_command(&self, cmd: &str) -> Result<String> {
-        let mut stream = TcpStream::connect(&self.mgmt_addr).await.map_err(|e| {
-            Error::Engine(format!(
-                "Failed to connect to OpenVPN management at {}: {}",
-                self.mgmt_addr, e
-            ))
-        })?;
-
-        stream.write_all(format!("{}\n", cmd).as_bytes()).await?;
+        let connect_fut = TcpStream::connect(&self.mgmt_addr);
+        let stream = match timeout(Duration::from_secs(5), connect_fut).await {
+            Ok(Ok(stream)) => stream,
+            Ok(Err(e)) => {
+                return Err(Error::Engine(format!(
+                    "Failed to connect to OpenVPN management at {}: {}",
+                    self.mgmt_addr, e
+                )))
+            }
+            Err(_) => {
+                return Err(Error::Engine(
+                    "Connection to OpenVPN management timed out".to_string(),
+                ))
+            }
+        };
 
         let mut reader = BufReader::new(stream);
+
+        // Greet & Handshake
+        let handshake_fut = self.read_until_prompt(&mut reader);
+        timeout(Duration::from_secs(5), handshake_fut)
+            .await
+            .map_err(|_| Error::Engine("OpenVPN management handshake timed out".to_string()))??;
+
+        // Send Command
+        let stream = reader.get_mut();
+        stream
+            .write_all(format!("{}\n", cmd).as_bytes())
+            .await
+            .map_err(|e| {
+                Error::Engine(format!("Failed to send OpenVPN management command: {}", e))
+            })?;
+
+        // Read Response
         let mut response = String::new();
         let mut line = String::new();
+        loop {
+            let read_line_fut = reader.read_line(&mut line);
+            let n = match timeout(Duration::from_secs(5), read_line_fut).await {
+                Ok(Ok(n)) => n,
+                Ok(Err(e)) => {
+                    return Err(Error::Engine(format!(
+                        "Failed to read OpenVPN response line: {}",
+                        e
+                    )))
+                }
+                Err(_) => {
+                    return Err(Error::Engine(
+                        "OpenVPN command response timed out".to_string(),
+                    ))
+                }
+            };
 
-        // OpenVPN mgmt usually ends multi-line output with "END" or "SUCCESS"
-        while reader.read_line(&mut line).await? > 0 {
+            if n == 0 {
+                break;
+            }
             response.push_str(&line);
-            if line.contains("END") || line.contains("SUCCESS") || line.contains("ERROR") {
+            if line.contains("END") || line.contains("SUCCESS:") || line.contains("ERROR:") {
                 break;
             }
             line.clear();
@@ -193,14 +318,27 @@ impl VpnProvider for OpenVpnProvider {
     }
 
     async fn connect(&self) -> Result<()> {
-        // Trigger reconnection
-        let _ = self.send_command("signal SIGUSR1").await?;
-        Ok(())
+        let res = self.send_command("signal SIGUSR1").await?;
+        if res.contains("SUCCESS:") || res.contains("SUCCESS") {
+            Ok(())
+        } else {
+            Err(Error::Engine(format!(
+                "OpenVPN reconnect signal failed: {}",
+                res.trim()
+            )))
+        }
     }
 
     async fn disconnect(&self) -> Result<()> {
-        let _ = self.send_command("signal SIGTERM").await?;
-        Ok(())
+        let res = self.send_command("signal SIGTERM").await?;
+        if res.contains("SUCCESS:") || res.contains("SUCCESS") {
+            Ok(())
+        } else {
+            Err(Error::Engine(format!(
+                "OpenVPN disconnect signal failed: {}",
+                res.trim()
+            )))
+        }
     }
 
     async fn status(&self) -> Result<VpnStatus> {
@@ -220,7 +358,6 @@ impl VpnProvider for OpenVpnProvider {
     }
 
     fn interface(&self) -> Option<String> {
-        // OpenVPN interface is usually tun0/tap0 but varies
         None
     }
 }
