@@ -13,9 +13,6 @@ pub struct Args {
 }
 
 pub async fn run(args: Args) -> Result<()> {
-    // Initialize logging
-    tracing_subscriber::fmt::init();
-
     let mut expanded_uris = Vec::new();
     for uri in args.uris {
         if let Ok(expanded) = aura_core::glob::expand_url(&uri) {
@@ -94,17 +91,17 @@ pub async fn run(args: Args) -> Result<()> {
         }
 
         engine
-            .add_task_with_options(
+            .add_task_with_options(aura_core::orchestrator::command::AddTaskArgs {
                 id,
-                None,
-                output_name.clone(),
+                tenant_id: None,
+                name: output_name.clone(),
                 sources,
-                None,
-                100,
-                false,
-                Vec::new(),
-                args.follow_on.map(FollowOnAction::Custom),
-            )
+                checksum: None,
+                priority: 100,
+                streaming_mode: false,
+                depends_on: Vec::new(),
+                follow_on: args.follow_on.map(FollowOnAction::Custom),
+            })
             .await?;
     } else {
         for (uri, name, is_metadata) in tasks_to_add {
@@ -124,17 +121,17 @@ pub async fn run(args: Args) -> Result<()> {
                 TaskType::Http
             };
             engine
-                .add_task_with_options(
+                .add_task_with_options(aura_core::orchestrator::command::AddTaskArgs {
                     id,
-                    None,
+                    tenant_id: None,
                     name,
-                    vec![(uri.clone(), ttype)],
-                    None,
-                    100,
-                    false,
-                    Vec::new(),
-                    args.follow_on.clone().map(FollowOnAction::Custom),
-                )
+                    sources: vec![(uri.clone(), ttype)],
+                    checksum: None,
+                    priority: 100,
+                    streaming_mode: false,
+                    depends_on: Vec::new(),
+                    follow_on: args.follow_on.clone().map(FollowOnAction::Custom),
+                })
                 .await?;
         }
     }

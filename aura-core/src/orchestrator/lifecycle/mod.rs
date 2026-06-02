@@ -2,7 +2,7 @@ pub mod dispatch;
 pub mod lifecycle_ext;
 pub mod peer_handler;
 
-pub use peer_handler::handle_incoming_peer;
+pub use peer_handler::{handle_incoming_peer, IncomingPeerContext};
 
 use super::{Orchestrator, SubTaskEvent};
 use crate::bitfield::Bitfield;
@@ -39,7 +39,7 @@ impl Orchestrator {
             let state = meta_task.to_state(bitfield);
             if let Ok(json) = serde_json::to_vec_pretty(&state) {
                 let config = self.config.load();
-                let base_dir = if let Some(ref tid) = meta_task.tenant_id {
+                let base_dir: std::path::PathBuf = if let Some(ref tid) = meta_task.tenant_id {
                     if let Some(ctx) = self.tenants.get(tid) {
                         if let Some(ref root) = ctx.disk_path_root {
                             root.clone()
@@ -170,7 +170,15 @@ impl Orchestrator {
                                     Err(e) => Err(e),
                                 }
                             } else {
-                                BtTask::from_file(id, &uri, dht_tx, lpd_tx, db.clone()).await
+                                BtTask::from_file(
+                                    id,
+                                    &uri,
+                                    dht_tx,
+                                    lpd_tx,
+                                    db.clone(),
+                                    loaded_bf.clone(),
+                                )
+                                .await
                             };
 
                             match init_res {

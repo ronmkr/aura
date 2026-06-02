@@ -1,3 +1,4 @@
+use super::lifecycle::peer_handler::IncomingPeerContext;
 use super::{Orchestrator, SubTaskEvent};
 use crate::worker::bittorrent::task::BtTask;
 use crate::{Result, TaskId};
@@ -151,11 +152,20 @@ impl Orchestrator {
                         let _ = self.save_task(id).await;
 
                         // Stall detection for Scrubber (ADR 0024)
-                        if let Some(task) = self.tasks.get(&id) {
+                        if let Some(task) = self.tasks.get_mut(&id) {
                             if task.phase == crate::task::DownloadPhase::Downloading {
                                 let total_throughput: f64 = task.subtasks.iter().map(|s| s.ewma_throughput).sum();
-                                if total_throughput < 1.0 { // Practically 0
-                                    tracing::info!(%id, "Task stalled (0 throughput). Triggering integrity scrub.");
+
+                                if total_throughput < 1.0 {
+                                    task.stall_ticks += 1;
+                                } else {
+                                    task.stall_ticks = 0;
+                                }
+
+                                // Trigger only after 6 consecutive stalls (approx 3 minutes with 30s interval)
+                                if task.stall_ticks >= 6 {
+                                    tracing::info!(%id, "Task stalled (3+ minutes of 0 throughput). Triggering integrity scrub.");
+                                    task.stall_ticks = 0; // Reset after trigger
                                     let _ = self.handle_command(crate::orchestrator::Command::Scrub(id)).await;
                                 }
                             }
@@ -176,7 +186,20 @@ impl Orchestrator {
                     let bt_tasks: std::collections::HashMap<TaskId, Arc<BtTask>> = self.iter_bt_tasks().into_iter().collect();
 
                     tokio::spawn(async move {
-                        if let Err(e) = super::lifecycle::handle_incoming_peer(stream, addr, bt_registry, bt_tasks, worker_command_txs, storage_tx, subtask_tx, my_peer_id, cancellation_tokens, local_addr, config, throttler).await {
+                        let ctx = IncomingPeerContext {
+                            bt_registry,
+                            bt_tasks,
+                            worker_command_txs,
+                            storage_tx,
+                            subtask_tx,
+                            my_peer_id,
+                            cancellation_tokens,
+                            local_addr,
+                            config,
+                            throttler,
+                        };
+                        if let Err(e) = super::lifecycle::handle_incoming_peer(stream, addr, ctx).await
+                        {
                             tracing::debug!(?addr, error = %e, "Failed to handle incoming peer");
                         }
                     });

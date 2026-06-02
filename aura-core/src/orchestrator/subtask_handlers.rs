@@ -1,6 +1,5 @@
 use super::{Event, Orchestrator, SubTaskEvent, WorkerCommand};
 use crate::task::DownloadPhase;
-use crate::worker::bittorrent::task::BtTask;
 use crate::{Result, TaskId};
 use tracing::{debug, info};
 
@@ -23,66 +22,75 @@ impl Orchestrator {
                 self.handle_subtask_failed(meta_id, sub_id, err).await?;
             }
             SubTaskEvent::Downloaded(meta_id, sub_id, bytes, peer_addr) => {
+                let mut progress_update = None;
                 if let Some(task) = self.tasks.get_mut(&meta_id) {
                     task.completed_length += bytes;
                     if let Some(sub) = task.subtasks.iter_mut().find(|s| s.id == sub_id) {
                         sub.recent_bytes_downloaded += bytes;
                     }
-                    if let Some(bt_task) = task
-                        .extensions
-                        .get("bittorrent")
-                        .and_then(|e| e.clone().as_any_arc().downcast::<BtTask>().ok())
-                    {
-                        let mut registry = bt_task.state.registry.lock().await;
-                        registry.add_downloaded(&peer_addr, bytes);
-                    }
+                    progress_update = Some((
+                        task.completed_length,
+                        task.uploaded_length,
+                        task.total_length,
+                    ));
+                }
+
+                if let Some(bt_task) = self.get_bt_task(sub_id) {
+                    let mut registry = bt_task.state.registry.lock().await;
+                    registry.add_downloaded(&peer_addr, bytes);
+                }
+
+                if let Some((comp, up, total)) = progress_update {
                     let _ = self.event_tx.send(Event::TaskProgress {
                         id: meta_id,
-                        completed_bytes: task.completed_length,
-                        uploaded_bytes: task.uploaded_length,
-                        total_bytes: task.total_length,
+                        completed_bytes: comp,
+                        uploaded_bytes: up,
+                        total_bytes: total,
                     });
                 }
             }
-            SubTaskEvent::Uploaded(meta_id, _sub_id, bytes, peer_addr) => {
+            SubTaskEvent::Uploaded(meta_id, sub_id, bytes, peer_addr) => {
+                let mut progress_update = None;
                 if let Some(task) = self.tasks.get_mut(&meta_id) {
                     task.uploaded_length += bytes;
-                    if let Some(bt_task) = task
-                        .extensions
-                        .get("bittorrent")
-                        .and_then(|e| e.clone().as_any_arc().downcast::<BtTask>().ok())
-                    {
-                        let mut registry = bt_task.state.registry.lock().await;
-                        registry.add_uploaded(&peer_addr, bytes);
-                    }
+                    progress_update = Some((
+                        task.completed_length,
+                        task.uploaded_length,
+                        task.total_length,
+                    ));
+                }
+
+                if let Some(bt_task) = self.get_bt_task(sub_id) {
+                    let mut registry = bt_task.state.registry.lock().await;
+                    registry.add_uploaded(&peer_addr, bytes);
+                }
+
+                if let Some((comp, up, total)) = progress_update {
                     let _ = self.event_tx.send(Event::TaskProgress {
                         id: meta_id,
-                        completed_bytes: task.completed_length,
-                        uploaded_bytes: task.uploaded_length,
-                        total_bytes: task.total_length,
+                        completed_bytes: comp,
+                        uploaded_bytes: up,
+                        total_bytes: total,
                     });
                 }
             }
-            SubTaskEvent::PeerBitfield(meta_id, peer_id, bf) => {
-                debug!(%meta_id, ?peer_id, count = bf.count_set(), "Peer bitfield received");
+            SubTaskEvent::PeerBitfield(meta_id, _peer_id, bf) => {
+                debug!(%meta_id, count = bf.count_set(), "Peer bitfield received");
             }
-            SubTaskEvent::PeerHave(meta_id, peer_id, idx) => {
-                debug!(%meta_id, ?peer_id, idx, "Peer reported piece availability");
+            SubTaskEvent::PeerHave(meta_id, _peer_id, idx) => {
+                debug!(%meta_id, idx, "Peer reported piece availability");
             }
             SubTaskEvent::PieceVerified(meta_id, sub_id, piece_idx) => {
                 debug!(%meta_id, %sub_id, piece_idx, "Broadcasting cancellation for verified piece");
                 if let Some(bt_task) = self.get_bt_task(sub_id) {
-                    if let Some(tx) = self.worker_command_txs.get(&sub_id) {
+                    if let Some(tx) = self.worker_command_txs.get(&meta_id) {
                         let _ = tx.send(WorkerCommand::CancelPiece(piece_idx));
                     }
 
                     // Endgame coordination: if we are in endgame, we might want to assign
                     // this newly available worker capacity to other pending pieces.
-                    let bf_guard: tokio::sync::MutexGuard<Option<crate::bitfield::Bitfield>> =
-                        bt_task.state.bitfield.lock().await;
-                    let picker_guard: tokio::sync::MutexGuard<
-                        Option<crate::piece_picker::PiecePicker>,
-                    > = bt_task.state.picker.lock().await;
+                    let bf_guard = bt_task.state.bitfield.lock().await;
+                    let picker_guard = bt_task.state.picker.lock().await;
                     if let (Some(bf), Some(picker)) = (bf_guard.as_ref(), picker_guard.as_ref()) {
                         if picker.is_endgame(bf) {
                             let mut pending_pieces = Vec::new();
@@ -94,7 +102,7 @@ impl Orchestrator {
 
                             if !pending_pieces.is_empty() {
                                 debug!(%meta_id, pending = %pending_pieces.len(), "Endgame: broadcasting redundant requests");
-                                if let Some(tx) = self.worker_command_txs.get(&sub_id) {
+                                if let Some(tx) = self.worker_command_txs.get(&meta_id) {
                                     for &piece_idx in &pending_pieces {
                                         let _ = tx.send(WorkerCommand::RequestPiece(piece_idx));
                                     }
@@ -116,6 +124,10 @@ impl Orchestrator {
                     if let Some(bt_task) = self.get_bt_task(*meta_id) {
                         let mut registry = bt_task.state.registry.lock().await;
                         registry.add_peers(vec![peer]);
+                        let _ = self
+                            .subtask_tx
+                            .send(SubTaskEvent::PeersDiscovered(*meta_id))
+                            .await;
                     }
                 }
             }
@@ -124,6 +136,10 @@ impl Orchestrator {
                     if let Some(bt_task) = self.get_bt_task(*meta_id) {
                         let mut registry = bt_task.state.registry.lock().await;
                         registry.add_peers(peers);
+                        let _ = self
+                            .subtask_tx
+                            .send(SubTaskEvent::PeersDiscovered(*meta_id))
+                            .await;
                     }
                 }
             }
@@ -148,7 +164,7 @@ impl Orchestrator {
                             {
                                 if let Some(bt_task) = self.get_bt_task(bt_sub.id) {
                                     let mut bf_guard = bt_task.state.bitfield.lock().await;
-                                    if let Some(bf) = bf_guard.as_mut() {
+                                    if let Some(ref mut bf) = *bf_guard {
                                         bf.set(piece_index, false); // Invalidate piece
                                     }
                                 }
@@ -213,6 +229,18 @@ impl Orchestrator {
                             self.cancellation_tokens.insert(id, token.clone());
                             let _ = self.start_task_loops_with_bitfield(id, token, None).await;
                         }
+                    }
+                }
+            }
+            SubTaskEvent::PeersDiscovered(meta_id) => {
+                if let Some(task) = self.tasks.get(&meta_id) {
+                    if let Some(bt_sub) = task
+                        .subtasks
+                        .iter()
+                        .find(|s| s.task_type == crate::task::TaskType::BitTorrent)
+                    {
+                        let sub_id = bt_sub.id;
+                        self.dispatch_next_ranges(meta_id, sub_id).await?;
                     }
                 }
             }

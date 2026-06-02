@@ -1,4 +1,4 @@
-use super::HttpWorker;
+use super::{HttpWorker, HttpWorkerOptions};
 use crate::Error;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
@@ -31,19 +31,19 @@ async fn test_http_worker_html_landing_page_resolution_success() {
         .mount(&server)
         .await;
 
-    let worker = HttpWorker::new(
-        format!("{}/landing", server.uri()),
-        None,
-        None,
-        None,
-        None,
-        None,
-        3,
-        1,
-        None,
-        None,
-        None,
-    );
+    let worker = HttpWorker::new(HttpWorkerOptions {
+        uri: format!("{}/landing", server.uri()),
+        local_addr: None,
+        user_agent: None,
+        connect_timeout: None,
+        proxy: None,
+        referer: None,
+        retry_count: 3,
+        retry_delay_secs: 1,
+        credential_provider: None,
+        dns_resolver: None,
+        hsts_cache: None,
+    });
 
     let result = worker.resolve_metadata().await;
     assert!(
@@ -74,19 +74,19 @@ async fn test_http_worker_html_landing_page_resolution_failure() {
         .mount(&server)
         .await;
 
-    let worker = HttpWorker::new(
-        format!("{}/landing", server.uri()),
-        None,
-        None,
-        None,
-        None,
-        None,
-        3,
-        1,
-        None,
-        None,
-        None,
-    );
+    let worker = HttpWorker::new(HttpWorkerOptions {
+        uri: format!("{}/landing", server.uri()),
+        local_addr: None,
+        user_agent: None,
+        connect_timeout: None,
+        proxy: None,
+        referer: None,
+        retry_count: 3,
+        retry_delay_secs: 1,
+        credential_provider: None,
+        dns_resolver: None,
+        hsts_cache: None,
+    });
 
     let result = worker.resolve_metadata().await;
     assert!(result.is_err());
@@ -116,23 +116,19 @@ async fn test_http_worker_captive_portal_detection() {
         .await;
 
     // Try downloading an asset (e.g. .zip)
-    let worker = HttpWorker::new(
-        format!("{}/wifi-login", server.uri()),
-        None,
-        None,
-        None,
-        None,
-        None,
-        3,
-        1,
-        None,
-        None,
-        None,
-    );
-
-    // Make the worker request ends with .zip so it triggers captive portal detection
-    let mut worker = worker;
-    worker.uri = format!("{}/wifi-login/download.zip", server.uri());
+    let worker = HttpWorker::new(HttpWorkerOptions {
+        uri: format!("{}/wifi-login/download.zip", server.uri()),
+        local_addr: None,
+        user_agent: None,
+        connect_timeout: None,
+        proxy: None,
+        referer: None,
+        retry_count: 3,
+        retry_delay_secs: 1,
+        credential_provider: None,
+        dns_resolver: None,
+        hsts_cache: None,
+    });
 
     let result = worker.resolve_metadata().await;
     assert!(

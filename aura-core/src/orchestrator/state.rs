@@ -19,6 +19,16 @@ pub struct TenantContext {
     pub disk_path_root: Option<std::path::PathBuf>,
 }
 
+/// Channels required for Orchestrator initialization.
+pub struct OrchestratorChannels {
+    pub command_rx: mpsc::Receiver<Command>,
+    pub storage_tx: mpsc::Sender<crate::storage::StorageRequest>,
+    pub storage_completion_rx: mpsc::Receiver<crate::storage::StorageEvent>,
+    pub dht_tx: mpsc::Sender<DhtCommand>,
+    pub lpd_tx: mpsc::Sender<crate::lpd::LpdCommand>,
+    pub nat_tx: mpsc::Sender<NatCommand>,
+}
+
 pub struct Orchestrator {
     pub(crate) tasks: HashMap<TaskId, MetaTask>,
     pub(crate) tenants: HashMap<TenantId, TenantContext>,
@@ -82,14 +92,8 @@ impl Orchestrator {
         results
     }
 
-    #[allow(clippy::too_many_arguments)]
     pub fn new(
-        command_rx: mpsc::Receiver<Command>,
-        storage_tx: mpsc::Sender<crate::storage::StorageRequest>,
-        storage_completion_rx: mpsc::Receiver<crate::storage::StorageEvent>,
-        dht_tx: mpsc::Sender<DhtCommand>,
-        lpd_tx: mpsc::Sender<crate::lpd::LpdCommand>,
-        nat_tx: mpsc::Sender<NatCommand>,
+        channels: OrchestratorChannels,
         config: Arc<ArcSwap<crate::Config>>,
         db: sled::Db,
         dns_resolver: Arc<crate::net_util::TokioResolver>,
@@ -139,17 +143,17 @@ impl Orchestrator {
                 worker_command_txs: HashMap::new(),
                 cancellation_tokens: HashMap::new(),
                 worker_cancellation_tokens: HashMap::new(),
-                command_rx,
+                command_rx: channels.command_rx,
                 event_tx: event_tx.clone(),
-                storage_tx,
-                storage_completion_rx,
+                storage_tx: channels.storage_tx,
+                storage_completion_rx: channels.storage_completion_rx,
                 subtask_tx,
                 subtask_rx,
                 scrub_tx,
                 scrub_rx: Some(scrub_rx),
-                dht_tx,
-                lpd_tx,
-                _nat_tx: nat_tx,
+                dht_tx: channels.dht_tx,
+                lpd_tx: channels.lpd_tx,
+                _nat_tx: channels.nat_tx,
                 peer_id,
                 throttler,
                 vpn_provider,

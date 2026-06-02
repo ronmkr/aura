@@ -13,29 +13,8 @@ pub(crate) mod retry;
 impl Orchestrator {
     pub(crate) async fn handle_command(&mut self, cmd: Command) -> Result<()> {
         match cmd {
-            Command::AddTask {
-                id,
-                tenant_id,
-                name,
-                sources,
-                checksum,
-                priority,
-                streaming_mode,
-                depends_on,
-                follow_on,
-            } => {
-                self.handle_add_task(
-                    id,
-                    tenant_id,
-                    name,
-                    sources,
-                    checksum,
-                    priority,
-                    streaming_mode,
-                    depends_on,
-                    follow_on,
-                )
-                .await?;
+            Command::AddTask(args) => {
+                self.handle_add_task(args).await?;
             }
             Command::ChangeOption {
                 id,
@@ -111,7 +90,9 @@ impl Orchestrator {
                                 .and_then(|e| e.clone().as_any_arc().downcast::<BtTask>().ok())
                             {
                                 let config = self.config.load();
-                                let base_dir = if let Some(ref tid) = meta_task.tenant_id {
+                                let base_dir: std::path::PathBuf = if let Some(ref tid) =
+                                    meta_task.tenant_id
+                                {
                                     if let Some(ctx) = self.tenants.get(tid) {
                                         if let Some(ref root) = ctx.disk_path_root {
                                             root.clone()
@@ -137,19 +118,20 @@ impl Orchestrator {
                         }
                     } else if let Some(checksum) = meta_task.checksum.clone() {
                         let config = self.config.load();
-                        let base_dir = if let Some(ref tid) = meta_task.tenant_id {
-                            if let Some(ctx) = self.tenants.get(tid) {
-                                if let Some(ref root) = ctx.disk_path_root {
-                                    root.clone()
+                        let base_dir: std::path::PathBuf =
+                            if let Some(ref tid) = meta_task.tenant_id {
+                                if let Some(ctx) = self.tenants.get(tid) {
+                                    if let Some(ref root) = ctx.disk_path_root {
+                                        root.clone()
+                                    } else {
+                                        std::path::PathBuf::from(&config.storage.download_dir)
+                                    }
                                 } else {
                                     std::path::PathBuf::from(&config.storage.download_dir)
                                 }
                             } else {
                                 std::path::PathBuf::from(&config.storage.download_dir)
-                            }
-                        } else {
-                            std::path::PathBuf::from(&config.storage.download_dir)
-                        };
+                            };
                         let path = base_dir.join(&meta_task.name);
                         let _ = self
                             .scrub_tx

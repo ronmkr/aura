@@ -17,10 +17,10 @@ impl ProtocolWorker for HttpWorker {
         throttler: std::sync::Arc<crate::throttler::Throttler>,
     ) -> Result<PieceData> {
         let mut attempts = 0;
-        let max_attempts = self.retry_count;
+        let max_attempts = self.options.retry_count;
 
         loop {
-            let upgraded_uri = self.upgrade_url(&self.uri).await;
+            let upgraded_uri = self.upgrade_url(&self.options.uri).await;
             let mut request = self.client.get(&upgraded_uri);
             if segment.length != u64::MAX {
                 let range_header = format!(
@@ -33,11 +33,11 @@ impl ProtocolWorker for HttpWorker {
                 request = request.header("Range", format!("bytes={}-", segment.offset));
             }
 
-            if let Some(ref referer) = self.referer {
+            if let Some(ref referer) = self.options.referer {
                 request = request.header("Referer", referer);
             }
 
-            if let Some(ref provider) = self.credential_provider {
+            if let Some(ref provider) = self.options.credential_provider {
                 if let Ok(url) = url::Url::parse(&upgraded_uri) {
                     if let Some(host) = url.host_str() {
                         if let Some(creds) = provider.get_credentials(host) {
@@ -113,7 +113,7 @@ impl ProtocolWorker for HttpWorker {
                         });
                     } else if Self::is_retryable(response.status()) && attempts < max_attempts {
                         attempts += 1;
-                        let delay = self.retry_delay_secs * (2u64.pow(attempts - 1));
+                        let delay = self.options.retry_delay_secs * (2u64.pow(attempts - 1));
                         tracing::warn!(
                             %task_id,
                             status = %response.status(),
@@ -132,7 +132,7 @@ impl ProtocolWorker for HttpWorker {
                 }
                 Err(e) if attempts < max_attempts => {
                     attempts += 1;
-                    let delay = self.retry_delay_secs * (2u64.pow(attempts - 1));
+                    let delay = self.options.retry_delay_secs * (2u64.pow(attempts - 1));
                     tracing::warn!(
                         %task_id,
                         error = %e,

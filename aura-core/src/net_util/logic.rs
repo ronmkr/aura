@@ -62,7 +62,7 @@ pub fn bind_socket(
 
 async fn race_connect(
     addrs: Vec<SocketAddr>,
-    interface: Option<&str>,
+    _interface: Option<&str>,
     local_addr: Option<IpAddr>,
 ) -> Result<TcpStream> {
     if addrs.is_empty() {
@@ -73,20 +73,24 @@ async fn race_connect(
 
     if addrs.len() == 1 {
         let addr = addrs[0];
-        let domain = if addr.is_ipv4() {
-            Domain::IPV4
+        let socket = if addr.is_ipv4() {
+            tokio::net::TcpSocket::new_v4()
         } else {
-            Domain::IPV6
-        };
-        let socket = Socket::new(domain, Type::STREAM, Some(Protocol::TCP))
-            .map_err(|e| Error::Config(format!("Failed to create TCP socket: {}", e)))?;
-        bind_socket(&socket, interface, local_addr)?;
-        socket
-            .set_nonblocking(true)
-            .map_err(|e| Error::Config(format!("Failed to set non-blocking: {}", e)))?;
-        let stream = TcpStream::connect(addr)
+            tokio::net::TcpSocket::new_v6()
+        }
+        .map_err(|e| Error::Config(format!("Failed to create TCP socket: {}", e)))?;
+
+        if let Some(l_addr) = local_addr {
+            socket.bind(SocketAddr::new(l_addr, 0)).map_err(|e| {
+                Error::Config(format!("Failed to bind to local IP {}: {}", l_addr, e))
+            })?;
+        }
+
+        let stream = socket
+            .connect(addr)
             .await
             .map_err(|e| Error::Protocol(format!("Failed to connect to {}: {}", addr, e)))?;
+
         let _ = try_enable_ktls(&stream);
         return Ok(stream);
     }
@@ -95,7 +99,6 @@ async fn race_connect(
     let mut futures = futures_util::stream::FuturesUnordered::new();
 
     for (i, addr) in addrs.into_iter().enumerate() {
-        let iface = interface.map(|s| s.to_string());
         let l_addr = local_addr;
 
         futures.push(async move {
@@ -103,16 +106,17 @@ async fn race_connect(
                 tokio::time::sleep(tokio::time::Duration::from_millis(i as u64 * 250)).await;
             }
 
-            let domain = if addr.is_ipv4() {
-                Domain::IPV4
+            let socket = if addr.is_ipv4() {
+                tokio::net::TcpSocket::new_v4().ok()?
             } else {
-                Domain::IPV6
+                tokio::net::TcpSocket::new_v6().ok()?
             };
-            let socket = Socket::new(domain, Type::STREAM, Some(Protocol::TCP)).ok()?;
-            let _ = bind_socket(&socket, iface.as_deref(), l_addr);
-            let _ = socket.set_nonblocking(true);
 
-            TcpStream::connect(addr).await.ok().map(|s| {
+            if let Some(la) = l_addr {
+                let _ = socket.bind(SocketAddr::new(la, 0));
+            }
+
+            socket.connect(addr).await.ok().map(|s| {
                 let _ = try_enable_ktls(&s);
                 (s, addr)
             })

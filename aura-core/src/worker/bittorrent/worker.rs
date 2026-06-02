@@ -1,5 +1,6 @@
 use crate::orchestrator::{SubTaskEvent, WorkerCommand};
 use crate::storage::StorageRequest;
+use crate::worker::bittorrent::handlers::PeerHandlerContext;
 use crate::worker::bittorrent::task::BtTask;
 use crate::{Error, InfoHash, Result, TaskId};
 use bytes::BytesMut;
@@ -7,6 +8,7 @@ use futures_util::{SinkExt, StreamExt};
 use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
+use tokio::time::timeout;
 use tokio_util::codec::Framed;
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, info};
@@ -15,6 +17,28 @@ pub use super::protocol::{
     ExtendedHandshake, Handshake, MetadataMessage, PeerCodec, PeerId, PeerMessage, BLOCK_SIZE,
     HANDSHAKE_LEN,
 };
+
+/// Options for creating a new BitTorrent worker.
+pub struct BtWorkerOptions {
+    pub peer_addr: String,
+    pub info_hash: InfoHash,
+    pub peer_id: [u8; 20],
+    pub my_id: [u8; 20],
+    pub proxy: Option<String>,
+    pub throttler: Arc<crate::throttler::Throttler>,
+    pub pex_enabled: bool,
+}
+
+/// Arguments for the BitTorrent worker main loop.
+pub struct BtWorkerArgs {
+    pub meta_id: TaskId,
+    pub sub_id: TaskId,
+    pub task: Arc<BtTask>,
+    pub storage_tx: tokio::sync::mpsc::Sender<StorageRequest>,
+    pub subtask_tx: tokio::sync::mpsc::Sender<SubTaskEvent>,
+    pub command_rx: tokio::sync::broadcast::Receiver<WorkerCommand>,
+    pub token: CancellationToken,
+}
 
 pub struct BtWorker {
     pub peer_addr: String,
@@ -39,21 +63,12 @@ pub struct BtWorker {
 }
 
 impl BtWorker {
-    #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        peer_addr: String,
-        info_hash: InfoHash,
-        peer_id: [u8; 20],
-        my_id: [u8; 20],
-        proxy: Option<String>,
-        throttler: Arc<crate::throttler::Throttler>,
-        pex_enabled: bool,
-    ) -> Self {
+    pub fn new(options: BtWorkerOptions) -> Self {
         Self {
-            peer_addr,
-            info_hash,
-            peer_id,
-            my_id,
+            peer_addr: options.peer_addr,
+            info_hash: options.info_hash,
+            peer_id: options.peer_id,
+            my_id: options.my_id,
             current_piece: None,
             active_guard: None,
             bytes_received: 0,
@@ -63,10 +78,10 @@ impl BtWorker {
             pipeline_size: 10,
             metadata_buffer: None,
             ut_metadata_id: None,
-            proxy,
-            throttler,
+            proxy: options.proxy,
+            throttler: options.throttler,
             ut_pex_id: None,
-            pex_enabled,
+            pex_enabled: options.pex_enabled,
             last_sent_pex_peers: std::collections::HashSet::new(),
             requested_hashes: std::collections::HashSet::new(),
         }
@@ -78,7 +93,7 @@ impl BtWorker {
             Error::Protocol(format!("Invalid peer address {}: {}", self.peer_addr, e))
         })?;
 
-        let mut stream = tokio::time::timeout(
+        let mut stream = timeout(
             std::time::Duration::from_secs(5),
             crate::net_util::connect_tcp_bound(
                 remote_addr,
@@ -93,7 +108,7 @@ impl BtWorker {
         debug!(addr = %self.peer_addr, "Sending handshake...");
         let handshake = Handshake::new(self.info_hash.for_handshake(), self.my_id);
 
-        tokio::time::timeout(std::time::Duration::from_secs(5), async {
+        timeout(std::time::Duration::from_secs(5), async {
             stream.write_all(&handshake.serialize()).await?;
             let mut buf = [0u8; HANDSHAKE_LEN];
             use tokio::io::AsyncReadExt;
@@ -118,80 +133,61 @@ impl BtWorker {
         })
     }
 
-    #[allow(clippy::too_many_arguments)]
-    pub async fn run_loop(
-        mut self,
-        meta_id: TaskId,
-        sub_id: TaskId,
-        task: Arc<BtTask>,
-        storage_tx: tokio::sync::mpsc::Sender<StorageRequest>,
-        subtask_tx: tokio::sync::mpsc::Sender<SubTaskEvent>,
-        command_rx: tokio::sync::broadcast::Receiver<WorkerCommand>,
-        token: CancellationToken,
-    ) -> Result<()> {
+    pub async fn run_loop(&mut self, args: BtWorkerArgs) -> Result<()> {
         let res = self.connect_and_handshake().await;
         let (stream, peer_id, ext_support) = match res {
             Ok(val) => val,
             Err(e) => {
-                task.update_peer_state(&self.peer_addr, crate::peer_registry::ConnectionState::Disconnected)
+                args.task
+                    .update_peer_state(
+                        &self.peer_addr,
+                        crate::peer_registry::ConnectionState::Disconnected,
+                    )
                     .await;
                 return Err(e);
             }
         };
         self.peer_id = peer_id;
+        info!(addr = %self.peer_addr, "Handshake completed successfully");
 
         let peer_addr = self.peer_addr.clone();
-        let res = self.run_loop_with_stream_and_ext(
-            stream,
-            meta_id,
-            sub_id,
-            task.clone(),
-            storage_tx,
-            subtask_tx,
-            command_rx,
-            token,
-            ext_support,
+        let task = args.task.clone();
+        let res = self
+            .run_loop_with_stream_and_ext(stream, args, ext_support)
+            .await;
+
+        task.update_peer_state(
+            &peer_addr,
+            crate::peer_registry::ConnectionState::Disconnected,
         )
         .await;
-
-        if res.is_err() {
-            task.update_peer_state(&peer_addr, crate::peer_registry::ConnectionState::Disconnected)
-                .await;
-        }
         res
     }
 
-    #[allow(clippy::too_many_arguments)]
     pub async fn run_loop_with_stream(
-        self,
+        &mut self,
         stream: TcpStream,
-        meta_id: TaskId,
-        sub_id: TaskId,
-        task: Arc<BtTask>,
-        storage_tx: tokio::sync::mpsc::Sender<StorageRequest>,
-        subtask_tx: tokio::sync::mpsc::Sender<SubTaskEvent>,
-        command_rx: tokio::sync::broadcast::Receiver<WorkerCommand>,
-        token: CancellationToken,
+        args: BtWorkerArgs,
     ) -> Result<()> {
-        self.run_loop_with_stream_and_ext(
-            stream, meta_id, sub_id, task, storage_tx, subtask_tx, command_rx, token, false,
-        )
-        .await
+        self.run_loop_with_stream_and_ext(stream, args, false).await
     }
 
-    #[allow(clippy::too_many_arguments)]
     async fn run_loop_with_stream_and_ext(
-        mut self,
+        &mut self,
         stream: TcpStream,
-        meta_id: TaskId,
-        sub_id: TaskId,
-        task: Arc<BtTask>,
-        storage_tx: tokio::sync::mpsc::Sender<StorageRequest>,
-        subtask_tx: tokio::sync::mpsc::Sender<SubTaskEvent>,
-        mut command_rx: tokio::sync::broadcast::Receiver<WorkerCommand>,
-        token: CancellationToken,
+        args: BtWorkerArgs,
         ext_support: bool,
     ) -> Result<()> {
+        let BtWorkerArgs {
+            meta_id,
+            sub_id,
+            task,
+            storage_tx,
+            subtask_tx,
+            mut command_rx,
+            token,
+        } = args;
+
         let mut framed = Framed::new(stream, PeerCodec);
 
         if ext_support {
@@ -223,6 +219,16 @@ impl BtWorker {
         info!(addr = %peer_addr, "Entering main peer message loop");
 
         loop {
+            let mut ctx = PeerHandlerContext {
+                framed: &mut framed,
+                task: &task,
+                meta_id,
+                sub_id,
+                storage_tx: storage_tx.clone(),
+                subtask_tx: subtask_tx.clone(),
+                peer_choking: &mut peer_choking,
+            };
+
             tokio::select! {
                 _ = token.cancelled() => break,
                 Ok(cmd) = command_rx.recv() => {
@@ -238,7 +244,7 @@ impl BtWorker {
                                 self.bytes_received = 0;
                                 self.bytes_requested = 0;
                                 self.piece_buffer.clear();
-                                self.trigger_request(&mut framed, &task, meta_id, sub_id, storage_tx.clone(), subtask_tx.clone()).await?;
+                                self.trigger_request(&mut ctx).await?;
                             }
                         }
                         WorkerCommand::RequestPiece(piece_idx) => {
@@ -256,19 +262,24 @@ impl BtWorker {
                                     });
                                 });
                                 self.active_guard = Some(guard);
-                                self.trigger_request(&mut framed, &task, meta_id, sub_id, storage_tx.clone(), subtask_tx.clone()).await?;
+                                self.trigger_request(&mut ctx).await?;
+                            }
+                        }
+                        WorkerCommand::CheckWork => {
+                            if self.current_piece.is_none() && !*ctx.peer_choking {
+                                self.trigger_request(&mut ctx).await?;
                             }
                         }
                         WorkerCommand::Choke(addr, _) => {
                             if addr == self.peer_addr {
                                 debug!(addr = %peer_addr, "Choking peer based on tit-for-tat");
-                                let _ = framed.send(PeerMessage::Choke).await;
+                                let _ = ctx.framed.send(PeerMessage::Choke).await;
                             }
                         }
                         WorkerCommand::Unchoke(addr, _) => {
                             if addr == self.peer_addr {
                                 debug!(addr = %peer_addr, "Unchoking peer based on tit-for-tat");
-                                let _ = framed.send(PeerMessage::Unchoke).await;
+                                let _ = ctx.framed.send(PeerMessage::Unchoke).await;
                             }
                         }
                         WorkerCommand::PexUpdate(active_peers) => {
@@ -276,13 +287,20 @@ impl BtWorker {
                                 continue;
                             }
                             if let Some(pex_id) = self.ut_pex_id {
-                                let added: Vec<_> = active_peers.difference(&self.last_sent_pex_peers).copied().collect();
-                                let dropped: Vec<_> = self.last_sent_pex_peers.difference(&active_peers).copied().collect();
+                                let added: Vec<_> = active_peers
+                                    .difference(&self.last_sent_pex_peers)
+                                    .copied()
+                                    .collect();
+                                let dropped: Vec<_> = self
+                                    .last_sent_pex_peers
+                                    .difference(&active_peers)
+                                    .copied()
+                                    .collect();
 
                                 if !added.is_empty() || !dropped.is_empty() {
                                     let pex_msg = crate::worker::bittorrent::protocol::PexMessage::encode_peers(&added, &dropped);
                                     if let Ok(payload) = serde_bencode::to_bytes(&pex_msg) {
-                                        let _ = framed.send(PeerMessage::Extended {
+                                        let _ = ctx.framed.send(PeerMessage::Extended {
                                             id: pex_id,
                                             payload: payload.into(),
                                         }).await;
@@ -293,19 +311,10 @@ impl BtWorker {
                         }
                     }
                 }
-                msg_res = framed.next() => {
+                msg_res = ctx.framed.next() => {
                     match msg_res {
                         Some(Ok(msg)) => {
-                            self.handle_peer_message(
-                                msg,
-                                &mut framed,
-                                &task,
-                                meta_id,
-                                sub_id,
-                                &storage_tx,
-                                &subtask_tx,
-                                &mut peer_choking,
-                            ).await?;
+                            self.handle_peer_message(msg, ctx).await?;
                         }
                         Some(Err(e)) => return Err(e),
                         None => break,

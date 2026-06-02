@@ -1,6 +1,6 @@
+pub mod handlers;
 pub mod logic;
 pub mod merkle;
-pub mod message_handlers;
 pub mod protocol;
 pub mod task;
 #[cfg(test)]

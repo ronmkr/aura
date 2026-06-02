@@ -106,7 +106,6 @@ pub(crate) fn harden_path(path: &Path) -> PathBuf {
     safe_path
 }
 
-#[allow(unused_variables)]
 pub(crate) fn apply_fadvise_dontneed(file: &tokio::fs::File, offset: u64, len: u64) {
     #[cfg(target_os = "linux")]
     {
@@ -121,9 +120,12 @@ pub(crate) fn apply_fadvise_dontneed(file: &tokio::fs::File, offset: u64, len: u
             );
         }
     }
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = (file, offset, len);
+    }
 }
 
-#[allow(unused_variables)]
 pub(crate) fn apply_fadvise_sequential(file: &tokio::fs::File) {
     #[cfg(target_os = "linux")]
     {
@@ -132,5 +134,9 @@ pub(crate) fn apply_fadvise_sequential(file: &tokio::fs::File) {
         unsafe {
             libc::posix_fadvise(fd, 0, 0, libc::POSIX_FADV_SEQUENTIAL);
         }
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = file;
     }
 }

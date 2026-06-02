@@ -107,27 +107,29 @@ impl Orchestrator {
                     let config_clone = config_arc.clone();
                     tokio::spawn(async move {
                         let mut worker = crate::worker::bittorrent::BtWorker::new(
-                            peer_addr.clone(),
-                            info_hash,
-                            [0; 20],
-                            my_id,
-                            proxy,
-                            throttler_clone,
-                            config_clone.load().bittorrent.pex_enabled,
+                            crate::worker::bittorrent::BtWorkerOptions {
+                                peer_addr: peer_addr.clone(),
+                                info_hash,
+                                peer_id: [0; 20],
+                                my_id,
+                                proxy,
+                                throttler: throttler_clone,
+                                pex_enabled: config_clone.load().bittorrent.pex_enabled,
+                            },
                         );
                         worker.local_addr = local_addr;
 
                         tokio::select! {
                             _ = token_clone.cancelled() => {}
-                            res = worker.run_loop(
+                            res = worker.run_loop(crate::worker::bittorrent::BtWorkerArgs {
                                 meta_id,
                                 sub_id,
-                                bt_task,
+                                task: bt_task,
                                 storage_tx,
-                                subtask_tx.clone(),
-                                worker_tx.subscribe(),
-                                token_clone.clone(),
-                            ) => {
+                                subtask_tx: subtask_tx.clone(),
+                                command_rx: worker_tx.subscribe(),
+                                token: token_clone.clone(),
+                            }) => {
                                 if let Err(e) = res {
                                     tracing::debug!(%meta_id, %sub_id, error = %e, "BtWorker failed");
                                 }

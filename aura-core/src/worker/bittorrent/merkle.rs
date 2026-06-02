@@ -40,21 +40,16 @@ impl BtWorker {
         Ok(true)
     }
 
-    pub(crate) async fn check_and_request_hashes<S>(
+    pub(crate) async fn check_and_request_hashes_internal<S>(
         &mut self,
         framed: &mut tokio_util::codec::Framed<S, super::protocol::PeerCodec>,
         task: &BtTask,
+        torrent: &crate::torrent::Torrent,
         piece_idx: usize,
     ) -> Result<()>
     where
         S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
     {
-        let torrent_guard = task.state.torrent.lock().await;
-        let torrent = match torrent_guard.as_ref() {
-            Some(t) => t,
-            None => return Ok(()),
-        };
-
         if let Some(root) = torrent.get_pieces_root_for_piece(piece_idx) {
             if !self.requested_hashes.contains(&root) {
                 let mut key = Vec::with_capacity(36);

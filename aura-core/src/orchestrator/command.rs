@@ -1,22 +1,26 @@
-use crate::task::MetaTask;
-use crate::{TaskId, TenantId};
+use crate::task::{FollowOnAction, MetaTask, TaskType};
+use crate::{Checksum, TaskId, TenantId};
 use std::sync::Arc;
 use tokio::sync::mpsc;
+
+/// Arguments for adding a new task to the engine.
+#[derive(Debug, Clone)]
+pub struct AddTaskArgs {
+    pub id: TaskId,
+    pub tenant_id: Option<TenantId>,
+    pub name: String,
+    pub sources: Vec<(String, TaskType)>,
+    pub checksum: Option<Checksum>,
+    pub priority: u32,
+    pub streaming_mode: bool,
+    pub depends_on: Vec<TaskId>,
+    pub follow_on: Option<FollowOnAction>,
+}
 
 /// Internal commands for the Orchestrator.
 #[derive(Debug)]
 pub enum Command {
-    AddTask {
-        id: TaskId,
-        tenant_id: Option<TenantId>,
-        name: String,
-        sources: Vec<(String, crate::task::TaskType)>,
-        checksum: Option<crate::Checksum>,
-        priority: u32,
-        streaming_mode: bool,
-        depends_on: Vec<TaskId>,
-        follow_on: Option<crate::task::FollowOnAction>,
-    },
+    AddTask(AddTaskArgs),
     ChangeOption {
         id: TaskId,
         priority: Option<u32>,

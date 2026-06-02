@@ -137,17 +137,17 @@ async fn handle_add_uri(engine: &Engine, params: Option<Value>) -> Result<Value,
         .collect();
 
     engine
-        .add_task_with_options(
+        .add_task_with_options(aura_core::orchestrator::command::AddTaskArgs {
             id,
-            None,
+            tenant_id: None,
             name,
             sources,
-            None,
+            checksum: None,
             priority,
             streaming_mode,
             depends_on,
-            None, // follow_on
-        )
+            follow_on: None,
+        })
         .await
         .map_err(|e| json!({ "code": -32000, "message": e.to_string() }))?;
 

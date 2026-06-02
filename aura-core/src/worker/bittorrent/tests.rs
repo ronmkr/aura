@@ -68,3 +68,66 @@ fn test_hashes_message_serialization() {
     let deserialized = PeerMessage::deserialize(&serialized[4..]).unwrap();
     assert_eq!(msg, deserialized);
 }
+
+#[tokio::test]
+async fn test_failed_connection_transitions_to_disconnected() {
+    use super::{BtWorker, BtWorkerOptions, BtWorkerArgs};
+    use crate::worker::bittorrent::task::BtTask;
+    use crate::peer_registry::ConnectionState;
+    use tokio::sync::{broadcast, mpsc};
+    use tokio_util::sync::CancellationToken;
+    use std::sync::Arc;
+
+    let temp_dir = tempfile::tempdir().unwrap();
+    let db = sled::open(temp_dir.path()).unwrap();
+    let (dht_tx, _) = mpsc::channel(1);
+    let (lpd_tx, _) = mpsc::channel(1);
+
+    let info_hash = crate::InfoHash::V1([0; 20]);
+    let task = Arc::new(BtTask::from_magnet(crate::TaskId(12345), info_hash, dht_tx, lpd_tx, db));
+
+    let peer_addr = "127.0.0.1:45454".to_string();
+    {
+        let mut registry = task.state.registry.lock().await;
+        registry.add_peers(vec![crate::tracker::Peer {
+            id: None,
+            ip: "127.0.0.1".to_string(),
+            port: 45454,
+        }]);
+        // Transition to Connecting to simulate we are attempting connection
+        registry.update_state(&peer_addr, ConnectionState::Connecting);
+    }
+
+    let mut worker = BtWorker::new(BtWorkerOptions {
+        peer_addr: peer_addr.clone(),
+        info_hash,
+        peer_id: [0; 20],
+        my_id: [0; 20],
+        proxy: None,
+        throttler: Arc::new(crate::throttler::Throttler::new(0, 0)),
+        pex_enabled: false,
+    });
+
+    let (storage_tx, _) = mpsc::channel(1);
+    let (subtask_tx, _) = mpsc::channel(1);
+    let (cmd_tx, _) = broadcast::channel(1);
+    let token = CancellationToken::new();
+
+    let args = BtWorkerArgs {
+        meta_id: crate::TaskId(12345),
+        sub_id: crate::TaskId(12345),
+        task: task.clone(),
+        storage_tx,
+        subtask_tx,
+        command_rx: cmd_tx.subscribe(),
+        token,
+    };
+
+    let res = worker.run_loop(args).await;
+    assert!(res.is_err());
+
+    let mut registry = task.state.registry.lock().await;
+    let peer_state = registry.get_mut(&peer_addr).unwrap();
+    assert_eq!(peer_state.state, ConnectionState::Disconnected);
+}
+

@@ -1,22 +1,23 @@
+use crate::orchestrator::command::AddTaskArgs;
 use crate::orchestrator::{Event, Orchestrator};
 use crate::task::MetaTask;
-use crate::{Result, TaskId};
+use crate::Result;
 use tracing::info;
 
 impl Orchestrator {
-    #[allow(clippy::too_many_arguments)]
-    pub(crate) async fn handle_add_task(
-        &mut self,
-        id: TaskId,
-        tenant_id: Option<crate::TenantId>,
-        name: String,
-        sources: Vec<(String, crate::task::TaskType)>,
-        checksum: Option<crate::Checksum>,
-        priority: u32,
-        streaming_mode: bool,
-        depends_on: Vec<TaskId>,
-        follow_on: Option<crate::task::FollowOnAction>,
-    ) -> Result<()> {
+    pub(crate) async fn handle_add_task(&mut self, args: AddTaskArgs) -> Result<()> {
+        let AddTaskArgs {
+            id,
+            tenant_id,
+            name,
+            sources,
+            checksum,
+            priority,
+            streaming_mode,
+            depends_on,
+            follow_on,
+        } = args;
+
         // Enforce mandatory tunnel
         self.verify_vpn_connectivity().await?;
 
@@ -96,7 +97,7 @@ impl Orchestrator {
                                 if meta_task.total_length == 0 {
                                     if let Some(size) = file.size {
                                         meta_task.total_length = size;
-                                        meta_task.generate_ranges(128);
+                                        meta_task.generate_ranges(128, loaded_bitfield.as_ref());
                                     }
                                 }
                                 for res in file.resources {

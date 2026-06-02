@@ -91,19 +91,19 @@ impl WorkerBuilder {
     }
 
     pub fn build_http(self) -> HttpWorker {
-        HttpWorker::new(
-            self.uri,
-            self.local_addr,
-            self.user_agent,
-            self.connect_timeout,
-            self.proxy,
-            self.referer,
-            self.retry_count,
-            self.retry_delay_secs,
-            self.credential_provider,
-            self.dns_resolver,
-            self.hsts_cache,
-        )
+        HttpWorker::new(crate::worker::http::HttpWorkerOptions {
+            uri: self.uri,
+            local_addr: self.local_addr,
+            user_agent: self.user_agent,
+            connect_timeout: self.connect_timeout,
+            proxy: self.proxy,
+            referer: self.referer,
+            retry_count: self.retry_count,
+            retry_delay_secs: self.retry_delay_secs,
+            credential_provider: self.credential_provider,
+            dns_resolver: self.dns_resolver,
+            hsts_cache: self.hsts_cache,
+        })
     }
 
     pub fn build_ftp(self) -> FtpWorker {

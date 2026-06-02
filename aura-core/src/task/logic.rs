@@ -88,6 +88,7 @@ pub struct MetaTask {
     pub blacklisted_uris: Vec<String>,
     pub extensions: HashMap<String, Arc<dyn TaskExtension>>,
     pub depends_on: Vec<TaskId>,
+    pub stall_ticks: u32,
 }
 
 /// Represents the serializable state of a MetaTask for persistence.
@@ -158,6 +159,7 @@ impl MetaTask {
             blacklisted_uris: state.blacklisted_uris.unwrap_or_default(),
             extensions: HashMap::new(),
             depends_on: state.depends_on.unwrap_or_default(),
+            stall_ticks: 0,
         }
     }
 
@@ -182,24 +184,40 @@ impl MetaTask {
             blacklisted_uris: Vec::new(),
             extensions: HashMap::new(),
             depends_on: Vec::new(),
+            stall_ticks: 0,
         }
     }
 
-    pub fn generate_ranges(&mut self, num_ranges: usize) {
+    pub fn generate_ranges(&mut self, num_ranges: usize, bitfield: Option<&Bitfield>) {
         if self.total_length == 0 {
             return;
         }
         self.pending_ranges.clear();
 
-        // Generate granular ranges
-        let actual_num_ranges = std::cmp::max(num_ranges, 32);
-        let granular_size = self.total_length.div_ceil(actual_num_ranges as u64);
+        if let Some(bf) = bitfield {
+            let num_pieces = bf.len();
+            let piece_len = self.total_length.div_ceil(num_pieces as u64);
 
-        for i in 0..actual_num_ranges {
-            let start = i as u64 * granular_size;
-            let end = std::cmp::min(start + granular_size, self.total_length);
-            if start < end {
-                self.pending_ranges.push(Range { start, end });
+            for i in 0..num_pieces {
+                if !bf.get(i) {
+                    let start = i as u64 * piece_len;
+                    let end = std::cmp::min(start + piece_len, self.total_length);
+                    if start < end {
+                        self.pending_ranges.push(Range { start, end });
+                    }
+                }
+            }
+        } else {
+            // Generate granular ranges for new tasks
+            let actual_num_ranges = std::cmp::max(num_ranges, 32);
+            let granular_size = self.total_length.div_ceil(actual_num_ranges as u64);
+
+            for i in 0..actual_num_ranges {
+                let start = i as u64 * granular_size;
+                let end = std::cmp::min(start + granular_size, self.total_length);
+                if start < end {
+                    self.pending_ranges.push(Range { start, end });
+                }
             }
         }
         // Reverse so we can pop from the end (efficient)
