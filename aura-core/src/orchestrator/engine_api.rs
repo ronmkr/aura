@@ -71,7 +71,7 @@ impl Engine {
             name,
             sources,
             checksum,
-            priority: 100,
+            priority: 3,
             streaming_mode: false,
             depends_on: Vec::new(),
             follow_on: None,

@@ -276,3 +276,144 @@ async fn then_scale_concurrency(world: &mut AuraWorld, expected: usize) {
         );
     }
 }
+
+#[given(expr = "Task B depends on Task A")]
+async fn given_task_b_depends_on_task_a(world: &mut AuraWorld) {
+    world.init_engine(|_| {}).await;
+}
+
+#[when(expr = "both tasks are added to the Orchestrator")]
+async fn when_both_tasks_added_to_orchestrator(world: &mut AuraWorld) {
+    let engine = world.engine.as_ref().unwrap();
+    let id_a = TaskId(111);
+    let id_b = TaskId(222);
+
+    // Mock HTTP server
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let uri = format!("http://127.0.0.1:{}/file", port);
+
+    tokio::spawn(async move {
+        while let Ok((mut stream, _)) = listener.accept().await {
+            tokio::spawn(async move {
+                use tokio::io::{AsyncReadExt, AsyncWriteExt};
+                let mut buf = [0u8; 1024];
+                let _ = stream.read(&mut buf).await;
+
+                let response = "HTTP/1.1 200 OK\r\nContent-Length: 100\r\nContent-Range: bytes 0-99/100\r\n\r\n";
+                let _ = stream.write_all(response.as_bytes()).await;
+                let chunk = vec![0u8; 100];
+                let _ = stream.write_all(&chunk).await;
+            });
+        }
+    });
+
+    // Add Task A
+    engine
+        .add_task_with_options(aura_core::orchestrator::command::AddTaskArgs {
+            id: id_a,
+            tenant_id: None,
+            name: "task_a".to_string(),
+            sources: vec![(uri.clone(), TaskType::Http)],
+            checksum: None,
+            priority: 3,
+            streaming_mode: false,
+            depends_on: Vec::new(),
+            follow_on: None,
+        })
+        .await
+        .unwrap();
+
+    // Add Task B depending on A
+    engine
+        .add_task_with_options(aura_core::orchestrator::command::AddTaskArgs {
+            id: id_b,
+            tenant_id: None,
+            name: "task_b".to_string(),
+            sources: vec![(uri, TaskType::Http)],
+            checksum: None,
+            priority: 3,
+            streaming_mode: false,
+            depends_on: vec![id_a],
+            follow_on: None,
+        })
+        .await
+        .unwrap();
+}
+
+#[then(expr = "Task B should start in the \"Waiting\" phase")]
+async fn then_task_b_waiting(world: &mut AuraWorld) {
+    let engine = world.engine.as_ref().unwrap();
+    let active = engine.tell_active().await.unwrap();
+    let task_b = active
+        .iter()
+        .find(|t| t.id == TaskId(222))
+        .expect("Task B not found");
+    assert_eq!(task_b.phase, aura_core::task::DownloadPhase::Waiting);
+}
+
+#[when(expr = "Task A completes")]
+async fn when_task_a_completes(world: &mut AuraWorld) {
+    let engine = world.engine.as_ref().unwrap();
+    let mut interval = tokio::time::interval(std::time::Duration::from_millis(100));
+    for i in 0..50 {
+        interval.tick().await;
+        let active = engine.tell_active().await.unwrap();
+        let task_a = active.iter().find(|t| t.id == TaskId(111));
+        let task_b = active.iter().find(|t| t.id == TaskId(222));
+
+        println!(
+            "Tick {}: Task A phase = {:?}, Task B phase = {:?}",
+            i,
+            task_a.map(|t| t.phase),
+            task_b.map(|t| t.phase)
+        );
+
+        if let Some(t_a) = task_a {
+            if t_a.phase == aura_core::task::DownloadPhase::Complete {
+                break;
+            }
+        } else {
+            println!("Task A not found in active list");
+            break;
+        }
+    }
+
+    let active = engine.tell_active().await.unwrap();
+    let task_a = active
+        .iter()
+        .find(|t| t.id == TaskId(111))
+        .expect("Task A not found at end of loop");
+    assert_eq!(
+        task_a.phase,
+        aura_core::task::DownloadPhase::Complete,
+        "Task A failed or timed out: {:?}",
+        task_a.phase
+    );
+}
+
+#[then(expr = "Task B should automatically transition to the \"Downloading\" phase")]
+async fn then_task_b_downloading(world: &mut AuraWorld) {
+    let engine = world.engine.as_ref().unwrap();
+    let mut interval = tokio::time::interval(std::time::Duration::from_millis(100));
+    let mut success = false;
+    for i in 0..50 {
+        interval.tick().await;
+        let active = engine.tell_active().await.unwrap();
+        let task_b = active.iter().find(|t| t.id == TaskId(222));
+        println!(
+            "Wait Task B Tick {}: phase = {:?}",
+            i,
+            task_b.map(|t| t.phase)
+        );
+        if let Some(t_b) = task_b {
+            if t_b.phase == aura_core::task::DownloadPhase::Downloading
+                || t_b.phase == aura_core::task::DownloadPhase::Complete
+            {
+                success = true;
+                break;
+            }
+        }
+    }
+    assert!(success, "Task B did not transition to Downloading phase");
+}
