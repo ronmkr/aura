@@ -1,6 +1,6 @@
 # Aura Makefile
 
-.PHONY: all build test check fmt clippy clean docs run-cli run-daemon run-tui
+.PHONY: all build test check fmt clippy clean docs run-cli run-daemon run-tui modularity-check audit bench
 
 # Default: build everything
 all: build
@@ -39,8 +39,11 @@ bench:
 audit:
 	cargo audit
 
+modularity-check:
+	bash scripts/check_file_length.sh
+
 # The strict mandate for every commit
-green-loop: fmt clippy test bench
+green-loop: fmt clippy test modularity-check bench
 
 # --- Documentation ---
 

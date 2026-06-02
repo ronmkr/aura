@@ -31,6 +31,16 @@ jobs:
       - name: Formatting
         run: cargo fmt -- --check
 
+  modularity:
+    name: Modularity Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Modularity and Line Limit Verification
+        run: make modularity-check
+
   clippy:
     name: Clippy
     runs-on: ubuntu-latest
