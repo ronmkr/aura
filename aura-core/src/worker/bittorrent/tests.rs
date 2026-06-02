@@ -71,12 +71,12 @@ fn test_hashes_message_serialization() {
 
 #[tokio::test]
 async fn test_failed_connection_transitions_to_disconnected() {
-    use super::{BtWorker, BtWorkerOptions, BtWorkerArgs};
-    use crate::worker::bittorrent::task::BtTask;
+    use super::{BtWorker, BtWorkerArgs, BtWorkerOptions};
     use crate::peer_registry::ConnectionState;
+    use crate::worker::bittorrent::task::BtTask;
+    use std::sync::Arc;
     use tokio::sync::{broadcast, mpsc};
     use tokio_util::sync::CancellationToken;
-    use std::sync::Arc;
 
     let temp_dir = tempfile::tempdir().unwrap();
     let db = sled::open(temp_dir.path()).unwrap();
@@ -84,7 +84,13 @@ async fn test_failed_connection_transitions_to_disconnected() {
     let (lpd_tx, _) = mpsc::channel(1);
 
     let info_hash = crate::InfoHash::V1([0; 20]);
-    let task = Arc::new(BtTask::from_magnet(crate::TaskId(12345), info_hash, dht_tx, lpd_tx, db));
+    let task = Arc::new(BtTask::from_magnet(
+        crate::TaskId(12345),
+        info_hash,
+        dht_tx,
+        lpd_tx,
+        db,
+    ));
 
     let peer_addr = "127.0.0.1:45454".to_string();
     {
@@ -130,4 +136,3 @@ async fn test_failed_connection_transitions_to_disconnected() {
     let peer_state = registry.get_mut(&peer_addr).unwrap();
     assert_eq!(peer_state.state, ConnectionState::Disconnected);
 }
-

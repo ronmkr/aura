@@ -114,8 +114,8 @@ impl TaskHandle {
 mod tests {
     use super::*;
 
-    use crate::Config;
     use crate::task::TaskType;
+    use crate::Config;
     use tokio_stream::StreamExt;
 
     #[tokio::test]
@@ -241,6 +241,9 @@ mod tests {
             }
         });
         let _ = timeout_fut.await;
-        assert!(found, "Event::TaskAdded should be received by early subscriber");
+        assert!(
+            found,
+            "Event::TaskAdded should be received by early subscriber"
+        );
     }
 }
