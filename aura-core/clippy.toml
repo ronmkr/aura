@@ -1,0 +1,2 @@
+# Configure Clippy lint thresholds
+cognitive-complexity-threshold = 150

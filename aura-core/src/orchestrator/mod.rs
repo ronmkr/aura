@@ -15,9 +15,10 @@ pub mod telemetry;
 pub mod vpn_enforcement;
 pub mod worker_command;
 
+pub use crate::config::ResourceMappingConfig;
 pub use command::Command;
 pub use engine::Engine;
-pub use mapping::{MappingEngine, ResourceMappingConfig};
+pub use mapping::MappingEngine;
 pub use state::Orchestrator;
 pub use subtask_event::SubTaskEvent;
 pub use telemetry::Event;

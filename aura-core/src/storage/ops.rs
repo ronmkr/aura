@@ -10,6 +10,9 @@ use tracing::debug;
 
 impl StorageEngine {
     pub(crate) async fn handle_read(&mut self, id: TaskId, segment: Segment) -> Result<Bytes> {
+        // Flush any in-memory dirty buffers immediately to ensure read-after-write consistency
+        self.flush_dirty_buffer_immediate(id).await?;
+
         let file: &mut File = self.get_or_open_part_file(id).await?;
         use tokio::io::AsyncReadExt;
         use tokio::io::AsyncSeekExt;
@@ -194,6 +197,40 @@ impl StorageEngine {
             deadline: Instant::now() + Duration::from_millis(500),
             priority: IoPriority::Normal,
         });
+
+        if let Some(size) = self.dirty_sizes.get_mut(&id) {
+            *size = 0;
+        }
+
+        Ok(())
+    }
+
+    pub(crate) async fn flush_dirty_buffer_immediate(&mut self, id: TaskId) -> Result<()> {
+        let buffers = if let Some(dirty) = self.dirty_buffers.get_mut(&id) {
+            std::mem::take(dirty)
+        } else {
+            Vec::new()
+        };
+
+        if buffers.is_empty() {
+            return Ok(());
+        }
+
+        let offset = buffers.first().unwrap().0;
+        let data = buffers.into_iter().map(|(_, d)| d).collect::<Vec<_>>();
+
+        let file = self.get_or_open_part_file(id).await?;
+        use tokio::io::AsyncSeekExt;
+        use tokio::io::AsyncWriteExt;
+
+        file.seek(std::io::SeekFrom::Start(offset)).await?;
+        let mut total_len = 0;
+        for d in &data {
+            file.write_all(d).await?;
+            total_len += d.len() as u64;
+        }
+
+        crate::storage::sys::apply_fadvise_dontneed(file, offset, total_len);
 
         if let Some(size) = self.dirty_sizes.get_mut(&id) {
             *size = 0;

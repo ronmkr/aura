@@ -1,6 +1,5 @@
-use crate::orchestrator::mapping::{
-    MappingCondition, MappingEngine, MappingRule, ResourceMappingConfig,
-};
+use crate::config::{MappingCondition, MappingRule, ResourceMappingConfig};
+use crate::orchestrator::mapping::MappingEngine;
 use crate::task::MetaTask;
 use crate::TaskId;
 use std::path::{Path, PathBuf};
