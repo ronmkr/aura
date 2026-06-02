@@ -170,7 +170,7 @@ impl VpnProvider for WireGuardProvider {
                 if stderr.contains("does not exist") {
                     Ok(VpnStatus::Disconnected)
                 } else {
-                    Ok(VpnStatus::Disconnected)
+                    Ok(VpnStatus::Error(stderr.trim().to_string()))
                 }
             }
             Err(_) => Ok(VpnStatus::Disconnected),
