@@ -1,6 +1,7 @@
 pub mod completion;
 pub mod engine;
 pub mod ops;
+pub mod prober;
 pub mod registry;
 pub mod scheduler;
 pub mod sys;
