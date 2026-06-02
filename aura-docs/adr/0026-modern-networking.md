@@ -1,7 +1,7 @@
 # ADR 0026: Modern Networking (Happy Eyeballs, Alt-Svc, Streaming)
 
 ## Status
-Accepted
+Implemented (2026-06-02)
 
 ## Context
 Modern networking requires minimizing latency through parallel connection attempts and utilizing the fastest available protocols (HTTP/3). Additionally, users want to consume media while it is still downloading.
@@ -18,3 +18,9 @@ Modern networking requires minimizing latency through parallel connection attemp
 ## Consequences
 - **Pros**: Lower connection latency, automatic protocol upgrades, and enhanced media consumption experience.
 - **Cons**: Implementing RFC 8305 and HTTP/3 (QUIC) adds significant complexity to the network stack.
+
+## Implementation Details
+1. **HTTP/3 Support**: Enabled via the `reqwest` crate's `"http3"` feature and workspace-level global `--cfg reqwest_unstable` compilation configuration.
+2. **Alt-Svc Caching**: Built a persistent [alt_svc.rs](../../aura-core/src/security/alt_svc.rs) cache that serializes to `.aura/alt_svc.json`. This stores alternative protocols, hosts, ports, and max-age expiration.
+3. **Transparent Fallback**: To handle hostile environments where UDP/443 is blocked or filtered, the worker automatically falls back to standard HTTP/1.1 or HTTP/2 over TCP if the HTTP/3 handshake or request fails.
+

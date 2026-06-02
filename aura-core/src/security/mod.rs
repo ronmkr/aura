@@ -1,3 +1,6 @@
+pub mod alt_svc;
+pub use alt_svc::{AltSvcCache, AltSvcPolicy};
+
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
