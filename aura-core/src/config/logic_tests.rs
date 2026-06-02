@@ -60,3 +60,60 @@ fn test_deserialize_dns_resolver_dot() {
         })
     );
 }
+
+#[test]
+fn test_empty_config_deserialization() {
+    let toml_str = "";
+    let config: Config = toml::from_str(toml_str).unwrap();
+
+    // Check that defaults are fully filled
+    assert_eq!(config.network.listen_port, 6881);
+    assert_eq!(config.bandwidth.global_download_limit, 0);
+    assert_eq!(config.bandwidth.max_concurrent_downloads, 10);
+    assert_eq!(config.bittorrent.max_peers_per_torrent, 200);
+    assert_eq!(config.storage.download_dir, ".".to_string());
+    assert_eq!(config.vpn.auto_connect, false);
+    assert_eq!(config.general.log_level, "info".to_string());
+    assert_eq!(config.general.theme.primary, "#0000FF");
+}
+
+#[test]
+fn test_partial_config_deserialization() {
+    let toml_str = r#"
+        [network]
+        listen_port = 9000
+        
+        [bandwidth]
+        global_download_limit = 500000
+    "#;
+    let config: Config = toml::from_str(toml_str).unwrap();
+
+    // Overridden fields
+    assert_eq!(config.network.listen_port, 9000);
+    assert_eq!(config.bandwidth.global_download_limit, 500000);
+
+    // Default fallback fields
+    assert_eq!(config.network.dht_port, 6881);
+    assert_eq!(config.bandwidth.max_concurrent_downloads, 10);
+}
+
+#[test]
+fn test_invalid_toml_syntax() {
+    let toml_str = r#"
+        [network
+        listen_port = 9000
+    "#;
+    let result = toml::from_str::<Config>(toml_str);
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_invalid_dns_resolver_type() {
+    let toml_str = r#"
+        [network.dns_resolver]
+        type = "invalid_type"
+        server = "1.1.1.1"
+    "#;
+    let result = toml::from_str::<Config>(toml_str);
+    assert!(result.is_err());
+}

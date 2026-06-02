@@ -1,4 +1,7 @@
 //! Aura-core: The high-performance download engine.
+#![warn(clippy::cognitive_complexity)]
+#![warn(clippy::type_complexity)]
+
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
