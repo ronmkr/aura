@@ -20,11 +20,13 @@ pub struct HttpWorkerOptions {
     pub credential_provider: Option<Arc<crate::config::credentials::CredentialProvider>>,
     pub dns_resolver: Option<Arc<crate::net_util::TokioResolver>>,
     pub hsts_cache: Option<crate::security::HstsCache>,
+    pub alt_svc_cache: Option<crate::security::AltSvcCache>,
 }
 
 /// A specialized worker for the HTTP(S) protocol.
 pub struct HttpWorker {
     pub(crate) client: reqwest::Client,
+    pub(crate) http3_client: std::sync::Mutex<Option<reqwest::Client>>,
     pub(crate) options: HttpWorkerOptions,
 }
 
@@ -78,6 +80,120 @@ impl HttpWorker {
         }
     }
 
+    pub(crate) async fn check_and_update_alt_svc(&self, resp: &reqwest::Response) {
+        if let Some(ref cache) = self.options.alt_svc_cache {
+            let url = resp.url();
+            let scheme = url.scheme();
+            if scheme == "https" || scheme == "http" {
+                if let Some(alt_svc_val) = resp
+                    .headers()
+                    .get(reqwest::header::HeaderName::from_static("alt-svc"))
+                {
+                    if let Ok(alt_svc_str) = alt_svc_val.to_str() {
+                        if let Some(host) = url.host_str() {
+                            cache.insert_policies(host.to_string(), alt_svc_str).await;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    pub(crate) fn build_http3_client(&self) -> reqwest::Client {
+        let cookie_jar = if let Some(ref provider) = self.options.credential_provider {
+            provider.cookie_jar()
+        } else {
+            Arc::new(reqwest::cookie::Jar::default())
+        };
+
+        let mut builder = reqwest::Client::builder()
+            .user_agent(self.options.user_agent.as_deref().unwrap_or("Aura/0.1.0"))
+            .cookie_provider(cookie_jar)
+            .redirect(reqwest::redirect::Policy::none())
+            .connect_timeout(std::time::Duration::from_secs(
+                self.options.connect_timeout.unwrap_or(30),
+            ))
+            .tcp_keepalive(std::time::Duration::from_secs(60))
+            .http3_prior_knowledge();
+
+        if let Some(addr) = self.options.local_addr {
+            builder = builder.local_address(addr);
+        }
+
+        if let Some(ref p) = self.options.proxy {
+            if let Ok(proxy_obj) = reqwest::Proxy::all(p) {
+                builder = builder.proxy(proxy_obj);
+            }
+        }
+
+        if let Some(ref resolver) = self.options.dns_resolver {
+            let wrapped = crate::net_util::ReqwestDnsResolver::from_arc(resolver.clone());
+            builder = builder.dns_resolver(Arc::new(wrapped));
+        }
+
+        builder.build().expect("Failed to build HTTP/3 client")
+    }
+
+    pub(crate) fn get_http3_client(&self) -> reqwest::Client {
+        let mut lock = self.http3_client.lock().unwrap();
+        if let Some(ref client) = *lock {
+            client.clone()
+        } else {
+            let client = self.build_http3_client();
+            *lock = Some(client.clone());
+            client
+        }
+    }
+
+    pub(crate) async fn send_request(
+        &self,
+        url_str: &str,
+        mut builder_fn: impl FnMut(&reqwest::Client, &str) -> reqwest::RequestBuilder,
+    ) -> std::result::Result<reqwest::Response, reqwest::Error> {
+        // 1. Try HTTP/3 if cache has a valid policy
+        if let Some(ref cache) = self.options.alt_svc_cache {
+            if let Ok(url) = url::Url::parse(url_str) {
+                if let Some(host) = url.host_str() {
+                    if let Some(policy) = cache.get_alt_svc(host).await {
+                        if let Some(rewritten_url) =
+                            crate::security::alt_svc::rewrite_url_for_alt_svc(url_str, &policy)
+                        {
+                            tracing::info!(
+                                original = url_str,
+                                rewritten = %rewritten_url,
+                                "Alt-Svc: Attempting connection over HTTP/3"
+                            );
+                            let h3_client = self.get_http3_client();
+                            let req = builder_fn(&h3_client, &rewritten_url);
+                            match req.send().await {
+                                Ok(resp) => {
+                                    self.check_and_update_alt_svc(&resp).await;
+                                    self.check_and_update_hsts(&resp).await;
+                                    return Ok(resp);
+                                }
+                                Err(e) => {
+                                    tracing::warn!(
+                                        error = %e,
+                                        "Alt-Svc: HTTP/3 request failed, falling back to standard client"
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. Fallback / default path: standard client (HTTP/1.1 / HTTP/2)
+        let req = builder_fn(&self.client, url_str);
+        let resp = req.send().await;
+        if let Ok(ref response) = resp {
+            self.check_and_update_alt_svc(response).await;
+            self.check_and_update_hsts(response).await;
+        }
+        resp
+    }
+
     pub fn new(options: HttpWorkerOptions) -> Self {
         let cookie_jar = if let Some(ref provider) = options.credential_provider {
             provider.cookie_jar()
@@ -111,6 +227,10 @@ impl HttpWorker {
 
         let client = builder.build().expect("Failed to build HTTP client");
 
-        Self { client, options }
+        Self {
+            client,
+            http3_client: std::sync::Mutex::new(None),
+            options,
+        }
     }
 }

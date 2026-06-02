@@ -21,39 +21,43 @@ impl ProtocolWorker for HttpWorker {
 
         loop {
             let upgraded_uri = self.upgrade_url(&self.options.uri).await;
-            let mut request = self.client.get(&upgraded_uri);
-            if segment.length != u64::MAX {
-                let range_header = format!(
-                    "bytes={}-{}",
-                    segment.offset,
-                    segment.offset + segment.length - 1
-                );
-                request = request.header("Range", range_header);
-            } else if segment.offset > 0 {
-                request = request.header("Range", format!("bytes={}-", segment.offset));
-            }
+            let response_res = self
+                .send_request(&upgraded_uri, |client, uri| {
+                    let mut request = client.get(uri);
+                    if segment.length != u64::MAX {
+                        let range_header = format!(
+                            "bytes={}-{}",
+                            segment.offset,
+                            segment.offset + segment.length - 1
+                        );
+                        request = request.header("Range", range_header);
+                    } else if segment.offset > 0 {
+                        request = request.header("Range", format!("bytes={}-", segment.offset));
+                    }
 
-            if let Some(ref referer) = self.options.referer {
-                request = request.header("Referer", referer);
-            }
+                    if let Some(ref referer) = self.options.referer {
+                        request = request.header("Referer", referer);
+                    }
 
-            if let Some(ref provider) = self.options.credential_provider {
-                if let Ok(url) = url::Url::parse(&upgraded_uri) {
-                    if let Some(host) = url.host_str() {
-                        if let Some(creds) = provider.get_credentials(host) {
-                            if let (Some(user), Some(pass)) = (&creds.login, &creds.password) {
-                                request = request.basic_auth(user, Some(pass));
+                    if let Some(ref provider) = self.options.credential_provider {
+                        if let Ok(url) = url::Url::parse(uri) {
+                            if let Some(host) = url.host_str() {
+                                if let Some(creds) = provider.get_credentials(host) {
+                                    if let (Some(user), Some(pass)) =
+                                        (&creds.login, &creds.password)
+                                    {
+                                        request = request.basic_auth(user, Some(pass));
+                                    }
+                                }
                             }
                         }
                     }
-                }
-            }
-
-            let response_res = request.send().await;
+                    request
+                })
+                .await;
 
             match response_res {
                 Ok(response) => {
-                    self.check_and_update_hsts(&response).await;
                     if response.status().is_success() {
                         let mut buffer = BytesMut::with_capacity(16384);
 

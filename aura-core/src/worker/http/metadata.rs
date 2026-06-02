@@ -17,28 +17,32 @@ impl HttpWorker {
             let max_attempts = self.options.retry_count;
 
             let response = loop {
-                let mut request = self.client.get(&current_uri).header("Range", "bytes=0-0");
-                if let Some(ref ref_uri) = referer {
-                    request = request.header("Referer", ref_uri);
-                }
+                let res = self
+                    .send_request(&current_uri, |client, uri| {
+                        let mut request = client.get(uri).header("Range", "bytes=0-0");
+                        if let Some(ref ref_uri) = referer {
+                            request = request.header("Referer", ref_uri);
+                        }
 
-                if let Some(ref provider) = self.options.credential_provider {
-                    if let Ok(url) = url::Url::parse(&current_uri) {
-                        if let Some(host) = url.host_str() {
-                            if let Some(creds) = provider.get_credentials(host) {
-                                if let (Some(user), Some(pass)) = (&creds.login, &creds.password) {
-                                    request = request.basic_auth(user, Some(pass));
+                        if let Some(ref provider) = self.options.credential_provider {
+                            if let Ok(url) = url::Url::parse(uri) {
+                                if let Some(host) = url.host_str() {
+                                    if let Some(creds) = provider.get_credentials(host) {
+                                        if let (Some(user), Some(pass)) =
+                                            (&creds.login, &creds.password)
+                                        {
+                                            request = request.basic_auth(user, Some(pass));
+                                        }
+                                    }
                                 }
                             }
                         }
-                    }
-                }
-
-                let res = request.send().await;
+                        request
+                    })
+                    .await;
 
                 match res {
                     Ok(resp) => {
-                        self.check_and_update_hsts(&resp).await;
                         if resp.status().is_success() || resp.status().is_redirection() {
                             break resp;
                         } else if Self::is_retryable(resp.status()) && attempts < max_attempts {

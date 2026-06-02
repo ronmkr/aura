@@ -36,6 +36,7 @@ async fn test_http_worker_referer_propagation() {
         credential_provider: None,
         dns_resolver: None,
         hsts_cache: None,
+        alt_svc_cache: None,
     });
     let metadata = worker
         .resolve_metadata()
@@ -54,6 +55,7 @@ async fn test_http_worker_referer_propagation() {
         credential_provider: None,
         dns_resolver: None,
         hsts_cache: None,
+        alt_svc_cache: None,
     });
     let throttler = std::sync::Arc::new(crate::throttler::Throttler::new(0, 0));
     let result = worker_final
@@ -98,6 +100,7 @@ async fn test_http_worker_redirect_loop() {
         credential_provider: None,
         dns_resolver: None,
         hsts_cache: None,
+        alt_svc_cache: None,
     });
     let result = worker.resolve_metadata().await;
     match result {
@@ -130,6 +133,7 @@ async fn test_http_worker_custom_dns() {
         credential_provider: None,
         dns_resolver: Some(resolver_arc),
         hsts_cache: None,
+        alt_svc_cache: None,
     });
 
     let metadata = worker.resolve_metadata().await.expect("Should resolve");
@@ -167,6 +171,7 @@ async fn test_http_worker_retry_on_503() {
         credential_provider: None,
         dns_resolver: None,
         hsts_cache: None,
+        alt_svc_cache: None,
     });
 
     let throttler = std::sync::Arc::new(crate::throttler::Throttler::new(0, 0));
@@ -209,10 +214,51 @@ async fn test_http_worker_hsts_upgrade() {
         credential_provider: None,
         dns_resolver: None,
         hsts_cache: Some(hsts_cache),
+        alt_svc_cache: None,
     });
 
     let upgraded = worker.upgrade_url(&worker.options.uri).await;
     assert_eq!(upgraded, "https://example.com/file");
+}
+
+#[tokio::test]
+async fn test_http_worker_alt_svc_header_caching() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/file"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .insert_header("alt-svc", "h3=\":8443\"; ma=600")
+                .set_body_string("data"),
+        )
+        .mount(&server)
+        .await;
+
+    let alt_svc_cache = crate::security::AltSvcCache::new();
+    let worker = HttpWorker::new(HttpWorkerOptions {
+        uri: format!("{}/file", server.uri()),
+        local_addr: None,
+        user_agent: None,
+        connect_timeout: None,
+        proxy: None,
+        referer: None,
+        retry_count: 1,
+        retry_delay_secs: 1,
+        credential_provider: None,
+        dns_resolver: None,
+        hsts_cache: None,
+        alt_svc_cache: Some(alt_svc_cache.clone()),
+    });
+
+    let result = worker.resolve_metadata().await;
+    assert!(result.is_ok());
+
+    let parsed_uri = url::Url::parse(&server.uri()).unwrap();
+    let host = parsed_uri.host_str().unwrap();
+
+    let policy = alt_svc_cache.get_alt_svc(host).await.unwrap();
+    assert_eq!(policy.alt_protocol, "h3");
+    assert_eq!(policy.alt_port, 8443);
 }
 
 #[path = "captive_portal_tests.rs"]

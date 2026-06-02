@@ -59,6 +59,7 @@ pub struct Orchestrator {
     pub(crate) dns_resolver: Arc<crate::net_util::TokioResolver>,
     pub(crate) db: sled::Db,
     pub(crate) hsts_cache: crate::security::HstsCache,
+    pub(crate) alt_svc_cache: crate::security::AltSvcCache,
 }
 
 impl Orchestrator {
@@ -165,6 +166,7 @@ impl Orchestrator {
                 dns_resolver,
                 db,
                 hsts_cache: crate::security::HstsCache::new(),
+                alt_svc_cache: crate::security::AltSvcCache::new(),
             },
             event_tx,
         )

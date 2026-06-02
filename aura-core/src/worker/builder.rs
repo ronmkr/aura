@@ -15,6 +15,7 @@ pub struct WorkerBuilder {
     credential_provider: Option<std::sync::Arc<crate::config::credentials::CredentialProvider>>,
     dns_resolver: Option<std::sync::Arc<crate::net_util::TokioResolver>>,
     hsts_cache: Option<crate::security::HstsCache>,
+    alt_svc_cache: Option<crate::security::AltSvcCache>,
 }
 
 impl WorkerBuilder {
@@ -31,6 +32,7 @@ impl WorkerBuilder {
             credential_provider: None,
             dns_resolver: None,
             hsts_cache: None,
+            alt_svc_cache: None,
         }
     }
 
@@ -44,6 +46,11 @@ impl WorkerBuilder {
 
     pub fn hsts_cache(mut self, cache: crate::security::HstsCache) -> Self {
         self.hsts_cache = Some(cache);
+        self
+    }
+
+    pub fn alt_svc_cache(mut self, cache: crate::security::AltSvcCache) -> Self {
+        self.alt_svc_cache = Some(cache);
         self
     }
 
@@ -103,6 +110,7 @@ impl WorkerBuilder {
             credential_provider: self.credential_provider,
             dns_resolver: self.dns_resolver,
             hsts_cache: self.hsts_cache,
+            alt_svc_cache: self.alt_svc_cache,
         })
     }
 
