@@ -1,29 +1,20 @@
-use super::protocol::{MetadataMessage, PeerCodec, PeerMessage, BLOCK_SIZE};
-use crate::orchestrator::SubTaskEvent;
-use crate::storage::StorageRequest;
-use crate::worker::bittorrent::task::BtTask;
-use crate::{Error, Result, TaskId};
+use super::handlers::PeerHandlerContext;
+use super::protocol::{MetadataMessage, PeerMessage, BLOCK_SIZE};
+use crate::{Error, Result};
 use bytes::BytesMut;
 use futures_util::SinkExt;
-use sha1::{Digest, Sha1};
-use tokio_util::codec::Framed;
-use tracing::{debug, error, info};
+use tracing::{debug, info, warn};
 
 impl super::BtWorker {
-    #[allow(clippy::too_many_arguments)]
-    pub async fn trigger_request<S>(
+    pub(crate) async fn trigger_request<S>(
         &mut self,
-        framed: &mut Framed<S, PeerCodec>,
-        task: &BtTask,
-        meta_id: TaskId,
-        sub_id: TaskId,
-        storage_tx: tokio::sync::mpsc::Sender<StorageRequest>,
-        subtask_tx: tokio::sync::mpsc::Sender<SubTaskEvent>,
+        ctx: &mut PeerHandlerContext<'_, S>,
     ) -> Result<()>
     where
         S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
     {
-        let torrent_guard = task.state.torrent.lock().await;
+        let torrent_guard: tokio::sync::MutexGuard<Option<crate::torrent::Torrent>> =
+            ctx.task.state.torrent.lock().await;
         let torrent = match torrent_guard.as_ref() {
             Some(t) => t,
             None => {
@@ -37,7 +28,7 @@ impl super::BtWorker {
                     let payload = serde_bencode::to_bytes(&msg).map_err(|e| {
                         Error::Protocol(format!("Failed to encode metadata request: {}", e))
                     })?;
-                    framed
+                    ctx.framed
                         .send(PeerMessage::Extended {
                             id: metadata_id,
                             payload: payload.into(),
@@ -50,7 +41,8 @@ impl super::BtWorker {
 
         if let Some(piece_idx) = self.current_piece {
             let finished = {
-                let bf_guard = task.state.bitfield.lock().await;
+                let bf_guard: tokio::sync::MutexGuard<Option<crate::bitfield::Bitfield>> =
+                    ctx.task.state.bitfield.lock().await;
                 bf_guard
                     .as_ref()
                     .map(|bf| bf.get(piece_idx))
@@ -67,10 +59,7 @@ impl super::BtWorker {
                 self.bytes_requested = 0;
                 self.piece_buffer.clear();
                 drop(torrent_guard);
-                return Box::pin(
-                    self.trigger_request(framed, task, meta_id, sub_id, storage_tx, subtask_tx),
-                )
-                .await;
+                return Box::pin(self.trigger_request(ctx)).await;
             }
         }
 
@@ -92,97 +81,9 @@ impl super::BtWorker {
                 self.piece_buffer.resize(piece_total_len as usize, 0);
             }
 
-            if self.bytes_received >= piece_total_len {
-                // Piece complete, verify hash
-                let is_verified = if torrent.info_hash_v2().unwrap_or(None).is_some() {
-                    // v2 or Hybrid: use SHA-256 Merkle root
-                    let actual_hash =
-                        crate::torrent::Torrent::compute_piece_merkle_root(&self.piece_buffer);
-
-                    if let Ok(expected_hash) =
-                        torrent.piece_hash_v2(piece_idx, Some(&task.state.db))
-                    {
-                        actual_hash == expected_hash
-                    } else if let Ok(expected_hash1) = torrent.piece_hash_v1(piece_idx) {
-                        // Fallback to v1 hash if v2 piece hash lookup fails (e.g., hybrid padding)
-                        let mut hasher1 = Sha1::new();
-                        hasher1.update(&self.piece_buffer);
-                        let actual_hash1: [u8; 20] = hasher1.finalize().into();
-                        actual_hash1 == expected_hash1
-                    } else {
-                        false
-                    }
-                } else {
-                    // v1-only
-                    if let Ok(expected_hash) = torrent.piece_hash_v1(piece_idx) {
-                        let mut hasher = Sha1::new();
-                        hasher.update(&self.piece_buffer);
-                        let actual_hash: [u8; 20] = hasher.finalize().into();
-                        actual_hash == expected_hash
-                    } else {
-                        false
-                    }
-                };
-
-                if is_verified {
-                    info!(addr = %self.peer_addr, %piece_idx, "Piece download complete and verified");
-
-                    let finished_data = std::mem::replace(
-                        &mut self.piece_buffer,
-                        BytesMut::with_capacity(
-                            crate::worker::bittorrent::protocol::BLOCK_SIZE as usize,
-                        ),
-                    );
-
-                    let offset = torrent
-                        .piece_align_offset(piece_idx)
-                        .unwrap_or(piece_idx as u64 * piece_length);
-
-                    let _ = storage_tx
-                        .send(StorageRequest::Write {
-                            task_id: meta_id,
-                            segment: crate::worker::Segment {
-                                offset,
-                                length: piece_total_len,
-                            },
-                            data: finished_data,
-                        })
-                        .await;
-
-                    let mut bf_guard = task.state.bitfield.lock().await;
-                    if let Some(ref mut bf) = *bf_guard {
-                        bf.set(piece_idx, true);
-                    }
-                    let mut picker_guard = task.state.picker.lock().await;
-                    if let Some(ref mut picker) = *picker_guard {
-                        picker.mark_completed(piece_idx);
-                    }
-                    drop(picker_guard);
-
-                    if let Some(ref mut guard) = self.active_guard {
-                        guard.complete();
-                    }
-                    self.active_guard = None;
-
-                    let _ = subtask_tx
-                        .send(SubTaskEvent::PieceVerified(meta_id, sub_id, piece_idx))
-                        .await;
-                } else {
-                    error!(addr = %self.peer_addr, %piece_idx, "Piece hash mismatch!");
-                    self.active_guard = None;
-                }
-
-                self.current_piece = None;
-                self.bytes_received = 0;
-                self.bytes_requested = 0;
-                self.piece_buffer.clear();
-
-                drop(torrent_guard);
-                return Box::pin(
-                    self.trigger_request(framed, task, meta_id, sub_id, storage_tx, subtask_tx),
-                )
-                .await;
-            }
+            // Piece completion and hash verification are handled by
+            // handle_incoming_piece in handlers/data.rs when the final
+            // block arrives. This method only pipelines block requests.
 
             // Pipelining: fill up to MAX_IN_FLIGHT
             while (self.bytes_requested - self.bytes_received) < max_in_flight
@@ -190,9 +91,9 @@ impl super::BtWorker {
             {
                 let length =
                     std::cmp::min(BLOCK_SIZE, (piece_total_len - self.bytes_requested) as u32);
-                debug!(addr = %self.peer_addr, %piece_idx, begin = self.bytes_requested, %length, "Requesting next block (pipelined)");
+                info!(addr = %self.peer_addr, %piece_idx, begin = self.bytes_requested, %length, "Requesting block (pipelined)");
 
-                framed
+                ctx.framed
                     .send(PeerMessage::Request {
                         index: piece_idx as u32,
                         begin: self.bytes_requested as u32,
@@ -203,14 +104,21 @@ impl super::BtWorker {
             }
         } else {
             // Try to pick a piece
-            let bf_guard = task.state.bitfield.lock().await;
-            let mut picker_guard = task.state.picker.lock().await;
+            // Lock order: Torrent -> Bitfield -> Picker (Consistent with Scrubber to avoid deadlock)
+            // We already hold the torrent lock from the start of the method
+            let bf_guard: tokio::sync::MutexGuard<Option<crate::bitfield::Bitfield>> =
+                ctx.task.state.bitfield.lock().await;
+            let mut picker_guard: tokio::sync::MutexGuard<
+                Option<crate::piece_picker::PiecePicker>,
+            > = ctx.task.state.picker.lock().await;
 
             if let (Some(bf), Some(picker)) = (bf_guard.as_ref(), picker_guard.as_mut()) {
-                let sequential = task
+                let sequential = ctx
+                    .task
                     .state
                     .sequential
                     .load(std::sync::atomic::Ordering::Relaxed);
+
                 if let Some(piece_idx) = picker.pick_next(bf, &self.peer_addr, sequential) {
                     let piece_total_len = if piece_idx == torrent.pieces_count() - 1 {
                         total_length - (piece_idx as u64 * piece_length)
@@ -218,19 +126,26 @@ impl super::BtWorker {
                         piece_length
                     };
 
+                    // Check if we need to request block hashes for this file
+                    self.check_and_request_hashes_internal(
+                        ctx.framed, ctx.task, torrent, piece_idx,
+                    )
+                    .await?;
+
                     info!(addr = %self.peer_addr, %piece_idx, "Starting piece download");
                     self.current_piece = Some(piece_idx);
                     self.bytes_received = 0;
                     self.bytes_requested = 0;
-                    self.piece_buffer = BytesMut::with_capacity(
-                        crate::worker::bittorrent::protocol::BLOCK_SIZE as usize,
-                    );
+                    self.piece_buffer = BytesMut::with_capacity(piece_total_len as usize);
                     self.piece_buffer.resize(piece_total_len as usize, 0);
 
-                    let state_clone = task.state.clone();
+                    let state_clone = ctx.task.state.clone();
                     let guard = crate::piece_picker::PieceGuard::new(piece_idx, move |idx| {
                         tokio::spawn(async move {
-                            if let Some(picker) = state_clone.picker.lock().await.as_mut() {
+                            let mut pg: tokio::sync::MutexGuard<
+                                Option<crate::piece_picker::PiecePicker>,
+                            > = state_clone.picker.lock().await;
+                            if let Some(picker) = pg.as_mut() {
                                 picker.release_piece(idx);
                             }
                         });
@@ -240,11 +155,12 @@ impl super::BtWorker {
                     drop(picker_guard);
                     drop(bf_guard);
                     drop(torrent_guard);
-                    return Box::pin(
-                        self.trigger_request(framed, task, meta_id, sub_id, storage_tx, subtask_tx),
-                    )
-                    .await;
+                    return Box::pin(self.trigger_request(ctx)).await;
+                } else {
+                    info!(addr = %self.peer_addr, "No piece picked by picker (possibly peer has no pieces we need)");
                 }
+            } else {
+                warn!(addr = %self.peer_addr, "Bitfield or Picker missing during trigger_request");
             }
         }
 

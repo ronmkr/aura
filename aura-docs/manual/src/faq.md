@@ -2,7 +2,7 @@
 
 Expert answers to common questions about Aura's design, capabilities, and compatibility.
 
-## 🚀 Performance & Architecture
+##  Performance & Architecture
 
 ### How does Aura achieve "extreme" concurrency?
 Aura uses an **Actor Model** powered by the **Tokio** runtime. Unlike thread-per-connection models, actors are lightweight and asynchronous. This allows Aura to manage thousands of active BitTorrent pieces and HTTP ranges with negligible memory overhead and zero blocking of the main event loop.
@@ -15,7 +15,7 @@ Yes. On supported Linux kernels, Aura utilizes **Kernel TLS (kTLS)** to offload 
 
 ---
 
-## 🛡️ Privacy & Safety
+##  Privacy & Safety
 
 ### Is my IP address exposed during BitTorrent downloads?
 By default, yes (as per the BT spec). However, Aura provides built-in **SOCKS5 Proxy** support and a **VPN Kill-switch**. When `force_tunnel` is enabled, Aura will physically block all traffic if your VPN interface (e.g., `tun0`) drops, ensuring your real IP is never leaked to the swarm.
@@ -25,7 +25,7 @@ Many public Wi-Fi networks (Hotels, Airports) redirect requests to a login page.
 
 ---
 
-## 🛠️ Compatibility
+##  Compatibility
 
 ### Can Aura act as a drop-in replacement for `aria2c`?
 Aura is **protocol-compatible** with `aria2`. Its JSON-RPC 2.0 API supports many `aria2` methods, allowing you to use existing frontends (WebUIs). While CLI flags differ slightly, Aura's goal is to provide a familiar experience with superior defaults.
@@ -40,7 +40,7 @@ Aura works on all filesystems, but it has specialized optimizations for:
 
 ---
 
-## 🌐 Connectivity
+##  Connectivity
 
 ### How do I get "Green" status in BitTorrent?
 Aura includes **NAT Traversal** actors that attempt to automatically map ports using **UPnP** and **NAT-PMP/PCP**. If your router supports these, you will automatically be reachable from the WAN. If not, manually forward port `6881` (TCP/UDP).

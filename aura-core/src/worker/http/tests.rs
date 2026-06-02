@@ -1,4 +1,4 @@
-use super::HttpWorker;
+use super::{HttpWorker, HttpWorkerOptions};
 use crate::worker::{ProtocolWorker, Segment};
 use crate::Error;
 use crate::TaskId;
@@ -24,37 +24,37 @@ async fn test_http_worker_referer_propagation() {
         .mount(&server)
         .await;
 
-    let worker = HttpWorker::new(
-        format!("{}/start", server.uri()),
-        None,
-        None,
-        None,
-        None,
-        None,
-        5,
-        2,
-        None,
-        None,
-        None,
-    );
+    let worker = HttpWorker::new(HttpWorkerOptions {
+        uri: format!("{}/start", server.uri()),
+        local_addr: None,
+        user_agent: None,
+        connect_timeout: None,
+        proxy: None,
+        referer: None,
+        retry_count: 5,
+        retry_delay_secs: 2,
+        credential_provider: None,
+        dns_resolver: None,
+        hsts_cache: None,
+    });
     let metadata = worker
         .resolve_metadata()
         .await
         .expect("Should resolve metadata with redirects");
 
-    let worker_final = HttpWorker::new(
-        metadata.final_uri,
-        None,
-        None,
-        None,
-        None,
-        Some(format!("{}/start", server.uri())),
-        5,
-        2,
-        None,
-        None,
-        None,
-    );
+    let worker_final = HttpWorker::new(HttpWorkerOptions {
+        uri: metadata.final_uri,
+        local_addr: None,
+        user_agent: None,
+        connect_timeout: None,
+        proxy: None,
+        referer: Some(format!("{}/start", server.uri())),
+        retry_count: 5,
+        retry_delay_secs: 2,
+        credential_provider: None,
+        dns_resolver: None,
+        hsts_cache: None,
+    });
     let throttler = std::sync::Arc::new(crate::throttler::Throttler::new(0, 0));
     let result = worker_final
         .fetch_segment(
@@ -86,19 +86,19 @@ async fn test_http_worker_redirect_loop() {
         .mount(&server)
         .await;
 
-    let worker = HttpWorker::new(
-        format!("{}/a", server.uri()),
-        None,
-        None,
-        None,
-        None,
-        None,
-        5,
-        2,
-        None,
-        None,
-        None,
-    );
+    let worker = HttpWorker::new(HttpWorkerOptions {
+        uri: format!("{}/a", server.uri()),
+        local_addr: None,
+        user_agent: None,
+        connect_timeout: None,
+        proxy: None,
+        referer: None,
+        retry_count: 5,
+        retry_delay_secs: 2,
+        credential_provider: None,
+        dns_resolver: None,
+        hsts_cache: None,
+    });
     let result = worker.resolve_metadata().await;
     match result {
         Err(Error::Protocol(msg)) => assert!(msg.to_lowercase().contains("redirect")),
@@ -118,19 +118,19 @@ async fn test_http_worker_custom_dns() {
     let resolver = crate::net_util::create_resolver(&dns_config).await.unwrap();
     let resolver_arc = std::sync::Arc::new(resolver);
 
-    let worker = HttpWorker::new(
-        format!("{}/file", server.uri()),
-        None,
-        None,
-        None,
-        None,
-        None,
-        5,
-        2,
-        None,
-        Some(resolver_arc),
-        None,
-    );
+    let worker = HttpWorker::new(HttpWorkerOptions {
+        uri: format!("{}/file", server.uri()),
+        local_addr: None,
+        user_agent: None,
+        connect_timeout: None,
+        proxy: None,
+        referer: None,
+        retry_count: 5,
+        retry_delay_secs: 2,
+        credential_provider: None,
+        dns_resolver: Some(resolver_arc),
+        hsts_cache: None,
+    });
 
     let metadata = worker.resolve_metadata().await.expect("Should resolve");
     assert_eq!(metadata.total_length, Some(10));
@@ -155,19 +155,19 @@ async fn test_http_worker_retry_on_503() {
         .mount(&server)
         .await;
 
-    let worker = HttpWorker::new(
-        format!("{}/retry", server.uri()),
-        None,
-        None,
-        None,
-        None,
-        None,
-        3, // Max retries
-        1, // 1s base delay
-        None,
-        None,
-        None,
-    );
+    let worker = HttpWorker::new(HttpWorkerOptions {
+        uri: format!("{}/retry", server.uri()),
+        local_addr: None,
+        user_agent: None,
+        connect_timeout: None,
+        proxy: None,
+        referer: None,
+        retry_count: 3,      // Max retries
+        retry_delay_secs: 1, // 1s base delay
+        credential_provider: None,
+        dns_resolver: None,
+        hsts_cache: None,
+    });
 
     let throttler = std::sync::Arc::new(crate::throttler::Throttler::new(0, 0));
     let result = worker
@@ -197,21 +197,21 @@ async fn test_http_worker_hsts_upgrade() {
 
     // Create a worker with an insecure http URL
     let http_uri = "http://example.com/file".to_string();
-    let worker = HttpWorker::new(
-        http_uri,
-        None,
-        None,
-        None,
-        None,
-        None,
-        3,
-        1,
-        None,
-        None,
-        Some(hsts_cache),
-    );
+    let worker = HttpWorker::new(HttpWorkerOptions {
+        uri: http_uri,
+        local_addr: None,
+        user_agent: None,
+        connect_timeout: None,
+        proxy: None,
+        referer: None,
+        retry_count: 3,
+        retry_delay_secs: 1,
+        credential_provider: None,
+        dns_resolver: None,
+        hsts_cache: Some(hsts_cache),
+    });
 
-    let upgraded = worker.upgrade_url(&worker.uri).await;
+    let upgraded = worker.upgrade_url(&worker.options.uri).await;
     assert_eq!(upgraded, "https://example.com/file");
 }
 

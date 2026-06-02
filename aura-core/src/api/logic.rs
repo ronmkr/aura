@@ -111,10 +111,10 @@ impl TaskHandle {
 }
 
 #[cfg(test)]
-#[cfg(test)]
 mod tests {
     use super::*;
 
+    use crate::task::TaskType;
     use crate::Config;
     use tokio_stream::StreamExt;
 
@@ -189,5 +189,61 @@ mod tests {
     fn test_task_event_filtering_proptest() {
         // This is a placeholder for a more complex property-based test
         // validating that task-specific streams never leak data from other tasks.
+    }
+
+    #[tokio::test]
+    async fn test_engine_subscribe_captures_task_added() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let mut config = Config::default();
+        config.storage.download_dir = temp_dir.path().to_string_lossy().to_string();
+
+        let (engine, orchestrator, storage) = Engine::new(config).await.unwrap();
+
+        // Spawn actors
+        tokio::spawn(async move {
+            let _ = orchestrator.run().await;
+        });
+        tokio::spawn(async move {
+            let _ = storage.run().await;
+        });
+
+        // 1. Subscribe BEFORE adding task
+        let mut events = engine.subscribe();
+
+        // 2. Add task
+        let id = TaskId(999);
+        engine
+            .add_task_with_options(crate::orchestrator::command::AddTaskArgs {
+                id,
+                tenant_id: None,
+                name: "test_race_task".to_string(),
+                sources: vec![("http://example.com/file".to_string(), TaskType::Http)],
+                checksum: None,
+                priority: 100,
+                streaming_mode: false,
+                depends_on: Vec::new(),
+                follow_on: None,
+            })
+            .await
+            .unwrap();
+
+        // 3. Verify Event::TaskAdded is captured
+        let mut found = false;
+        // Wait up to 2 seconds
+        let timeout_fut = tokio::time::timeout(std::time::Duration::from_secs(2), async {
+            while let Ok(event) = events.recv().await {
+                if let Event::TaskAdded(task_id) = event {
+                    if task_id == id {
+                        found = true;
+                        break;
+                    }
+                }
+            }
+        });
+        let _ = timeout_fut.await;
+        assert!(
+            found,
+            "Event::TaskAdded should be received by early subscriber"
+        );
     }
 }

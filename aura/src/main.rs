@@ -17,6 +17,10 @@ struct Cli {
     /// URI to automatically download after current tasks complete (Task Chaining)
     #[arg(long)]
     follow_on: Option<String>,
+
+    /// Enable verbose logging (repeat for more detail: -v, -vv)
+    #[arg(short, long, action = clap::ArgAction::Count)]
+    verbose: u8,
 }
 
 #[derive(Subcommand, Debug)]
@@ -38,6 +42,20 @@ enum Commands {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
+
+    // Initialize tracing
+    let log_level = match cli.verbose {
+        0 => tracing::Level::INFO,
+        1 => tracing::Level::DEBUG,
+        _ => tracing::Level::TRACE,
+    };
+
+    let subscriber = tracing_subscriber::FmtSubscriber::builder()
+        .with_max_level(log_level)
+        .with_target(false)
+        .finish();
+
+    tracing::subscriber::set_global_default(subscriber).expect("Failed to set tracing subscriber");
 
     match cli.command {
         Some(Commands::Daemon {

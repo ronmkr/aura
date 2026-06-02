@@ -19,24 +19,29 @@ pub struct BtTaskState {
     pub registry: Mutex<PeerRegistry>,
     pub sequential: std::sync::atomic::AtomicBool,
     pub db: sled::Db,
+    pub pieces_count: std::sync::atomic::AtomicUsize,
 }
 
 impl BtTaskState {
-    pub fn new(torrent: Torrent, db: sled::Db) -> Self {
+    pub fn new(torrent: Torrent, db: sled::Db, bitfield: Option<Bitfield>) -> Self {
         let num_pieces = torrent.pieces_count();
         let info_hash = if let Some(h2) = torrent.info_hash_v2().unwrap_or(None) {
             InfoHash::V2(h2)
         } else {
             InfoHash::V1(torrent.info_hash_v1().unwrap_or(None).unwrap_or([0; 20]))
         };
+
+        let bf = bitfield.unwrap_or_else(|| Bitfield::new(num_pieces));
+
         Self {
             info_hash,
             torrent: Mutex::new(Some(torrent)),
-            bitfield: Mutex::new(Some(Bitfield::new(num_pieces))),
+            bitfield: Mutex::new(Some(bf)),
             picker: Mutex::new(Some(PiecePicker::new(num_pieces))),
             registry: Mutex::new(PeerRegistry::new()),
             sequential: std::sync::atomic::AtomicBool::new(false),
             db,
+            pieces_count: std::sync::atomic::AtomicUsize::new(num_pieces),
         }
     }
 
@@ -49,17 +54,28 @@ impl BtTaskState {
             registry: Mutex::new(PeerRegistry::new()),
             sequential: std::sync::atomic::AtomicBool::new(false),
             db,
+            pieces_count: std::sync::atomic::AtomicUsize::new(0),
         }
     }
 
     pub async fn mature(&self, torrent: Torrent) {
         let num_pieces = torrent.pieces_count();
+        self.pieces_count
+            .store(num_pieces, std::sync::atomic::Ordering::Relaxed);
 
         // If v2, persist piece layers to DB
         if torrent.info.meta_version == Some(2) {
+            let layer_index = torrent.get_piece_layer_index();
             if let Some(serde_bencode::value::Value::Dict(dict)) = &torrent.piece_layers {
                 for (root, hashes) in dict {
                     if let serde_bencode::value::Value::Bytes(hash_bytes) = hashes {
+                        // 1. Store under composite key (pieces_root + index)
+                        let mut key = Vec::with_capacity(36);
+                        key.extend_from_slice(root);
+                        key.extend_from_slice(&layer_index.to_be_bytes());
+                        let _ = self.db.insert(key, hash_bytes.clone());
+
+                        // 2. Fallback to legacy key (pieces_root only)
                         let _ = self.db.insert(root, hash_bytes.clone());
                     }
                 }
@@ -68,8 +84,23 @@ impl BtTaskState {
         }
 
         *self.torrent.lock().await = Some(torrent);
-        *self.bitfield.lock().await = Some(Bitfield::new(num_pieces));
-        *self.picker.lock().await = Some(PiecePicker::new(num_pieces));
+        let mut bf_guard = self.bitfield.lock().await;
+        if bf_guard.is_none() || bf_guard.as_ref().map(|bf| bf.len()).unwrap_or(0) != num_pieces {
+            *bf_guard = Some(Bitfield::new(num_pieces));
+        }
+        let bf_clone = bf_guard.as_ref().unwrap().clone();
+        drop(bf_guard);
+
+        let mut picker_guard = self.picker.lock().await;
+        let mut picker = PiecePicker::new(num_pieces);
+        // Synchronize picker with the preserved bitfield
+        for i in 0..num_pieces {
+            if bf_clone.get(i) {
+                picker.mark_completed(i);
+            }
+        }
+        *picker_guard = Some(picker);
+        drop(picker_guard);
     }
 }
 
@@ -88,6 +119,7 @@ impl BtTask {
         dht_tx: mpsc::Sender<crate::dht::DhtCommand>,
         lpd_tx: mpsc::Sender<crate::lpd::LpdCommand>,
         db: sled::Db,
+        bitfield: Option<Bitfield>,
     ) -> Result<Self> {
         let data = tokio::fs::read(path)
             .await
@@ -95,7 +127,7 @@ impl BtTask {
         let torrent = Torrent::from_bytes(&data)?;
         Ok(Self {
             id,
-            state: Arc::new(BtTaskState::new(torrent, db)),
+            state: Arc::new(BtTaskState::new(torrent, db, bitfield)),
             dht_tx,
             lpd_tx,
         })
@@ -160,7 +192,7 @@ impl BtTask {
         &self,
         my_id: [u8; 20],
         _storage_tx: mpsc::Sender<crate::storage::StorageRequest>,
-        _subtask_tx: mpsc::Sender<crate::orchestrator::SubTaskEvent>,
+        subtask_tx: mpsc::Sender<crate::orchestrator::SubTaskEvent>,
         token: tokio_util::sync::CancellationToken,
         _throttler: Arc<crate::throttler::Throttler>,
         worker_cmd_tx: tokio::sync::broadcast::Sender<crate::orchestrator::WorkerCommand>,
@@ -187,7 +219,15 @@ impl BtTask {
 
         tokio::spawn(async move {
             let _ = this_tracker
-                .run_tracker_loop(my_id, port, tracker_token, None, None, None)
+                .run_tracker_loop(crate::worker::bittorrent::task::tracker::TrackerLoopArgs {
+                    my_id,
+                    port,
+                    token: tracker_token,
+                    local_addr: None,
+                    user_agent: None,
+                    proxy: None,
+                    subtask_tx,
+                })
                 .await;
         });
 

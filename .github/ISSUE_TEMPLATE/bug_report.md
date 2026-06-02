@@ -7,9 +7,11 @@ assignees: ''
 
 ---
 
+### Bug Description
 **Describe the bug**
 A clear and concise description of what the bug is.
 
+### Reproduction Steps
 **To Reproduce**
 Steps to reproduce the behavior:
 1. Go to '...'
@@ -17,16 +19,20 @@ Steps to reproduce the behavior:
 3. Scroll down to '....'
 4. See error
 
-**Expected behavior**
+### Expected Behavior
 A clear and concise description of what you expected to happen.
 
-**Screenshots**
-If applicable, add screenshots to help explain your problem.
+### Environment
+- **OS**: [e.g. macOS, Linux, Windows]
+- **Aura Version**: [e.g. 0.1.0]
+- **Rust Version**: [e.g. 1.80]
+- **Architecture**: [e.g. x86_64, aarch64]
 
-**Environment (please complete the following information):**
- - OS: [e.g. macOS, Linux, Windows]
- - Aura Version [e.g. 0.1.0]
- - Rust Version [e.g. 1.80]
+### Regression Testing
+**How will we ensure this doesn't happen again?**
+- [ ] New unit test added
+- [ ] Existing test updated
+- [ ] Fuzzing/Property-based test suggested
 
-**Additional context**
-Add any other context about the problem here.
+### Additional Context
+Add any other context or screenshots about the problem here.

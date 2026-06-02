@@ -32,7 +32,7 @@
 ## Milestone 4: Hyper-Scale (Aggregator) (Completed)
 - [x] **Sourced Aggregator** (Multi-protocol task merging).
 - [x] **Work Stealing & Racing** (EWMA-based speculative execution in `task/logic.rs`).
-- [x] **Endgame Mode** (Parallel final block fetching, <1% or ≤3 pieces trigger).
+- [x] **Endgame Mode** (Parallel final block fetching, <1% or 3 pieces trigger).
 - [x] **Adaptive Connection Scaling** (Spawns connections when throughput/connection < 256 KB/s).
 - [x] **Hierarchical Throttling** (Semaphore-based token bucket, global + per-task).
 

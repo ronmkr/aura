@@ -192,7 +192,6 @@ impl Default for PeerRegistry {
 }
 
 #[cfg(test)]
-#[cfg(test)]
 mod tests {
     use super::*;
 
@@ -244,5 +243,56 @@ mod tests {
         registry.tick_rates(1.0);
         let connected2 = registry.get_all_connected();
         assert_eq!(connected2[0].download_rate, 0.0);
+    }
+
+    #[test]
+    fn test_peer_reconnect_after_failure() {
+        let mut registry = PeerRegistry::new();
+        let p1 = Peer {
+            id: None,
+            ip: "1.1.1.1".to_string(),
+            port: 80,
+        };
+        registry.add_peers(vec![p1]);
+
+        // get_peer_to_connect transitions Disconnected -> Connecting
+        let peer = registry.get_peer_to_connect().unwrap();
+        assert_eq!(peer.ip, "1.1.1.1");
+
+        // Peer stuck in Connecting: no peers available
+        assert!(registry.get_peer_to_connect().is_none());
+
+        // Simulate connection failure: transition back to Disconnected
+        registry.update_state("1.1.1.1:80", ConnectionState::Disconnected);
+
+        // Peer slot is freed and available for reconnection
+        let peer2 = registry.get_peer_to_connect().unwrap();
+        assert_eq!(peer2.ip, "1.1.1.1");
+    }
+
+    #[test]
+    fn test_peer_stuck_in_connecting_blocks_reconnection() {
+        let mut registry = PeerRegistry::new();
+        let p1 = Peer {
+            id: None,
+            ip: "1.1.1.1".to_string(),
+            port: 80,
+        };
+        registry.add_peers(vec![p1]);
+
+        // Transition to Connecting
+        let _ = registry.get_peer_to_connect().unwrap();
+
+        // Without update_state back to Disconnected, peer remains stuck
+        assert!(registry.get_peer_to_connect().is_none());
+
+        // Re-adding the same peer does not help (entry already exists)
+        let p1_again = Peer {
+            id: None,
+            ip: "1.1.1.1".to_string(),
+            port: 80,
+        };
+        registry.add_peers(vec![p1_again]);
+        assert!(registry.get_peer_to_connect().is_none());
     }
 }

@@ -19,7 +19,7 @@ To prevent a single slow mirror from bottlenecking the entire download, Aura imp
 The Orchestrator calculates the **Exponential Weighted Moving Average (EWMA)** throughput for every individual connection. Unlike a standard average, EWMA reacts instantly to sudden network congestion or server-side throttling.
 
 ### 2. Speculative Stealing
-If a connection is significantly slower (3x slower than the current average), the Orchestrator marks its assigned ranges as "stolen." It doesn't kill the slow connection—it simply assigns the same range to a faster worker.
+If a connection is significantly slower (3x slower than the current average), the Orchestrator marks its assigned ranges as "stolen." It doesn't kill the slow connectionit simply assigns the same range to a faster worker.
 
 ### 3. The Race
 - Both connections fetch the same data range in parallel.

@@ -4,7 +4,7 @@
 Implemented
 
 ## Context
-BitTorrent performance is heavily dependent on "reachability"—the ability for other peers to initiate connections to the client. Manual port forwarding is a significant barrier for users. Additionally, high-speed transfers on local networks are often hampered by unnecessary routing through external gateways.
+BitTorrent performance is heavily dependent on "reachability"the ability for other peers to initiate connections to the client. Manual port forwarding is a significant barrier for users. Additionally, high-speed transfers on local networks are often hampered by unnecessary routing through external gateways.
 
 ## Decision
 1. **NAT Traversal Actor**: We will implement an actor that uses UPnP and NAT-PMP (via crates like `igupnp` or `nat-pmp`) to dynamically request port mappings from the router at startup, and periodically refresh/renew them (every 30 minutes) to prevent lease expiration.

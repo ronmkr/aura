@@ -1,5 +1,6 @@
 use crate::orchestrator::Orchestrator;
 use crate::task::DownloadPhase;
+use crate::worker::bittorrent::task::BtTask;
 use crate::{Result, TaskId};
 use tracing::{debug, info};
 
@@ -41,7 +42,13 @@ impl Orchestrator {
                     info!(%meta_id, %len, "Metadata matured: task initialized");
                     meta_task.total_length = len;
                     if metadata.range_supported {
-                        meta_task.generate_ranges(128); // Default 128 segments to allow high concurrency
+                        let bt_bitfield = meta_task
+                            .extensions
+                            .get("bittorrent")
+                            .and_then(|e| e.clone().as_any_arc().downcast::<BtTask>().ok())
+                            .and(None); // Simplified as we can't easily block for bitfield here
+
+                        meta_task.generate_ranges(128, bt_bitfield);
                     } else {
                         info!(%meta_id, "Server does not support Range requests. Falling back to single-stream download.");
                         meta_task
@@ -88,7 +95,7 @@ impl Orchestrator {
                 // Update storage engine
                 let path = {
                     let config = self.config.load();
-                    let base_dir = if let Some(ref tid) = meta_task.tenant_id {
+                    let base_dir: std::path::PathBuf = if let Some(ref tid) = meta_task.tenant_id {
                         if let Some(ctx) = self.tenants.get(tid) {
                             if let Some(ref root) = ctx.disk_path_root {
                                 root.clone()
@@ -117,6 +124,9 @@ impl Orchestrator {
 
             if let Some(sub_task) = meta_task.subtasks.iter_mut().find(|s| s.id == sub_id) {
                 sub_task.phase = DownloadPhase::Downloading;
+                if let Some(len) = metadata.total_length {
+                    sub_task.total_length = len;
+                }
             }
         }
 
@@ -155,21 +165,26 @@ impl Orchestrator {
         let mut completed = false;
         if let Some(meta_task) = self.tasks.get_mut(&meta_id) {
             // Racing coordination: check if other subtasks were also working on this range
-            let racing_sub_ids: Vec<TaskId> = meta_task
-                .in_flight_ranges
-                .iter()
-                .filter(|(sid, r)| *r == range && *sid != sub_id)
-                .map(|(sid, _)| *sid)
-                .collect();
+            // CRITICAL: Skip racing logic for BitTorrent dummy ranges (start=0, end=0)
+            if range.start != 0 || range.end != 0 {
+                let racing_sub_ids: Vec<TaskId> = meta_task
+                    .in_flight_ranges
+                    .iter()
+                    .filter(|(sid, r)| *r == range && *sid != sub_id)
+                    .map(|(sid, _)| *sid)
+                    .collect();
 
-            if !racing_sub_ids.is_empty() {
-                debug!(%meta_id, ?range, racing = racing_sub_ids.len(), "Range finished; canceling racing workers");
-                for racing_sid in racing_sub_ids {
-                    if let Some(sub) = meta_task.subtasks.iter_mut().find(|s| s.id == racing_sid) {
-                        sub.assigned_ranges.retain(|r| *r != range);
-                    }
-                    if let Some(w_token) = self.worker_cancellation_tokens.remove(&racing_sid) {
-                        w_token.cancel();
+                if !racing_sub_ids.is_empty() {
+                    debug!(%meta_id, ?range, racing = racing_sub_ids.len(), "Range finished; canceling racing workers");
+                    for racing_sid in racing_sub_ids {
+                        if let Some(sub) =
+                            meta_task.subtasks.iter_mut().find(|s| s.id == racing_sid)
+                        {
+                            sub.assigned_ranges.retain(|r| *r != range);
+                        }
+                        if let Some(w_token) = self.worker_cancellation_tokens.remove(&racing_sid) {
+                            w_token.cancel();
+                        }
                     }
                 }
             }
@@ -199,6 +214,11 @@ impl Orchestrator {
                 .storage_tx
                 .send(crate::storage::StorageRequest::Complete(meta_id))
                 .await;
+        }
+
+        // Notify idle workers to check for more work
+        if let Some(tx) = self.worker_command_txs.get(&meta_id) {
+            let _ = tx.send(crate::orchestrator::WorkerCommand::CheckWork);
         }
 
         self.dispatch_next_ranges(meta_id, sub_id).await

@@ -1,4 +1,5 @@
 use super::{Event, Orchestrator};
+use crate::orchestrator::command::AddTaskArgs;
 use crate::task::DownloadPhase;
 use crate::{Result, TaskId};
 use tracing::{error, info};
@@ -62,20 +63,20 @@ impl Orchestrator {
                                     info!(%id, ?file_path, "Auto-starting follow-on Torrent task");
                                     let new_id = TaskId(rand::random());
                                     let _ = self
-                                        .handle_add_task(
-                                            new_id,
-                                            tenant_id.clone(),
-                                            "unnamed".to_string(),
-                                            vec![(
+                                        .handle_add_task(AddTaskArgs {
+                                            id: new_id,
+                                            tenant_id: tenant_id.clone(),
+                                            name: "unnamed".to_string(),
+                                            sources: vec![(
                                                 file_path.to_string_lossy().to_string(),
                                                 crate::task::TaskType::BitTorrent,
                                             )],
-                                            None,
+                                            checksum: None,
                                             priority,
                                             streaming_mode,
-                                            Vec::new(),
-                                            None,
-                                        )
+                                            depends_on: Vec::new(),
+                                            follow_on: None,
+                                        })
                                         .await;
                                 }
                             }
@@ -88,20 +89,20 @@ impl Orchestrator {
                                     info!(%id, ?file_path, "Auto-starting follow-on Metalink task");
                                     let new_id = TaskId(rand::random());
                                     let _ = self
-                                        .handle_add_task(
-                                            new_id,
-                                            tenant_id.clone(),
-                                            "unnamed".to_string(),
-                                            vec![(
+                                        .handle_add_task(AddTaskArgs {
+                                            id: new_id,
+                                            tenant_id: tenant_id.clone(),
+                                            name: "unnamed".to_string(),
+                                            sources: vec![(
                                                 file_path.to_string_lossy().to_string(),
                                                 crate::task::TaskType::Http,
                                             )], // Task type doesn't strictly matter for metalink entry point
-                                            None,
+                                            checksum: None,
                                             priority,
                                             streaming_mode,
-                                            Vec::new(),
-                                            None,
-                                        )
+                                            depends_on: Vec::new(),
+                                            follow_on: None,
+                                        })
                                         .await;
                                 }
                             }
@@ -109,17 +110,17 @@ impl Orchestrator {
                                 info!(%id, %uri, "Starting custom follow-on task");
                                 let new_id = TaskId(rand::random());
                                 let _ = self
-                                    .handle_add_task(
-                                        new_id,
-                                        tenant_id.clone(),
-                                        "unnamed".to_string(),
-                                        vec![(uri, crate::task::TaskType::Http)],
-                                        None,
+                                    .handle_add_task(AddTaskArgs {
+                                        id: new_id,
+                                        tenant_id: tenant_id.clone(),
+                                        name: "unnamed".to_string(),
+                                        sources: vec![(uri, crate::task::TaskType::Http)],
+                                        checksum: None,
                                         priority,
                                         streaming_mode,
-                                        Vec::new(),
-                                        None,
-                                    )
+                                        depends_on: Vec::new(),
+                                        follow_on: None,
+                                    })
                                     .await;
                             }
                         }

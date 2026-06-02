@@ -4,7 +4,7 @@ Aura is designed to be self-healing, but certain network or system conditions ma
 
 ## Common Error Messages
 
-### 🛡️ VPN & Network Safety
+###  VPN & Network Safety
 - **`"VPN Kill-switch triggered! Connection lost."`**
     - **Context**: `force_tunnel = true` is set, and the authorized interface (e.g., `tun0`) vanished.
     - **Action**: Aura has atomically paused all tasks to prevent data leaks. Check your VPN client. Aura will automatically resume once the interface is restored.
@@ -12,7 +12,7 @@ Aura is designed to be self-healing, but certain network or system conditions ma
     - **Context**: You are on a public Wi-Fi (Hotel/Cafe) that redirected the download to a login page.
     - **Action**: Complete the login in your browser, then **Resume** the task. Aura intercepts these to prevent your download from being corrupted by HTML login pages.
 
-### 💾 Storage & I/O
+###  Storage & I/O
 - **`"Failed to pre-allocate file: No space left on device"`**
     - **Context**: The `StorageEngine` failed to reserve contiguous blocks via `fallocate`.
     - **Action**: Free up space or move the `download_dir`. Aura verifies space *before* starting to prevent mid-download failures.
@@ -20,7 +20,7 @@ Aura is designed to be self-healing, but certain network or system conditions ma
     - **Context**: The downloaded file does not match the provided SHA-256/MD5 hash.
     - **Action**: Aura preserves the corrupted file. Check the source mirror. If using BitTorrent, the **Integrity Scrubber** will automatically re-download corrupt pieces.
 
-### 🕸️ BitTorrent Swarm
+###  BitTorrent Swarm
 - **`"All NAT traversal methods failed for port 6881"`**
     - **Context**: UPnP and NAT-PMP/PCP requests were rejected by your router.
     - **Action**: You can still download, but you may have fewer peers (cannot receive incoming connections). Manually forward port `6881` in your router settings for "Green" status.

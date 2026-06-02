@@ -130,10 +130,11 @@ impl Orchestrator {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::orchestrator::state::{Orchestrator, OrchestratorChannels};
     use crate::orchestrator::SubTaskEvent;
     use crate::vpn::{VpnProvider, VpnStatus};
     use std::sync::Arc;
+    use tokio::sync::mpsc;
 
     struct MockVpnProvider {
         status: Arc<tokio::sync::Mutex<VpnStatus>>,
@@ -145,15 +146,15 @@ mod tests {
             "mock-vpn"
         }
 
-        async fn connect(&self) -> Result<()> {
+        async fn connect(&self) -> crate::Result<()> {
             Ok(())
         }
 
-        async fn disconnect(&self) -> Result<()> {
+        async fn disconnect(&self) -> crate::Result<()> {
             Ok(())
         }
 
-        async fn status(&self) -> Result<VpnStatus> {
+        async fn status(&self) -> crate::Result<VpnStatus> {
             Ok(self.status.lock().await.clone())
         }
 
@@ -172,12 +173,12 @@ mod tests {
             status: Arc::clone(&status),
         });
 
-        let (_command_tx, command_rx) = tokio::sync::mpsc::channel(100);
-        let (storage_tx, _storage_rx) = tokio::sync::mpsc::channel(100);
-        let (_completion_tx, completion_rx) = tokio::sync::mpsc::channel(100);
-        let (dht_tx, _dht_rx) = tokio::sync::mpsc::channel(100);
-        let (nat_tx, _nat_rx) = tokio::sync::mpsc::channel(100);
-        let (lpd_tx, _lpd_rx) = tokio::sync::mpsc::channel(100);
+        let (_command_tx, command_rx) = mpsc::channel(100);
+        let (storage_tx, _storage_rx) = mpsc::channel(100);
+        let (_completion_tx, completion_rx) = mpsc::channel(100);
+        let (dht_tx, _dht_rx) = mpsc::channel(100);
+        let (nat_tx, _nat_rx) = mpsc::channel(100);
+        let (lpd_tx, _lpd_rx) = mpsc::channel(100);
 
         let config_swap = Arc::new(arc_swap::ArcSwap::from_pointee(config.clone()));
 
@@ -191,12 +192,14 @@ mod tests {
         );
 
         let (mut orchestrator, _event_tx) = Orchestrator::new(
-            command_rx,
-            storage_tx,
-            completion_rx,
-            dht_tx,
-            lpd_tx,
-            nat_tx,
+            OrchestratorChannels {
+                command_rx,
+                storage_tx,
+                storage_completion_rx: completion_rx,
+                dht_tx,
+                lpd_tx,
+                nat_tx,
+            },
             config_swap,
             db,
             dns_resolver,

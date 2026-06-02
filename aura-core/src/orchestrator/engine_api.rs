@@ -45,31 +45,13 @@ impl Engine {
             .await
     }
 
-    #[allow(clippy::too_many_arguments)]
     pub async fn add_task_with_options(
         &self,
-        id: TaskId,
-        tenant_id: Option<crate::TenantId>,
-        name: String,
-        sources: Vec<(String, TaskType)>,
-        checksum: Option<crate::Checksum>,
-        priority: u32,
-        streaming_mode: bool,
-        depends_on: Vec<TaskId>,
-        follow_on: Option<crate::task::FollowOnAction>,
+        args: crate::orchestrator::command::AddTaskArgs,
     ) -> Result<crate::api::TaskHandle> {
+        let id = args.id;
         self.command_tx
-            .send(Command::AddTask {
-                id,
-                tenant_id,
-                name,
-                sources,
-                checksum,
-                priority,
-                streaming_mode,
-                depends_on,
-                follow_on,
-            })
+            .send(Command::AddTask(args))
             .await
             .map_err(|e| Error::Engine(format!("Failed to send AddTask command: {}", e)))?;
         Ok(crate::api::TaskHandle::new(id, self.clone()))
@@ -83,17 +65,17 @@ impl Engine {
         sources: Vec<(String, TaskType)>,
         checksum: Option<crate::Checksum>,
     ) -> Result<crate::api::TaskHandle> {
-        self.add_task_with_options(
+        self.add_task_with_options(crate::orchestrator::command::AddTaskArgs {
             id,
             tenant_id,
             name,
             sources,
             checksum,
-            100,
-            false,
-            Vec::new(),
-            None,
-        )
+            priority: 100,
+            streaming_mode: false,
+            depends_on: Vec::new(),
+            follow_on: None,
+        })
         .await
     }
 
@@ -172,19 +154,18 @@ impl Engine {
                     .collect();
                 let id = state.id;
                 let checksum = state.checksum.clone();
-                let _ = self
-                    .add_task_with_options(
-                        id,
-                        state.tenant_id,
-                        state.name,
-                        sources,
-                        checksum,
-                        state.priority,
-                        state.streaming_mode,
-                        state.depends_on.unwrap_or_default(),
-                        state.follow_on,
-                    )
-                    .await;
+                self.add_task_with_options(crate::orchestrator::command::AddTaskArgs {
+                    id,
+                    tenant_id: state.tenant_id,
+                    name: state.name,
+                    sources,
+                    checksum,
+                    priority: state.priority,
+                    streaming_mode: state.streaming_mode,
+                    depends_on: state.depends_on.unwrap_or_default(),
+                    follow_on: state.follow_on,
+                })
+                .await?;
             }
         }
         Ok(())

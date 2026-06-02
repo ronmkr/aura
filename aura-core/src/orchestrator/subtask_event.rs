@@ -29,4 +29,5 @@ pub enum SubTaskEvent {
     Retry(TaskId, TaskId),
     ScrubberEvent(crate::scrubber::ScrubberEvent),
     RoamingDetected,
+    PeersDiscovered(TaskId),
 }

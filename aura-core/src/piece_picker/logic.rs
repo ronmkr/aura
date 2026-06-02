@@ -42,23 +42,24 @@ impl PiecePicker {
 
     /// Records the bitfield of a new peer or updates an existing one.
     pub fn add_peer_bitfield(&mut self, addr: String, bitfield: Bitfield) {
-        // If we already had this peer, subtract its old bitfield counts
-        if let Some(old_bf) = self.peer_bitfields.get(&addr) {
+        if let Some(target) = self.peer_bitfields.get_mut(&addr) {
+            // Merge into existing: only update counts for pieces the peer didn't have before
             for i in 0..self.num_pieces {
-                if old_bf.get(i) {
-                    self.piece_counts[i] -= 1;
+                let has = bitfield.get(i);
+                if has && !target.get(i) {
+                    self.piece_counts[i] += 1;
+                    target.set(i, true);
                 }
             }
-        }
-
-        // Add new bitfield counts
-        for i in 0..self.num_pieces {
-            if bitfield.get(i) {
-                self.piece_counts[i] += 1;
+        } else {
+            // New peer: add all counts
+            for i in 0..self.num_pieces {
+                if bitfield.get(i) {
+                    self.piece_counts[i] += 1;
+                }
             }
+            self.peer_bitfields.insert(addr, bitfield);
         }
-
-        self.peer_bitfields.insert(addr, bitfield);
     }
 
     /// Removes a peer and its contribution to piece counts.
@@ -81,6 +82,14 @@ impl PiecePicker {
         peer_addr: &str,
         sequential: bool,
     ) -> Option<usize> {
+        let peer_bf = match self.peer_bitfields.get(peer_addr) {
+            Some(bf) => bf,
+            None => {
+                tracing::debug!(addr = %peer_addr, "Peer bitfield not found in picker");
+                return None;
+            }
+        };
+
         if self.is_endgame(my_bitfield) {
             let res = self.pick_next_endgame(my_bitfield, peer_addr);
             if let Some(idx) = res {
@@ -88,8 +97,6 @@ impl PiecePicker {
             }
             return res;
         }
-
-        let peer_bf = self.peer_bitfields.get(peer_addr)?;
 
         if sequential {
             for i in 0..self.num_pieces {
@@ -103,6 +110,7 @@ impl PiecePicker {
 
         let mut rarest_pieces = Vec::new();
         let mut min_count = usize::MAX;
+        let mut total_candidates = 0;
 
         for i in 0..self.num_pieces {
             // Skip pieces I already have, or peer doesn't have, or already in progress
@@ -110,6 +118,7 @@ impl PiecePicker {
                 continue;
             }
 
+            total_candidates += 1;
             let count = self.piece_counts[i];
             if count < min_count {
                 min_count = count;
@@ -118,6 +127,21 @@ impl PiecePicker {
             } else if count == min_count {
                 rarest_pieces.push(i);
             }
+        }
+
+        if total_candidates == 0 {
+            tracing::info!(
+                addr = %peer_addr,
+                my_count = my_bitfield.count_set(),
+                num_pieces = self.num_pieces,
+                "No piece candidates found for peer (already have them or in-progress)"
+            );
+        } else {
+            tracing::info!(
+                addr = %peer_addr,
+                candidates = total_candidates,
+                "Found piece candidates for peer"
+            );
         }
 
         use rand::prelude::IndexedRandom;

@@ -28,11 +28,16 @@ Thumbs.db
 *.part
 downloads/
 out/
+.aura/
+*.sled/
+db.sled/
 # Crate-specific local configuration
 **/local_config.toml
 # Proptest regression files (unless you want to track them)
 proptest-regressions/
 aura-docs/project/prompts
+architecture_review.md
+gap_analysis.md
 
 # BitTorrent files
 *.torrent

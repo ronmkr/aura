@@ -13,9 +13,6 @@ pub struct Args {
 }
 
 pub async fn run(args: Args) -> Result<()> {
-    // Initialize logging
-    tracing_subscriber::fmt::init();
-
     let mut expanded_uris = Vec::new();
     for uri in args.uris {
         if let Ok(expanded) = aura_core::glob::expand_url(&uri) {
@@ -32,6 +29,8 @@ pub async fn run(args: Args) -> Result<()> {
     // Bootstrap the engine
     let config = aura_core::Config::from_file("Aura.toml").unwrap_or_default();
     let (engine, orchestrator, mut storage) = Engine::new(config).await?;
+
+    let mut events = engine.subscribe();
 
     // Inferred directory
     let current_dir = std::env::current_dir().unwrap();
@@ -92,17 +91,17 @@ pub async fn run(args: Args) -> Result<()> {
         }
 
         engine
-            .add_task_with_options(
+            .add_task_with_options(aura_core::orchestrator::command::AddTaskArgs {
                 id,
-                None,
-                output_name.clone(),
+                tenant_id: None,
+                name: output_name.clone(),
                 sources,
-                None,
-                100,
-                false,
-                Vec::new(),
-                args.follow_on.map(FollowOnAction::Custom),
-            )
+                checksum: None,
+                priority: 100,
+                streaming_mode: false,
+                depends_on: Vec::new(),
+                follow_on: args.follow_on.map(FollowOnAction::Custom),
+            })
             .await?;
     } else {
         for (uri, name, is_metadata) in tasks_to_add {
@@ -122,17 +121,17 @@ pub async fn run(args: Args) -> Result<()> {
                 TaskType::Http
             };
             engine
-                .add_task_with_options(
+                .add_task_with_options(aura_core::orchestrator::command::AddTaskArgs {
                     id,
-                    None,
+                    tenant_id: None,
                     name,
-                    vec![(uri.clone(), ttype)],
-                    None,
-                    100,
-                    false,
-                    Vec::new(),
-                    args.follow_on.clone().map(FollowOnAction::Custom),
-                )
+                    sources: vec![(uri.clone(), ttype)],
+                    checksum: None,
+                    priority: 100,
+                    streaming_mode: false,
+                    depends_on: Vec::new(),
+                    follow_on: args.follow_on.clone().map(FollowOnAction::Custom),
+                })
                 .await?;
         }
     }
@@ -149,8 +148,6 @@ pub async fn run(args: Args) -> Result<()> {
             tracing::error!("Storage Engine error: {}", e);
         }
     });
-
-    let mut events = engine.subscribe();
 
     // Multi-progress bar setup
     use indicatif::MultiProgress;
@@ -206,7 +203,7 @@ pub async fn run(args: Args) -> Result<()> {
                 if let Some(pb) = bars.get(&id) {
                     pb.finish_with_message(format!("Task {} complete", id));
                 }
-                if bars.values().all(|b| b.is_finished()) {
+                if !bars.is_empty() && bars.values().all(|b| b.is_finished()) {
                     break;
                 }
             }
@@ -214,7 +211,7 @@ pub async fn run(args: Args) -> Result<()> {
                 if let Some(pb) = bars.get(&id) {
                     pb.abandon_with_message(format!("Task {} error: {}", id, message));
                 }
-                if bars.values().all(|b| b.is_finished()) {
+                if !bars.is_empty() && bars.values().all(|b| b.is_finished()) {
                     break;
                 }
             }

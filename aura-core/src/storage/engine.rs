@@ -31,6 +31,11 @@ pub enum StorageRequest {
         // pieces_root (32 bytes) -> piece_layers (concatenated 32-byte hashes)
         layers: HashMap<[u8; 32], Vec<u8>>,
     },
+    StoreMerkleLayer {
+        pieces_root: [u8; 32],
+        index: u32,
+        hashes: Vec<[u8; 32]>,
+    },
     Complete(TaskId),
 }
 
@@ -152,6 +157,25 @@ impl StorageEngine {
                                 if let Err(e) = self.db.insert(root, data) {
                                     error!(?root, error = %e, "Failed to store v2 piece layers");
                                 }
+                            }
+                            let _ = self.db.flush();
+                        }
+                        StorageRequest::StoreMerkleLayer {
+                            pieces_root,
+                            index,
+                            hashes,
+                        } => {
+                            let mut key = Vec::with_capacity(36);
+                            key.extend_from_slice(&pieces_root);
+                            key.extend_from_slice(&index.to_be_bytes());
+
+                            let mut data = Vec::with_capacity(hashes.len() * 32);
+                            for hash in hashes {
+                                data.extend_from_slice(&hash);
+                            }
+
+                            if let Err(e) = self.db.insert(key, data) {
+                                error!(?pieces_root, index, error = %e, "Failed to store v2 Merkle layer");
                             }
                             let _ = self.db.flush();
                         }

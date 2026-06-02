@@ -104,12 +104,14 @@ impl Engine {
         let dns_resolver = Arc::new(dns_resolver);
 
         let (orchestrator, event_tx) = Orchestrator::new(
-            command_rx,
-            storage_tx,
-            completion_rx,
-            dht_tx,
-            lpd_tx.clone(),
-            nat_tx,
+            crate::orchestrator::state::OrchestratorChannels {
+                command_rx,
+                storage_tx,
+                storage_completion_rx: completion_rx,
+                dht_tx,
+                lpd_tx,
+                nat_tx,
+            },
             config.clone(),
             storage.get_db(),
             dns_resolver,

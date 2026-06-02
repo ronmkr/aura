@@ -91,7 +91,7 @@ impl TrackerClient {
             let url = &trackers[i];
             match res {
                 Ok(peers) => {
-                    tracing::debug!(url = %url, count = peers.len(), "Tracker returned peers");
+                    tracing::info!(url = %url, count = peers.len(), "Tracker returned peers");
                     all_peers.extend(peers);
                     success = true;
                 }
@@ -102,6 +102,10 @@ impl TrackerClient {
         }
 
         if success {
+            tracing::info!(
+                total = all_peers.len(),
+                "Discovered peers from all trackers"
+            );
             Ok(all_peers)
         } else {
             Err(Error::Protocol(

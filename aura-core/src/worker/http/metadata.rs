@@ -5,8 +5,8 @@ use crate::{Error, Result};
 impl HttpWorker {
     /// Resolves the final direct link and file size in a single pass.
     pub async fn resolve_metadata(&self) -> Result<Metadata> {
-        tracing::debug!(uri = %self.uri, "Resolving metadata");
-        let mut current_uri = self.uri.clone();
+        tracing::debug!(uri = %self.options.uri, "Resolving metadata");
+        let mut current_uri = self.options.uri.clone();
         let mut referer: Option<String> = None;
         let mut redirect_count = 0;
         let max_redirects = 20;
@@ -14,7 +14,7 @@ impl HttpWorker {
         loop {
             current_uri = self.upgrade_url(&current_uri).await;
             let mut attempts = 0;
-            let max_attempts = self.retry_count;
+            let max_attempts = self.options.retry_count;
 
             let response = loop {
                 let mut request = self.client.get(&current_uri).header("Range", "bytes=0-0");
@@ -22,7 +22,7 @@ impl HttpWorker {
                     request = request.header("Referer", ref_uri);
                 }
 
-                if let Some(ref provider) = self.credential_provider {
+                if let Some(ref provider) = self.options.credential_provider {
                     if let Ok(url) = url::Url::parse(&current_uri) {
                         if let Some(host) = url.host_str() {
                             if let Some(creds) = provider.get_credentials(host) {
@@ -43,7 +43,7 @@ impl HttpWorker {
                             break resp;
                         } else if Self::is_retryable(resp.status()) && attempts < max_attempts {
                             attempts += 1;
-                            let delay = self.retry_delay_secs * (2u64.pow(attempts - 1));
+                            let delay = self.options.retry_delay_secs * (2u64.pow(attempts - 1));
                             tracing::warn!(
                                 status = %resp.status(),
                                 attempt = attempts,
@@ -61,7 +61,7 @@ impl HttpWorker {
                     }
                     Err(e) if attempts < max_attempts => {
                         attempts += 1;
-                        let delay = self.retry_delay_secs * (2u64.pow(attempts - 1));
+                        let delay = self.options.retry_delay_secs * (2u64.pow(attempts - 1));
                         tracing::warn!(
                             error = %e,
                             attempt = attempts,
@@ -135,7 +135,7 @@ impl HttpWorker {
                 // --- CAPTIVE PORTAL INTERCEPTION ---
                 let ends_with_asset = asset_exts
                     .iter()
-                    .any(|ext| self.uri.to_lowercase().ends_with(ext));
+                    .any(|ext| self.options.uri.to_lowercase().ends_with(ext));
                 if ends_with_asset {
                     let body_lower = body.to_lowercase();
                     let keywords = [
