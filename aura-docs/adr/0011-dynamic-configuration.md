@@ -4,7 +4,7 @@
 Implemented (2026-05-06, commit 0777b1ab)
 
 ## Context
-`aria2` supports hundreds of options, but they are mostly static once the process starts. In `Aura`, we want to support dynamic configuration changes (e.g., changing bandwidth limits or adding a proxy) without restarting the service.
+Traditional download engines support hundreds of options, but they are mostly static once the process starts. In `Aura`, we want to support dynamic configuration changes (e.g., changing bandwidth limits or adding a proxy) without restarting the service.
 
 ## Decision
 1. **Configuration Manager**: We will use a central manager to store all settings.

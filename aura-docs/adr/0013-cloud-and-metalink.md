@@ -4,7 +4,7 @@
 Partially Implemented (2026-05-06, commit 0777b1ab)
 
 ## Context
-`Aura` aims to extend `aria2`'s protocol support to modern cloud storage services (S3, Google Drive) while maintaining full support for legacy `aria2` specialties like Metalink.
+`Aura` aims to extend standard download protocol support to modern cloud storage services (S3, Google Drive) while maintaining full support for legacy specialties like Metalink.
 
 ## Decision
 1. **Cloud Adapter**: We will implement a specialized worker type that uses existing Rust SDKs (e.g., `aws-sdk-s3`) but wraps them in the **Protocol Worker** actor interface. This allows the core engine to treat a cloud object like a standard seekable byte-stream.

@@ -27,8 +27,8 @@ Many public Wi-Fi networks (Hotels, Airports) redirect requests to a login page.
 
 ##  Compatibility
 
-### Can Aura act as a drop-in replacement for `aria2c`?
-Aura is **protocol-compatible** with `aria2`. Its JSON-RPC 2.0 API supports many `aria2` methods, allowing you to use existing frontends (WebUIs). While CLI flags differ slightly, Aura's goal is to provide a familiar experience with superior defaults.
+### Can Aura act as a drop-in replacement for standard download clients?
+Aura is **protocol-compatible** with standard WebUIs. Its JSON-RPC 2.0 API supports many standard download methods, allowing you to use existing frontends (WebUIs). While CLI flags differ slightly, Aura's goal is to provide a familiar experience with superior defaults.
 
 ### Does it support BitTorrent v2?
 Yes. Aura is built from the ground up for **BitTorrent v2** (BEP 52). It supports SHA-256 Merkle trees for per-file integrity and supports **Hybrid Torrents** to bridge v1 and v2 swarms.

@@ -8,7 +8,7 @@ Users should not see partially downloaded or corrupt files in their destination 
 
 ## Decision
 1. **Atomic Completion**: The **Storage Engine** will append a `.part` suffix (e.g., `.aura-part`) to all active downloads. Only upon 100% verification will the file be renamed to its final target name.
-2. **Control Files**: Progress and metadata will be stored in a companion `.aria2` or `.json` file to allow resumption.
+2. **Control Files**: Progress and metadata will be stored in a companion `.aura` or `.json` file to allow resumption.
 3. **Pre-allocation**: By default, the system will attempt to pre-allocate the full file size using platform-specific calls (e.g., `fallocate` on Linux) to guarantee space and reduce fragmentation.
 
 ## Implementation Status (Audit 2026-05-09)

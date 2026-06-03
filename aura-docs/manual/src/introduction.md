@@ -1,6 +1,6 @@
 # Introduction
 
-**Aura** is a high-performance, asynchronous download engine written in Rust. It is designed to be the spiritual successor to `aria2`, with a focus on modern protocols, extreme concurrency, and proactive privacy.
+**Aura** is a high-performance, asynchronous download engine written in Rust. It is designed to be the next-generation multi-protocol download engine, with a focus on modern protocols, extreme concurrency, and proactive privacy.
 
 ## Key Philosophies
 

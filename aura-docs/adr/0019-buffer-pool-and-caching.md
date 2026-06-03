@@ -4,7 +4,7 @@
 Superceded (by Issue #160, 2026-05-30, PR #164)
 
 ## Context
-Efficiently handling high-speed downloads (1Gbps+) requires minimizing disk I/O and CPU overhead. The original `aria2` uses a `WrDiskCache` to aggregate small writes into larger, more efficient disk operations.
+Efficiently handling high-speed downloads (1Gbps+) requires minimizing disk I/O and CPU overhead. Older architectures use a `WrDiskCache` to aggregate small writes into larger, more efficient disk operations.
 
 ## Decision (Original)
 1. **Buffer Pool**: We will implement a centralized `Buffer Pool` using the `bytes` crate. 

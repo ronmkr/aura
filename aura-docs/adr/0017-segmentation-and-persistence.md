@@ -4,7 +4,7 @@
 Implemented (2026-05-06, commit 0777b1ab)
 
 ## Context
-For protocols that lack a natural piece structure (HTTP, FTP), `aria2` uses a `SegmentMan` to enable parallel downloads. Additionally, background services like DHT require persistent storage of their internal state (routing tables) to avoid slow "cold starts."
+For protocols that lack a natural piece structure (HTTP, FTP), standard engines use a segment manager to enable parallel downloads. Additionally, background services like DHT require persistent storage of their internal state (routing tables) to avoid slow "cold starts."
 
 ## Decision
 1. **Segmenter**: We will implement a `Segmenter` that maps a range of bytes to virtual **Pieces**. For HTTP, it will use `Range` headers to fetch specific segments. For FTP, it will use `REST` and `RETR`.
@@ -16,5 +16,5 @@ For protocols that lack a natural piece structure (HTTP, FTP), `aria2` uses a `S
 - **In-memory Discovery**: Re-discover everything on every restart. *Rejected:* Leads to poor user experience, especially for slow-to-connect swarms.
 
 ## Consequences
-- **Pros**: Parity with `aria2`'s best-in-class multi-source performance and nearly instant resume/discovery after restart.
+- **Pros**: Parity with best-in-class multi-source performance and nearly instant resume/discovery after restart.
 - **Cons**: Requires managing complex virtual piece boundaries for non-BitTorrent protocols.

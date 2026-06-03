@@ -1,6 +1,6 @@
 # Aura: Developer Setup Guide
 
-Welcome to the Aura development team! Aura is a spiritual successor to `aria2`, built with Rust, Tokio, and an actor-based architecture. This guide will help you set up your local environment, understand our toolchain, and integrate with our Continuous Integration (CI) pipeline.
+Welcome to the Aura development team! Aura is a next-generation download engine, built with Rust, Tokio, and an actor-based architecture. This guide will help you set up your local environment, understand our toolchain, and integrate with our Continuous Integration (CI) pipeline.
 
 ## 1. Development Environment
 

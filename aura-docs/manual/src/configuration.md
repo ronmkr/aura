@@ -95,7 +95,7 @@ Low-level tuning for the BitTorrent protocol (BEP implementation).
 | `request_pipeline_size`| usize | `50` | Number of concurrent block requests sent to a single peer. **Impact**: Higher values are needed for high-latency (fiber) connections. |
 | `dht_enabled` | bool | `true` | Enables Mainline DHT (BEP 5). Finds peers without a tracker. |
 | `pex_enabled` | bool | `true` | Enables Peer Exchange (BEP 11). Learning about new peers from existing ones. |
-| `lpd_enabled` | bool | `false` | Local Peer Discovery. Fast transfers with other Aura/aria2 users on your LAN. |
+| `lpd_enabled` | bool | `false` | Local Peer Discovery. Fast transfers with other Aura users on your LAN. |
 | `seed_ratio` | f32 | `1.0` | Target upload ratio. `1.0` means "Share back what you took". |
 | `seed_time_mins` | u32 | `0` | Time-based seeding limit. `0` = Seed forever until ratio is met. |
 | `endgame_mode_enabled` | bool | `true` | When < 1% remains, Aura requests the same block from multiple peers. **Impact**: Prevents "Stuck at 99.9%" due to one slow peer. |

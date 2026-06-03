@@ -1,6 +1,6 @@
 # CLI Reference
 
-The `aura` CLI is the primary interface for most users. It is designed to be familiar to `aria2c` users while providing modern defaults and advanced automation.
+The `aura` CLI is the primary interface for most users. It is designed to be familiar to standard download manager users while providing modern defaults and advanced automation.
 
 ## General Usage
 

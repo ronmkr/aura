@@ -4,7 +4,7 @@
 Implemented (2026-06-02, PR #196)
 
 ## Context
-Downloading to network shares (NFS, SMB) presents unique challenges: high latency, potentially missing support for sparse files or `fallocate`, and risk of file corruption if multiple clients access the same share. `aria2` users often report performance issues in these environments.
+Downloading to network shares (NFS, SMB) presents unique challenges: high latency, potentially missing support for sparse files or `fallocate`, and risk of file corruption if multiple clients access the same share. Traditional download engines often experience performance degradation in these environments.
 
 ## Decision
 1. **Filesystem Detection**: The **Storage Engine** will attempt to detect if a path is on a network share (using crates like `sysinfo` or platform-specific syscalls).

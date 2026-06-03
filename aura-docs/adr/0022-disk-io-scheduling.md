@@ -4,7 +4,7 @@
 Implemented (2026-05-30, PR #163)
 
 ## Context
-Standard file I/O can be a bottleneck for high-speed downloads and can degrade system performance by polluting the OS page cache with temporary download data. `aria2` addresses this through write caching, `mmap`, and `posix_fadvise`.
+Standard file I/O can be a bottleneck for high-speed downloads and can degrade system performance by polluting the OS page cache with temporary download data. Aura addresses this through write caching, `mmap`, and `posix_fadvise`.
 
 ## Decision
 1. **Disk I/O Scheduler**: We will implement a scheduler within the **Storage Engine** that uses **Async I/O** (e.g., `io-uring` on Linux via `tokio-uring`) as the preferred path. This enables non-blocking, zero-copy writes.

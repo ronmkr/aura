@@ -1,7 +1,7 @@
 # Aura: Project Learnings & Analysis
 
 ## Overview
-`Aura` is the high-performance, asynchronous Rust successor to `aria2`. It utilizes an actor-based architecture to provide a safer, more concurrent, and more maintainable download orchestration engine.
+`Aura` is the high-performance, asynchronous Rust download engine. It utilizes an actor-based architecture to provide a safer, more concurrent, and more maintainable download orchestration engine.
 
 ## Engineering Baseline
 - **Language**: Rust (Edition 2021).

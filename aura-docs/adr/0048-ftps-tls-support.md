@@ -8,7 +8,7 @@ Implemented (2026-05-28, PR #133)
 
 ## Context
 
-The FTP protocol relies on plain-text communication, which leaves data and credentials vulnerable to interception. While ADR-0018 introduced FTP support, it did not strictly mandate TLS wrapping for secure environments. To maintain parity with modern download managers (like `wget` and `aria2`), and to adhere to our security-first design principles, we need native support for FTPS (FTP over TLS/SSL). Additionally, FTP servers often aggressively rate-limit or drop connections, necessitating a robust retry logic within the worker.
+The FTP protocol relies on plain-text communication, which leaves data and credentials vulnerable to interception. While ADR-0018 introduced FTP support, it did not strictly mandate TLS wrapping for secure environments. To maintain parity with modern download managers, and to adhere to our security-first design principles, we need native support for FTPS (FTP over TLS/SSL). Additionally, FTP servers often aggressively rate-limit or drop connections, necessitating a robust retry logic within the worker.
 
 ## Decision
 

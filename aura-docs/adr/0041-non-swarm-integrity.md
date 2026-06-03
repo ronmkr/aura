@@ -17,7 +17,7 @@ While BitTorrent has built-in hash verification, HTTP and FTP protocols rely on 
 - **In-flight Hashing only**: *Rejected:* Cannot verify if the checksum is provided after the download starts.
 
 ## Consequences
-- **Pros**: Guaranteed data integrity for all protocols, parity with `aria2 --checksum`.
+- **Pros**: Guaranteed data integrity for all protocols, parity with standard file checksum utilities.
 - **Cons**: Adds CPU overhead for hashing and potentially an extra full-file read pass if hashing wasn't done during the download.
 
 ## Implementation

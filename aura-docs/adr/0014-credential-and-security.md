@@ -4,7 +4,7 @@
 Implemented (2026-05-06, commit 0777b1ab)
 
 ## Context
-`aria2` handles secrets from diverse sources (`netrc`, cookies, command-line) and must negotiate secure connections across different operating systems with varying TLS implementations.
+Aura handles secrets from diverse sources (`netrc`, cookies, command-line) and must negotiate secure connections across different operating systems with varying TLS implementations.
 
 ## Decision
 1. **Credential Provider**: We will implement a centralized resolver that aggregates authentication data. Components only request "credentials for URL X" rather than knowing *where* those credentials came from.
@@ -16,8 +16,8 @@ Implemented (2026-05-06, commit 0777b1ab)
 - **Security Context & Cookies**: Initially implemented in commit `0777b1ab` (2026-05-06).
 
 ## Alternatives Considered
-- **Direct Library Usage**: Using `reqwest` or `hyper` defaults. *Rejected:* Doesn't allow for the fine-grained control over credential resolution (like `netrc` priority) required for `aria2` parity.
+- **Direct Library Usage**: Using `reqwest` or `hyper` defaults. *Rejected:* Doesn't allow for the fine-grained control over credential resolution (like `netrc` priority) required for complete client compatibility.
 
 ## Consequences
-- **Pros**: Clean security boundaries, cross-platform compatibility, and full parity with `aria2` authentication workflows.
+- **Pros**: Clean security boundaries, cross-platform compatibility, and full parity with standard authentication workflows.
 - **Cons**: Managing multiple TLS backends adds complexity to the build system.

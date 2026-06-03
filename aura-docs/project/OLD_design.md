@@ -23,7 +23,7 @@ This document details the visual and architectural design for the `Aura` persona
 - **Goal**: Persistent service for Docker, NAS, or Seedboxes.
 - **RPC Server**: Built on Axum/Tokio.
     - **Protocol**: JSON-RPC 2.0 and WebSockets.
-    - **Compatibility**: Standardized to allow existing `aria2` frontends (like **AriaNg**) to connect with minimal adaptation.
+    - **Compatibility**: Standardized to allow existing frontends (like **AriaNg**) to connect with minimal adaptation.
 - **Docker Design**: Multi-stage build providing a slim alpine/distroless image.
 
 ##  Core Engine Components

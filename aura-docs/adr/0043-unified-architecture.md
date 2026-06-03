@@ -9,7 +9,7 @@ Currently, `aura-cli`, `aura-daemon`, and `aura-tui` operate somewhat independen
 - `aura-daemon` instantiates `aura-core` and exposes the JSON-RPC interface, but has no UI.
 - `aura-tui` connects to the JSON-RPC interface but cannot interact with downloads started by `aura-cli`.
 
-This leads to a fragmented user experience. A download started via `aura-cli` cannot be monitored by `aura-tui`. The components need to be linked together to provide a unified experience, similar to `aria2`.
+This leads to a fragmented user experience. A download started via `aura-cli` cannot be monitored by `aura-tui`. The components need to be linked together to provide a unified experience, similar to standard CLI downloaders.
 
 ## Decision
 We will unify the architecture by ensuring `aura-cli` and `aura-daemon` share the same RPC server capability, and `aura-cli` can act as an RPC client.
@@ -22,7 +22,7 @@ We will unify the architecture by ensuring `aura-cli` and `aura-daemon` share th
 - **Pros**: 
   - Unified experience: Users can start a download in the CLI and monitor it in the TUI.
   - Reduced duplication: Shared RPC logic.
-  - True parity with `aria2`'s `aria2c` command.
+  - True CLI integration with background daemon controls.
 - **Cons**: 
   - Refactoring required to move the RPC server out of `aura-daemon` into a shared location.
   - `aura-cli` becomes more complex as it needs to handle both "standalone with RPC" and "client to daemon" modes.

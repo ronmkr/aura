@@ -16,7 +16,7 @@ aura daemon --rpc-port 6800 --rpc-secret "your-secret-token"
 
 ## JSON-RPC 2.0 API
 
-Aura implements a standardized RPC interface. It is largely compatible with `aria2` to allow for existing WebUI integration.
+Aura implements a standardized RPC interface. It is largely compatible with standard WebUIs and frontends.
 
 ### Core Methods
 | Method | Description | Parameters |

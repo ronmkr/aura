@@ -16,7 +16,7 @@ When a user provides a URI, it may not be a direct link to a file. It could be a
 
 ## Alternatives Considered
 - **Blind Following**: Always follow and save whatever the server sends. *Rejected:* Leads to corrupted downloads and wasted bandwidth.
-- **Manual Mirroring Only**: Force users to provide direct links. *Rejected:* Poor UX; modern tools like `curl` and `aria2` handle redirects automatically.
+- **Manual Mirroring Only**: Force users to provide direct links. *Rejected:* Poor UX; modern tools handle redirects automatically.
 
 ## Consequences
 - **Pros**: Robustness against complex web hosting setups, prevention of "HTML-as-Binary" corruption, and improved security.

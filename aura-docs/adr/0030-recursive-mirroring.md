@@ -4,7 +4,7 @@
 Implemented (2026-05-27, PR #142)
 
 ## Context
-`wget` is the industry standard for recursive site mirroring. `aria2` does not support this natively. To be a true successor to both `aria2` and `wget`, `Aura` must be able to crawl web pages and discover linked resources.
+`wget` is the industry standard for recursive site mirroring. Standard multi-protocol downloaders do not support this natively. To be a true multi-functional crawler, `Aura` must be able to crawl web pages and discover linked resources.
 
 ## Decision
 1. **Recursive Crawler**: We will implement a `RecursiveCrawler` component that uses a high-performance HTML parser (e.g., `tl` or `lol-html`) to extract URIs from `<a>`, `<img>`, `<link>`, and `<script>` tags.
@@ -16,7 +16,7 @@ Implemented (2026-05-27, PR #142)
 - **Recursive Crawler**: Fully implemented with link extraction and depth controls via PR #142 (2026-05-29).
 
 ## Alternatives Considered
-- **External Scripting**: Relying on users to pipe `wget` into `aria2`. *Rejected:* Inefficient and doesn't allow the engine to apply its advanced features (like parallel segments) to the discovered links automatically.
+- **External Scripting**: Relying on users to pipe output from a crawler into the engine. *Rejected:* Inefficient and doesn't allow the engine to apply its advanced features (like parallel segments) to the discovered links automatically.
 
 ## Consequences
 - **Pros**: Full parity with `wget` mirroring, enabling `Aura` to replace `wget` for backup and scraping tasks.

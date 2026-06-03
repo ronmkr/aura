@@ -17,8 +17,8 @@ Advanced download scenarios (Torrents with many files, Metalinks) require flexib
 
 ## Alternatives Considered
 - **Direct File Writing**: Writing files exactly as named in the torrent. *Rejected:* Prevents users from organizing their downloads or avoiding name collisions.
-- **Manual Chaining**: Requiring the user to add the torrent file manually after it downloads. *Rejected:* Poor UX; `aria2` is famous for its "one-command" Magnet-to-File flow.
+- **Manual Chaining**: Requiring the user to add the torrent file manually after it downloads. *Rejected:* Poor UX; Aura supports a seamless, "one-command" Magnet-to-File flow.
 
 ## Consequences
-- **Pros**: Full parity with `aria2`'s complex multi-file and metadata workflows, plus improved file collision management.
+- **Pros**: Full parity with complex multi-file and metadata workflows, plus improved file collision management.
 - **Cons**: Adds another layer of indirection (The Mapper) between the **Protocol Worker** and the **Storage Engine**.
