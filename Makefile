@@ -89,5 +89,5 @@ run-tui:
 # --- Cleanup ---
 
 clean:
-	cargo clean
+	bash scripts/clean_cache.sh
 	rm -rf aura-docs/manual/book

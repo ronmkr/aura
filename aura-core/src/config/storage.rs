@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 #[serde(default)]
 pub struct StorageConfig {
     pub download_dir: String,
+    pub sandbox_root: Option<String>,
     pub cache_size_mb: u32,
     pub preallocate: bool,
     pub allocation_mode: String, // "none", "prealloc", "falloc"
@@ -16,6 +17,7 @@ impl Default for StorageConfig {
     fn default() -> Self {
         Self {
             download_dir: ".".to_string(),
+            sandbox_root: None,
             cache_size_mb: 16,
             preallocate: true,
             allocation_mode: "falloc".to_string(),

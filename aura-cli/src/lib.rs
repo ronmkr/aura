@@ -34,6 +34,30 @@ pub async fn run(args: Args) -> Result<()> {
     let config = aura_core::Config::from_file("Aura.toml").unwrap_or_default();
     let (engine, orchestrator, mut storage) = Engine::new(config).await?;
 
+    let engine_clone = engine.clone();
+    tokio::spawn(async move {
+        #[cfg(unix)]
+        {
+            use tokio::signal::unix::{signal, SignalKind};
+            let mut sigint = signal(SignalKind::interrupt()).unwrap();
+            let mut sigterm = signal(SignalKind::terminate()).unwrap();
+
+            tokio::select! {
+                _ = sigint.recv() => {}
+                _ = sigterm.recv() => {}
+            }
+        }
+        #[cfg(not(unix))]
+        {
+            let _ = tokio::signal::ctrl_c().await;
+        }
+
+        tracing::info!("Received shutdown signal. Cleaning up...");
+        let _ = engine_clone.shutdown().await;
+        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+        std::process::exit(0);
+    });
+
     let mut events = engine.subscribe();
 
     // Inferred directory

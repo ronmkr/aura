@@ -1,7 +1,7 @@
 # ADR 0006: Error Classification and Self-healing Strategy
 
 ## Status
-Implemented (2026-05-06, commit 0777b1ab)
+Partially Implemented (Audit 2026-06-03)
 
 ## Context
 Downloads often fail due to transient network issues or server errors. A robust download manager must distinguish between errors that can be automated (retries, protocol switching) and those that require user or system-level intervention.
@@ -13,6 +13,10 @@ Downloads often fail due to transient network issues or server errors. A robust 
     - **Worker Errors** are handled by returning the piece to the pool and cooling down the specific URI/Peer.
     - **Task Errors** trigger automatic failover strategies, such as switching to an alternative protocol (e.g., if an HTTP Metalink provides a BitTorrent Magnet fallback).
 4. **Resumption State**: All state required for self-healing (retry counts, failed URIs) must be persisted in the control file to survive restarts.
+
+## Implementation Status (Audit 2026-06-03)
+- **Error Classification**: Error handling exists inline in `event_handlers.rs` and `subtask_failure.rs`, but is not yet fully structured under a single component.
+- **Policy Manager**: The dedicated `PolicyManager` component is pending implementation to centralize retry and failover policies (GAP-05 / Issue #211).
 
 ## Alternatives Considered
 - **Uniform Error Handling**: Treat all errors as task-level failures. *Rejected:* Leads to poor user experience (frequent manual resumes for minor blips).

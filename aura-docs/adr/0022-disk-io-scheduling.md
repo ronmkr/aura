@@ -1,7 +1,7 @@
 # ADR 0022: Advanced Disk I/O Scheduling and Kernel Hinting
 
 ## Status
-Implemented (2026-05-30, PR #163)
+Partially Implemented (Audit 2026-06-03)
 
 ## Context
 Standard file I/O can be a bottleneck for high-speed downloads and can degrade system performance by polluting the OS page cache with temporary download data. Aura addresses this through write caching, `mmap`, and `posix_fadvise`.
@@ -23,4 +23,9 @@ Standard file I/O can be a bottleneck for high-speed downloads and can degrade s
 - **Cons**: `io-uring` is Linux-specific; maintaining platform-specific I/O paths (io-uring vs. mmap vs. thread-pool) increases the complexity of the **Storage Engine**.
 
 ## Implementation
-- **Disk I/O Scheduler & Hinting**: Implemented in `aura-core/src/storage/ops.rs` and `aura-core/src/storage/scheduler.rs` (2026-05-30, PR #163).
+- **Disk I/O Scheduler & Hinting**: Initially scoped in `aura-core/src/storage/ops.rs` and `aura-core/src/storage/scheduler.rs` (2026-05-30, PR #163).
+
+## Implementation Status (Audit 2026-06-03)
+- **Kernel Hinting (posix_fadvise)**: Fully implemented.
+- **Disk I/O Scheduler (io_uring)**: Pending implementation behind a linux-specific feature flag (GAP-17).
+- **Mmap Fallback**: Pending implementation for large file operations (GAP-17).

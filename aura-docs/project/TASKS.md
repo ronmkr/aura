@@ -4,32 +4,53 @@ All active development tasks, technical debt, and feature requests are managed e
 
 ## Open Tasks
 
+### Critical (P0)
+- [ ] **feat: Implement ResourceGovernor for global memory backpressure** (Issue #207) `[module:core, priority:critical]`
+
+### High (P1)
+- [ ] **feat: Advisory file locking (flock) on active download files** (Issue #208) `[module:storage, priority:high]`
+- [ ] **feat: Generational write-request validation in Storage Engine** (Issue #209) `[module:storage, priority:high]`
+- [ ] **feat: PersistentState trait and DHT routing table persistence** (Issue #210) `[module:core, priority:high]`
+- [ ] **feat: PolicyManager error classification and retry coordinator** (Issue #211) `[module:core, priority:high]`
+- [ ] **feat: Implement hierarchical configuration file resolution and CLI overrides** (Issue #214) `[module:core, module:daemon, module:cli, priority:high]`
+
+### Moderate (P2)
+- [ ] **bug: Initialize and persist Prometheus metrics registry in daemon state** (Issue #212) `[module:daemon, priority:moderate]`
+- [ ] **infra: Add CI cross-platform matrix and cargo audit workflow** (Issue #148) `[infra, priority:moderate]`
+- [ ] **chore: Refactor FTPS to use rustls (ADR 0048 parity)** (Issue #189) `[module:worker, priority:moderate]`
+- [ ] **feat: Prioritized Streaming Mode for Media Playback** (Issue #28) `[module:core, priority:moderate]`
+- [ ] **feat: Cloud Storage Support (S3, Google Drive)** (Issue #10) `[module:core, priority:moderate]`
+- [ ] **chore: Document safety invariants for all unsafe blocks** (Issue #213) `[module:core, priority:moderate]`
+
+### Low / Minor (P3)
+- [ ] **feat: Implement i18n Architecture (ADR 0042)** (Issue #190) `[module:i18n, priority:low]`
+- [ ] **feat: NNTP (Usenet) Protocol Support** (Issue #22) `[module:core, priority:low]`
+- [ ] **feat: QR code sharing for magnet links in CLI/TUI** (Issue #74) `[module:cli, module:tui, priority:minor]`
+- [ ] **feat: i18n support for CLI and TUI** (Issue #71) `[module:cli, module:tui, priority:minor]`
+
+## Completed Tasks
+
+- [x] **bug: Remove default hardcoded RPC secret token** (Issue #201) `[module:daemon, priority:critical]`
+- [x] **bug: Daemon binds to 0.0.0.0 (all interfaces) by default** (Issue #202) `[module:daemon, priority:critical]`
+- [x] **bug: Permissive CORS configuration allows arbitrary cross-origin requests** (Issue #203) `[module:daemon, priority:critical]`
+- [x] **feat: SandboxRoot path traversal confinement for Storage Engine** (Issue #204) `[module:storage, priority:critical]`
+- [x] **feat: SecretScrubber tracing layer for credentials sanitization** (Issue #205) `[module:core, priority:critical]`
+- [x] **bug: Implement graceful shutdown and signal handling in daemon/cli** (Issue #206) `[module:daemon, module:cli, priority:high]`
 - [x] **feat: Implement Bit-Bucket virtual files (BEP 47)** (Issue #183) `[completed, module:storage]`
 - [x] **docs: Synchronize ARCHITECTURE.md with source tree** (Issue #186) `[completed, module:docs]`
 - [x] **feat: Graduate VPN Providers to full Controller Mode** (Issue #185) `[completed, module:vpn, priority:high]`
 - [x] **chore: Decompose monolithic files to enforce 400-line limit** (Issue #184) `[completed, module:storage]`
-- [ ] **chore: Refactor FTPS to use rustls (ADR 0048 parity)** (Issue #189) `[module:worker, priority:moderate]`
 - [x] **chore: Enforce file modularity, isolated testing, and CI 400-line limit check** (Issue #188) `[module:ci, priority:moderate]`
 - [x] **feat: Implement Allocation Prober diagnostic tool** (Issue #191) `[module:storage, priority:low]`
 - [x] **feat: implement actual Recursive Crawler (Wget parity)** (Issue #65)
-- [ ] **feat: Implement i18n Architecture (ADR 0042)** (Issue #190) `[module:i18n, priority:low]`
 - [x] **feat: Dual-Stack Asynchronous DNS Racing (Happy Eyeballs)** (Issue #25) `[status:completed, priority:moderate, module:network]`
 - [x] **infra: CI Docs Deployment** (Issue #134) `[enhancement, priority:moderate, infra]`
 - [x] **feat: Respect BEP 12 tracker tier ordering** (Issue #128) `[enhancement, module:core, priority:low]`
-- [ ] **feat: QR code sharing for magnet links in CLI/TUI** (Issue #74) `[enhancement, module:cli, module:tui, priority:minor]`
 - [x] **feat: implement Privacy-Enhanced Resolver (DoH/DoT)** (Issue #73) `[enhancement, priority:moderate, module:network]`
-- [ ] **feat: i18n support for CLI and TUI** (Issue #71) `[enhancement, module:cli, module:tui, priority:minor]`
-- [ ] **feat: Prioritized Streaming Mode for Media Playback** (Issue #28) `[enhancement, module:core, priority:moderate]`
 - [x] **feat: Modern Networking: HTTP/3 (QUIC) & Alt-Svc Support** (Issue #23) `[enhancement, module:core, priority:moderate]`
-- [ ] **feat: NNTP (Usenet) Protocol Support** (Issue #22) `[enhancement, module:core, priority:low]`
 - [x] **feat: Multi-tenancy & Structured Audit Tracing** (Issue #15) `[enhancement, priority:moderate, module:daemon]`
 - [x] **feat: Network Filesystem (NFS/SMB) Optimizations** (Issue #12) `[enhancement, module:storage, priority:moderate]`
 - [x] **feat: Task Chaining & Metadata-based Path Mapping** (Issue #11) `[status:completed, module:core, priority:low]`
-- [ ] **feat: Cloud Storage Support (S3, Google Drive)** (Issue #10) `[enhancement, module:core, priority:moderate]`
-
-## Completed Tasks
-
-
 - [x] **feat: Advanced Networking (kTLS, Captive Portals, Roaming)** (Issue #8) `[enhancement, priority:low, module:network]`
 - [x] **feat: task prioritization and dependency management** (Issue #72)
 - [x] **Test: Implement BDD step definitions for daemon, networking, storage, swarm features** (Issue #124)
