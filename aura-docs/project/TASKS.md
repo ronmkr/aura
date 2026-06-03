@@ -9,21 +9,21 @@ All active development tasks, technical debt, and feature requests are managed e
 - [x] **feat: Graduate VPN Providers to full Controller Mode** (Issue #185) `[completed, module:vpn, priority:high]`
 - [x] **chore: Decompose monolithic files to enforce 400-line limit** (Issue #184) `[completed, module:storage]`
 - [ ] **chore: Refactor FTPS to use rustls (ADR 0048 parity)** (Issue #189) `[module:worker, priority:moderate]`
-- [ ] **chore: Enforce file modularity, isolated testing, and CI 400-line limit check** (Issue #188) `[module:ci, priority:moderate]`
-- [ ] **feat: Implement Allocation Prober diagnostic tool** (Issue #191) `[module:storage, priority:low]`
-- [ ] **feat: implement actual Recursive Crawler (Wget parity)** (Issue #65)
+- [x] **chore: Enforce file modularity, isolated testing, and CI 400-line limit check** (Issue #188) `[module:ci, priority:moderate]`
+- [x] **feat: Implement Allocation Prober diagnostic tool** (Issue #191) `[module:storage, priority:low]`
+- [x] **feat: implement actual Recursive Crawler (Wget parity)** (Issue #65)
 - [ ] **feat: Implement i18n Architecture (ADR 0042)** (Issue #190) `[module:i18n, priority:low]`
 - [x] **feat: Dual-Stack Asynchronous DNS Racing (Happy Eyeballs)** (Issue #25) `[status:completed, priority:moderate, module:network]`
 - [x] **infra: CI Docs Deployment** (Issue #134) `[enhancement, priority:moderate, infra]`
-- [ ] **feat: Respect BEP 12 tracker tier ordering** (Issue #128) `[enhancement, module:core, priority:low]`
+- [x] **feat: Respect BEP 12 tracker tier ordering** (Issue #128) `[enhancement, module:core, priority:low]`
 - [ ] **feat: QR code sharing for magnet links in CLI/TUI** (Issue #74) `[enhancement, module:cli, module:tui, priority:minor]`
-- [ ] **feat: implement Privacy-Enhanced Resolver (DoH/DoT)** (Issue #73) `[enhancement, priority:moderate, module:network]`
+- [x] **feat: implement Privacy-Enhanced Resolver (DoH/DoT)** (Issue #73) `[enhancement, priority:moderate, module:network]`
 - [ ] **feat: i18n support for CLI and TUI** (Issue #71) `[enhancement, module:cli, module:tui, priority:minor]`
 - [ ] **feat: Prioritized Streaming Mode for Media Playback** (Issue #28) `[enhancement, module:core, priority:moderate]`
 - [x] **feat: Modern Networking: HTTP/3 (QUIC) & Alt-Svc Support** (Issue #23) `[enhancement, module:core, priority:moderate]`
 - [ ] **feat: NNTP (Usenet) Protocol Support** (Issue #22) `[enhancement, module:core, priority:low]`
 - [x] **feat: Multi-tenancy & Structured Audit Tracing** (Issue #15) `[enhancement, priority:moderate, module:daemon]`
-- [ ] **feat: Network Filesystem (NFS/SMB) Optimizations** (Issue #12) `[enhancement, module:storage, priority:moderate]`
+- [x] **feat: Network Filesystem (NFS/SMB) Optimizations** (Issue #12) `[enhancement, module:storage, priority:moderate]`
 - [x] **feat: Task Chaining & Metadata-based Path Mapping** (Issue #11) `[status:completed, module:core, priority:low]`
 - [ ] **feat: Cloud Storage Support (S3, Google Drive)** (Issue #10) `[enhancement, module:core, priority:moderate]`
 

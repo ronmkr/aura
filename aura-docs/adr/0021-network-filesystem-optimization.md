@@ -1,7 +1,7 @@
 # ADR 0021: Network Filesystem Optimization (NFS/SMB)
 
 ## Status
-Accepted
+Implemented (2026-06-02, PR #196)
 
 ## Context
 Downloading to network shares (NFS, SMB) presents unique challenges: high latency, potentially missing support for sparse files or `fallocate`, and risk of file corruption if multiple clients access the same share. `aria2` users often report performance issues in these environments.

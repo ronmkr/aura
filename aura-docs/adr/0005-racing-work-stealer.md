@@ -1,7 +1,7 @@
 # ADR 0005: Racing Work Stealer for Slow Stream Mitigation
 
 ## Status
-Accepted
+Implemented (2026-05-06, commit 0777b1ab)
 
 ## Context
 In multi-source downloads, individual network streams (HTTP mirrors or BitTorrent peers) can become "stalled" or significantly slower than the rest of the swarm. We need a way to prevent these "long-tail" pieces from delaying the completion of a download.

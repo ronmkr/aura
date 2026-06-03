@@ -1,7 +1,7 @@
 # ADR 0017: Segmentation and Discovery Persistence
 
 ## Status
-Accepted
+Implemented (2026-05-06, commit 0777b1ab)
 
 ## Context
 For protocols that lack a natural piece structure (HTTP, FTP), `aria2` uses a `SegmentMan` to enable parallel downloads. Additionally, background services like DHT require persistent storage of their internal state (routing tables) to avoid slow "cold starts."

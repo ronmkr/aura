@@ -1,7 +1,7 @@
 # ADR 0006: Error Classification and Self-healing Strategy
 
 ## Status
-Accepted
+Implemented (2026-05-06, commit 0777b1ab)
 
 ## Context
 Downloads often fail due to transient network issues or server errors. A robust download manager must distinguish between errors that can be automated (retries, protocol switching) and those that require user or system-level intervention.

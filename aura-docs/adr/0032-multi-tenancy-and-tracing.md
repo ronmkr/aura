@@ -1,7 +1,7 @@
 # ADR 0032: Multi-Tenancy and Observability
 
 ## Status
-Implemented
+Implemented (2026-05-31, PR #179)
 
 ## Context
 As a headless daemon, `Aura` may be shared by multiple users or applications. We need a way to isolate their tasks and provide deep visibility into the performance of the engine's many concurrent actors.
@@ -18,3 +18,6 @@ As a headless daemon, `Aura` may be shared by multiple users or applications. We
 ## Consequences
 - **Pros**: Safe multi-user operation, world-class debuggability, and easier performance tuning.
 - **Cons**: Instrumentation adds a small amount of runtime overhead and requires careful management of trace data volume.
+
+## Implementation
+- **Tenant Context & Observability**: Implemented via tenancy tracing and structured audits in `aura-daemon/` and core tracing context instrumentation (2026-05-31, PR #179).

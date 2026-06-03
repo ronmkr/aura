@@ -1,7 +1,7 @@
 # ADR 0052: Allocation Prober Diagnostic Tool
 
 ## Status
-Accepted
+Implemented (2026-06-02, PR #196)
 
 ## Context
 Standard file pre-allocation methods like `fallocate` can have inconsistent performance or cause regressions on certain filesystems (especially network mounts or exotic local filesystems). Currently, Aura uses a hardcoded strategy which might not be optimal for the user's specific storage environment.

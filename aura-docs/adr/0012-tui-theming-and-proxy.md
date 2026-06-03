@@ -1,7 +1,7 @@
 # ADR 0012: Themeable TUI and Proxy Connector
 
 ## Status
-Accepted
+Implemented (2026-05-06, commit 0777b1ab)
 
 ## Context
 `Aura` needs to be visually appealing and network-flexible. This requires a way to establish connections through various tunnels and a UI that can be customized to match user preferences.

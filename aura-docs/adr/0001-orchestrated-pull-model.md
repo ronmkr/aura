@@ -1,7 +1,7 @@
 # ADR 0001: Orchestrated Pull Model for Work Assignment
 
 ## Status
-Implemented
+Implemented (2026-05-06, commit 0777b1ab)
 
 ## Context
 In `Aura`, the system must distribute piece requests across multiple protocols (HTTP, BitTorrent) and workers efficiently. We need a communication pattern that supports backpressure, centralized strategy (like "Rarest First"), and "Work Stealing" (re-assigning slow pieces).

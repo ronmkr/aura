@@ -1,7 +1,7 @@
 # ADR 0031: BitTorrent v2 and Merkle Tree Management
 
 ## Status
-Accepted
+Implemented (2026-06-01, PR #193)
 
 ## Context
 BitTorrent v2 (BEP 52) replaces SHA-1 with SHA-256 and introduces per-file Merkle trees for data verification. For large torrents (terabytes of data), these trees can become significantly large and cannot be kept entirely in memory.

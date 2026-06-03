@@ -1,7 +1,7 @@
 # ADR 0015: URL Globbing and Batch Processing
 
 ## Status
-Accepted
+Implemented (2026-05-06, commit 0777b1ab)
 
 ## Context
 Users often need to download a sequential series of files (e.g., `image001.jpg` to `image100.jpg`). Manually adding 100 URIs is inefficient. `curl` provides a powerful globbing syntax for this.

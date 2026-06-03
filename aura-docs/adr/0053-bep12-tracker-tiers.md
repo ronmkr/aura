@@ -1,7 +1,7 @@
 # ADR 0053: BEP 12 Multitracker Compliance
 
 ## Status
-Implemented
+Implemented (2026-06-02, PR #197)
 
 ## Context
 The current tracker client in Aura queries all trackers simultaneously. This behavior is non-compliant with BEP 12 (Multitracker Metadata Extension) and can cause unnecessary network storming/load on public trackers. We need to respect the creator's priority tiers while maintaining robust peer discovery.

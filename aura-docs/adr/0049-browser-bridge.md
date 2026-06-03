@@ -1,10 +1,10 @@
-# 49. Browser Bridge (Extension Support)
+# ADR 0049: Browser Bridge (Extension Support)
 
 Date: 2026-05-27
 
 ## Status
 
-Implemented
+Implemented (2026-05-27, PR #102)
 
 ## Context
 
@@ -21,3 +21,6 @@ We will implement a "Browser Bridge" feature.
 
 - **Pros:** Significantly improves user experience by integrating directly into their daily web browsing workflow. Eliminates the need to copy cookies manually for authenticated downloads.
 - **Cons:** Requires maintaining separate codebases (or extensions) for different browsers. Increases the daemon's attack surface, requiring strict local authentication.
+
+## Implementation
+- **Browser Bridge**: Implemented via WebUI/Browser bridge RPC in `aura-daemon/` and local browser-bridge module (2026-05-27, PR #102).

@@ -1,7 +1,7 @@
 # ADR 0027: Power Management and Automated Lifecycle Actions
 
 ## Status
-Accepted
+Implemented (2026-05-06, commit 0777b1ab)
 
 ## Context
 Long-running downloads are often left unattended. Users expect the system to remain awake during the transfer but potentially shut down or sleep once the work is finished to save power.

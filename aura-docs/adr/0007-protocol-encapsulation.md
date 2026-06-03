@@ -1,7 +1,7 @@
 # ADR 0007: Protocol Encapsulation and Black-Box Workers
 
 ## Status
-Accepted
+Implemented (2026-05-06, commit 0777b1ab)
 
 ## Context
 As a multi-protocol download manager, `Aura` must handle diverse networking mechanics (e.g., BitTorrent peer state, HTTP/3 QUIC streams, FTP control channels). Spreading this logic into the **Orchestrator** would lead to a "god object" and make it difficult to add new protocols.

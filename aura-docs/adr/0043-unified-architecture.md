@@ -1,7 +1,7 @@
 # ADR 0043: Unified Architecture and CLI-Daemon-TUI Integration
 
 ## Status
-Implemented
+Implemented (2026-05-29, PR #144)
 
 ## Context
 Currently, `aura-cli`, `aura-daemon`, and `aura-tui` operate somewhat independently:
@@ -26,3 +26,6 @@ We will unify the architecture by ensuring `aura-cli` and `aura-daemon` share th
 - **Cons**: 
   - Refactoring required to move the RPC server out of `aura-daemon` into a shared location.
   - `aura-cli` becomes more complex as it needs to handle both "standalone with RPC" and "client to daemon" modes.
+
+## Implementation
+- **Unified Architecture**: Implemented in `aura-cli/`, `aura-daemon/`, and `aura-tui/` by sharing JSON-RPC server and client components (2026-05-29, PR #144).

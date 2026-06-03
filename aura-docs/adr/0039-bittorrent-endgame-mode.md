@@ -1,7 +1,7 @@
 # ADR 0039: BitTorrent Endgame Mode
 
 ## Status
-Implemented
+Implemented (2026-05-25, PR #82)
 
 ## Context
 In a BitTorrent swarm, the final blocks of a download often take much longer to retrieve than the rest. This happens because some peers might be slow, or their connection might drop after we've requested a piece but before it's delivered. This is known as the "99% stall."
@@ -32,3 +32,6 @@ When a worker successfully verifies a piece, it should notify the `Orchestrator`
 - **Pros**: Significantly reduces the time to finish downloads. Eliminates the "slowest peer" bottleneck at the end of a task.
 - **Cons**: Slightly increased bandwidth usage due to redundant block downloads (this is acceptable given it only happens at the very end).
 - **Complexity**: Requires careful coordination between workers and the picker to avoid thundering herds.
+
+## Implementation
+- **Endgame Mode Coordination**: Implemented in `aura-core/src/orchestrator/piece_picker/` and `aura-core/src/bt_worker/` (2026-05-25, PR #82).

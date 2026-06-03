@@ -1,7 +1,7 @@
 # ADR 0028: Privacy-Enhanced Resolution and Modern DNS
 
 ## Status
-Accepted
+Implemented (2026-05-27, PR #116)
 
 ## Context
 Standard system DNS resolution can be a bottleneck and is often subject to ISP filtering or lack of privacy. Modern tools (`curl`, browsers) provide asynchronous resolution and **DNS over HTTPS (DoH)** to address these issues.

@@ -1,7 +1,7 @@
 # ADR 0035: Advanced Filesystem Edge Cases (COW, Long Paths, Endgame)
 
 ## Status
-Partially Implemented
+Implemented (2026-05-27, PR #99)
 
 ## Context
 Filesystems behave drastically differently under load (e.g., ZFS vs. Ext4 vs. NTFS). Furthermore, OS path limits (Windows 260 chars) and BitTorrent "last piece" mechanics can silently destroy performance or corrupt downloads.
@@ -13,8 +13,8 @@ Filesystems behave drastically differently under load (e.g., ZFS vs. Ext4 vs. NT
 
 ## Implementation Status (Audit 2026-05-09)
 - **Endgame Broadcaster**: **Implemented** in `aura-core/src/orchestrator/events.rs`.
-- **COW-Aware Allocator**: **Pending** (Tracked in Issue #92). Current implementation uses sparse files via `set_len`.
-- **Path Truncator**: **Pending** (Tracked in Issue #92).
+- **COW-Aware Allocator**: **Implemented** in `aura-core/src/storage/ops.rs` (2026-05-27, PR #99).
+- **Path Truncator**: **Implemented** in `aura-core/src/storage/utils.rs` (2026-05-27, PR #99).
 
 ## Alternatives Considered
 - **Ignore COW fragmentation**: *Rejected:* Can lead to performance degradation that takes hours to fix via defragmentation tools.

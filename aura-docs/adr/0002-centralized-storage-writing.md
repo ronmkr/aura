@@ -1,7 +1,7 @@
 # ADR 0002: Centralized Storage Writing and Ownership
 
 ## Status
-Accepted
+Implemented (2026-05-06, commit 0777b1ab)
 
 ## Context
 Multiple **Protocol Workers** may attempt to write data to the same **Download Task** (and thus the same underlying files) simultaneously. We need to ensure data integrity, prevent race conditions, and provide a clean interface for disk caching and hashing.
