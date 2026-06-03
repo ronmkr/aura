@@ -11,6 +11,7 @@ pub struct StorageConfig {
     pub save_session_interval_secs: u64,
     pub read_ahead_kb: u32,
     pub write_buffer_kb: u32,
+    pub memory_limit_mb: u32,
 }
 
 impl Default for StorageConfig {
@@ -24,6 +25,7 @@ impl Default for StorageConfig {
             save_session_interval_secs: 10,
             read_ahead_kb: 128,
             write_buffer_kb: 256,
+            memory_limit_mb: 512,
         }
     }
 }

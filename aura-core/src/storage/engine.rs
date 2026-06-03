@@ -21,6 +21,7 @@ pub enum StorageRequest {
         task_id: TaskId,
         segment: Segment,
         data: BytesMut,
+        guard: Option<crate::orchestrator::resource_governor::MemoryGuard>,
     },
     Read {
         task_id: TaskId,
@@ -147,6 +148,7 @@ impl StorageEngine {
                             task_id,
                             segment,
                             data,
+                            guard,
                         } => {
                             if let Err(e) = self.handle_write(task_id, segment, data).await {
                                 error!(%task_id, error = %e, "Failed to write data");
@@ -155,6 +157,7 @@ impl StorageEngine {
                                     .send(StorageEvent::Error(task_id, e.to_string()))
                                     .await;
                             }
+                            drop(guard);
                         }
                         StorageRequest::Read {
                             task_id,

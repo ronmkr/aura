@@ -92,6 +92,7 @@ impl ProtocolWorker for HttpWorker {
                                                 length: take_len as u64,
                                             },
                                             data: BytesMut::from(sub_chunk),
+                                            guard: None,
                                         })
                                         .await;
                                 } else {

@@ -126,6 +126,28 @@ impl super::BtWorker {
                         piece_length
                     };
 
+                    if !ctx
+                        .task
+                        .state
+                        .resource_governor
+                        .request_allocation(&ctx.task.state.tenant_id, piece_total_len as usize)
+                    {
+                        picker.release_piece(piece_idx);
+                        drop(picker_guard);
+                        drop(bf_guard);
+                        drop(torrent_guard);
+                        info!(addr = %self.peer_addr, %piece_idx, "Memory allocation request failed. Releasing piece and backing off.");
+                        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+                        return Ok(());
+                    }
+
+                    self.memory_guard =
+                        Some(crate::orchestrator::resource_governor::MemoryGuard::new(
+                            ctx.task.state.resource_governor.clone(),
+                            ctx.task.state.tenant_id.clone(),
+                            piece_total_len as usize,
+                        ));
+
                     // Check if we need to request block hashes for this file
                     self.check_and_request_hashes_internal(
                         ctx.framed, ctx.task, torrent, piece_idx,
