@@ -22,6 +22,7 @@ pub enum StorageRequest {
         segment: Segment,
         data: BytesMut,
         guard: Option<crate::orchestrator::resource_governor::MemoryGuard>,
+        generation: Option<u64>,
     },
     Read {
         task_id: TaskId,
@@ -62,6 +63,7 @@ pub struct StorageEngine {
     pub(crate) db: sled::Db,
     pub(crate) scheduler: super::scheduler::IoScheduler,
     pub(crate) config: Option<Arc<arc_swap::ArcSwap<crate::Config>>>,
+    pub(crate) current_generations: HashMap<TaskId, HashMap<u64, u64>>,
 }
 
 impl StorageEngine {
@@ -96,6 +98,7 @@ impl StorageEngine {
             db,
             scheduler: super::scheduler::IoScheduler::new(),
             config,
+            current_generations: HashMap::new(),
         }
     }
 
@@ -149,13 +152,28 @@ impl StorageEngine {
                             segment,
                             data,
                             guard,
+                            generation,
                         } => {
-                            if let Err(e) = self.handle_write(task_id, segment, data).await {
-                                error!(%task_id, error = %e, "Failed to write data");
-                                let _ = self
-                                    .completion_tx
-                                    .send(StorageEvent::Error(task_id, e.to_string()))
-                                    .await;
+                            let mut stale = false;
+                            if let Some(gen) = generation {
+                                let task_gens = self.current_generations.entry(task_id).or_default();
+                                let current_gen = task_gens.entry(segment.offset).or_insert(0);
+                                if gen < *current_gen {
+                                    stale = true;
+                                } else {
+                                    *current_gen = gen;
+                                }
+                            }
+                            if stale {
+                                tracing::debug!(%task_id, offset = segment.offset, "Stale generation write request discarded");
+                            } else {
+                                if let Err(e) = self.handle_write(task_id, segment, data).await {
+                                    error!(%task_id, error = %e, "Failed to write data");
+                                    let _ = self
+                                        .completion_tx
+                                        .send(StorageEvent::Error(task_id, e.to_string()))
+                                        .await;
+                                }
                             }
                             drop(guard);
                         }

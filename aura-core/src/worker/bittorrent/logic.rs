@@ -148,6 +148,13 @@ impl super::BtWorker {
                             piece_total_len as usize,
                         ));
 
+                    {
+                        let mut gens = ctx.task.state.generations.lock().await;
+                        let entry = gens.entry(piece_idx).or_insert(0);
+                        *entry += 1;
+                        self.current_generation = *entry;
+                    }
+
                     // Check if we need to request block hashes for this file
                     self.check_and_request_hashes_internal(
                         ctx.framed, ctx.task, torrent, piece_idx,

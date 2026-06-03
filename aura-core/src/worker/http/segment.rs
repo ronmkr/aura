@@ -93,6 +93,7 @@ impl ProtocolWorker for HttpWorker {
                                             },
                                             data: BytesMut::from(sub_chunk),
                                             guard: None,
+                                            generation: None,
                                         })
                                         .await;
                                 } else {

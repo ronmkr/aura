@@ -229,6 +229,7 @@ impl ProtocolWorker for FtpWorker {
                         },
                         data: BytesMut::from(&chunk[..n]),
                         guard: None,
+                        generation: None,
                     })
                     .await;
             } else {
