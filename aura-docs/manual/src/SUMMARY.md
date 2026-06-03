@@ -83,6 +83,11 @@
     - [ADR 0051: Docker Containerization](./adr/0051-docker-containerization.md)
     - [ADR 0052: Allocation Prober](./adr/0052-allocation-prober.md)
     - [ADR 0053: BEP 12 Tracker Tiers](./adr/0053-bep12-tracker-tiers.md)
+    - [ADR 0054: SandboxRoot Confinement](./adr/0054-sandbox-root-confinement.md)
+    - [ADR 0055: SecretScrubber Log Sanitization](./adr/0055-secret-scrubbing-log-sanitization.md)
+    - [ADR 0056: Daemon RPC Security Hardening](./adr/0056-rpc-security-hardening.md)
+    - [ADR 0057: ResourceGovernor Memory Backpressure](./adr/0057-resource-governor.md)
+    - [ADR 0058: Graceful Shutdown Coordination](./adr/0058-graceful-shutdown-coordination.md)
 
 ---
 

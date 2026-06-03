@@ -3,6 +3,7 @@ pub mod engine;
 pub mod ops;
 pub mod prober;
 pub mod registry;
+pub mod sandbox;
 pub mod scheduler;
 pub mod sys;
 pub mod utils;

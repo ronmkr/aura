@@ -17,6 +17,7 @@ futures-util = { workspace = true }
 rust-embed = { workspace = true }
 mime_guess = { workspace = true }
 prometheus = { workspace = true }
+regex = { workspace = true }
 
 [dev-dependencies]
 tokio-tungstenite = { workspace = true }

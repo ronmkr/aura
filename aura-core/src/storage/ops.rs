@@ -283,6 +283,7 @@ impl StorageEngine {
     pub(crate) async fn get_or_open_part_file(&mut self, id: TaskId) -> Result<&mut File> {
         if !self.handles.contains(&id) {
             let base_path = self.task_paths.get(&id).ok_or(Error::TaskNotFound(id))?;
+            self.check_path_sandbox(base_path)?;
             let part_path = get_part_path(base_path)?;
 
             if let Some(parent) = part_path.parent() {

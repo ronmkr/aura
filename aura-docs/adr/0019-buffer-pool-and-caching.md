@@ -28,3 +28,7 @@ Following an architectural audit (Issue #160), the dedicated `BufferPool` actor 
 ## Consequences
 - **Pros**: Simplified codebase, reduced coupling, same zero-copy performance.
 - **Cons**: Global memory limits must now be enforced by the `ResourceGovernor` tracking outstanding `BytesMut` allocations rather than a single pool.
+
+## Implementation Status (Audit 2026-06-03)
+- **BufferPool Actor**: Successfully removed via PR #164.
+- **ResourceGovernor**: Pending implementation to enforce global memory budgeting and piece picker throttling (GAP-01 / Issue #207). See ADR 0057 for the resource governor design.

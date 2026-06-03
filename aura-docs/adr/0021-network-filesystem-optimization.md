@@ -1,7 +1,7 @@
 # ADR 0021: Network Filesystem Optimization (NFS/SMB)
 
 ## Status
-Implemented (2026-06-02, PR #196)
+Partially Implemented (Audit 2026-06-03)
 
 ## Context
 Downloading to network shares (NFS, SMB) presents unique challenges: high latency, potentially missing support for sparse files or `fallocate`, and risk of file corruption if multiple clients access the same share. Traditional download engines often experience performance degradation in these environments.
@@ -12,6 +12,10 @@ Downloading to network shares (NFS, SMB) presents unique challenges: high latenc
     - If native pre-allocation (e.g., `fallocate`) fails or is detected as unsupported, the engine will fall back to **Lazy Allocation** or a "Zeroing" pass that is optimized for network latency.
 3. **Latency Masking**: For network shares, the **Buffer Pool** will automatically increase the "flush threshold" to aggregate more data in RAM before sending it over the network.
 4. **File Locking**: We will implement advisory file locking (e.g., `flock`) to prevent multiple `Aura` instances from corrupting the same file on a shared mount.
+
+## Implementation Status (Audit 2026-06-03)
+- **Filesystem Detection & Pre-allocation**: Fully implemented via PR #196 (2026-06-02).
+- **File Locking**: Advisory locking via `flock` or `try_lock()` on active `.part` files is pending implementation (GAP-06 / Issue #208).
 
 ## Alternatives Considered
 - **Universal Lazy Allocation**: Always use lazy allocation for simplicity. *Rejected:* Local disks benefit significantly from pre-allocation (less fragmentation).

@@ -39,9 +39,9 @@ enum Commands {
         #[arg(long, default_value = "6800")]
         rpc_port: u16,
 
-        /// Token for authentication
-        #[arg(long, default_value = "aura_secret_token")]
-        rpc_secret: String,
+        /// Token for authentication. If not provided, a random token is generated and saved to ~/.aura/rpc_secret.
+        #[arg(long)]
+        rpc_secret: Option<String>,
     },
     /// Start the Terminal UI dashboard
     Tui,
@@ -67,6 +67,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
         .with_max_level(log_level)
         .with_target(false)
+        .with_writer(aura_daemon::scrubber::ScrubbingMakeWriter::new(
+            std::io::stdout,
+        ))
         .finish();
 
     tracing::subscriber::set_global_default(subscriber).expect("Failed to set tracing subscriber");

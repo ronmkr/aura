@@ -9,7 +9,7 @@ Aura's design is driven by a series of formal Architecture Decision Records. The
 | [0003](../adr/0003-atomic-completion-and-pre-allocation.md) | ADR 0003: Atomic Completion and Pre-allocation Strategy | Implemented (2026-05-27, PR #99) |
 | [0004](../adr/0004-telemetry-and-event-bus.md) | ADR 0004: Telemetry and Event Bus Architecture | Implemented (2026-05-06, commit 0777b1ab) |
 | [0005](../adr/0005-racing-work-stealer.md) | ADR 0005: Racing Work Stealer for Slow Stream Mitigation | Implemented (2026-05-06, commit 0777b1ab) |
-| [0006](../adr/0006-error-classification-and-self-healing.md) | ADR 0006: Error Classification and Self-healing Strategy | Implemented (2026-05-06, commit 0777b1ab) |
+| [0006](../adr/0006-error-classification-and-self-healing.md) | ADR 0006: Error Classification and Self-healing Strategy | Partially Implemented (Audit 2026-06-03) |
 | [0007](../adr/0007-protocol-encapsulation.md) | ADR 0007: Protocol Encapsulation and Black-Box Workers | Implemented (2026-05-06, commit 0777b1ab) |
 | [0008](../adr/0008-lifecycle-based-task-maturation.md) | ADR 0008: Lifecycle-based Task Maturation (Magnet Links) | Implemented (2026-05-06, commit 0777b1ab) |
 | [0009](../adr/0009-global-token-bucket-throttling.md) | ADR 0009: Global Token Bucket Throttling | Implemented (2026-05-06, commit 0777b1ab) |
@@ -19,13 +19,13 @@ Aura's design is driven by a series of formal Architecture Decision Records. The
 | [0013](../adr/0013-cloud-and-metalink.md) | ADR 0013: Cloud Storage and Metalink Integration | Partially Implemented (2026-05-06, commit 0777b1ab) |
 | [0014](../adr/0014-credential-and-security.md) | ADR 0014: Credential and Security Abstraction | Implemented (2026-05-06, commit 0777b1ab) |
 | [0015](../adr/0015-url-globbing.md) | ADR 0015: URL Globbing and Batch Processing | Implemented (2026-05-06, commit 0777b1ab) |
-| [0016](../adr/0016-rpc-and-interface.md) | ADR 0016: RPC Server and Interface Binding | Implemented (2026-05-06, commit 0777b1ab) |
-| [0017](../adr/0017-segmentation-and-persistence.md) | ADR 0017: Segmentation and Discovery Persistence | Implemented (2026-05-06, commit 0777b1ab) |
+| [0016](../adr/0016-rpc-and-interface.md) | ADR 0016: RPC Server and Interface Binding | Partially Implemented (Audit 2026-06-03) |
+| [0017](../adr/0017-segmentation-and-persistence.md) | ADR 0017: Segmentation and Discovery Persistence | Partially Implemented (Audit 2026-06-03) |
 | [0018](../adr/0018-hooks-hsts-ftp.md) | ADR 0018: Hooks, HSTS, and Multi-Channel Protocols | Implemented (2026-05-06, commit 0777b1ab) |
 | [0019](../adr/0019-buffer-pool-and-caching.md) | ADR 0019: Buffer Pool and Write-Back Caching | Superceded (by Issue #160, 2026-05-30, PR #164) |
 | [0020](../adr/0020-engine-api.md) | ADR 0020: Engine API and Library Embeddability | Implemented (2026-05-06, commit 0777b1ab) |
-| [0021](../adr/0021-network-filesystem-optimization.md) | ADR 0021: Network Filesystem Optimization (NFS/SMB) | Implemented (2026-06-02, PR #196) |
-| [0022](../adr/0022-disk-io-scheduling.md) | ADR 0022: Advanced Disk I/O Scheduling and Kernel Hinting | Implemented (2026-05-30, PR #163) |
+| [0021](../adr/0021-network-filesystem-optimization.md) | ADR 0021: Network Filesystem Optimization (NFS/SMB) | Partially Implemented (Audit 2026-06-03) |
+| [0022](../adr/0022-disk-io-scheduling.md) | ADR 0022: Advanced Disk I/O Scheduling and Kernel Hinting | Partially Implemented (Audit 2026-06-03) |
 | [0023](../adr/0023-adaptive-scaling-and-aggregation.md) | ADR 0023: Adaptive Connection Scaling and Sourced Aggregation | Partially Implemented (2026-05-25, PR #90) |
 | [0024](../adr/0024-integrity-scrubbing.md) | ADR 0024: Integrity Scrubbing and Torrent Refreshing | Implemented (2026-05-06, commit 0777b1ab) |
 | [0025](../adr/0025-nat-traversal-and-lpd.md) | ADR 0025: NAT Traversal and LAN Discovery | Implemented (2026-05-27, PR #114) |
@@ -36,7 +36,7 @@ Aura's design is driven by a series of formal Architecture Decision Records. The
 | [0030](../adr/0030-recursive-mirroring.md) | ADR 0030: Recursive Mirroring and HTML Parsing | Implemented (2026-05-27, PR #142) |
 | [0031](../adr/0031-bittorrent-v2-merkle.md) | ADR 0031: BitTorrent v2 and Merkle Tree Management | Implemented (2026-06-01, PR #193) |
 | [0032](../adr/0032-multi-tenancy-and-tracing.md) | ADR 0032: Multi-Tenancy and Observability | Implemented (2026-05-31, PR #179) |
-| [0033](../adr/0033-generation-writes-and-aggregation.md) | ADR 0033: Generation-based Writes and Sequential Aggregation | Implemented (2026-05-06, commit 0777b1ab) |
+| [0033](../adr/0033-generation-writes-and-aggregation.md) | ADR 0033: Generation-based Writes and Sequential Aggregation | Partially Implemented (Audit 2026-06-03) |
 | [0034](../adr/0034-advanced-network-edge-cases.md) | ADR 0034: Advanced Network Edge Cases (kTLS, Roaming, Captive Portals) | Implemented (2026-05-31, PR #178) |
 | [0035](../adr/0035-advanced-filesystem-edge-cases.md) | ADR 0035: Advanced Filesystem Edge Cases (COW, Long Paths, Endgame) | Implemented (2026-05-27, PR #99) |
 | [0036](../adr/0036-bittorrent-core.md) | ADR 0036: BitTorrent Core and Swarm Management | Implemented (2026-05-06, commit 0777b1ab) |
@@ -57,5 +57,11 @@ Aura's design is driven by a series of formal Architecture Decision Records. The
 | [0051](../adr/0051-docker-containerization.md) | ADR 0051: Docker Containerization | Implemented (2026-05-29, PR #144) |
 | [0052](../adr/0052-allocation-prober.md) | ADR 0052: Allocation Prober Diagnostic Tool | Implemented (2026-06-02, PR #196) |
 | [0053](../adr/0053-bep12-tracker-tiers.md) | ADR 0053: BEP 12 Multitracker Compliance | Implemented (2026-06-02, PR #197) |
+| [0054](../adr/0054-sandbox-root-confinement.md) | ADR 0054: SandboxRoot Confinement for Storage Engine | Implemented (2026-06-03, remediation/immediate-security) |
+| [0055](../adr/0055-secret-scrubbing-log-sanitization.md) | ADR 0055: SecretScrubber for Log Sanitization | Implemented (2026-06-03, remediation/immediate-security) |
+| [0056](../adr/0056-rpc-security-hardening.md) | ADR 0056: Daemon RPC Security Hardening | Implemented (2026-06-03, remediation/immediate-security) |
+| [0057](../adr/0057-resource-governor.md) | ADR 0057: ResourceGovernor for Global Memory Backpressure | Proposed (Audit 2026-06-03, Issue #207) |
+| [0058](../adr/0058-graceful-shutdown-coordination.md) | ADR 0058: Graceful Shutdown Coordination | Implemented (2026-06-03, remediation/immediate-security) |
+
 
 For a full list of ADRs, see the `aura-docs/adr/` directory in the repository.

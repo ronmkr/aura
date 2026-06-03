@@ -125,14 +125,22 @@ impl StorageEngine {
                             checksum,
                             padding_ranges,
                         } => {
-                            self.register_task(task_id, path, total_length, checksum, padding_ranges)
-                                .await;
-                            if let Err(e) = self.preallocate_task(task_id, total_length).await {
-                                error!(%task_id, error = %e, "Failed to pre-allocate file");
+                            if let Err(e) = self.check_path_sandbox(&path) {
+                                error!(%task_id, error = %e, "Path validation failed");
                                 let _ = self
                                     .completion_tx
                                     .send(StorageEvent::Error(task_id, e.to_string()))
                                     .await;
+                            } else {
+                                self.register_task(task_id, path, total_length, checksum, padding_ranges)
+                                    .await;
+                                if let Err(e) = self.preallocate_task(task_id, total_length).await {
+                                    error!(%task_id, error = %e, "Failed to pre-allocate file");
+                                    let _ = self
+                                        .completion_tx
+                                        .send(StorageEvent::Error(task_id, e.to_string()))
+                                        .await;
+                                }
                             }
                         }
                         StorageRequest::Write {
@@ -217,6 +225,10 @@ impl StorageEngine {
         }
 
         Ok(())
+    }
+
+    pub(crate) fn check_path_sandbox(&self, path: &std::path::Path) -> Result<()> {
+        super::sandbox::check_path_sandbox_impl(path, &self.config)
     }
 }
 
