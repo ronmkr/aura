@@ -237,6 +237,7 @@ impl BtWorker {
                             length: finished_len,
                         },
                         data: finished_data,
+                        guard: self.memory_guard.take(),
                     })
                     .await;
 
@@ -266,6 +267,7 @@ impl BtWorker {
             }
 
             // Reset worker piece state
+            self.memory_guard = None;
             self.active_guard = None;
             self.current_piece = None;
             self.bytes_received = 0;

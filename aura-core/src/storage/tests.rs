@@ -30,6 +30,7 @@ async fn test_storage_engine_atomic_completion() {
                 length: data.len() as u64,
             },
             data: data.into(),
+            guard: None,
         })
         .await
         .unwrap();
@@ -67,6 +68,7 @@ async fn test_storage_engine_sequential_aggregation() {
                 length: 5,
             },
             data: Bytes::from("world").into(),
+            guard: None,
         })
         .await
         .unwrap();
@@ -79,6 +81,7 @@ async fn test_storage_engine_sequential_aggregation() {
                 length: 10,
             },
             data: Bytes::from("hello_seq_").into(),
+            guard: None,
         })
         .await
         .unwrap();
@@ -116,6 +119,7 @@ async fn test_storage_engine_fsync_durability() {
                 length: data.len() as u64,
             },
             data: data.into(),
+            guard: None,
         })
         .await
         .unwrap();
@@ -165,6 +169,7 @@ async fn test_storage_engine_bit_bucket() {
                 length: 10,
             },
             data: bytes::BytesMut::from(&b"1234567890"[..]),
+            guard: None,
         })
         .await
         .unwrap();
@@ -178,6 +183,7 @@ async fn test_storage_engine_bit_bucket() {
                 length: 10,
             },
             data: bytes::BytesMut::from(&b"PAD_DATA__"[..]),
+            guard: None,
         })
         .await
         .unwrap();
@@ -192,6 +198,7 @@ async fn test_storage_engine_bit_bucket() {
                 length: 10,
             },
             data: bytes::BytesMut::from(&b"ABCDEFGHIJ"[..]),
+            guard: None,
         })
         .await
         .unwrap();
@@ -260,6 +267,7 @@ async fn test_storage_engine_bit_bucket_complex() {
                 length: 25,
             },
             data: bytes::BytesMut::from(&b"12345PPPPP67890XXXXXabcde"[..]),
+            guard: None,
         })
         .await
         .unwrap();

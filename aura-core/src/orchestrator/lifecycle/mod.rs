@@ -102,6 +102,8 @@ impl Orchestrator {
             let dns_resolver = self.dns_resolver.clone();
             let hsts_cache = self.hsts_cache.clone();
             let alt_svc_cache = self.alt_svc_cache.clone();
+            let resource_governor_clone = self.resource_governor.clone();
+            let tenant_id = meta_task.tenant_id.clone();
 
             let existing_bt = self.get_bt_task(sub_id);
 
@@ -168,6 +170,8 @@ impl Orchestrator {
                                         dht_tx,
                                         lpd_tx,
                                         db.clone(),
+                                        resource_governor_clone.clone(),
+                                        tenant_id.clone(),
                                     )),
                                     Err(e) => Err(e),
                                 }
@@ -179,6 +183,8 @@ impl Orchestrator {
                                     lpd_tx,
                                     db.clone(),
                                     loaded_bf.clone(),
+                                    resource_governor_clone.clone(),
+                                    tenant_id.clone(),
                                 )
                                 .await
                             };

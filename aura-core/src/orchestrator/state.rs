@@ -53,6 +53,7 @@ pub struct Orchestrator {
     pub(crate) vpn_provider: Option<Arc<dyn crate::vpn::VpnProvider>>,
     pub(crate) vpn_watch_tx: tokio::sync::watch::Sender<Option<Arc<dyn crate::vpn::VpnProvider>>>,
     pub(crate) config: Arc<ArcSwap<crate::Config>>,
+    pub(crate) resource_governor: Arc<crate::orchestrator::resource_governor::ResourceGovernor>,
     pub(crate) power_manager: crate::power::PowerManager,
     pub(crate) _hook_service: crate::hooks::HookServiceHandle,
     pub(crate) credential_provider: Arc<crate::config::credentials::CredentialProvider>,
@@ -135,6 +136,10 @@ impl Orchestrator {
         }
         let credential_provider = Arc::new(credential_provider);
 
+        let limit_bytes = (initial_config.storage.memory_limit_mb as usize) * 1024 * 1024;
+        let resource_governor =
+            Arc::new(crate::orchestrator::resource_governor::ResourceGovernor::new(limit_bytes));
+
         (
             Self {
                 tasks: HashMap::new(),
@@ -160,6 +165,7 @@ impl Orchestrator {
                 vpn_provider,
                 vpn_watch_tx,
                 config,
+                resource_governor,
                 power_manager: crate::power::PowerManager::new(),
                 _hook_service: hook_service,
                 credential_provider,

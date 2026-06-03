@@ -60,7 +60,7 @@ Aura's design is driven by a series of formal Architecture Decision Records. The
 | [0054](../adr/0054-sandbox-root-confinement.md) | ADR 0054: SandboxRoot Confinement for Storage Engine | Implemented (2026-06-03, PR #215) |
 | [0055](../adr/0055-secret-scrubbing-log-sanitization.md) | ADR 0055: SecretScrubber for Log Sanitization | Implemented (2026-06-03, PR #215) |
 | [0056](../adr/0056-rpc-security-hardening.md) | ADR 0056: Daemon RPC Security Hardening | Implemented (2026-06-03, PR #215) |
-| [0057](../adr/0057-resource-governor.md) | ADR 0057: ResourceGovernor for Global Memory Backpressure | Proposed (Audit 2026-06-03, Issue #207) |
+| [0057](../adr/0057-resource-governor.md) | ADR 0057: ResourceGovernor for Global Memory Backpressure | Implemented (2026-06-03, Issue #207) |
 | [0058](../adr/0058-graceful-shutdown-coordination.md) | ADR 0058: Graceful Shutdown Coordination | Implemented (2026-06-03, PR #215) |
 
 

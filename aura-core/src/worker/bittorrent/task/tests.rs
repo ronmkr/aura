@@ -12,7 +12,17 @@ async fn test_choking_algorithm_tit_for_tat() {
     let (lpd_tx, _) = mpsc::channel(1);
 
     let info_hash = crate::InfoHash::V1([0; 20]);
-    let task = BtTask::from_magnet(crate::TaskId(12345), info_hash, dht_tx, lpd_tx, db);
+    let governor =
+        std::sync::Arc::new(crate::orchestrator::resource_governor::ResourceGovernor::new(0));
+    let task = BtTask::from_magnet(
+        crate::TaskId(12345),
+        info_hash,
+        dht_tx,
+        lpd_tx,
+        db,
+        governor,
+        None,
+    );
 
     // Add 6 peers and simulate different download rates
     {

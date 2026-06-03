@@ -6,7 +6,7 @@ use crate::piece_picker::PiecePicker;
 use crate::task::TaskExtension;
 use crate::torrent::Torrent;
 use crate::tracker::Peer;
-use crate::{Error, InfoHash, Result, TaskId};
+use crate::{Error, InfoHash, Result, TaskId, TenantId};
 use std::sync::Arc;
 use tokio::sync::{mpsc, Mutex};
 
@@ -20,10 +20,18 @@ pub struct BtTaskState {
     pub sequential: std::sync::atomic::AtomicBool,
     pub db: sled::Db,
     pub pieces_count: std::sync::atomic::AtomicUsize,
+    pub resource_governor: Arc<crate::orchestrator::resource_governor::ResourceGovernor>,
+    pub tenant_id: Option<TenantId>,
 }
 
 impl BtTaskState {
-    pub fn new(torrent: Torrent, db: sled::Db, bitfield: Option<Bitfield>) -> Self {
+    pub fn new(
+        torrent: Torrent,
+        db: sled::Db,
+        bitfield: Option<Bitfield>,
+        resource_governor: Arc<crate::orchestrator::resource_governor::ResourceGovernor>,
+        tenant_id: Option<TenantId>,
+    ) -> Self {
         let num_pieces = torrent.pieces_count();
         let info_hash = if let Some(h2) = torrent.info_hash_v2().unwrap_or(None) {
             InfoHash::V2(h2)
@@ -42,10 +50,17 @@ impl BtTaskState {
             sequential: std::sync::atomic::AtomicBool::new(false),
             db,
             pieces_count: std::sync::atomic::AtomicUsize::new(num_pieces),
+            resource_governor,
+            tenant_id,
         }
     }
 
-    pub fn new_magnet(info_hash: InfoHash, db: sled::Db) -> Self {
+    pub fn new_magnet(
+        info_hash: InfoHash,
+        db: sled::Db,
+        resource_governor: Arc<crate::orchestrator::resource_governor::ResourceGovernor>,
+        tenant_id: Option<TenantId>,
+    ) -> Self {
         Self {
             info_hash,
             torrent: Mutex::new(None),
@@ -55,6 +70,8 @@ impl BtTaskState {
             sequential: std::sync::atomic::AtomicBool::new(false),
             db,
             pieces_count: std::sync::atomic::AtomicUsize::new(0),
+            resource_governor,
+            tenant_id,
         }
     }
 
@@ -113,6 +130,7 @@ pub struct BtTask {
 }
 
 impl BtTask {
+    #[allow(clippy::too_many_arguments)]
     pub async fn from_file(
         id: TaskId,
         path: &str,
@@ -120,6 +138,8 @@ impl BtTask {
         lpd_tx: mpsc::Sender<crate::lpd::LpdCommand>,
         db: sled::Db,
         bitfield: Option<Bitfield>,
+        resource_governor: Arc<crate::orchestrator::resource_governor::ResourceGovernor>,
+        tenant_id: Option<TenantId>,
     ) -> Result<Self> {
         let data = tokio::fs::read(path)
             .await
@@ -127,7 +147,13 @@ impl BtTask {
         let torrent = Torrent::from_bytes(&data)?;
         Ok(Self {
             id,
-            state: Arc::new(BtTaskState::new(torrent, db, bitfield)),
+            state: Arc::new(BtTaskState::new(
+                torrent,
+                db,
+                bitfield,
+                resource_governor,
+                tenant_id,
+            )),
             dht_tx,
             lpd_tx,
         })
@@ -139,10 +165,17 @@ impl BtTask {
         dht_tx: mpsc::Sender<crate::dht::DhtCommand>,
         lpd_tx: mpsc::Sender<crate::lpd::LpdCommand>,
         db: sled::Db,
+        resource_governor: Arc<crate::orchestrator::resource_governor::ResourceGovernor>,
+        tenant_id: Option<TenantId>,
     ) -> Self {
         Self {
             id,
-            state: Arc::new(BtTaskState::new_magnet(info_hash, db)),
+            state: Arc::new(BtTaskState::new_magnet(
+                info_hash,
+                db,
+                resource_governor,
+                tenant_id,
+            )),
             dht_tx,
             lpd_tx,
         }
