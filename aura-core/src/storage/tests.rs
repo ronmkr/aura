@@ -31,6 +31,7 @@ async fn test_storage_engine_atomic_completion() {
             },
             data: data.into(),
             guard: None,
+            generation: None,
         })
         .await
         .unwrap();
@@ -69,6 +70,7 @@ async fn test_storage_engine_sequential_aggregation() {
             },
             data: Bytes::from("world").into(),
             guard: None,
+            generation: None,
         })
         .await
         .unwrap();
@@ -82,6 +84,7 @@ async fn test_storage_engine_sequential_aggregation() {
             },
             data: Bytes::from("hello_seq_").into(),
             guard: None,
+            generation: None,
         })
         .await
         .unwrap();
@@ -120,6 +123,7 @@ async fn test_storage_engine_fsync_durability() {
             },
             data: data.into(),
             guard: None,
+            generation: None,
         })
         .await
         .unwrap();
@@ -170,6 +174,7 @@ async fn test_storage_engine_bit_bucket() {
             },
             data: bytes::BytesMut::from(&b"1234567890"[..]),
             guard: None,
+            generation: None,
         })
         .await
         .unwrap();
@@ -184,6 +189,7 @@ async fn test_storage_engine_bit_bucket() {
             },
             data: bytes::BytesMut::from(&b"PAD_DATA__"[..]),
             guard: None,
+            generation: None,
         })
         .await
         .unwrap();
@@ -199,6 +205,7 @@ async fn test_storage_engine_bit_bucket() {
             },
             data: bytes::BytesMut::from(&b"ABCDEFGHIJ"[..]),
             guard: None,
+            generation: None,
         })
         .await
         .unwrap();
@@ -268,6 +275,7 @@ async fn test_storage_engine_bit_bucket_complex() {
             },
             data: bytes::BytesMut::from(&b"12345PPPPP67890XXXXXabcde"[..]),
             guard: None,
+            generation: None,
         })
         .await
         .unwrap();
@@ -281,4 +289,72 @@ async fn test_storage_engine_bit_bucket_complex() {
     assert_eq!(&content[10..15], b"67890");
     assert_eq!(&content[15..20], b"\0\0\0\0\0");
     assert_eq!(&content[20..25], b"abcde");
+}
+
+#[tokio::test]
+async fn test_storage_engine_generation_validation() {
+    let dir = tempdir().unwrap();
+    let file_path = dir.path().join("gen_val_file.bin");
+    let (request_tx, request_rx) = mpsc::channel(10);
+    let (completion_tx, mut completion_rx) = mpsc::channel(10);
+    let mut storage = StorageEngine::new(request_rx, completion_tx, None, None);
+    let id = TaskId(999);
+    storage
+        .register_task(id, file_path.clone(), 0, None, Vec::new())
+        .await;
+
+    tokio::spawn(async move {
+        storage.run().await.unwrap();
+    });
+
+    // Write 1: Generation 2
+    let data1 = Bytes::from("newer data");
+    request_tx
+        .send(StorageRequest::Write {
+            task_id: id,
+            segment: Segment {
+                offset: 0,
+                length: data1.len() as u64,
+            },
+            data: data1.clone().into(),
+            guard: None,
+            generation: Some(2),
+        })
+        .await
+        .unwrap();
+
+    // Write 2: Generation 1 (stale, should be discarded)
+    let data2 = Bytes::from("older junk");
+    request_tx
+        .send(StorageRequest::Write {
+            task_id: id,
+            segment: Segment {
+                offset: 0,
+                length: data2.len() as u64,
+            },
+            data: data2.clone().into(),
+            guard: None,
+            generation: Some(1),
+        })
+        .await
+        .unwrap();
+
+    // Send complete to flush and close
+    request_tx.send(StorageRequest::Complete(id)).await.unwrap();
+
+    let event = completion_rx.recv().await.unwrap();
+    match event {
+        StorageEvent::Completed(completed_id) => {
+            assert_eq!(completed_id, id);
+        }
+        StorageEvent::Error(_, err) => {
+            panic!("Completed with error: {}", err);
+        }
+    }
+
+    assert!(file_path.exists());
+    let content = std::fs::read_to_string(&file_path).unwrap();
+    // Since the first write was gen 2 and the second was gen 1,
+    // the gen 1 write should have been discarded and "newer data" should remain.
+    assert_eq!(content, "newer data");
 }

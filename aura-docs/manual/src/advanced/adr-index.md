@@ -36,7 +36,7 @@ Aura's design is driven by a series of formal Architecture Decision Records. The
 | [0030](../adr/0030-recursive-mirroring.md) | ADR 0030: Recursive Mirroring and HTML Parsing | Implemented (2026-05-27, PR #142) |
 | [0031](../adr/0031-bittorrent-v2-merkle.md) | ADR 0031: BitTorrent v2 and Merkle Tree Management | Implemented (2026-06-01, PR #193) |
 | [0032](../adr/0032-multi-tenancy-and-tracing.md) | ADR 0032: Multi-Tenancy and Observability | Implemented (2026-05-31, PR #179) |
-| [0033](../adr/0033-generation-writes-and-aggregation.md) | ADR 0033: Generation-based Writes and Sequential Aggregation | Partially Implemented (Audit 2026-06-03) |
+| [0033](../adr/0033-generation-writes-and-aggregation.md) | ADR 0033: Generation-based Writes and Sequential Aggregation | Implemented (2026-06-03) |
 | [0034](../adr/0034-advanced-network-edge-cases.md) | ADR 0034: Advanced Network Edge Cases (kTLS, Roaming, Captive Portals) | Implemented (2026-05-31, PR #178) |
 | [0035](../adr/0035-advanced-filesystem-edge-cases.md) | ADR 0035: Advanced Filesystem Edge Cases (COW, Long Paths, Endgame) | Implemented (2026-05-27, PR #99) |
 | [0036](../adr/0036-bittorrent-core.md) | ADR 0036: BitTorrent Core and Swarm Management | Implemented (2026-05-06, commit 0777b1ab) |

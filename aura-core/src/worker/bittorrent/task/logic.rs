@@ -22,6 +22,7 @@ pub struct BtTaskState {
     pub pieces_count: std::sync::atomic::AtomicUsize,
     pub resource_governor: Arc<crate::orchestrator::resource_governor::ResourceGovernor>,
     pub tenant_id: Option<TenantId>,
+    pub generations: Mutex<std::collections::HashMap<usize, u64>>,
 }
 
 impl BtTaskState {
@@ -52,6 +53,7 @@ impl BtTaskState {
             pieces_count: std::sync::atomic::AtomicUsize::new(num_pieces),
             resource_governor,
             tenant_id,
+            generations: Mutex::new(std::collections::HashMap::new()),
         }
     }
 
@@ -72,6 +74,7 @@ impl BtTaskState {
             pieces_count: std::sync::atomic::AtomicUsize::new(0),
             resource_governor,
             tenant_id,
+            generations: Mutex::new(std::collections::HashMap::new()),
         }
     }
 

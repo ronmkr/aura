@@ -206,6 +206,7 @@ impl Orchestrator {
                                                 segment: piece.segment,
                                                 data: piece.data,
                                                 guard: None,
+                                                generation: None,
                                             }).await;
                                             let _ = subtask_tx.send(SubTaskEvent::RangeFinished(meta_id, sub_id, range)).await;
                                         }
@@ -238,6 +239,7 @@ impl Orchestrator {
                                                 segment: piece.segment,
                                                 data: piece.data,
                                                 guard: None,
+                                                generation: None,
                                             }).await;
                                             let _ = subtask_tx.send(SubTaskEvent::RangeFinished(meta_id, sub_id, range)).await;
                                         }

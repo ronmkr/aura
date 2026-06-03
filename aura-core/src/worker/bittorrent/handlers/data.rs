@@ -238,6 +238,7 @@ impl BtWorker {
                         },
                         data: finished_data,
                         guard: self.memory_guard.take(),
+                        generation: Some(self.current_generation),
                     })
                     .await;
 
