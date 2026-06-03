@@ -1,10 +1,10 @@
-# 50. Integration Tests Suite
+# ADR 0050: Integration Tests Suite
 
 Date: 2026-05-27
 
 ## Status
 
-Implemented
+Implemented (2026-05-25, PR #93)
 
 ## Context
 
@@ -21,3 +21,6 @@ We will build a comprehensive, automated Integration Tests Suite utilizing a Beh
 
 - **Pros:** Prevents regressions in complex subsystems (e.g., data corruption bugs, UI/Daemon IPC failures). Provides living documentation of expected system behavior.
 - **Cons:** Increases CI time and build complexity. Requires ongoing maintenance of BDD step definitions and test fixtures.
+
+## Implementation
+- **Integration Tests Suite**: Implemented via comprehensive BDD integration test suite using Gherkin feature files in `tests/` directory (2026-05-25, PR #93).

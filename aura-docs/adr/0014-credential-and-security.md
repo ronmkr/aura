@@ -1,7 +1,7 @@
 # ADR 0014: Credential and Security Abstraction
 
 ## Status
-Accepted
+Implemented (2026-05-06, commit 0777b1ab)
 
 ## Context
 `aria2` handles secrets from diverse sources (`netrc`, cookies, command-line) and must negotiate secure connections across different operating systems with varying TLS implementations.
@@ -10,6 +10,10 @@ Accepted
 1. **Credential Provider**: We will implement a centralized resolver that aggregates authentication data. Components only request "credentials for URL X" rather than knowing *where* those credentials came from.
 2. **Security Context**: We will use the `rustls` crate for most TLS operations but provide an abstraction layer to support platform-native backends (via `native-tls`) for environments that require Apple TLS or WinTLS integration.
 3. **Cookie Lifecycle**: Cookies will be managed in a thread-safe **Cookie Storage** that persists to disk using the standard Mozilla/Netscape format, ensuring compatibility with other tools.
+
+## Implementation Status (Audit 2026-06-03)
+- **Credential Provider**: Fully implemented to support `.netrc` and cookie injection via PR #111 (2026-05-27).
+- **Security Context & Cookies**: Initially implemented in commit `0777b1ab` (2026-05-06).
 
 ## Alternatives Considered
 - **Direct Library Usage**: Using `reqwest` or `hyper` defaults. *Rejected:* Doesn't allow for the fine-grained control over credential resolution (like `netrc` priority) required for `aria2` parity.

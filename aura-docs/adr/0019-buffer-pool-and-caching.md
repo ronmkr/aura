@@ -1,7 +1,7 @@
 # ADR 0019: Buffer Pool and Write-Back Caching
 
 ## Status
-Superceded (by Issue #160)
+Superceded (by Issue #160, 2026-05-30, PR #164)
 
 ## Context
 Efficiently handling high-speed downloads (1Gbps+) requires minimizing disk I/O and CPU overhead. The original `aria2` uses a `WrDiskCache` to aggregate small writes into larger, more efficient disk operations.

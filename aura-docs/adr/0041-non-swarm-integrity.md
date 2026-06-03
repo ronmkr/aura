@@ -1,7 +1,7 @@
 # ADR 0041: Integrity Verification for Non-Swarm Protocols
 
 ## Status
-Implemented
+Implemented (2026-05-27, PR #112)
 
 ## Context
 While BitTorrent has built-in hash verification, HTTP and FTP protocols rely on transport-layer reliability, which does not protect against data corruption at rest or mirror-side errors. Modern download managers should provide an optional post-download verification step.
@@ -19,3 +19,6 @@ While BitTorrent has built-in hash verification, HTTP and FTP protocols rely on 
 ## Consequences
 - **Pros**: Guaranteed data integrity for all protocols, parity with `aria2 --checksum`.
 - **Cons**: Adds CPU overhead for hashing and potentially an extra full-file read pass if hashing wasn't done during the download.
+
+## Implementation
+- **Non-Swarm Integrity**: Implemented in `aura-core/src/storage/ops.rs` and `aura-core/src/orchestrator/lifecycle/` (2026-05-27, PR #112).

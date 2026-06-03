@@ -1,7 +1,7 @@
 # ADR 0045: Peer Exchange (PEX) Implementation (BEP 11)
 
 ## Status
-Implemented
+Implemented (2026-05-30, PR #159)
 
 ## Context
 Peer Exchange (PEX) allows BitTorrent clients to exchange known peers directly with each other without relying solely on Trackers or the DHT. This reduces tracker load, creates a more robust swarm, and enables faster discovery of active peers.
@@ -25,3 +25,6 @@ We will implement BEP 11 PEX within the existing `BtWorker` architecture with th
 - Reduces dependency on DHT and Trackers, improving swarm resilience.
 - Increases memory usage slightly per active connection (maintaining a `HashSet` of known peers).
 - PEX parsing logic must be robust to prevent panic on malformed byte lengths (e.g., length not divisible by 6).
+
+## Implementation
+- **Peer Exchange (PEX)**: Implemented in `aura-core/src/bt_worker/extended/pex.rs` and integrated with registry (2026-05-30, PR #159).

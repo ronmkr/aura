@@ -1,7 +1,7 @@
 # ADR 0008: Lifecycle-based Task Maturation (Magnet Links)
 
 ## Status
-Accepted
+Implemented (2026-05-06, commit 0777b1ab)
 
 ## Context
 When a download is initiated via a Magnet URI, the system does not initially know the file list, total size, or piece count. This prevents the immediate initialization of the **Bitfield** and **Storage Engine**. In `aria2`, this is handled by a special mode, but in `Aura`, we want a unified actor model.

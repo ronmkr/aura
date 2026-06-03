@@ -1,7 +1,7 @@
 # ADR 0047: Automated Release Pipeline
 
 ## Status
-Implemented
+Implemented (2026-05-29, PR #144)
 
 ## Context
 Currently, our CI/CD process only runs tests and formatting checks. Users who wish to run `Aura` must build it from source using `cargo`, which is a significant barrier to adoption. To provide a seamless experience, we must automate the generation and distribution of pre-compiled binaries across major platforms (Windows, macOS, Linux).
@@ -20,3 +20,6 @@ We will implement an automated release pipeline utilizing GitHub Actions:
 ## Consequences
 - **Pros**: Drastically lowers the barrier to entry for users. Ensures a consistent and reproducible build environment.
 - **Cons**: Increases the complexity of the CI/CD configuration. Requires maintaining cross-compilation toolchains and handling platform-specific quirks during the build process.
+
+## Implementation
+- **Release Automation**: Implemented in `.github/workflows/release.yml` (2026-05-29, PR #144).

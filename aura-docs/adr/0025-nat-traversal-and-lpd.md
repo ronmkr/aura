@@ -1,7 +1,7 @@
 # ADR 0025: NAT Traversal and LAN Discovery
 
 ## Status
-Implemented
+Implemented (2026-05-27, PR #114)
 
 ## Context
 BitTorrent performance is heavily dependent on "reachability"the ability for other peers to initiate connections to the client. Manual port forwarding is a significant barrier for users. Additionally, high-speed transfers on local networks are often hampered by unnecessary routing through external gateways.
@@ -18,3 +18,7 @@ BitTorrent performance is heavily dependent on "reachability"the ability for oth
 ## Consequences
 - **Pros**: Zero-configuration reachability, near-instant LAN speeds, and better integration with modern home networks.
 - **Cons**: UPnP is occasionally disabled on routers for security reasons; we must provide clear feedback when it fails.
+
+## Implementation
+- **NAT Traversal Actor**: Implemented via active port-mapping mapping refresh in `aura-core/src/bt_worker/nat/` (2026-05-27, PR #114).
+- **Local Peer Discovery**: Implemented in `aura-core/src/bt_worker/lpd/` (2026-05-06, commit 0777b1ab).

@@ -1,7 +1,7 @@
 # ADR 0010: Decoupled Peer Discovery and Registry
 
 ## Status
-Accepted
+Implemented (2026-05-06, commit 0777b1ab)
 
 ## Context
 BitTorrent peer discovery is a multi-faceted process involving Trackers (HTTP/UDP), DHT (Kademlia), and PEX (Protocol-level exchange). In `aria2`, this logic is tightly integrated. For `Aura`, we need a modular approach that allows these mechanisms to run independently while feeding a central "candidate pool" for each download.

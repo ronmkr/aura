@@ -1,7 +1,7 @@
 # ADR 0051: Docker Containerization
 
 ## Status
-Implemented
+Implemented (2026-05-29, PR #144)
 
 ## Context
 Aura is designed to be highly portable and capable of running as a headless daemon on servers, NAS devices, or personal workstations. While we provide pre-compiled binaries via GitHub Actions, setting up native runtimes (or dealing with dynamic linking issues related to `libdbus-1`) can still introduce friction for users who prefer containerized workloads. 
@@ -31,3 +31,6 @@ We will provide an official `Dockerfile` to containerize the `aura` unified exec
 ### Negative
 - Adds maintenance overhead for the `Dockerfile`.
 - We must eventually set up a GitHub Action to automatically publish the Docker image to a registry (e.g., GHCR or Docker Hub) when a new release is tagged.
+
+## Implementation
+- **Docker Containerization**: Implemented via multi-stage `Dockerfile` in project root (2026-05-29, PR #144).

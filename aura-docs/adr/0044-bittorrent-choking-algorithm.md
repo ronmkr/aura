@@ -1,7 +1,7 @@
 # ADR 0044: BitTorrent Choking Algorithm (Tit-for-Tat)
 
 ## Status
-Implemented
+Implemented (2026-05-28, PR #137)
 
 ## Context
 Aura's BitTorrent worker was acting as a pure leecher, requesting pieces from all peers without ever unchoking them in return. This is inefficient for the swarm and leads to Aura being snubbed or banned by other clients that enforce tit-for-tat fairness. To participate fully in the BitTorrent ecosystem, Aura needs a standard choking algorithm.
@@ -28,3 +28,6 @@ We will implement the standard BitTorrent choking algorithm based on tit-for-tat
 -   **Improved Swarm Performance**: Aura will be unchoked by more peers as it starts providing data back.
 -   **Resource Usage**: Slight increase in CPU and memory to track per-peer bandwidth and run the 10s timer loop.
 -   **Fairness**: Aura now adheres to the BEP 3 specification for peer interest and choking.
+
+## Implementation
+- **Choking Algorithm**: Implemented in `aura-core/src/bt_worker/choker.rs` and `aura-core/src/bt_worker/peer/` (2026-05-28, PR #137).

@@ -1,10 +1,10 @@
-# 48. FTPS (TLS) Support and Retry Logic
+# ADR 0048: FTPS (TLS) Support and Retry Logic
 
 Date: 2026-05-27
 
 ## Status
 
-Implemented
+Implemented (2026-05-28, PR #133)
 
 ## Context
 
@@ -21,3 +21,6 @@ We will extend the FTP worker to support Explicit FTPS (AUTH TLS).
 
 - **Pros:** Enhances security for users downloading from legacy FTP hosts that offer TLS. Increases download reliability on unstable FTP servers.
 - **Cons:** Increases the complexity of the FTP worker state machine (handling TLS handshake timeouts).
+
+## Implementation
+- **FTPS & Retry Logic**: Implemented in `aura-core/src/ftp_worker/` (2026-05-28, PR #133).

@@ -1,7 +1,7 @@
 # ADR 0013: Cloud Storage and Metalink Integration
 
 ## Status
-Accepted
+Partially Implemented (2026-05-06, commit 0777b1ab)
 
 ## Context
 `Aura` aims to extend `aria2`'s protocol support to modern cloud storage services (S3, Google Drive) while maintaining full support for legacy `aria2` specialties like Metalink.
@@ -10,6 +10,10 @@ Accepted
 1. **Cloud Adapter**: We will implement a specialized worker type that uses existing Rust SDKs (e.g., `aws-sdk-s3`) but wraps them in the **Protocol Worker** actor interface. This allows the core engine to treat a cloud object like a standard seekable byte-stream.
 2. **Metalink Integration**: The **Orchestrator** will use a **Metalink Resolver** to break down a `.metalink` file into its component URIs. Each URI is assigned to a **Protocol Worker**, and the **Piece Selector** uses the provided checksums for verification.
 3. **Unified Progress**: Regardless of the source (Cloud, HTTP, BitTorrent), all progress is unified in the **Bitfield**, enabling cross-source "Racing" (e.g., racing a slow S3 download against a fast HTTP mirror).
+
+## Implementation Status (Audit 2026-06-03)
+- **Metalink Integration**: Implemented in `aura-core/src/metalink/` (2026-05-25, PR #91).
+- **Cloud Adapter**: Pending (Issue #10, S3/Google Drive support).
 
 ## Alternatives Considered
 - **Direct Cloud SDK usage**: Calling cloud APIs directly from the Orchestrator. *Rejected:* Violates encapsulation and makes the engine dependent on specific cloud libraries.

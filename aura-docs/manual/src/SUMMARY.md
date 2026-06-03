@@ -81,6 +81,8 @@
     - [ADR 0049: Browser Bridge](./adr/0049-browser-bridge.md)
     - [ADR 0050: Integration Tests Suite](./adr/0050-integration-tests-suite.md)
     - [ADR 0051: Docker Containerization](./adr/0051-docker-containerization.md)
+    - [ADR 0052: Allocation Prober](./adr/0052-allocation-prober.md)
+    - [ADR 0053: BEP 12 Tracker Tiers](./adr/0053-bep12-tracker-tiers.md)
 
 ---
 

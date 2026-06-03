@@ -1,7 +1,7 @@
 # ADR 0020: Engine API and Library Embeddability
 
 ## Status
-Accepted
+Implemented (2026-05-06, commit 0777b1ab)
 
 ## Context
 `aria2` is often used as a standalone binary, but `libaria2` allowed it to be embedded into other C++ applications. For `Aura`, we want to make embeddability a first-class citizen using Rust's async features.

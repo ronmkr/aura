@@ -1,7 +1,7 @@
 # ADR 0034: Advanced Network Edge Cases (kTLS, Roaming, Captive Portals)
 
 ## Status
-Implemented
+Implemented (2026-05-31, PR #178)
 
 ## Context
 Real-world networking involves hostile environments (Captive Portals), mobile users (Interface Roaming), and the need to maintain zero-copy performance even when traffic is encrypted (HTTPS).
@@ -18,3 +18,6 @@ Real-world networking involves hostile environments (Captive Portals), mobile us
 ## Consequences
 - **Pros**: Unmatched HTTPS performance, resilience to "Starbucks WiFi" corruption, and seamless mobility.
 - **Cons**: `kTLS` requires specific kernel versions and OpenSSL/Rustls integrations which may complicate the build process.
+
+## Implementation
+- **Captive Portal, Roaming & kTLS**: Implemented in `aura-core/src/network/` (2026-05-31, PR #178).

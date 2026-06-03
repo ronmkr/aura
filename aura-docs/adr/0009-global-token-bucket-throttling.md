@@ -1,7 +1,7 @@
 # ADR 0009: Global Token Bucket Throttling
 
 ## Status
-Accepted
+Implemented (2026-05-06, commit 0777b1ab)
 
 ## Context
 A high-performance download manager must be able to respect user-defined bandwidth limits (global and per-task). In a highly concurrent asynchronous environment, naive sleep-based throttling can lead to thread starvation or imprecise rate control.

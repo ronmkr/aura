@@ -1,7 +1,7 @@
 # ADR 0037: Redirect Handling and Content Validation
 
 ## Status
-Implemented
+Implemented (2026-05-06, commit 0777b1ab)
 
 ## Context
 When a user provides a URI, it may not be a direct link to a file. It could be a 3xx redirect chain, or a landing page containing a download button. Naively following these can lead to "poisoning" where the engine saves HTML landing pages as binary data.
@@ -21,3 +21,6 @@ When a user provides a URI, it may not be a direct link to a file. It could be a
 ## Consequences
 - **Pros**: Robustness against complex web hosting setups, prevention of "HTML-as-Binary" corruption, and improved security.
 - **Cons**: Adds latency due to pre-flight requests and header validation.
+
+## Implementation
+- **Redirects & MIME Validation**: Implemented in `aura-core/src/http_worker/` (2026-05-06, commit 0777b1ab).

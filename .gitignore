@@ -53,3 +53,4 @@ unused_deps.txt
 
 # mdBook generated ADRs
 aura-docs/manual/src/adr/
+aura-docs/manual/book/

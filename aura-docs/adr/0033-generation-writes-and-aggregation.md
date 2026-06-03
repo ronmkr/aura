@@ -1,7 +1,7 @@
 # ADR 0033: Generation-based Writes and Sequential Aggregation
 
 ## Status
-Accepted
+Implemented (2026-05-06, commit 0777b1ab)
 
 ## Context
 High-concurrency downloads with **Racing** (fetching the same piece twice) and **Work Stealing** create the risk of "Zombie Writes," where a slow or late worker overwrites a faster one's data. Additionally, non-sequential writes (common in BitTorrent) degrade physical disk performance.
@@ -11,6 +11,10 @@ High-concurrency downloads with **Racing** (fetching the same piece twice) and *
 2. **Atomic Commit**: The **Storage Engine** will only accept a **Write Request** if its Generation ID matches the current active generation for that piece index. Late arrivals from the "loser" of a race are discarded immediately at the actor mailbox level.
 3. **Sequential Aggregator**: The **Storage Engine** will implement a sliding window of pending writes. It will prefer flushing contiguous blocks of pieces to disk (e.g., pieces 1, 2, 3 together) rather than random pieces, even if they arrive out of order.
 4. **Memory Pressure**: If the **Buffer Pool** exceeds its limit, the aggregator will perform a "Forced Flush" of the oldest pending pieces to disk, regardless of continuity.
+
+## Implementation Status (Audit 2026-06-03)
+- **Generation Tracking**: Initially implemented in commit `0777b1ab` (2026-05-06).
+- **Sequential Aggregator & Generational Buffers**: Fully implemented via PR #150 (2026-05-29).
 
 ## Alternatives Considered
 - **File Locking**: Locking byte ranges in the file. *Rejected:* Too much overhead and difficult to manage across different OS implementations.

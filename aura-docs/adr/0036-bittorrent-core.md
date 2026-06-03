@@ -1,7 +1,7 @@
 # ADR 0036: BitTorrent Core and Swarm Management
 
 ## Status
-Implemented
+Implemented (2026-05-06, commit 0777b1ab)
 
 ## Context
 Adding BitTorrent support requires managing complex piece-level progress (Bitfields) and highly concurrent peer discovery and communication. We need to integrate this into our existing actor model without creating a monolithic "Torrent" object.
@@ -18,3 +18,6 @@ Adding BitTorrent support requires managing complex piece-level progress (Bitfie
 ## Consequences
 - **Pros**: Modular P2P stack, efficient swarm coordination, and clear separation between "Discovery" and "Retrieval."
 - **Cons**: Requires complex synchronization between the Piece Selector and the multiple Peer Protocol Workers.
+
+## Implementation
+- **Bitfield, Piece Selector & Registry**: Implemented in `aura-core/src/bt_worker/` and `aura-core/src/orchestrator/piece_picker/` (2026-05-06, commit 0777b1ab).

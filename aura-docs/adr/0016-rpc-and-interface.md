@@ -1,7 +1,7 @@
 # ADR 0016: RPC Server and Interface Binding
 
 ## Status
-Accepted
+Implemented (2026-05-06, commit 0777b1ab)
 
 ## Context
 `Aura` must be controllable by remote UIs (parity with `aria2`) and provide fine-grained control over network routing (parity with `curl`).
@@ -11,6 +11,10 @@ Accepted
 2. **Bi-directional Telemetry**: The RPC Server will subscribe to the **Event Bus** and push events to WebSocket clients in real-time.
 3. **Interface Binder**: We will use the `socket2` crate to bind sockets to specific network interfaces or local IP addresses before establishing connections. This logic will live in the **Proxy Connector**.
 4. **Dual-Stack Support**: The system will default to IPv6 but allow users to force IPv4 or specify a preference via the **Configuration Manager**.
+
+## Implementation Status (Audit 2026-06-03)
+- **RPC Server & Interface Binding**: Initially implemented in commit `0777b1ab` (2026-05-06).
+- **WebSocket Telemetry**: Fully implemented via PR #106 (2026-05-28).
 
 ## Alternatives Considered
 - **Direct Orchestrator RPC**: Making the Orchestrator also an HTTP server. *Rejected:* Violates single-responsibility principle and makes the main loop too heavy.

@@ -1,7 +1,7 @@
 # ADR 0004: Telemetry and Event Bus Architecture
 
 ## Status
-Accepted
+Implemented (2026-05-06, commit 0777b1ab)
 
 ## Context
 Multiple external interfaces (Ratatui TUI, JSON-RPC, logging) need real-time updates on download progress and system state. Directly polling the **Orchestrator** or individual **Download Tasks** would create contention and complexity.
