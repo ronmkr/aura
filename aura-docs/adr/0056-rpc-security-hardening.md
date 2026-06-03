@@ -1,7 +1,7 @@
 # ADR 0056: Daemon RPC Security Hardening
 
 ## Status
-Implemented (2026-06-03, remediation/immediate-security)
+Implemented (2026-06-03, PR #215)
 
 ## Context
 The Aura daemon exposes a JSON-RPC 2.0 / WebSocket server to allow control by remote clients (like the CLI or TUI). The audit identified severe security exposure (GAP-07a, GAP-07b, GAP-41):

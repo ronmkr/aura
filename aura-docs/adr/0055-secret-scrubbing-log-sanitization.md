@@ -1,7 +1,7 @@
 # ADR 0055: SecretScrubber for Log Sanitization
 
 ## Status
-Implemented (2026-06-03, remediation/immediate-security)
+Implemented (2026-06-03, PR #215)
 
 ## Context
 Aura handles sensitive authentication credentials (bearer tokens, basic auth credentials, session cookies, and `.netrc` passwords) across multiple protocol workers. During debugging and production monitoring, standard logging (`tracing` spans and events) can inadvertently print these credentials, leaking secrets to stdout, systemd journals, files, or distributed OpenTelemetry spans (GAP-03).

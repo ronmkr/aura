@@ -1,7 +1,7 @@
 # ADR 0058: Graceful Shutdown Coordination
 
 ## Status
-Implemented (2026-06-03, remediation/immediate-security)
+Implemented (2026-06-03, PR #215)
 
 ## Context
 Aura is an asynchronous multi-actor system. When the user signals termination (e.g., via `Ctrl+C` or a SIGTERM signal), the daemon and CLI processes must exit cleanly. Currently, no signal handling is implemented in the CLI or daemon main functions (GAP-37), causing immediate process exit. This abrupt termination leaves active `.part` files in an inconsistent/corrupted state, fails to serialize and persist DHT routing tables (ADR 0017), fails to announce final stop events to trackers, and does not cleanly close TCP sockets.

@@ -57,11 +57,11 @@ Aura's design is driven by a series of formal Architecture Decision Records. The
 | [0051](../adr/0051-docker-containerization.md) | ADR 0051: Docker Containerization | Implemented (2026-05-29, PR #144) |
 | [0052](../adr/0052-allocation-prober.md) | ADR 0052: Allocation Prober Diagnostic Tool | Implemented (2026-06-02, PR #196) |
 | [0053](../adr/0053-bep12-tracker-tiers.md) | ADR 0053: BEP 12 Multitracker Compliance | Implemented (2026-06-02, PR #197) |
-| [0054](../adr/0054-sandbox-root-confinement.md) | ADR 0054: SandboxRoot Confinement for Storage Engine | Implemented (2026-06-03, remediation/immediate-security) |
-| [0055](../adr/0055-secret-scrubbing-log-sanitization.md) | ADR 0055: SecretScrubber for Log Sanitization | Implemented (2026-06-03, remediation/immediate-security) |
-| [0056](../adr/0056-rpc-security-hardening.md) | ADR 0056: Daemon RPC Security Hardening | Implemented (2026-06-03, remediation/immediate-security) |
+| [0054](../adr/0054-sandbox-root-confinement.md) | ADR 0054: SandboxRoot Confinement for Storage Engine | Implemented (2026-06-03, PR #215) |
+| [0055](../adr/0055-secret-scrubbing-log-sanitization.md) | ADR 0055: SecretScrubber for Log Sanitization | Implemented (2026-06-03, PR #215) |
+| [0056](../adr/0056-rpc-security-hardening.md) | ADR 0056: Daemon RPC Security Hardening | Implemented (2026-06-03, PR #215) |
 | [0057](../adr/0057-resource-governor.md) | ADR 0057: ResourceGovernor for Global Memory Backpressure | Proposed (Audit 2026-06-03, Issue #207) |
-| [0058](../adr/0058-graceful-shutdown-coordination.md) | ADR 0058: Graceful Shutdown Coordination | Implemented (2026-06-03, remediation/immediate-security) |
+| [0058](../adr/0058-graceful-shutdown-coordination.md) | ADR 0058: Graceful Shutdown Coordination | Implemented (2026-06-03, PR #215) |
 
 
 For a full list of ADRs, see the `aura-docs/adr/` directory in the repository.

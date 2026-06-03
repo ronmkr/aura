@@ -1,7 +1,7 @@
 # ADR 0054: SandboxRoot Confinement for Storage Engine
 
 ## Status
-Implemented (2026-06-03, remediation/immediate-security)
+Implemented (2026-06-03, PR #215)
 
 ## Context
 Malicious or malformed torrents, Metalinks, or HTTP files can contain filenames with relative directory components (e.g., `../../etc/passwd` or `../../.ssh/authorized_keys`). If not properly confined, the Storage Engine could overwrite or read files outside the designated download folder, leading to path traversal vulnerability and potential remote code execution or file system leakage.
