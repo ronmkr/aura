@@ -12,6 +12,8 @@ pub struct Args {
     pub uris: Vec<String>,
     pub output: Option<String>,
     pub follow_on: Option<String>,
+    pub priority: u32,
+    pub depends_on: Vec<TaskId>,
 }
 
 pub async fn run(args: Args) -> Result<()> {
@@ -99,9 +101,9 @@ pub async fn run(args: Args) -> Result<()> {
                 name: output_name.clone(),
                 sources,
                 checksum: None,
-                priority: 100,
+                priority: args.priority,
                 streaming_mode: false,
-                depends_on: Vec::new(),
+                depends_on: args.depends_on.clone(),
                 follow_on: args.follow_on.map(FollowOnAction::Custom),
             })
             .await?;
@@ -129,9 +131,9 @@ pub async fn run(args: Args) -> Result<()> {
                     name,
                     sources: vec![(uri.clone(), ttype)],
                     checksum: None,
-                    priority: 100,
+                    priority: args.priority,
                     streaming_mode: false,
-                    depends_on: Vec::new(),
+                    depends_on: args.depends_on.clone(),
                     follow_on: args.follow_on.clone().map(FollowOnAction::Custom),
                 })
                 .await?;

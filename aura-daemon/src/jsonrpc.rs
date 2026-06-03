@@ -94,12 +94,17 @@ async fn handle_add_uri(engine: &Engine, params: Option<Value>) -> Result<Value,
         return Err(json!({ "code": -32602, "message": "Empty URI list" }));
     }
 
-    let mut priority = 100;
+    let mut priority = 3;
     let mut streaming_mode = false;
     let mut depends_on = Vec::new();
 
     if let Some(options) = params.get(1) {
         if let Some(p) = options.get("priority").and_then(|v| v.as_u64()) {
+            if p > 5 {
+                return Err(
+                    json!({ "code": -32602, "message": "Invalid priority: must be between 0 and 5" }),
+                );
+            }
             priority = p as u32;
         }
         if let Some(s) = options.get("streamingMode").and_then(|v| v.as_bool()) {
@@ -239,6 +244,14 @@ async fn handle_change_option(engine: &Engine, params: Option<Value>) -> Result<
         .get("priority")
         .and_then(|v| v.as_u64())
         .map(|p| p as u32);
+
+    if let Some(p) = priority {
+        if p > 5 {
+            return Err(
+                json!({ "code": -32602, "message": "Invalid priority: must be between 0 and 5" }),
+            );
+        }
+    }
 
     let mut depends_on = None;
     if let Some(deps) = options

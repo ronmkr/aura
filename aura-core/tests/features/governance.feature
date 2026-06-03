@@ -26,3 +26,10 @@ Feature: Resource Governance and Throttling
     When the download starts with 1 connection
     Then the Orchestrator should detect throughput is below the global potential
     And the Orchestrator should scale the subtask to 8 concurrent connections
+
+  Scenario: Task dependency chain unblocking
+    Given Task B depends on Task A
+    When both tasks are added to the Orchestrator
+    Then Task B should start in the "Waiting" phase
+    When Task A completes
+    Then Task B should automatically transition to the "Downloading" phase

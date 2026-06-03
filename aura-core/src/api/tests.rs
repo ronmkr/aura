@@ -105,7 +105,7 @@ async fn test_engine_subscribe_captures_task_added() {
             name: "test_race_task".to_string(),
             sources: vec![("http://example.com/file".to_string(), TaskType::Http)],
             checksum: None,
-            priority: 100,
+            priority: 3,
             streaming_mode: false,
             depends_on: Vec::new(),
             follow_on: None,

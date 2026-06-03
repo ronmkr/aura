@@ -21,6 +21,14 @@ struct Cli {
     /// Enable verbose logging (repeat for more detail: -v, -vv)
     #[arg(short, long, action = clap::ArgAction::Count)]
     verbose: u8,
+
+    /// Priority level (0-5, where 0 is highest)
+    #[arg(short, long, default_value_t = 3, value_parser = clap::value_parser!(u32).range(0..=5))]
+    priority: u32,
+
+    /// Task GIDs this task depends on (comma-separated list)
+    #[arg(short, long, value_delimiter = ',')]
+    depends_on: Vec<u64>,
 }
 
 #[derive(Subcommand, Debug)]
@@ -91,6 +99,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     uris,
                     output: cli.output,
                     follow_on: cli.follow_on,
+                    priority: cli.priority,
+                    depends_on: cli.depends_on.into_iter().map(aura_core::TaskId).collect(),
                 };
                 aura_cli::run(args).await?;
             } else {
