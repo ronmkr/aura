@@ -126,9 +126,38 @@ pub async fn run(args: Args) -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
+    let metrics = Arc::new(metrics::DaemonMetrics::new());
+
+    // Spawn background metrics updater
+    let engine_metrics = Arc::clone(&engine);
+    let metrics_updater = Arc::clone(&metrics);
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(std::time::Duration::from_secs(5));
+        loop {
+            interval.tick().await;
+            if let Ok(active_tasks) = engine_metrics.tell_active().await {
+                let mut dl = 0.0;
+                let mut ul = 0.0;
+                let mut st = 0.0;
+
+                for task in &active_tasks {
+                    dl += task.completed_length as f64;
+                    ul += task.uploaded_length as f64;
+                    st += task.subtasks.iter().filter(|s| s.active).count() as f64;
+                }
+
+                metrics_updater.task_count.set(active_tasks.len() as f64);
+                metrics_updater.total_downloaded.set(dl);
+                metrics_updater.total_uploaded.set(ul);
+                metrics_updater.subtask_count.set(st);
+            }
+        }
+    });
+
     let state = Arc::new(AppState {
         engine: Arc::clone(&engine),
         rpc_secret: Some(rpc_secret),
+        metrics,
     });
 
     let (shutdown_tx, mut shutdown_rx) = tokio::sync::mpsc::channel::<()>(1);

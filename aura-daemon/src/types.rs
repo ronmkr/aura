@@ -34,4 +34,5 @@ pub struct WsQuery {
 pub struct AppState {
     pub engine: Arc<Engine>,
     pub rpc_secret: Option<String>,
+    pub metrics: Arc<super::metrics::DaemonMetrics>,
 }

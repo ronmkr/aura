@@ -5,57 +5,68 @@ use axum::{
     http::{header, StatusCode},
     response::{IntoResponse, Response},
 };
+use prometheus::{Gauge, Registry};
 use std::sync::Arc;
 
-pub async fn metrics_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
-    use prometheus::{Encoder, Gauge, Registry, TextEncoder};
+pub struct DaemonMetrics {
+    pub registry: Registry,
+    pub task_count: Gauge,
+    pub total_downloaded: Gauge,
+    pub total_uploaded: Gauge,
+    pub subtask_count: Gauge,
+}
 
-    let registry = Registry::new();
-    let active_tasks = state.engine.tell_active().await.unwrap_or_default();
+impl DaemonMetrics {
+    pub fn new() -> Self {
+        let registry = Registry::new();
 
-    let task_count = Gauge::new("aura_tasks_active", "Number of active tasks").unwrap();
-    registry.register(Box::new(task_count.clone())).unwrap();
-    task_count.set(active_tasks.len() as f64);
+        let task_count = Gauge::new("aura_tasks_active", "Number of active tasks").unwrap();
+        registry.register(Box::new(task_count.clone())).unwrap();
 
-    let total_downloaded = Gauge::new(
-        "aura_bytes_downloaded_total",
-        "Total bytes downloaded across all tasks",
-    )
-    .unwrap();
-    registry
-        .register(Box::new(total_downloaded.clone()))
+        let total_downloaded = Gauge::new(
+            "aura_bytes_downloaded_total",
+            "Total bytes downloaded across all tasks",
+        )
         .unwrap();
+        registry
+            .register(Box::new(total_downloaded.clone()))
+            .unwrap();
 
-    let total_uploaded = Gauge::new(
-        "aura_bytes_uploaded_total",
-        "Total bytes uploaded across all tasks",
-    )
-    .unwrap();
-    registry.register(Box::new(total_uploaded.clone())).unwrap();
+        let total_uploaded = Gauge::new(
+            "aura_bytes_uploaded_total",
+            "Total bytes uploaded across all tasks",
+        )
+        .unwrap();
+        registry.register(Box::new(total_uploaded.clone())).unwrap();
 
-    let subtask_count = Gauge::new(
-        "aura_subtasks_active",
-        "Total number of active protocol workers",
-    )
-    .unwrap();
-    registry.register(Box::new(subtask_count.clone())).unwrap();
+        let subtask_count = Gauge::new(
+            "aura_subtasks_active",
+            "Total number of active protocol workers",
+        )
+        .unwrap();
+        registry.register(Box::new(subtask_count.clone())).unwrap();
 
-    let mut dl = 0.0;
-    let mut ul = 0.0;
-    let mut st = 0.0;
-
-    for task in active_tasks {
-        dl += task.completed_length as f64;
-        ul += task.uploaded_length as f64;
-        st += task.subtasks.iter().filter(|s| s.active).count() as f64;
+        Self {
+            registry,
+            task_count,
+            total_downloaded,
+            total_uploaded,
+            subtask_count,
+        }
     }
+}
 
-    total_downloaded.set(dl);
-    total_uploaded.set(ul);
-    subtask_count.set(st);
+impl Default for DaemonMetrics {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+pub async fn metrics_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    use prometheus::{Encoder, TextEncoder};
 
     let encoder = TextEncoder::new();
-    let metric_families = registry.gather();
+    let metric_families = state.metrics.registry.gather();
     let mut buffer = Vec::new();
     encoder.encode(&metric_families, &mut buffer).unwrap();
 
@@ -65,3 +76,7 @@ pub async fn metrics_handler(State(state): State<Arc<AppState>>) -> impl IntoRes
         .body(Body::from(buffer))
         .unwrap()
 }
+
+#[cfg(test)]
+#[path = "metrics_tests.rs"]
+mod tests;

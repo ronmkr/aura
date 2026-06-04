@@ -7,7 +7,6 @@ All active development tasks, technical debt, and feature requests are managed e
 ### High (P1)
 
 ### Moderate (P2)
-- [ ] **bug: Initialize and persist Prometheus metrics registry in daemon state** (Issue #212) `[module:daemon, priority:moderate]`
 - [ ] **infra: Add CI cross-platform matrix and cargo audit workflow** (Issue #148) `[infra, priority:moderate]`
 - [ ] **chore: Refactor FTPS to use rustls (ADR 0048 parity)** (Issue #189) `[module:worker, priority:moderate]`
 - [ ] **feat: Prioritized Streaming Mode for Media Playback** (Issue #28) `[module:core, priority:moderate]`
@@ -21,6 +20,7 @@ All active development tasks, technical debt, and feature requests are managed e
 
 ## Completed Tasks
 
+- [x] **bug: Initialize and persist Prometheus metrics registry in daemon state** (Issue #212) `[module:daemon, priority:moderate]`
 - [x] **feat: Implement hierarchical configuration file resolution and CLI overrides** (Issue #214) `[module:core, module:daemon, module:cli, priority:high]`
 - [x] **feat: PolicyManager error classification and retry coordinator** (Issue #211) `[module:core, priority:high]`
 - [x] **feat: Implement ResourceGovernor for global memory backpressure** (Issue #207) `[module:core, priority:critical]`
