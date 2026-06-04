@@ -4,7 +4,7 @@ Date: 2026-05-27
 
 ## Status
 
-Implemented (2026-05-28, PR #133)
+Implemented (2026-05-28, PR #133); refactored to `rustls-ring` (2026-06-04, Issue #189)
 
 ## Context
 
@@ -12,15 +12,18 @@ The FTP protocol relies on plain-text communication, which leaves data and crede
 
 ## Decision
 
-We will extend the FTP worker to support Explicit FTPS (AUTH TLS). 
-- If the URI scheme is `ftps://`, the worker will automatically negotiate a TLS session after the initial TCP connection using `rustls`.
+We will extend the FTP worker to support Explicit FTPS (AUTH TLS).
+- If the URI scheme is `ftps://`, the worker will automatically negotiate a TLS session after the initial TCP connection using `rustls` with the `ring` crypto provider.
+- Plain FTP connections that advertise `AUTH TLS` via FEAT will be opportunistically upgraded to TLS.
 - We will integrate a robust retry loop for the FTP worker. Transient failures (e.g., connection reset, 421 Service not available) will be caught, and the worker will back off exponentially before re-attempting to download the assigned chunk.
-- The `rustls` configuration will utilize the same certificate store built for HTTPS and DoH (ADR-0014, ADR-0028).
+- The `rustls` configuration will use `rustls-native-certs` to load the OS certificate store, consistent with ADR-0014 and ADR-0028.
+- The `native-tls` dependency is removed entirely. All TLS in the project is unified under `rustls-ring`.
 
 ## Consequences
 
-- **Pros:** Enhances security for users downloading from legacy FTP hosts that offer TLS. Increases download reliability on unstable FTP servers.
-- **Cons:** Increases the complexity of the FTP worker state machine (handling TLS handshake timeouts).
+- **Pros:** Eliminates the `native-tls`/`OpenSSL` dependency, simplifying the build. Provides a uniform TLS backend across all protocols. Enhances security for users downloading from legacy FTP hosts that offer TLS. Increases download reliability on unstable FTP servers.
+- **Cons:** Slightly increases the complexity of the FTP worker state machine (handling TLS handshake timeouts). Servers with non-standard or expired certificates may fail where `native-tls` was more permissive.
 
 ## Implementation
-- **FTPS & Retry Logic**: Implemented in `aura-core/src/ftp_worker/` (2026-05-28, PR #133).
+- **FTPS & Retry Logic**: Implemented in `aura-core/src/worker/ftp.rs` (2026-05-28, PR #133).
+- **rustls-ring migration**: Refactored to `suppaftp` `tokio-rustls-ring` feature, removing `native-tls` (2026-06-04, Issue #189).
