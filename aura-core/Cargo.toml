@@ -47,7 +47,7 @@ metrics-exporter-prometheus = { workspace = true }
 hickory-resolver = { workspace = true }
 lol_html = { workspace = true }
 mime_guess = { workspace = true }
-lru = "0.18.0"
+lru = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }
@@ -67,7 +67,7 @@ name = "cucumber"
 harness = false
 
 [target.'cfg(unix)'.dependencies]
-libc = "0.2.186"
+libc = { workspace = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
-rustix = { version = "1.1.4", features = ["fs"] }
+rustix = { workspace = true }

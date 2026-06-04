@@ -14,6 +14,17 @@ pub use super::resource_mapping::{
 pub use super::storage::StorageConfig;
 pub use super::vpn::VpnConfig;
 
+#[derive(Debug, Clone, Default)]
+pub struct CliOverrides {
+    pub download_dir: Option<String>,
+    pub limit: Option<u64>,
+    pub proxy: Option<String>,
+    pub rpc_port: Option<u16>,
+    pub rpc_secret: Option<String>,
+    pub tls_cert: Option<String>,
+    pub tls_key: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(default)]
 pub struct Config {
@@ -152,28 +163,27 @@ impl Config {
         Ok(config)
     }
 
-    pub fn apply_cli_overrides(
-        &mut self,
-        download_dir: Option<String>,
-        limit: Option<u64>,
-        proxy: Option<String>,
-        rpc_port: Option<u16>,
-        rpc_secret: Option<String>,
-    ) {
-        if let Some(d) = download_dir {
+    pub fn apply_cli_overrides(&mut self, overrides: CliOverrides) {
+        if let Some(d) = overrides.download_dir {
             self.storage.download_dir = d;
         }
-        if let Some(l) = limit {
+        if let Some(l) = overrides.limit {
             self.bandwidth.global_download_limit = l;
         }
-        if let Some(p) = proxy {
+        if let Some(p) = overrides.proxy {
             self.network.proxy = Some(p);
         }
-        if let Some(port) = rpc_port {
+        if let Some(port) = overrides.rpc_port {
             self.network.rpc_port = port;
         }
-        if let Some(secret) = rpc_secret {
+        if let Some(secret) = overrides.rpc_secret {
             self.network.rpc_secret = Some(secret);
+        }
+        if let Some(cert) = overrides.tls_cert {
+            self.network.tls_cert = Some(cert);
+        }
+        if let Some(key) = overrides.tls_key {
+            self.network.tls_key = Some(key);
         }
     }
 }

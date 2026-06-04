@@ -38,7 +38,13 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .route("/metrics", get(authenticated_metrics_handler))
         .route("/*file", get(static_handler))
         .route("/jsonrpc", post(handle_jsonrpc))
-        .route("/ws", get(handle_ws))
+        .route(
+            "/ws",
+            get(handle_ws).route_layer(axum::middleware::from_fn_with_state(
+                Arc::clone(&state),
+                crate::websocket::ws_auth_middleware,
+            )),
+        )
         .route("/extension/add", post(handle_extension_add))
         .with_state(state)
 }

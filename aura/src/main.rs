@@ -58,6 +58,18 @@ enum Commands {
         /// Token for authentication. If not provided, a random token is generated and saved to ~/.aura/rpc_secret.
         #[arg(long)]
         rpc_secret: Option<String>,
+
+        /// Path to the TLS certificate file
+        #[arg(long)]
+        tls_cert: Option<String>,
+
+        /// Path to the TLS private key file
+        #[arg(long)]
+        tls_key: Option<String>,
+
+        /// Automatically generate self-signed TLS certificate and key files
+        #[arg(long)]
+        generate_tls_cert: bool,
     },
     /// Start the Terminal UI dashboard
     Tui,
@@ -110,23 +122,34 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Extract daemon-specific overrides
     let mut daemon_rpc_port = None;
     let mut daemon_rpc_secret = None;
+    let mut daemon_tls_cert = None;
+    let mut daemon_tls_key = None;
+    let mut daemon_generate_tls_cert = false;
     if let Some(Commands::Daemon {
         rpc_port,
         rpc_secret,
+        tls_cert,
+        tls_key,
+        generate_tls_cert,
     }) = &cli.command
     {
         daemon_rpc_port = *rpc_port;
         daemon_rpc_secret = rpc_secret.clone();
+        daemon_tls_cert = tls_cert.clone();
+        daemon_tls_key = tls_key.clone();
+        daemon_generate_tls_cert = *generate_tls_cert;
     }
 
     // Apply CLI overrides to configuration
-    config.apply_cli_overrides(
-        cli.download_dir.clone(),
-        cli.limit,
-        cli.proxy.clone(),
-        daemon_rpc_port,
-        daemon_rpc_secret,
-    );
+    config.apply_cli_overrides(aura_core::config::CliOverrides {
+        download_dir: cli.download_dir.clone(),
+        limit: cli.limit,
+        proxy: cli.proxy.clone(),
+        rpc_port: daemon_rpc_port,
+        rpc_secret: daemon_rpc_secret,
+        tls_cert: daemon_tls_cert.clone(),
+        tls_key: daemon_tls_key.clone(),
+    });
 
     match cli.command {
         Some(Commands::Daemon { .. }) => {
@@ -134,6 +157,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let args = aura_daemon::Args {
                 daemonize: false,
                 config,
+                tls_cert: daemon_tls_cert,
+                tls_key: daemon_tls_key,
+                generate_tls_cert: daemon_generate_tls_cert,
             };
             aura_daemon::run(args).await?;
         }

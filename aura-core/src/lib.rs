@@ -33,7 +33,7 @@ pub mod history;
 pub mod security;
 
 pub use api::{TaskEvent, TaskHandle};
-pub use config::Config;
+pub use config::{CliOverrides, Config};
 pub use history::{CompletedTaskRecord, HistoryManager};
 pub use orchestrator::Engine;
 

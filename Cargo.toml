@@ -35,6 +35,8 @@ aura-core = { path = "aura-core" }
 aura-daemon = { path = "aura-daemon" }
 aura-tui = { path = "aura-tui" }
 axum = { version = "0.7", features = ["ws"] }
+axum-server = { version = "0.7", features = ["tls-rustls"] }
+rcgen = "0.13"
 bytes = "1"
 bytesize = "2.3.1"
 chrono = { version = "0.4", features = ["serde"] }
@@ -50,8 +52,10 @@ fs2 = "0.4.3"
 hex = "0.4.3"
 hickory-resolver = { version = "0.26.1", features = ["tokio", "serde", "webpki-roots", "https-aws-lc-rs", "tls-aws-lc-rs", "system-config"] }
 igd-next = { version = "0.17.0", features = ["aio_tokio", "tokio"] }
+libc = "0.2.186"
 indicatif = "0.18"
 local-ip-address = "0.6.12"
+lru = "0.18.0"
 lol_html = "2.0"
 md-5 = "0.11"
 metrics = "0.24.6"
@@ -78,6 +82,7 @@ socket2 = { version = "0.6.3", features = ["all"] }
 suppaftp = { version = "8.0.3", features = ["tokio", "tokio-rustls-ring"] }
 rustls = { version = "0.23.40", features = ["ring"] }
 rustls-native-certs = "0.8.3"
+rustix = { version = "1.1.4", features = ["fs"] }
 rlimit = "0.10.1"
 tempfile = "3"
 thiserror = "2"
@@ -88,6 +93,7 @@ tokio-tungstenite = "0.29"
 tokio-util = { version = "0.7", features = ["codec", "rt"] }
 toml = "1.1.2"
 tower-http = { version = "0.6", features = ["cors"] }
+tower = { version = "0.5", features = ["util"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 url = "2"

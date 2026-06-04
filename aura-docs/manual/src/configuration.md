@@ -37,6 +37,8 @@ Manages how Aura interacts with the outside world.
 | `dht_port` | u16 | `6881` | The UDP port for Distributed Hash Table lookups. Often matched with `listen_port`. |
 | `rpc_port` | u16 | `6800` | The port for the JSON-RPC 2.0 API. Used by the CLI and TUI to talk to the Daemon. |
 | `rpc_secret` | String | `None` | Security token for the API. If set, clients must provide this via the `X-Aura-Token` HTTP header. |
+| `tls_cert` | String | `None` | Path to the TLS certificate file. If set, the daemon runs the RPC server over HTTPS/WSS. |
+| `tls_key` | String | `None` | Path to the TLS private key file. If set, the daemon runs the RPC server over HTTPS/WSS. |
 | `user_agent` | String | `"Aura/0.1.0"` | The identifier sent to trackers and HTTP servers. Some restrictive trackers may require specific strings. |
 | `connect_timeout_secs` | u64 | `30` | Seconds to wait for a TCP handshake. Lower this for faster failover on dead mirrors. |
 | `tcp_keepalive_secs` | u64 | `60` | Interval for TCP keepalive packets to prevent silent connection drops by firewalls. |

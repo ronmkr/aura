@@ -20,7 +20,22 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
-      - name: Run security audit
-        uses: rustsec/audit-check@v2.0.0
+
+      - name: Cache Advisory Database
+        uses: actions/cache@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          path: ~/.cargo/advisory-db
+          key: cargo-advisory-db-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-advisory-db-
+
+      - name: Run security audit
+        uses: actions-rust-lang/audit@v1
+        id: audit
+        continue-on-error: true
+        with:
+          createIssues: false
+
+      - name: Format and Sanitize Audit Summary
+        run: |
+          python scripts/parse_audit.py

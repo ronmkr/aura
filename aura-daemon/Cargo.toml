@@ -20,6 +20,10 @@ mime_guess = { workspace = true }
 prometheus = { workspace = true }
 regex = { workspace = true }
 rlimit = { workspace = true }
+axum-server = { workspace = true }
+rcgen = { workspace = true }
 
 [dev-dependencies]
 tokio-tungstenite = { workspace = true }
+tempfile = { workspace = true }
+tower = { workspace = true }

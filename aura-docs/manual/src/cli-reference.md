@@ -44,6 +44,9 @@ aura daemon [OPTIONS]
 **Options:**
 - `--rpc-port <PORT>`: Port to bind the JSON-RPC server (default: `6800`).
 - `--rpc-secret <TOKEN>`: Secret token for RPC authentication.
+- `--tls-cert <PATH>`: Path to the TLS certificate file (enables HTTPS/WSS).
+- `--tls-key <PATH>`: Path to the TLS private key file (enables HTTPS/WSS).
+- `--generate-tls-cert`: Automatically generate a self-signed TLS certificate and key files.
 
 ### `tui`
 Launches the **Pilot Dashboard**, a full-screen Terminal User Interface for managing all active and completed tasks across the engine.
