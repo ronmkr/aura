@@ -61,6 +61,7 @@ pub struct Orchestrator {
     pub(crate) db: sled::Db,
     pub(crate) hsts_cache: crate::security::HstsCache,
     pub(crate) alt_svc_cache: crate::security::AltSvcCache,
+    pub(crate) policy_manager: crate::orchestrator::policy_manager::PolicyManager,
 }
 
 impl Orchestrator {
@@ -173,6 +174,7 @@ impl Orchestrator {
                 db,
                 hsts_cache: crate::security::HstsCache::new(),
                 alt_svc_cache: crate::security::AltSvcCache::new(),
+                policy_manager: crate::orchestrator::policy_manager::PolicyManager::new(),
             },
             event_tx,
         )
