@@ -62,3 +62,52 @@ async fn test_dht_rotating_tokens() {
     // Token3 should be valid as the current secret
     assert!(dht.validate_token(addr, &token3).await);
 }
+
+#[tokio::test]
+async fn test_dht_persistent_state_serialization() {
+    use crate::dht::routing::Node;
+    use crate::dht::PersistentState;
+    use tempfile::NamedTempFile;
+
+    let (_tx, _rx) = mpsc::channel(1);
+    let dht = DhtActor::new("127.0.0.1", [1; 20], _rx, None, 0, None)
+        .await
+        .unwrap();
+
+    let node_id = [2u8; 20];
+    let node_addr: SocketAddr = "127.0.0.1:9999".parse().unwrap();
+
+    // Insert a node into the routing table
+    {
+        let mut rt = dht.routing_table.lock().await;
+        rt.insert(Node {
+            id: node_id,
+            addr: node_addr,
+        });
+    }
+
+    // Create a temp file path
+    let temp_file = NamedTempFile::new().unwrap();
+    let file_path = temp_file.path();
+
+    // Save state
+    dht.save(file_path).await.unwrap();
+
+    // Create a new actor and load state
+    let (_tx2, _rx2) = mpsc::channel(1);
+    let mut dht2 = DhtActor::new("127.0.0.1", [1; 20], _rx2, None, 0, None)
+        .await
+        .unwrap();
+
+    // Load state
+    dht2.load(file_path).await.unwrap();
+
+    // Verify node is present in the new routing table
+    {
+        let rt = dht2.routing_table.lock().await;
+        let closest = rt.get_closest_nodes(&node_id, 1);
+        assert_eq!(closest.len(), 1);
+        assert_eq!(closest[0].id, node_id);
+        assert_eq!(closest[0].addr, node_addr);
+    }
+}

@@ -6,3 +6,11 @@ pub mod routing;
 mod tests;
 
 pub use actor::{DhtActor, DhtCommand};
+
+use std::path::Path;
+
+#[async_trait::async_trait]
+pub trait PersistentState {
+    async fn save(&self, path: &Path) -> crate::Result<()>;
+    async fn load(&mut self, path: &Path) -> crate::Result<()>;
+}
