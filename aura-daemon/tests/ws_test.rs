@@ -28,6 +28,7 @@ async fn test_ws_telemetry() {
     let state = Arc::new(AppState {
         engine: engine.clone(),
         rpc_secret: Some("test-secret".to_string()),
+        metrics: Arc::new(aura_daemon::metrics::DaemonMetrics::new()),
     });
 
     let app = create_router(state);
