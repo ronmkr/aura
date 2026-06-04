@@ -20,10 +20,8 @@ use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 pub struct Args {
-    pub rpc_port: u16,
-    pub rpc_secret: Option<String>,
     pub daemonize: bool,
-    pub config: Option<String>,
+    pub config: aura_core::Config,
 }
 
 fn get_or_create_rpc_secret(provided_secret: Option<String>) -> Result<String, std::io::Error> {
@@ -102,9 +100,9 @@ pub async fn run(args: Args) -> Result<(), Box<dyn std::error::Error>> {
     info!("Starting Aura Daemon");
 
     // Bootstrap the engine
-    let config = aura_core::Config::from_file("Aura.toml").unwrap_or_default();
-    let rpc_secret = get_or_create_rpc_secret(args.rpc_secret)?;
-    let rpc_port = args.rpc_port;
+    let config = args.config;
+    let rpc_secret = get_or_create_rpc_secret(config.network.rpc_secret.clone())?;
+    let rpc_port = config.network.rpc_port;
 
     let (engine, orchestrator, storage) = match Engine::new(config).await {
         Ok(res) => res,

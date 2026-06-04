@@ -5,7 +5,6 @@ All active development tasks, technical debt, and feature requests are managed e
 ## Open Tasks
 
 ### High (P1)
-- [ ] **feat: Implement hierarchical configuration file resolution and CLI overrides** (Issue #214) `[module:core, module:daemon, module:cli, priority:high]`
 
 ### Moderate (P2)
 - [ ] **bug: Initialize and persist Prometheus metrics registry in daemon state** (Issue #212) `[module:daemon, priority:moderate]`
@@ -22,6 +21,7 @@ All active development tasks, technical debt, and feature requests are managed e
 
 ## Completed Tasks
 
+- [x] **feat: Implement hierarchical configuration file resolution and CLI overrides** (Issue #214) `[module:core, module:daemon, module:cli, priority:high]`
 - [x] **feat: PolicyManager error classification and retry coordinator** (Issue #211) `[module:core, priority:high]`
 - [x] **feat: Implement ResourceGovernor for global memory backpressure** (Issue #207) `[module:core, priority:critical]`
 - [x] **feat: Advisory file locking (flock) on active download files** (Issue #208) `[module:storage, priority:high]`

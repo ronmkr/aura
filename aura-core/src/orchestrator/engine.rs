@@ -61,8 +61,9 @@ impl Engine {
         let mut dht_id = [0u8; 20];
         rand::rng().fill(&mut dht_id);
 
+        let dht_bind_addr = format!("0.0.0.0:{}", initial_config.network.dht_port);
         let dht_actor: DhtActor = DhtActor::new(
-            "0.0.0.0:6881",
+            &dht_bind_addr,
             dht_id,
             dht_rx,
             local_addr,
@@ -129,44 +130,45 @@ impl Engine {
         }
 
         // Setup config file watcher
-        let config_path = std::path::PathBuf::from("Aura.toml");
-        if config_path.exists() {
-            let command_tx_watcher = command_tx.clone();
-            let config_path_watcher = config_path.clone();
+        if let Some(ref config_path) = initial_config.config_path {
+            if config_path.exists() {
+                let command_tx_watcher = command_tx.clone();
+                let config_path_watcher = config_path.clone();
 
-            tokio::spawn(async move {
-                use notify::{EventKind, RecursiveMode, Watcher};
-                let (tx, mut rx) = mpsc::channel(1);
+                tokio::spawn(async move {
+                    use notify::{EventKind, RecursiveMode, Watcher};
+                    let (tx, mut rx) = mpsc::channel(1);
 
-                let mut watcher =
-                    notify::recommended_watcher(move |res: notify::Result<notify::Event>| {
-                        if let Ok(event) = res {
-                            if matches!(event.kind, EventKind::Modify(_)) {
-                                let _ = tx.blocking_send(());
+                    let mut watcher =
+                        notify::recommended_watcher(move |res: notify::Result<notify::Event>| {
+                            if let Ok(event) = res {
+                                if matches!(event.kind, EventKind::Modify(_)) {
+                                    let _ = tx.blocking_send(());
+                                }
                             }
+                        })
+                        .expect("Failed to create config watcher");
+
+                    watcher
+                        .watch(&config_path_watcher, RecursiveMode::NonRecursive)
+                        .expect("Failed to watch config");
+
+                    while rx.recv().await.is_some() {
+                        info!("Config file modified, reloading...");
+                        if let Ok(new_config) = crate::Config::from_file(&config_path_watcher) {
+                            let (tx, _rx) = tokio::sync::oneshot::channel();
+                            let _ = command_tx_watcher
+                                .send(Command::ReloadConfig(Arc::new(new_config), tx))
+                                .await;
+                        } else {
+                            warn!("Failed to reload modified config");
                         }
-                    })
-                    .expect("Failed to create config watcher");
-
-                watcher
-                    .watch(&config_path_watcher, RecursiveMode::NonRecursive)
-                    .expect("Failed to watch config");
-
-                while rx.recv().await.is_some() {
-                    info!("Config file modified, reloading...");
-                    if let Ok(new_config) = crate::Config::from_file(&config_path_watcher) {
-                        let (tx, _rx) = tokio::sync::oneshot::channel();
-                        let _ = command_tx_watcher
-                            .send(Command::ReloadConfig(Arc::new(new_config), tx))
-                            .await;
-                    } else {
-                        warn!("Failed to reload modified config");
                     }
-                }
 
-                // Keep watcher alive as long as loop runs
-                drop(watcher);
-            });
+                    // Keep watcher alive as long as loop runs
+                    drop(watcher);
+                });
+            }
         }
 
         Ok((

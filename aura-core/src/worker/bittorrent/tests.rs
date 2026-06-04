@@ -93,6 +93,7 @@ async fn test_failed_connection_transitions_to_disconnected() {
         db,
         governor,
         None,
+        Arc::new(arc_swap::ArcSwap::new(Arc::new(crate::Config::default()))),
     ));
 
     let peer_addr = "127.0.0.1:45454".to_string();

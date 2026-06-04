@@ -25,14 +25,171 @@ pub struct Config {
     pub hooks: HookConfig,
     pub general: GeneralConfig,
     pub credentials: CredentialConfig,
+    #[serde(skip)]
+    pub config_path: Option<std::path::PathBuf>,
 }
 
 impl Config {
     pub fn from_file<P: AsRef<std::path::Path>>(path: P) -> Result<Self> {
-        let content = std::fs::read_to_string(path)
+        let content = std::fs::read_to_string(&path)
             .map_err(|e| Error::Config(format!("Failed to read config file: {}", e)))?;
-        toml::from_str(&content)
-            .map_err(|e| Error::Config(format!("Failed to parse TOML config: {}", e)))
+        let mut config: Self = toml::from_str(&content)
+            .map_err(|e| Error::Config(format!("Failed to parse TOML config: {}", e)))?;
+        config.config_path = Some(path.as_ref().to_path_buf());
+        Ok(config)
+    }
+
+    pub fn resolve_path(custom_path: Option<&str>) -> Option<std::path::PathBuf> {
+        if let Some(path_str) = custom_path {
+            return Some(std::path::PathBuf::from(path_str));
+        }
+
+        let pwd_path = std::path::PathBuf::from("Aura.toml");
+        if pwd_path.exists() {
+            return Some(pwd_path);
+        }
+
+        let home = std::env::var_os("HOME")
+            .or_else(|| std::env::var_os("USERPROFILE"))
+            .map(std::path::PathBuf::from);
+
+        if let Some(path) = home {
+            #[cfg(windows)]
+            {
+                let appdata = std::env::var_os("APPDATA")
+                    .map(std::path::PathBuf::from)
+                    .unwrap_or_else(|| path.join("AppData").join("Roaming"));
+                let win_path = appdata.join("aura").join("Aura.toml");
+                if win_path.exists() {
+                    return Some(win_path);
+                }
+            }
+            #[cfg(not(windows))]
+            {
+                let unix_path = path.join(".config").join("aura").join("Aura.toml");
+                if unix_path.exists() {
+                    return Some(unix_path);
+                }
+            }
+        }
+
+        None
+    }
+
+    pub fn load_resolved(custom_path: Option<&str>) -> Result<Self> {
+        let mut merged_value = toml::Value::Table(toml::map::Map::new());
+        let mut resolved_paths = Vec::new();
+        let mut custom_used = false;
+
+        // 1. User config directory (lowest priority)
+        let home = std::env::var_os("HOME")
+            .or_else(|| std::env::var_os("USERPROFILE"))
+            .map(std::path::PathBuf::from);
+
+        if let Some(path) = home {
+            #[cfg(windows)]
+            {
+                let appdata = std::env::var_os("APPDATA")
+                    .map(std::path::PathBuf::from)
+                    .unwrap_or_else(|| path.join("AppData").join("Roaming"));
+                let win_path = appdata.join("aura").join("Aura.toml");
+                if win_path.exists() {
+                    resolved_paths.push(win_path);
+                }
+            }
+            #[cfg(not(windows))]
+            {
+                let unix_path = path.join(".config").join("aura").join("Aura.toml");
+                if unix_path.exists() {
+                    resolved_paths.push(unix_path);
+                }
+            }
+        }
+
+        // 2. Working directory config (medium priority)
+        let pwd_path = std::path::PathBuf::from("Aura.toml");
+        if pwd_path.exists() {
+            resolved_paths.push(pwd_path);
+        }
+
+        // 3. Custom path (highest priority)
+        if let Some(path_str) = custom_path {
+            resolved_paths.push(std::path::PathBuf::from(path_str));
+            custom_used = true;
+        }
+
+        let mut last_path = None;
+        for path in resolved_paths {
+            let content = std::fs::read_to_string(&path).map_err(|e| {
+                Error::Config(format!(
+                    "Failed to read config file '{}': {}",
+                    path.display(),
+                    e
+                ))
+            })?;
+            let val: toml::Value = toml::from_str(&content).map_err(|e| {
+                Error::Config(format!(
+                    "Failed to parse TOML in '{}': {}",
+                    path.display(),
+                    e
+                ))
+            })?;
+            merge_toml_values(&mut merged_value, val);
+            last_path = Some(path);
+        }
+
+        if last_path.is_none() && !custom_used {
+            return Ok(Self::default());
+        }
+
+        let mut config: Self = merged_value.try_into().map_err(|e| {
+            Error::Config(format!("Failed to deserialize merged configuration: {}", e))
+        })?;
+
+        config.config_path = last_path;
+        Ok(config)
+    }
+
+    pub fn apply_cli_overrides(
+        &mut self,
+        download_dir: Option<String>,
+        limit: Option<u64>,
+        proxy: Option<String>,
+        rpc_port: Option<u16>,
+        rpc_secret: Option<String>,
+    ) {
+        if let Some(d) = download_dir {
+            self.storage.download_dir = d;
+        }
+        if let Some(l) = limit {
+            self.bandwidth.global_download_limit = l;
+        }
+        if let Some(p) = proxy {
+            self.network.proxy = Some(p);
+        }
+        if let Some(port) = rpc_port {
+            self.network.rpc_port = port;
+        }
+        if let Some(secret) = rpc_secret {
+            self.network.rpc_secret = Some(secret);
+        }
+    }
+}
+
+fn merge_toml_values(base: &mut toml::Value, overrides: toml::Value) {
+    if let (Some(base_table), Some(overrides_table)) = (base.as_table_mut(), overrides.as_table()) {
+        for (key, val) in overrides_table {
+            if base_table.contains_key(key) {
+                let base_val = base_table.get_mut(key).unwrap();
+                if base_val.is_table() && val.is_table() {
+                    merge_toml_values(base_val, val.clone());
+                } else {
+                    *base_val = val.clone();
+                }
+            } else {
+                base_table.insert(key.clone(), val.clone());
+            }
+        }
     }
 }
 

@@ -172,6 +172,7 @@ impl Orchestrator {
                                         db.clone(),
                                         resource_governor_clone.clone(),
                                         tenant_id.clone(),
+                                        config_clone.clone(),
                                     )),
                                     Err(e) => Err(e),
                                 }
@@ -185,6 +186,7 @@ impl Orchestrator {
                                     loaded_bf.clone(),
                                     resource_governor_clone.clone(),
                                     tenant_id.clone(),
+                                    config_clone.clone(),
                                 )
                                 .await
                             };

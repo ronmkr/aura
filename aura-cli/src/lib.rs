@@ -14,6 +14,7 @@ pub struct Args {
     pub follow_on: Option<String>,
     pub priority: u32,
     pub depends_on: Vec<TaskId>,
+    pub config: aura_core::Config,
 }
 
 pub async fn run(args: Args) -> Result<()> {
@@ -31,7 +32,7 @@ pub async fn run(args: Args) -> Result<()> {
     }
 
     // Bootstrap the engine
-    let config = aura_core::Config::from_file("Aura.toml").unwrap_or_default();
+    let config = args.config;
     let (engine, orchestrator, mut storage) = Engine::new(config).await?;
 
     let engine_clone = engine.clone();
