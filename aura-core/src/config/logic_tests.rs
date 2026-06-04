@@ -121,15 +121,15 @@ fn test_invalid_dns_resolver_type() {
 #[test]
 fn test_apply_cli_overrides() {
     let mut config = Config::default();
-    config.apply_cli_overrides(
-        Some("custom_dir".to_string()),
-        Some(12345),
-        Some("http://proxy.com".to_string()),
-        Some(9999),
-        Some("token123".to_string()),
-        Some("cert_path".to_string()),
-        Some("key_path".to_string()),
-    );
+    config.apply_cli_overrides(CliOverrides {
+        download_dir: Some("custom_dir".to_string()),
+        limit: Some(12345),
+        proxy: Some("http://proxy.com".to_string()),
+        rpc_port: Some(9999),
+        rpc_secret: Some("token123".to_string()),
+        tls_cert: Some("cert_path".to_string()),
+        tls_key: Some("key_path".to_string()),
+    });
 
     assert_eq!(config.storage.download_dir, "custom_dir");
     assert_eq!(config.bandwidth.global_download_limit, 12345);

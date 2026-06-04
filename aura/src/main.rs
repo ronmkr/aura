@@ -141,15 +141,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Apply CLI overrides to configuration
-    config.apply_cli_overrides(
-        cli.download_dir.clone(),
-        cli.limit,
-        cli.proxy.clone(),
-        daemon_rpc_port,
-        daemon_rpc_secret,
-        daemon_tls_cert.clone(),
-        daemon_tls_key.clone(),
-    );
+    config.apply_cli_overrides(aura_core::config::CliOverrides {
+        download_dir: cli.download_dir.clone(),
+        limit: cli.limit,
+        proxy: cli.proxy.clone(),
+        rpc_port: daemon_rpc_port,
+        rpc_secret: daemon_rpc_secret,
+        tls_cert: daemon_tls_cert.clone(),
+        tls_key: daemon_tls_key.clone(),
+    });
 
     match cli.command {
         Some(Commands::Daemon { .. }) => {
