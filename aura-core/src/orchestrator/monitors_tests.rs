@@ -79,6 +79,7 @@ async fn test_adaptive_scaling_min_connections() {
         extensions: HashMap::new(),
         depends_on: Vec::new(),
         stall_ticks: 0,
+        created_at: None,
     };
 
     orchestrator.tasks.insert(TaskId(1), task);

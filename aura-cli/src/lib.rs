@@ -3,6 +3,7 @@ use aura_core::task::{FollowOnAction, TaskType};
 use aura_core::{Result, TaskId};
 
 pub mod commands;
+pub use commands::history::run_history;
 
 use indicatif::{ProgressBar, ProgressStyle};
 use rand::RngExt;

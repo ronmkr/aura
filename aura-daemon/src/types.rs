@@ -18,6 +18,8 @@ pub struct JsonRpcResponse {
     pub result: Option<Value>,
     pub error: Option<Value>,
     pub id: Value,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub already_exists: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]

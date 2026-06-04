@@ -1,7 +1,8 @@
 # ADR 0063: Bandwidth Time Scheduling
 
 ## Status
-Proposed
+Implemented (2026-06-04, PR #259 — Issue #249)
+
 
 ## Context
 Aura's token bucket throttler (ADR-0009) enforces static global and per-task bandwidth limits configured via `Aura.toml`. However, many real-world use cases require time-varying bandwidth policies: ISPs with off-peak unlimited data windows (e.g., 2AM–6AM), office environments requiring download throttling during business hours, or home users wanting to prioritize gaming bandwidth in the evenings. No scheduling mechanism exists in the current architecture. The `global_download_limit` and `global_upload_limit` fields in `BandwidthConfig` are static values that can only be changed via config hot-reload (ADR-0011) but not automatically based on time-of-day. Related: GitHub Issue #248 (to be created).

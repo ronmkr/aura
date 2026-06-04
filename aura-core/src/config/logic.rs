@@ -6,6 +6,7 @@ pub use super::bandwidth::BandwidthConfig;
 pub use super::bittorrent::BitTorrentConfig;
 pub use super::general::{CredentialConfig, GeneralConfig, ThemeConfig};
 pub use super::hooks::HookConfig;
+pub use super::limits::LimitsConfig;
 pub use super::network::{NetworkConfig, ResolverConfig, StructuredResolverConfig};
 pub use super::resource_mapping::{
     ConflictPolicy, MappingCondition, MappingRule, ResourceMappingConfig,
@@ -25,6 +26,7 @@ pub struct Config {
     pub hooks: HookConfig,
     pub general: GeneralConfig,
     pub credentials: CredentialConfig,
+    pub limits: LimitsConfig,
     #[serde(skip)]
     pub config_path: Option<std::path::PathBuf>,
 }

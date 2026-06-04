@@ -33,6 +33,7 @@ impl Orchestrator {
             config_initial.general.event_poll_interval_ms,
         ));
         let mut pex_interval = tokio::time::interval(std::time::Duration::from_secs(60));
+        let mut bandwidth_interval = tokio::time::interval(std::time::Duration::from_secs(60));
 
         // VPN Kill-switch Monitor
         let vpn_watch_rx = self.vpn_watch_tx.subscribe();
@@ -162,6 +163,12 @@ impl Orchestrator {
             tokio::select! {
                 _ = scaling_interval.tick() => {
                     self.perform_adaptive_scaling().await;
+                }
+                _ = bandwidth_interval.tick() => {
+                    let config = self.config.load();
+                    let (dl, ul, _) = crate::config::BandwidthScheduler::effective_limits(&config.bandwidth, chrono::Utc::now());
+                    self.throttler.set_global_download_limit(dl);
+                    self.throttler.set_global_upload_limit(ul);
                 }
                 _ = pex_interval.tick() => {
                     if self.config.load().bittorrent.pex_enabled {

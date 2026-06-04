@@ -31,6 +31,30 @@ impl Orchestrator {
             }
             Command::Remove(id) => {
                 let _ = self.handle_pause(id).await;
+                if let Some(task) = self.tasks.get(&id) {
+                    if task.phase != crate::task::DownloadPhase::Complete
+                        && task.phase != crate::task::DownloadPhase::Error
+                    {
+                        let duration_secs = task
+                            .created_at
+                            .map(|t| (chrono::Utc::now() - t).num_seconds().max(0) as u64)
+                            .unwrap_or(0);
+                        let record = crate::history::CompletedTaskRecord {
+                            id: task.id.0.to_string(),
+                            name: task.name.clone(),
+                            uris: task.subtasks.iter().map(|s| s.uri.clone()).collect(),
+                            total_bytes: task.total_length,
+                            downloaded_bytes: task.completed_length,
+                            uploaded_bytes: task.uploaded_length,
+                            duration_secs,
+                            checksum_verified: Some(false),
+                            phase: "Removed".to_string(),
+                            error: Some("Task removed by user".to_string()),
+                            completed_at: chrono::Utc::now(),
+                        };
+                        crate::history::HistoryManager::append_record(record);
+                    }
+                }
                 let throttler = if let Some(task) = self.tasks.get(&id) {
                     if let Some(ref tid) = task.tenant_id {
                         if let Some(ctx) = self.tenants.get(tid) {
@@ -66,6 +90,47 @@ impl Orchestrator {
             }
             Command::Shutdown => {
                 info!("Orchestrator shutting down");
+
+                // Send Stopped event announcements to all active trackers during shutdown (ADR-0058 Edge Case 3).
+                let config = self.config.load();
+                let port = config.network.listen_port;
+                let local_addr = config.network.local_addr;
+                let user_agent = Some(config.network.user_agent.clone());
+                let proxy = config.network.proxy.clone();
+                let tracker = std::sync::Arc::new(crate::tracker::TrackerClient::new(
+                    self.peer_id,
+                    port,
+                    local_addr,
+                    user_agent,
+                    proxy,
+                ));
+
+                let mut announce_futures = Vec::new();
+                for meta_task in self.tasks.values() {
+                    if let Some(ext) = meta_task.extensions.get("bittorrent") {
+                        if let Ok(bt_task) = ext.clone().as_any_arc().downcast::<BtTask>() {
+                            if let Some(torrent) = bt_task.state.torrent.lock().await.clone() {
+                                let tracker_clone = std::sync::Arc::clone(&tracker);
+                                announce_futures.push(async move {
+                                    let _ = tracker_clone.announce_stopped(&torrent).await;
+                                });
+                            }
+                        }
+                    }
+                }
+
+                if !announce_futures.is_empty() {
+                    info!(
+                        "Sending stopped announcements to trackers for {} torrents...",
+                        announce_futures.len()
+                    );
+                    let _ = tokio::time::timeout(
+                        std::time::Duration::from_secs(2),
+                        futures_util::future::join_all(announce_futures),
+                    )
+                    .await;
+                }
+
                 return Err(Error::Engine("Shutting down".to_string()));
             }
             Command::RetrySubtask(meta_id, sub_id) => {

@@ -87,3 +87,7 @@ foreground = "#FFFFFF"
 success = "#00FF00"
 error = "#FF0000"
 warning = "#FFFF00"
+
+[limits]
+allow_duplicate_uris = false           # Allow adding tasks with duplicate URIs
+max_active_tasks = 500                 # Max active tasks allowed in the engine (for non-tenant path)

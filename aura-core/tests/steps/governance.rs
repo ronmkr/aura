@@ -291,7 +291,8 @@ async fn when_both_tasks_added_to_orchestrator(world: &mut AuraWorld) {
     // Mock HTTP server
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let port = listener.local_addr().unwrap().port();
-    let uri = format!("http://127.0.0.1:{}/file", port);
+    let uri_a = format!("http://127.0.0.1:{}/file1", port);
+    let uri_b = format!("http://127.0.0.1:{}/file2", port);
 
     tokio::spawn(async move {
         while let Ok((mut stream, _)) = listener.accept().await {
@@ -314,7 +315,7 @@ async fn when_both_tasks_added_to_orchestrator(world: &mut AuraWorld) {
             id: id_a,
             tenant_id: None,
             name: "task_a".to_string(),
-            sources: vec![(uri.clone(), TaskType::Http)],
+            sources: vec![(uri_a, TaskType::Http)],
             checksum: None,
             priority: 3,
             streaming_mode: false,
@@ -330,7 +331,7 @@ async fn when_both_tasks_added_to_orchestrator(world: &mut AuraWorld) {
             id: id_b,
             tenant_id: None,
             name: "task_b".to_string(),
-            sources: vec![(uri, TaskType::Http)],
+            sources: vec![(uri_b, TaskType::Http)],
             checksum: None,
             priority: 3,
             streaming_mode: false,

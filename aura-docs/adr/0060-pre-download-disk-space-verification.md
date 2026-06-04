@@ -1,7 +1,8 @@
 # ADR 0060: Pre-Download Disk Space Verification
 
 ## Status
-Proposed
+Implemented (2026-06-04, PR #259 — Issue #242)
+
 
 ## Context
 Before pre-allocating a `.part` file for a large download, the Storage Engine (ADR-0002, ADR-0003) must verify that the target filesystem has sufficient free space. Without this check, `fallocate()` or sequential zero-fill will fail partway through, leaving a corrupt partial file that (a) consumes as much disk space as was successfully allocated, (b) cannot be safely resumed since the actual file size may be less than `total_length`, and (c) provides no actionable error message to the user. A BDD scenario documenting this behavior exists in `aura-core/tests/steps/errors.rs` but the `given_drive_free_space` and `then_fail_preallocation` step implementations are empty stubs — the test always passes regardless of actual disk conditions. Additionally, for streaming mode downloads where `total_length` is unknown until completion, a dynamic high-watermark check must be applied during download. Related: GitHub Issue #242.
