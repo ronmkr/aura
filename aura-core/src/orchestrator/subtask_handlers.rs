@@ -103,8 +103,17 @@ impl Orchestrator {
                             if !pending_pieces.is_empty() {
                                 debug!(%meta_id, pending = %pending_pieces.len(), "Endgame: broadcasting redundant requests");
                                 if let Some(tx) = self.worker_command_txs.get(&meta_id) {
+                                    let mut dropped_count = 0;
                                     for &piece_idx in &pending_pieces {
-                                        let _ = tx.send(WorkerCommand::RequestPiece(piece_idx));
+                                        if let Err(e) =
+                                            tx.send(WorkerCommand::EndgameFetch(piece_idx))
+                                        {
+                                            dropped_count += 1;
+                                            tracing::error!(%meta_id, %piece_idx, err = %e, "Failed to broadcast EndgameFetch; message dropped");
+                                        }
+                                    }
+                                    if dropped_count > 0 {
+                                        tracing::warn!(%meta_id, count = dropped_count, "Endgame: Some redundant requests were dropped due to full broadcast buffer");
                                     }
                                 }
                             }

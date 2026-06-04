@@ -1,7 +1,19 @@
 use super::*;
+use tempfile::tempdir;
+
+static TEST_MUTEX: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 #[test]
 fn test_history_append_and_read() {
+    let _lock = TEST_MUTEX.lock().unwrap();
+
+    let orig_home = std::env::var_os("HOME");
+    let orig_userprofile = std::env::var_os("USERPROFILE");
+
+    let tmp_dir = tempdir().unwrap();
+    std::env::set_var("HOME", tmp_dir.path());
+    std::env::set_var("USERPROFILE", tmp_dir.path());
+
     // Purge first
     HistoryManager::purge_history();
 
@@ -28,4 +40,16 @@ fn test_history_append_and_read() {
 
     // Cleanup
     HistoryManager::purge_history();
+
+    // Restore
+    if let Some(h) = orig_home {
+        std::env::set_var("HOME", h);
+    } else {
+        std::env::remove_var("HOME");
+    }
+    if let Some(u) = orig_userprofile {
+        std::env::set_var("USERPROFILE", u);
+    } else {
+        std::env::remove_var("USERPROFILE");
+    }
 }
