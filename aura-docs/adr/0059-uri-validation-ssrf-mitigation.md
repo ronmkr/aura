@@ -1,5 +1,3 @@
-Status: Implemented
-
 # ADR 0059: URI Validation and SSRF Mitigation
 
 ## Status

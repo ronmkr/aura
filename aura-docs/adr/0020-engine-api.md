@@ -1,5 +1,3 @@
-Status: Implemented
-
 # ADR 0020: Engine API and Library Embeddability
 
 ## Status

@@ -1,5 +1,3 @@
-Status: Implemented
-
 # ADR 0012: Themeable TUI and Proxy Connector
 
 ## Status

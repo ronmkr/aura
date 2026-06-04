@@ -1,5 +1,3 @@
-Status: Implemented
-
 # ADR 0049: Browser Bridge (Extension Support)
 
 Date: 2026-05-27

@@ -1,5 +1,3 @@
-Status: Implemented
-
 # ADR 0030: Recursive Mirroring and HTML Parsing
 
 ## Status

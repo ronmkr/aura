@@ -1,5 +1,3 @@
-Status: Implemented
-
 # ADR 0003: Atomic Completion and Pre-allocation Strategy
 
 ## Status

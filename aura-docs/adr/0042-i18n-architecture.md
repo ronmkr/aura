@@ -1,5 +1,3 @@
-Status: Proposed
-
 # ADR 0042: Internationalization (i18n) Architecture
 
 ## Status

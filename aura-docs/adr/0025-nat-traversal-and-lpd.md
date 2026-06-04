@@ -1,5 +1,3 @@
-Status: Implemented
-
 # ADR 0025: NAT Traversal and LAN Discovery
 
 ## Status

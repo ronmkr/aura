@@ -1,9 +1,8 @@
-Status: Proposed
-
 # ADR 0062: Download History Log and aria2 Protocol Compatibility
 
 ## Status
-Proposed
+Implemented (2026-06-04, PR #259 — Issue #248)
+
 
 ## Context
 Once a download task completes or is removed from the active queue, all information about it is lost — there is no persistent record of completed downloads. The `Engine::tell_active()` API only surfaces currently running tasks. The aria2 JSON-RPC protocol (which Aura emulates via ADR-0016) defines `aria2.tellStopped` to list completed/removed downloads, `aria2.getStatus` to query a task by GID, `aria2.getVersion` for client identification, and `aria2.saveSession` for explicit state persistence. None of these methods are implemented in `aura-daemon/src/jsonrpc.rs`. This incompatibility breaks aria2-compatible UIs (AriaNg, webui-aria2, Aria2App) which call `aria2.getVersion` on connect and `aria2.tellStopped` to display completed downloads history. The missing history also prevents users from auditing past downloads, verifying completion of scheduled jobs, or recovering from accidental file deletions. Related: GitHub Issue #244 (to be created).

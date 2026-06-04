@@ -1,5 +1,3 @@
-Status: Implemented
-
 # ADR 0017: Segmentation and Discovery Persistence
 
 ## Status

@@ -1,5 +1,3 @@
-Status: Implemented
-
 # ADR 0016: RPC Server and Interface Binding
 
 ## Status

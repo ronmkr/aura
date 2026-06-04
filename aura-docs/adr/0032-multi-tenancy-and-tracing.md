@@ -1,5 +1,3 @@
-Status: Implemented
-
 # ADR 0032: Multi-Tenancy and Observability
 
 ## Status

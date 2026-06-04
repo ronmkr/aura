@@ -1,5 +1,3 @@
-Status: Implemented
-
 # ADR 0013: Cloud Storage and Metalink Integration
 
 ## Status

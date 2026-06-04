@@ -1,5 +1,3 @@
-Status: Implemented
-
 # ADR 0037: Redirect Handling and Content Validation
 
 ## Status

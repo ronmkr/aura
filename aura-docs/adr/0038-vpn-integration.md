@@ -1,5 +1,3 @@
-Status: Implemented
-
 # ADR 0038: Native VPN Integration (OpenVPN, WireGuard)
 
 ## Status

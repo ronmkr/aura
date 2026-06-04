@@ -1,9 +1,8 @@
-Status: Proposed
-
 # ADR 0061: Checksum Verification for HTTP and FTP Downloads
 
 ## Status
-Proposed
+Implemented (2026-06-04, PR #259 — Issue #243)
+
 
 ## Context
 The `TaskState` and `AddTaskArgs` structs both include a `checksum: Option<Checksum>` field (ADR-0041 covers integrity verification for BitTorrent via piece hashes). However, for HTTP and FTP downloads, the checksum field is silently ignored: `aura-daemon/src/jsonrpc.rs` hardcodes `checksum: None` when creating RPC tasks, and `aura-core/src/orchestrator/event_handlers.rs` also hardcodes `checksum: None` at all HTTP completion events. The `ScrubberActor` in `aura-core/src/scrubber/` handles BitTorrent integrity but has no equivalent invocation for HTTP/FTP task completion. This means users who pass a SHA-256 or MD5 hash for an HTTP download (e.g., downloading an OS ISO with a published hash) receive no verification — a corrupted or tampered download is indistinguishable from a valid one. Related: GitHub Issue #243.

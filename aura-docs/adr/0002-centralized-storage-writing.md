@@ -1,5 +1,3 @@
-Status: Implemented
-
 # ADR 0002: Centralized Storage Writing and Ownership
 
 ## Status

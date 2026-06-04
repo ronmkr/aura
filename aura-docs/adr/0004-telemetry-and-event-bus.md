@@ -1,5 +1,3 @@
-Status: Implemented
-
 # ADR 0004: Telemetry and Event Bus Architecture
 
 ## Status
