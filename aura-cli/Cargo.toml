@@ -13,3 +13,4 @@ rand = { workspace = true }
 indicatif = { workspace = true }
 url = { workspace = true }
 bytesize = { workspace = true }
+serde_json = { workspace = true }

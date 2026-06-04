@@ -1,3 +1,5 @@
+Status: Proposed
+
 # ADR 0062: Download History Log and aria2 Protocol Compatibility
 
 ## Status

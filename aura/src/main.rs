@@ -67,6 +67,20 @@ enum Commands {
         #[arg(default_value = ".")]
         dir: String,
     },
+    /// View completed download history (ADR-0062)
+    History {
+        /// Limit the number of records displayed
+        #[arg(long, short, default_value_t = 10)]
+        limit: usize,
+
+        /// Format to display the history (json, table)
+        #[arg(long, short, default_value = "table")]
+        format: String,
+
+        /// Filter by task status (completed, failed, removed)
+        #[arg(long, short)]
+        filter: Option<String>,
+    },
 }
 
 #[tokio::main]
@@ -129,6 +143,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Some(Commands::Probe { dir }) => {
             aura_cli::commands::probe::run_probe(Some(dir)).await?;
+        }
+        Some(Commands::History {
+            limit,
+            format,
+            filter,
+        }) => {
+            aura_cli::run_history(limit, &format, filter).await?;
         }
         None => {
             // Default CLI behavior

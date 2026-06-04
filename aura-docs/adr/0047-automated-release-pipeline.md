@@ -1,3 +1,5 @@
+Status: Implemented
+
 # ADR 0047: Automated Release Pipeline
 
 ## Status

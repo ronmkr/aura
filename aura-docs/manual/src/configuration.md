@@ -82,6 +82,22 @@ Controls the flow of data to prevent network saturation.
 | `min_connections_per_task`| usize | `16` | The lower bound for adaptive scaling. Aura won't drop below this even if speed is high. |
 | `max_connections_per_task`| usize | `128` | The upper bound. Aura scales up to this if it detects a slow per-connection rate. |
 
+### Bandwidth Scheduling (`[[bandwidth.schedule]]`)
+
+You can define multiple recurring schedule windows to adjust global bandwidth limits dynamically based on the day of the week, time of day, and timezone:
+
+```toml
+[[bandwidth.schedule]]
+from = "02:00"                      # Start time (24h format, HH:MM)
+to = "06:00"                        # End time (24h format, HH:MM)
+download_limit = 0                  # Unlimited download limit (bytes/sec)
+upload_limit = 0                    # Unlimited upload limit (bytes/sec)
+days = ["Mon", "Tue", "Wed", "Thu", "Fri"] # Optional day filters
+timezone = "America/New_York"        # Optional IANA timezone name
+```
+
+If multiple schedules match the current time, they are evaluated by specificity (schedules with day filters take precedence over general ones). If specificity is equal, the last schedule listed in the configuration file wins.
+
 ---
 
 ## [bittorrent]

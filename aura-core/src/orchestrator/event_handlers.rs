@@ -17,6 +17,25 @@ impl Orchestrator {
                     if task.seeding_start_time.is_none() {
                         task.seeding_start_time = Some(chrono::Utc::now());
                     }
+
+                    let duration_secs = task
+                        .created_at
+                        .map(|t| (chrono::Utc::now() - t).num_seconds().max(0) as u64)
+                        .unwrap_or(0);
+                    let record = crate::history::CompletedTaskRecord {
+                        id: task.id.0.to_string(),
+                        name: task.name.clone(),
+                        uris: task.subtasks.iter().map(|s| s.uri.clone()).collect(),
+                        total_bytes: task.total_length,
+                        downloaded_bytes: task.completed_length,
+                        uploaded_bytes: task.uploaded_length,
+                        duration_secs,
+                        checksum_verified: Some(true),
+                        phase: "Complete".to_string(),
+                        error: None,
+                        completed_at: chrono::Utc::now(),
+                    };
+                    crate::history::HistoryManager::append_record(record);
                     let _ = self.event_tx.send(Event::TaskProgress {
                         id,
                         completed_bytes: task.total_length,
@@ -135,6 +154,25 @@ impl Orchestrator {
                 if let Some(task) = self.tasks.get_mut(&id) {
                     task.phase = DownloadPhase::Error;
                     exists = true;
+
+                    let duration_secs = task
+                        .created_at
+                        .map(|t| (chrono::Utc::now() - t).num_seconds().max(0) as u64)
+                        .unwrap_or(0);
+                    let record = crate::history::CompletedTaskRecord {
+                        id: task.id.0.to_string(),
+                        name: task.name.clone(),
+                        uris: task.subtasks.iter().map(|s| s.uri.clone()).collect(),
+                        total_bytes: task.total_length,
+                        downloaded_bytes: task.completed_length,
+                        uploaded_bytes: task.uploaded_length,
+                        duration_secs,
+                        checksum_verified: Some(false),
+                        phase: "Error".to_string(),
+                        error: Some(err.to_string()),
+                        completed_at: chrono::Utc::now(),
+                    };
+                    crate::history::HistoryManager::append_record(record);
                 }
 
                 if exists {

@@ -1,3 +1,5 @@
+Status: Implemented
+
 # ADR 0051: Docker Containerization
 
 ## Status

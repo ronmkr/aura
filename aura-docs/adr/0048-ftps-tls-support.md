@@ -1,3 +1,5 @@
+Status: Implemented
+
 # ADR 0048: FTPS (TLS) Support and Retry Logic
 
 Date: 2026-05-27

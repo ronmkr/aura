@@ -1,3 +1,5 @@
+Status: Implemented
+
 # ADR 0018: Hooks, HSTS, and Multi-Channel Protocols
 
 ## Status

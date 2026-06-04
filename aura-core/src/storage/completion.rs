@@ -8,10 +8,7 @@ impl StorageEngine {
     pub(crate) async fn handle_complete(&mut self, id: TaskId) -> Result<()> {
         self.flush_all_pending(id).await?;
 
-        let tasks = self.scheduler.extract_all_for_task(id);
-        for task in tasks {
-            self.execute_io_task(task).await?;
-        }
+        self.flush_scheduler_tasks(id).await?;
 
         // Close the write handle before verification to ensure all data is committed
         // and to allow clean read-only access.

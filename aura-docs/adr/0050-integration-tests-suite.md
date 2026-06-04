@@ -1,3 +1,5 @@
+Status: Implemented
+
 # ADR 0050: Integration Tests Suite
 
 Date: 2026-05-27

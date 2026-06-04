@@ -1,3 +1,5 @@
+Status: Proposed
+
 # ADR 0061: Checksum Verification for HTTP and FTP Downloads
 
 ## Status

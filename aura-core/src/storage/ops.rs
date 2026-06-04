@@ -12,6 +12,7 @@ impl StorageEngine {
     pub(crate) async fn handle_read(&mut self, id: TaskId, segment: Segment) -> Result<Bytes> {
         // Flush any in-memory dirty buffers immediately to ensure read-after-write consistency
         self.flush_dirty_buffer_immediate(id).await?;
+        self.flush_scheduler_tasks(id).await?;
 
         let file: &mut File = self.get_or_open_part_file(id).await?;
         use tokio::io::AsyncReadExt;
@@ -315,5 +316,13 @@ impl StorageEngine {
             .handles
             .get_mut(&id)
             .expect("File handle must exist after open/insert"))
+    }
+
+    pub(crate) async fn flush_scheduler_tasks(&mut self, id: TaskId) -> Result<()> {
+        let tasks = self.scheduler.extract_all_for_task(id);
+        for task in tasks {
+            self.execute_io_task(task).await?;
+        }
+        Ok(())
     }
 }

@@ -89,6 +89,7 @@ pub struct MetaTask {
     pub extensions: HashMap<String, Arc<dyn TaskExtension>>,
     pub depends_on: Vec<TaskId>,
     pub stall_ticks: u32,
+    pub created_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
 /// Represents the serializable state of a MetaTask for persistence.
@@ -112,6 +113,7 @@ pub struct TaskState {
     pub seeding_start_time: Option<chrono::DateTime<chrono::Utc>>,
     pub blacklisted_uris: Option<Vec<String>>,
     pub depends_on: Option<Vec<TaskId>>,
+    pub created_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
 impl MetaTask {
@@ -135,6 +137,7 @@ impl MetaTask {
             seeding_start_time: self.seeding_start_time,
             blacklisted_uris: Some(self.blacklisted_uris.clone()),
             depends_on: Some(self.depends_on.clone()),
+            created_at: self.created_at,
         }
     }
 
@@ -160,6 +163,7 @@ impl MetaTask {
             extensions: HashMap::new(),
             depends_on: state.depends_on.unwrap_or_default(),
             stall_ticks: 0,
+            created_at: state.created_at,
         }
     }
 
@@ -185,6 +189,7 @@ impl MetaTask {
             extensions: HashMap::new(),
             depends_on: Vec::new(),
             stall_ticks: 0,
+            created_at: Some(chrono::Utc::now()),
         }
     }
 

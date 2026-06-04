@@ -1,3 +1,5 @@
+Status: Implemented
+
 # ADR 0057: ResourceGovernor for Global Memory Backpressure
 
 ## Status

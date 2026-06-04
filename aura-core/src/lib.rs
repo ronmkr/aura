@@ -29,10 +29,12 @@ pub mod vpn;
 pub mod worker;
 
 pub mod config;
+pub mod history;
 pub mod security;
 
 pub use api::{TaskEvent, TaskHandle};
 pub use config::Config;
+pub use history::{CompletedTaskRecord, HistoryManager};
 pub use orchestrator::Engine;
 
 /// Supported checksum algorithms for non-swarm integrity verification.
@@ -141,6 +143,12 @@ pub enum Error {
 
     #[error("Task error for {0}: {1}")]
     Task(TaskId, String),
+
+    #[error("Task already exists: {0}")]
+    DuplicateTask(TaskId),
+
+    #[error("Too many active tasks: limit {0} reached")]
+    TooManyTasks(usize),
 
     #[error("Engine error: {0}")]
     Engine(String),

@@ -1,7 +1,9 @@
+Status: Implemented
+
 # ADR 0059: URI Validation and SSRF Mitigation
 
 ## Status
-Implemented (2026-06-04, branch fix/high-priority-bugs-and-security — Issues #241, #244)
+Implemented (2026-06-04, PR #258 — Issues #241, #244)
 
 ## Context
 The `aria2.addUri` RPC endpoint (ADR-0016, ADR-0056) currently accepts any URI string verbatim and passes it directly to the HTTP/FTP worker pipeline. This enables Server-Side Request Forgery (SSRF): an attacker can pass `file:///etc/shadow` to exfiltrate local files (reqwest processes `file://` URIs on Linux/macOS), or `http://169.254.169.254/latest/meta-data/` to steal cloud instance credentials (AWS/GCP/Azure metadata endpoints are on link-local addresses). The `file://` URI sub-case is especially critical: any non-`.torrent` URI is classified as `TaskType::Http` in `aura-daemon/src/jsonrpc.rs` and passed to reqwest, which silently reads and returns local file contents as a successful download. This issue is exacerbated by the CORS wildcard `chrome-extension://*` origin whitelist (ADR-0056) which creates a browser-based SSRF attack surface. No scheme validation, private IP blocking, or URL sanitization currently exists anywhere in the codebase. Related: GitHub Issue #241.

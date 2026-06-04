@@ -1,7 +1,9 @@
+Status: Implemented
+
 # ADR 0064: Process Resilience — Panic Recovery, Crash Reporting, and File Descriptor Management
 
 ## Status
-Partially Implemented (2026-06-04, branch fix/high-priority-bugs-and-security — Issues #247, #225):
+Partially Implemented (2026-06-04, PR #258 — Issues #247, #225):
 panic hook + crash.log (Decision 1-2) and double-signal shutdown timeout (Decision part of 4) implemented.
 FD limit management (Decision 3), /metrics auth (Decision 4, done in ADR-0056 update), RPC rate limiting (Decision 5), and task count cap (Decision 6) remain for subsequent PRs.
 

@@ -1,3 +1,5 @@
+Status: Proposed
+
 # ADR 0063: Bandwidth Time Scheduling
 
 ## Status

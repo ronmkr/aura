@@ -1,3 +1,5 @@
+Status: Implemented
+
 # ADR 0052: Allocation Prober Diagnostic Tool
 
 ## Status

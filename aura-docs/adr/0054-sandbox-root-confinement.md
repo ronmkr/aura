@@ -1,3 +1,5 @@
+Status: Implemented
+
 # ADR 0054: SandboxRoot Confinement for Storage Engine
 
 ## Status

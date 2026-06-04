@@ -106,6 +106,7 @@ async fn test_racing_workers_are_cancelled_on_range_finished() {
         depends_on: Vec::new(),
         follow_on: None,
         stall_ticks: 0,
+        created_at: None,
     };
 
     orch.tasks.insert(meta_id, meta);
@@ -162,6 +163,7 @@ async fn test_dependency_cycle_detection() {
         extensions: HashMap::new(),
         depends_on: Vec::new(),
         stall_ticks: 0,
+        created_at: None,
     };
     orch.tasks.insert(TaskId(1), meta_a);
 
@@ -187,6 +189,7 @@ async fn test_dependency_cycle_detection() {
         extensions: HashMap::new(),
         depends_on: vec![TaskId(1)],
         stall_ticks: 0,
+        created_at: None,
     };
     orch.tasks.insert(TaskId(2), meta_b);
 
@@ -212,6 +215,7 @@ async fn test_dependency_cycle_detection() {
         extensions: HashMap::new(),
         depends_on: vec![TaskId(2)],
         stall_ticks: 0,
+        created_at: None,
     };
     orch.tasks.insert(TaskId(3), meta_c);
 
@@ -251,6 +255,7 @@ async fn test_dependency_waiting_state_and_unblocking() {
         extensions: HashMap::new(),
         depends_on: Vec::new(),
         stall_ticks: 0,
+        created_at: None,
     };
     orch.tasks.insert(TaskId(1), meta_a);
 
@@ -311,6 +316,7 @@ async fn test_follow_on_custom_trigger() {
         extensions: HashMap::new(),
         depends_on: Vec::new(),
         stall_ticks: 0,
+        created_at: None,
     };
     orch.tasks.insert(meta_id, meta);
 

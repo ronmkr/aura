@@ -1,3 +1,5 @@
+Status: Implemented
+
 # ADR 0001: Orchestrated Pull Model for Work Assignment
 
 ## Status

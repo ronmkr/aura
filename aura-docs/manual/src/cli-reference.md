@@ -53,6 +53,19 @@ Launches the **Pilot Dashboard**, a full-screen Terminal User Interface for mana
 aura tui
 ```
 
+### `history`
+Displays the download history of completed, stopped, and failed tasks recorded in the history log.
+
+**Usage:**
+```bash
+aura history [OPTIONS]
+```
+
+**Options:**
+- `--limit <N>`: Limit the number of returned history records.
+- `--format <FORMAT>`: Output format (`json` or `table`).
+- `--filter <FILTER>`: Filter by phase status (`failed` or `completed`).
+
 ---
 
 ## URL Globbing

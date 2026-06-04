@@ -1,3 +1,5 @@
+Status: Implemented
+
 # ADR 0014: Credential and Security Abstraction
 
 ## Status

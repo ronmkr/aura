@@ -1,3 +1,5 @@
+Status: Implemented
+
 # ADR 0023: Adaptive Connection Scaling and Sourced Aggregation
 
 ## Status

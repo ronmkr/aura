@@ -1,11 +1,14 @@
 pub mod assets;
 pub mod extension;
+pub mod fd_limit;
 pub mod jsonrpc;
 pub mod metrics;
 pub mod router;
 pub mod scrubber;
 pub mod types;
 pub mod websocket;
+
+pub(crate) use fd_limit::adjust_file_descriptor_limit;
 
 pub use router::create_router;
 pub use types::AppState;
@@ -165,7 +168,8 @@ pub async fn run(args: Args) -> Result<(), Box<dyn std::error::Error>> {
     info!("Starting Aura Daemon");
 
     // Bootstrap the engine
-    let config = args.config;
+    let mut config = args.config;
+    adjust_file_descriptor_limit(&mut config);
     let rpc_secret = get_or_create_rpc_secret(config.network.rpc_secret.clone())?;
     let rpc_port = config.network.rpc_port;
 
@@ -327,3 +331,7 @@ pub async fn run(args: Args) -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "lib_tests.rs"]
+mod tests;

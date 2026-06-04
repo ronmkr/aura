@@ -1,3 +1,5 @@
+Status: Implemented
+
 # ADR 0039: BitTorrent Endgame Mode
 
 ## Status

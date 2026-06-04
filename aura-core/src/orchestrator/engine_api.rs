@@ -216,4 +216,15 @@ impl Engine {
             .await
             .ok_or_else(|| Error::Engine("Engine shut down".to_string()))
     }
+
+    pub async fn tell_history(
+        &self,
+        offset: usize,
+        num: usize,
+    ) -> Result<Vec<crate::history::CompletedTaskRecord>> {
+        let mut records = crate::history::HistoryManager::read_records();
+        records.reverse();
+        let paginated = records.into_iter().skip(offset).take(num).collect();
+        Ok(paginated)
+    }
 }

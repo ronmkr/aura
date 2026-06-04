@@ -1,5 +1,16 @@
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct BandwidthSchedule {
+    pub from: String,
+    pub to: String,
+    pub download_limit: u64,
+    pub upload_limit: u64,
+    #[serde(default)]
+    pub days: Vec<String>,
+    pub timezone: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct BandwidthConfig {
@@ -11,6 +22,7 @@ pub struct BandwidthConfig {
     pub max_active_tasks: usize,
     pub min_connections_per_task: usize,
     pub max_connections_per_task: usize,
+    pub schedule: Vec<BandwidthSchedule>,
 }
 
 impl Default for BandwidthConfig {
@@ -24,6 +36,7 @@ impl Default for BandwidthConfig {
             max_active_tasks: 5,
             min_connections_per_task: 16,
             max_connections_per_task: 128,
+            schedule: Vec::new(),
         }
     }
 }

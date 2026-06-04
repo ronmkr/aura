@@ -150,4 +150,106 @@ impl TrackerClient {
         // Parse peers from response (starting at offset 20)
         self.parse_compact_peers_raw(&buf[20..len])
     }
+
+    pub(crate) async fn announce_udp_stopped(
+        &self,
+        url_str: &str,
+        torrent: &Torrent,
+    ) -> Result<()> {
+        use rand::RngExt;
+        let url = url::Url::parse(url_str)
+            .map_err(|e| Error::Protocol(format!("Invalid UDP tracker URL: {}", e)))?;
+        let host = url
+            .host_str()
+            .ok_or_else(|| Error::Protocol("Missing host in UDP tracker URL".to_string()))?;
+        let port = url
+            .port()
+            .ok_or_else(|| Error::Protocol("Missing port in UDP tracker URL".to_string()))?;
+
+        let addrs = tokio::net::lookup_host(format!("{}:{}", host, port))
+            .await
+            .map_err(|e| {
+                Error::Protocol(format!("Failed to resolve UDP tracker {}: {}", host, e))
+            })?;
+
+        for addr in addrs {
+            let socket = match crate::net_util::bind_udp_bound(0, None, self.local_addr).await {
+                Ok(s) => s,
+                Err(_) => continue,
+            };
+
+            if socket.connect(addr).await.is_err() {
+                continue;
+            }
+
+            let transaction_id: u32 = rand::rng().random();
+            let connection_id: u64 = 0x41727101980; // Protocol ID
+
+            // 1. Connect Request
+            let mut connect_req = Vec::with_capacity(16);
+            connect_req.extend_from_slice(&connection_id.to_be_bytes());
+            connect_req.extend_from_slice(&0u32.to_be_bytes()); // Action 0: connect
+            connect_req.extend_from_slice(&transaction_id.to_be_bytes());
+
+            if socket.send(&connect_req).await.is_err() {
+                continue;
+            }
+
+            let mut buf = [0u8; 1024];
+            let len = match tokio::time::timeout(
+                std::time::Duration::from_secs(2),
+                socket.recv(&mut buf),
+            )
+            .await
+            {
+                Ok(Ok(l)) => l,
+                _ => continue,
+            };
+
+            if len < 16 {
+                continue;
+            }
+
+            let action = u32::from_be_bytes([buf[0], buf[1], buf[2], buf[3]]);
+            let res_tid = u32::from_be_bytes([buf[4], buf[5], buf[6], buf[7]]);
+            let connection_id = u64::from_be_bytes([
+                buf[8], buf[9], buf[10], buf[11], buf[12], buf[13], buf[14], buf[15],
+            ]);
+
+            if action != 0 || res_tid != transaction_id {
+                continue;
+            }
+
+            // 2. Announce Request
+            let info_hash = if let Some(h2) = torrent.info_hash_v2()? {
+                let mut truncated = [0u8; 20];
+                truncated.copy_from_slice(&h2[..20]);
+                truncated
+            } else {
+                torrent
+                    .info_hash_v1()?
+                    .ok_or_else(|| Error::Protocol("No info hash available".to_string()))?
+            };
+
+            let mut announce_req = Vec::with_capacity(98);
+            announce_req.extend_from_slice(&connection_id.to_be_bytes());
+            announce_req.extend_from_slice(&1u32.to_be_bytes()); // Action 1: announce
+            announce_req.extend_from_slice(&transaction_id.to_be_bytes());
+            announce_req.extend_from_slice(&info_hash);
+            announce_req.extend_from_slice(&self.peer_id);
+            announce_req.extend_from_slice(&0u64.to_be_bytes()); // downloaded
+            announce_req.extend_from_slice(&torrent.total_length().to_be_bytes()); // left
+            announce_req.extend_from_slice(&0u64.to_be_bytes()); // uploaded
+            announce_req.extend_from_slice(&3u32.to_be_bytes()); // event 3: stopped
+            announce_req.extend_from_slice(&0u32.to_be_bytes()); // ip 0: default
+            announce_req.extend_from_slice(&rand::rng().random::<u32>().to_be_bytes()); // key
+            announce_req.extend_from_slice(&(-1i32).to_be_bytes()); // num_want -1: default
+            announce_req.extend_from_slice(&(self.port).to_be_bytes());
+
+            let _ = socket.send(&announce_req).await;
+            break;
+        }
+
+        Ok(())
+    }
 }

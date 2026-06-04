@@ -5,26 +5,42 @@ All active development tasks, technical debt, and feature requests are managed e
 ## Open Tasks
 
 ### High (P1)
+- [ ] **fix: Add WorkerCommand::EndgameFetch variant and broadcast overflow guard (ADR-0039)** (Issue #227) `[module:core, priority:critical]`
+- [ ] **feat: RPC TLS support via --tls-cert / --tls-key flags (ADR-0056)** (Issue #226) `[module:daemon, priority:critical]`
 - [ ] **security: Pre-download disk space verification to prevent corrupt partial files** (Issue #242) `[module:storage, priority:high]`
 - [ ] **feat: HTTP/FTP checksum verification (SHA-256/SHA-1) for download integrity** (Issue #243) `[module:core, priority:high]`
-- [ ] **feat: Download history log and missing aria2 RPC methods (tellStopped, getVersion)** (Issue #244) `[module:daemon, priority:high]`
-- [ ] **feat: File descriptor limit management at daemon startup** (Issue #249) `[module:daemon, priority:high]`
-- [ ] **feat: RPC rate limiting (prevent local DoS via task flooding)** (Issue #250) `[module:daemon, priority:high]`
+- [ ] **feat: RPC rate limiting (prevent local DoS via task flooding)** (Issue #246) `[module:daemon, priority:high]`
 
 ### Moderate (P2)
 - [ ] **infra: Add CI cross-platform matrix and cargo audit workflow** (Issue #148) `[infra, priority:moderate]`
-- [ ] **chore: Refactor FTPS to use rustls (ADR 0048 parity)** (Issue #189) `[module:worker, priority:moderate]`
+- [ ] **feat: ResourceGovernor per-tenant fair-share limit and metadata safety margin** (Issue #234) `[module:core, priority:moderate]`
+- [ ] **feat: Hook ResourceGovernor into HTTP and FTP workers** (Issue #235) `[module:core, priority:moderate]`
+- [ ] **test: Add unit tests for aura-daemon jsonrpc.rs and websocket.rs** (Issue #236) `[module:daemon, priority:moderate]`
+- [ ] **fix: BEP-12 tracker tier promotion on successful announce** (Issue #237) `[module:core, priority:moderate]`
+- [ ] **fix: Flush DHT routing table explicitly in engine.shutdown()** (Issue #238) `[module:core, priority:moderate]`
+- [ ] **feat: ETag and Last-Modified conditional GET for incremental file refresh** (Issue #255) `[module:core, priority:moderate]`
+- [ ] **perf: Share reqwest HTTP connection pool across segment workers for same-host downloads** (Issue #256) `[module:core, priority:moderate]`
+- [ ] **feat: BitTorrent seeding ratio and maximum seeding time limits** (Issue #257) `[module:core, priority:moderate]`
 - [ ] **feat: Prioritized Streaming Mode for Media Playback** (Issue #28) `[module:core, priority:moderate]`
 - [ ] **feat: Cloud Storage Support (S3, Google Drive)** (Issue #10) `[module:core, priority:moderate]`
 
 ### Low / Minor (P3)
-- [ ] **feat: Implement i18n Architecture (ADR 0042)** (Issue #190) `[module:i18n, priority:low]`
+- [ ] **feat: Implement i18n Architecture (ADR-0042)** (Issue #190) `[module:i18n, priority:low]`
+- [ ] **feat: Chrome extension companion codebase (Manifest V3, Chrome-only)** (Issue #230) `[module:daemon, priority:low]`
 - [ ] **feat: NNTP (Usenet) Protocol Support** (Issue #22) `[module:core, priority:low]`
 - [ ] **feat: QR code sharing for magnet links in CLI/TUI** (Issue #74) `[module:cli, module:tui, priority:minor]`
 - [ ] **feat: i18n support for CLI and TUI** (Issue #71) `[module:cli, module:tui, priority:minor]`
 
 ## Completed Tasks
 
+- [x] **fix: Send tracker Stopped events on graceful shutdown (ADR-0058 Edge Case 3)** (Issue #228) `[module:core, priority:high]`
+- [x] **docs: Standardize machine-readable Status field in all 58 ADRs** (Issue #232) `[docs, priority:high]`
+- [x] **feat: Completed download history log and aria2 RPC compatibility (tellStopped, getVersion)** (Issue #248) `[module:daemon, priority:high]`
+- [x] **bug: No URL deduplication — same URI creates unlimited tasks filling disk** (Issue #250) `[module:core, priority:high]`
+- [x] **feat: File descriptor limit management at daemon startup** (Issue #251) `[module:daemon, priority:high]`
+- [x] **feat: Time-based bandwidth scheduling via [[bandwidth.schedule]] config** (Issue #249) `[module:core, priority:moderate]`
+- [x] **chore: Refactor FTPS to use rustls (ADR-0048 parity) — suppaftp migrated to tokio-rustls-ring** (Issue #189) `[module:worker, priority:moderate]`
+- [x] **feat: Add /health endpoint for Docker liveness probes (ADR-0051)** (Issue #240) `[module:daemon, priority:low]`
 - [x] **security: URI scheme allowlist + SSRF mitigation (ADR-0059) — file:// exfiltration blocked** (Issues #241, #244) `[module:daemon, module:core, priority:critical]`
 - [x] **security: RPC secret value removed from log output** (Issue #239) `[module:daemon, priority:critical]`
 - [x] **security: /metrics endpoint gated behind X-Aura-Token authentication** (Issue #253) `[module:daemon, priority:high]`

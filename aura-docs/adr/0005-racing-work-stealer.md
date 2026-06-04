@@ -1,3 +1,5 @@
+Status: Implemented
+
 # ADR 0005: Racing Work Stealer for Slow Stream Mitigation
 
 ## Status

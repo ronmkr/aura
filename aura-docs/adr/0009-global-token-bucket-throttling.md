@@ -1,3 +1,5 @@
+Status: Implemented
+
 # ADR 0009: Global Token Bucket Throttling
 
 ## Status

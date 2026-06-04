@@ -1,92 +1,14 @@
-use super::types::{AppState, JsonRpcRequest, JsonRpcResponse};
+use super::utils::{format_task_value, parse_gid};
 use aura_core::net_util::validate_download_uri;
 use aura_core::orchestrator::Engine;
 use aura_core::task::TaskType;
 use aura_core::TaskId;
-use axum::{
-    extract::State,
-    http::{HeaderMap, StatusCode},
-    response::IntoResponse,
-    Json,
-};
 use serde_json::{json, Value};
-use std::sync::Arc;
-use tracing::info;
 
-pub fn authenticate(
-    headers: &HeaderMap,
-    secret: &Option<String>,
-) -> Result<(), (StatusCode, Json<Value>)> {
-    if let Some(expected_secret) = secret {
-        let auth_header = headers
-            .get("X-Aura-Token")
-            .or_else(|| headers.get("Authorization"));
-
-        let is_valid = match auth_header {
-            Some(val) => {
-                let val_str = val.to_str().unwrap_or("");
-                val_str == expected_secret || val_str == format!("Bearer {}", expected_secret)
-            }
-            None => false,
-        };
-
-        if !is_valid {
-            return Err((
-                StatusCode::UNAUTHORIZED,
-                Json(json!({ "error": "Unauthorized. Invalid or missing X-Aura-Token." })),
-            ));
-        }
-    }
-    Ok(())
-}
-
-pub async fn handle_jsonrpc(
-    State(state): State<Arc<AppState>>,
-    headers: HeaderMap,
-    Json(payload): Json<JsonRpcRequest>,
-) -> impl IntoResponse {
-    if let Err(err) = authenticate(&headers, &state.rpc_secret) {
-        return err.into_response();
-    }
-
-    info!("RPC Method: {}", payload.method);
-
-    let result = match payload.method.as_str() {
-        "aria2.addUri" => handle_add_uri(&state.engine, payload.params).await,
-        "aria2.tellActive" => handle_tell_active(&state.engine).await,
-        "aria2.pause" => handle_pause(&state.engine, payload.params).await,
-        "aria2.unpause" => handle_unpause(&state.engine, payload.params).await,
-        "aria2.remove" => handle_remove(&state.engine, payload.params).await,
-        "aria2.changeOption" => handle_change_option(&state.engine, payload.params).await,
-        "aura.getConfig" => handle_get_config(&state.engine).await,
-        _ => Err(json!({ "code": -32601, "message": "Method not found" })),
-    };
-
-    match result {
-        Ok(res) => (
-            StatusCode::OK,
-            Json(json!(JsonRpcResponse {
-                jsonrpc: "2.0".to_string(),
-                result: Some(res),
-                error: None,
-                id: payload.id,
-            })),
-        )
-            .into_response(),
-        Err(err) => (
-            StatusCode::OK,
-            Json(json!(JsonRpcResponse {
-                jsonrpc: "2.0".to_string(),
-                result: None,
-                error: Some(err),
-                id: payload.id,
-            })),
-        )
-            .into_response(),
-    }
-}
-
-async fn handle_add_uri(engine: &Engine, params: Option<Value>) -> Result<Value, Value> {
+pub async fn handle_add_uri(
+    engine: &Engine,
+    params: Option<Value>,
+) -> Result<(Value, Option<bool>), Value> {
     let params = params.ok_or_else(|| json!({ "code": -32602, "message": "Invalid params" }))?;
     let uris: Vec<String> = serde_json::from_value(params[0].clone())
         .map_err(|_| json!({ "code": -32602, "message": "Invalid URIs" }))?;
@@ -150,7 +72,7 @@ async fn handle_add_uri(engine: &Engine, params: Option<Value>) -> Result<Value,
         })
         .collect();
 
-    engine
+    let add_result = engine
         .add_task_with_options(aura_core::orchestrator::command::AddTaskArgs {
             id,
             tenant_id: None,
@@ -162,13 +84,18 @@ async fn handle_add_uri(engine: &Engine, params: Option<Value>) -> Result<Value,
             depends_on,
             follow_on: None,
         })
-        .await
-        .map_err(|e| json!({ "code": -32000, "message": e.to_string() }))?;
+        .await;
 
-    Ok(json!(id.0.to_string()))
+    match add_result {
+        Ok(_) => Ok((json!(id.0.to_string()), None)),
+        Err(aura_core::Error::DuplicateTask(existing_id)) => {
+            Ok((json!(existing_id.0.to_string()), Some(true)))
+        }
+        Err(e) => Err(json!({ "code": -32000, "message": e.to_string() })),
+    }
 }
 
-async fn handle_tell_active(engine: &Engine) -> Result<Value, Value> {
+pub async fn handle_tell_active(engine: &Engine) -> Result<Value, Value> {
     let active = engine
         .tell_active()
         .await
@@ -190,7 +117,7 @@ async fn handle_tell_active(engine: &Engine) -> Result<Value, Value> {
     Ok(json!(res))
 }
 
-async fn handle_pause(engine: &Engine, params: Option<Value>) -> Result<Value, Value> {
+pub async fn handle_pause(engine: &Engine, params: Option<Value>) -> Result<Value, Value> {
     let gid = parse_gid(params)?;
     engine
         .pause(gid)
@@ -199,7 +126,7 @@ async fn handle_pause(engine: &Engine, params: Option<Value>) -> Result<Value, V
     Ok(json!("OK"))
 }
 
-async fn handle_unpause(engine: &Engine, params: Option<Value>) -> Result<Value, Value> {
+pub async fn handle_unpause(engine: &Engine, params: Option<Value>) -> Result<Value, Value> {
     let gid = parse_gid(params)?;
     engine
         .resume(gid)
@@ -208,7 +135,7 @@ async fn handle_unpause(engine: &Engine, params: Option<Value>) -> Result<Value,
     Ok(json!("OK"))
 }
 
-async fn handle_remove(engine: &Engine, params: Option<Value>) -> Result<Value, Value> {
+pub async fn handle_remove(engine: &Engine, params: Option<Value>) -> Result<Value, Value> {
     let gid = parse_gid(params)?;
     engine
         .remove(gid)
@@ -217,25 +144,7 @@ async fn handle_remove(engine: &Engine, params: Option<Value>) -> Result<Value, 
     Ok(json!("OK"))
 }
 
-async fn handle_get_config(engine: &Engine) -> Result<Value, Value> {
-    let config = engine
-        .tell_config()
-        .await
-        .map_err(|e| json!({ "code": -32000, "message": e.to_string() }))?;
-    Ok(json!(*config))
-}
-
-fn parse_gid(params: Option<Value>) -> Result<TaskId, Value> {
-    let params = params.ok_or_else(|| json!({ "code": -32602, "message": "Invalid params" }))?;
-    let gid_str: String = serde_json::from_value(params[0].clone())
-        .map_err(|_| json!({ "code": -32602, "message": "Invalid GID" }))?;
-    let gid = gid_str
-        .parse::<u64>()
-        .map_err(|_| json!({ "code": -32602, "message": "Invalid GID format" }))?;
-    Ok(TaskId(gid))
-}
-
-async fn handle_change_option(engine: &Engine, params: Option<Value>) -> Result<Value, Value> {
+pub async fn handle_change_option(engine: &Engine, params: Option<Value>) -> Result<Value, Value> {
     let params = params.ok_or_else(|| json!({ "code": -32602, "message": "Invalid params" }))?;
     let gid_str: String = serde_json::from_value(params[0].clone())
         .map_err(|_| json!({ "code": -32602, "message": "Invalid GID" }))?;
@@ -287,4 +196,100 @@ async fn handle_change_option(engine: &Engine, params: Option<Value>) -> Result<
         .map_err(|e| json!({ "code": -32000, "message": e.to_string() }))?;
 
     Ok(json!("OK"))
+}
+
+pub async fn handle_tell_waiting(engine: &Engine, params: Option<Value>) -> Result<Value, Value> {
+    let params = params.unwrap_or(json!([]));
+    let offset = params[0].as_u64().unwrap_or(0) as usize;
+    let num = params[1].as_u64().unwrap_or(10) as usize;
+    let keys: Option<Vec<String>> = params
+        .get(2)
+        .and_then(|k| serde_json::from_value(k.clone()).ok());
+
+    let active = engine
+        .tell_active()
+        .await
+        .map_err(|e| json!({ "code": -32000, "message": e.to_string() }))?;
+
+    let waiting: Vec<Value> = active
+        .into_iter()
+        .filter(|t| {
+            t.phase == aura_core::task::DownloadPhase::Waiting
+                || t.phase == aura_core::task::DownloadPhase::Paused
+        })
+        .skip(offset)
+        .take(num)
+        .map(|t| {
+            format_task_value(
+                &t.id.0.to_string(),
+                &format!("{:?}", t.phase).to_lowercase(),
+                &t.name,
+                t.total_length,
+                t.completed_length,
+                t.uploaded_length,
+                &t.subtasks
+                    .iter()
+                    .map(|s| s.uri.clone())
+                    .collect::<Vec<String>>(),
+                None,
+                &keys,
+            )
+        })
+        .collect();
+
+    Ok(json!(waiting))
+}
+
+pub async fn handle_get_status(engine: &Engine, params: Option<Value>) -> Result<Value, Value> {
+    let params = params.ok_or_else(|| json!({ "code": -32602, "message": "Invalid params" }))?;
+    let gid_str: String = serde_json::from_value(params[0].clone())
+        .map_err(|_| json!({ "code": -32602, "message": "Invalid GID" }))?;
+    let keys: Option<Vec<String>> = params
+        .get(1)
+        .and_then(|k| serde_json::from_value(k.clone()).ok());
+
+    let gid = gid_str.parse::<u64>().unwrap_or(0);
+
+    let active = engine
+        .tell_active()
+        .await
+        .map_err(|e| json!({ "code": -32000, "message": e.to_string() }))?;
+
+    if let Some(t) = active.into_iter().find(|t| t.id.0 == gid) {
+        return Ok(format_task_value(
+            &t.id.0.to_string(),
+            &format!("{:?}", t.phase).to_lowercase(),
+            &t.name,
+            t.total_length,
+            t.completed_length,
+            t.uploaded_length,
+            &t.subtasks
+                .iter()
+                .map(|s| s.uri.clone())
+                .collect::<Vec<String>>(),
+            None,
+            &keys,
+        ));
+    }
+
+    let history = engine
+        .tell_history(0, 100000)
+        .await
+        .map_err(|e| json!({ "code": -32000, "message": e.to_string() }))?;
+
+    if let Some(rec) = history.into_iter().find(|r| r.id == gid_str) {
+        return Ok(format_task_value(
+            &rec.id,
+            &rec.phase.to_lowercase(),
+            &rec.name,
+            rec.total_bytes,
+            rec.downloaded_bytes,
+            rec.uploaded_bytes,
+            &rec.uris,
+            rec.error.as_deref(),
+            &keys,
+        ));
+    }
+
+    Err(json!({ "code": -32000, "message": "Task not found" }))
 }

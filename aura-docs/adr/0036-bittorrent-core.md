@@ -1,3 +1,5 @@
+Status: Implemented
+
 # ADR 0036: BitTorrent Core and Swarm Management
 
 ## Status

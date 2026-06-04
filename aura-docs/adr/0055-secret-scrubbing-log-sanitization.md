@@ -1,3 +1,5 @@
+Status: Implemented
+
 # ADR 0055: SecretScrubber for Log Sanitization
 
 ## Status

@@ -1,3 +1,5 @@
+Status: Implemented
+
 # ADR 0010: Decoupled Peer Discovery and Registry
 
 ## Status

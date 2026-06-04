@@ -1,3 +1,5 @@
+Status: Implemented
+
 # ADR 0046: Peer Registry Health Scoring & Eviction
 
 ## Status

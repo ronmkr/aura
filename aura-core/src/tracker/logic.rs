@@ -4,7 +4,6 @@ use crate::torrent::Torrent;
 use crate::{Error, Result};
 use futures_util::future::join_all;
 use serde::{Deserialize, Serialize};
-use std::net::Ipv4Addr;
 use url::Url;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -288,52 +287,73 @@ impl TrackerClient {
         ))
     }
 
-    pub(crate) fn parse_peers(&self, peers_val: serde_bencode::value::Value) -> Result<Vec<Peer>> {
-        match peers_val {
-            serde_bencode::value::Value::List(list) => {
-                let mut peers = Vec::new();
-                for p in list {
-                    if let serde_bencode::value::Value::Dict(dict) = p {
-                        let ip = if let Some(serde_bencode::value::Value::Bytes(b)) =
-                            dict.get(b"ip".as_slice())
-                        {
-                            String::from_utf8_lossy(b).to_string()
-                        } else {
-                            continue;
-                        };
-                        let port = if let Some(serde_bencode::value::Value::Int(p)) =
-                            dict.get(b"port".as_slice())
-                        {
-                            *p as u16
-                        } else {
-                            continue;
-                        };
-                        peers.push(Peer {
-                            id: dict.get(b"peer id".as_slice()).cloned(),
-                            ip,
-                            port,
-                        });
+    pub async fn announce_stopped(&self, torrent: &Torrent) -> Result<()> {
+        let mut urls = std::collections::HashSet::new();
+        if let Some(announce_list) = &torrent.announce_list {
+            for tier in announce_list {
+                for url in tier {
+                    if !url.is_empty() {
+                        urls.insert(url.clone());
                     }
                 }
-                Ok(peers)
             }
-            serde_bencode::value::Value::Bytes(bytes) => self.parse_compact_peers_raw(&bytes),
-            _ => Err(Error::Protocol("Invalid peers format".to_string())),
+        }
+        if !torrent.announce.is_empty() {
+            urls.insert(torrent.announce.clone());
+        }
+
+        let mut futures = Vec::new();
+        for url in urls {
+            futures.push(self.announce_single_stopped(url, torrent));
+        }
+
+        join_all(futures).await;
+        Ok(())
+    }
+
+    async fn announce_single_stopped(&self, url: String, torrent: &Torrent) -> Result<()> {
+        if url.starts_with("http") {
+            self.announce_http_stopped(&url, torrent).await
+        } else if url.starts_with("udp") {
+            self.announce_udp_stopped(&url, torrent).await
+        } else {
+            Err(Error::Protocol("Unsupported protocol".to_string()))
         }
     }
 
-    pub(crate) fn parse_compact_peers_raw(&self, bytes: &[u8]) -> Result<Vec<Peer>> {
-        let mut peers = Vec::new();
-        for chunk in bytes.chunks_exact(6) {
-            let ip = Ipv4Addr::new(chunk[0], chunk[1], chunk[2], chunk[3]);
-            let port = u16::from_be_bytes([chunk[4], chunk[5]]);
-            peers.push(Peer {
-                id: None,
-                ip: ip.to_string(),
-                port,
-            });
-        }
-        Ok(peers)
+    async fn announce_http_stopped(&self, url_str: &str, torrent: &Torrent) -> Result<()> {
+        let info_hash = if let Some(h2) = torrent.info_hash_v2()? {
+            let mut truncated = [0u8; 20];
+            truncated.copy_from_slice(&h2[..20]);
+            truncated
+        } else {
+            torrent
+                .info_hash_v1()?
+                .ok_or_else(|| Error::Protocol("No info hash available".to_string()))?
+        };
+
+        let info_hash_encoded: String = info_hash.iter().map(|b| format!("%{:02x}", b)).collect();
+        let peer_id_encoded: String = self.peer_id.iter().map(|b| format!("%{:02x}", b)).collect();
+
+        let url = Url::parse(url_str)
+            .map_err(|e| Error::Protocol(format!("Invalid tracker URL: {}", e)))?;
+
+        let query = format!(
+            "info_hash={}&peer_id={}&port={}&uploaded=0&downloaded=0&left={}&compact=1&event=stopped",
+            info_hash_encoded,
+            peer_id_encoded,
+            self.port,
+            torrent.total_length()
+        );
+
+        let final_url = if url.query().is_some() {
+            format!("{}&{}", url_str, query)
+        } else {
+            format!("{}?{}", url_str, query)
+        };
+
+        let _ = self.client.get(&final_url).send().await;
+        Ok(())
     }
 }
 #[cfg(test)]

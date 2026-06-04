@@ -21,6 +21,31 @@ impl Orchestrator {
         // Enforce mandatory tunnel
         self.verify_vpn_connectivity().await?;
 
+        let config = self.config.load();
+
+        // Enforce maximum active tasks limit for non-tenant callers (ADR-0064)
+        if tenant_id.is_none() {
+            let non_tenant_tasks = self
+                .tasks
+                .values()
+                .filter(|t| t.tenant_id.is_none())
+                .count();
+            if non_tenant_tasks >= config.limits.max_active_tasks {
+                return Err(crate::Error::TooManyTasks(config.limits.max_active_tasks));
+            }
+        }
+
+        // Enforce URI deduplication limit (Issue #250)
+        if !config.limits.allow_duplicate_uris {
+            for existing_task in self.tasks.values() {
+                for (uri, _) in &sources {
+                    if existing_task.subtasks.iter().any(|sub| &sub.uri == uri) {
+                        return Err(crate::Error::DuplicateTask(existing_task.id));
+                    }
+                }
+            }
+        }
+
         // Enforce per-tenant task count quotas
         if let Some(ref tid) = tenant_id {
             if let Some(ctx) = self.tenants.get(tid) {
@@ -42,7 +67,6 @@ impl Orchestrator {
 
         info!(%id, %name, "Adding MetaTask with {} sources", sources.len());
 
-        let config = self.config.load();
         let base_dir = if let Some(ref tid) = tenant_id {
             if let Some(ctx) = self.tenants.get(tid) {
                 if let Some(ref root) = ctx.disk_path_root {
@@ -136,7 +160,6 @@ impl Orchestrator {
         let token = tokio_util::sync::CancellationToken::new();
         self.cancellation_tokens.insert(id, token.clone());
 
-        let config = self.config.load();
         let throttler = if let Some(ref tid) = meta_task.tenant_id {
             if let Some(ctx) = self.tenants.get(tid) {
                 ctx.throttler.clone()
@@ -213,3 +236,7 @@ impl Orchestrator {
         Ok(())
     }
 }
+
+#[cfg(test)]
+#[path = "add_tests.rs"]
+mod tests;
