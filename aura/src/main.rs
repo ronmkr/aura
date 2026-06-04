@@ -29,6 +29,22 @@ struct Cli {
     /// Task GIDs this task depends on (comma-separated list)
     #[arg(short, long, value_delimiter = ',')]
     depends_on: Vec<u64>,
+
+    /// Custom configuration file path
+    #[arg(long, global = true)]
+    config: Option<String>,
+
+    /// Override download directory path
+    #[arg(long, global = true)]
+    download_dir: Option<String>,
+
+    /// Override global download bandwidth limit
+    #[arg(long, global = true)]
+    limit: Option<u64>,
+
+    /// Override global proxy URL
+    #[arg(long, global = true)]
+    proxy: Option<String>,
 }
 
 #[derive(Subcommand, Debug)]
@@ -36,8 +52,8 @@ enum Commands {
     /// Start the Aura background daemon (RPC/WebSocket)
     Daemon {
         /// Port to bind the RPC server
-        #[arg(long, default_value = "6800")]
-        rpc_port: u16,
+        #[arg(long)]
+        rpc_port: Option<u16>,
 
         /// Token for authentication. If not provided, a random token is generated and saved to ~/.aura/rpc_secret.
         #[arg(long)]
@@ -74,17 +90,36 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     tracing::subscriber::set_global_default(subscriber).expect("Failed to set tracing subscriber");
 
+    // Load configuration based on hierarchy rules
+    let mut config = aura_core::Config::load_resolved(cli.config.as_deref())?;
+
+    // Extract daemon-specific overrides
+    let mut daemon_rpc_port = None;
+    let mut daemon_rpc_secret = None;
+    if let Some(Commands::Daemon {
+        rpc_port,
+        rpc_secret,
+    }) = &cli.command
+    {
+        daemon_rpc_port = *rpc_port;
+        daemon_rpc_secret = rpc_secret.clone();
+    }
+
+    // Apply CLI overrides to configuration
+    config.apply_cli_overrides(
+        cli.download_dir.clone(),
+        cli.limit,
+        cli.proxy.clone(),
+        daemon_rpc_port,
+        daemon_rpc_secret,
+    );
+
     match cli.command {
-        Some(Commands::Daemon {
-            rpc_port,
-            rpc_secret,
-        }) => {
+        Some(Commands::Daemon { .. }) => {
             // Run daemon
             let args = aura_daemon::Args {
-                rpc_port,
-                rpc_secret,
                 daemonize: false,
-                config: None,
+                config,
             };
             aura_daemon::run(args).await?;
         }
@@ -104,6 +139,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     follow_on: cli.follow_on,
                     priority: cli.priority,
                     depends_on: cli.depends_on.into_iter().map(aura_core::TaskId).collect(),
+                    config,
                 };
                 aura_cli::run(args).await?;
             } else {

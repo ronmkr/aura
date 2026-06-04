@@ -10,7 +10,6 @@ use crate::{Error, InfoHash, Result, TaskId, TenantId};
 use std::sync::Arc;
 use tokio::sync::{mpsc, Mutex};
 
-#[derive(Debug)]
 pub struct BtTaskState {
     pub info_hash: InfoHash,
     pub torrent: Mutex<Option<Torrent>>,
@@ -23,6 +22,16 @@ pub struct BtTaskState {
     pub resource_governor: Arc<crate::orchestrator::resource_governor::ResourceGovernor>,
     pub tenant_id: Option<TenantId>,
     pub generations: Mutex<std::collections::HashMap<usize, u64>>,
+    pub config: Arc<arc_swap::ArcSwap<crate::Config>>,
+}
+
+impl std::fmt::Debug for BtTaskState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("BtTaskState")
+            .field("info_hash", &self.info_hash)
+            .field("tenant_id", &self.tenant_id)
+            .finish()
+    }
 }
 
 impl BtTaskState {
@@ -32,6 +41,7 @@ impl BtTaskState {
         bitfield: Option<Bitfield>,
         resource_governor: Arc<crate::orchestrator::resource_governor::ResourceGovernor>,
         tenant_id: Option<TenantId>,
+        config: Arc<arc_swap::ArcSwap<crate::Config>>,
     ) -> Self {
         let num_pieces = torrent.pieces_count();
         let info_hash = if let Some(h2) = torrent.info_hash_v2().unwrap_or(None) {
@@ -54,6 +64,7 @@ impl BtTaskState {
             resource_governor,
             tenant_id,
             generations: Mutex::new(std::collections::HashMap::new()),
+            config,
         }
     }
 
@@ -62,6 +73,7 @@ impl BtTaskState {
         db: sled::Db,
         resource_governor: Arc<crate::orchestrator::resource_governor::ResourceGovernor>,
         tenant_id: Option<TenantId>,
+        config: Arc<arc_swap::ArcSwap<crate::Config>>,
     ) -> Self {
         Self {
             info_hash,
@@ -75,6 +87,7 @@ impl BtTaskState {
             resource_governor,
             tenant_id,
             generations: Mutex::new(std::collections::HashMap::new()),
+            config,
         }
     }
 
@@ -143,6 +156,7 @@ impl BtTask {
         bitfield: Option<Bitfield>,
         resource_governor: Arc<crate::orchestrator::resource_governor::ResourceGovernor>,
         tenant_id: Option<TenantId>,
+        config: Arc<arc_swap::ArcSwap<crate::Config>>,
     ) -> Result<Self> {
         let data = tokio::fs::read(path)
             .await
@@ -156,12 +170,14 @@ impl BtTask {
                 bitfield,
                 resource_governor,
                 tenant_id,
+                config,
             )),
             dht_tx,
             lpd_tx,
         })
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn from_magnet(
         id: TaskId,
         info_hash: InfoHash,
@@ -170,6 +186,7 @@ impl BtTask {
         db: sled::Db,
         resource_governor: Arc<crate::orchestrator::resource_governor::ResourceGovernor>,
         tenant_id: Option<TenantId>,
+        config: Arc<arc_swap::ArcSwap<crate::Config>>,
     ) -> Self {
         Self {
             id,
@@ -178,6 +195,7 @@ impl BtTask {
                 db,
                 resource_governor,
                 tenant_id,
+                config,
             )),
             dht_tx,
             lpd_tx,
@@ -233,7 +251,8 @@ impl BtTask {
         _throttler: Arc<crate::throttler::Throttler>,
         worker_cmd_tx: tokio::sync::broadcast::Sender<crate::orchestrator::WorkerCommand>,
     ) -> Result<()> {
-        let port = 6881; // TODO: make configurable
+        let config = self.state.config.load();
+        let port = config.network.listen_port;
         let dht_token = token.clone();
         let lpd_token = token.clone();
         let tracker_token = token.clone();

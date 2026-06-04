@@ -22,6 +22,9 @@ async fn test_choking_algorithm_tit_for_tat() {
         db,
         governor,
         None,
+        std::sync::Arc::new(arc_swap::ArcSwap::new(std::sync::Arc::new(
+            crate::Config::default(),
+        ))),
     );
 
     // Add 6 peers and simulate different download rates

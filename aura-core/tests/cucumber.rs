@@ -16,6 +16,9 @@ pub struct AuraWorld {
     pub netrc_path: Option<std::path::PathBuf>,
     pub cookie_path: Option<std::path::PathBuf>,
     pub task_checksum: Option<crate::Checksum>,
+    pub resolved_config: Option<Config>,
+    pub original_cwd: Option<std::path::PathBuf>,
+    pub original_home: Option<std::ffi::OsString>,
 }
 
 impl AuraWorld {
@@ -71,12 +74,24 @@ impl Default for AuraWorld {
             netrc_path: None,
             cookie_path: None,
             task_checksum: None,
+            resolved_config: None,
+            original_cwd: None,
+            original_home: None,
         }
     }
 }
 
 impl Drop for AuraWorld {
     fn drop(&mut self) {
+        if let Some(ref cwd) = self.original_cwd {
+            let _ = std::env::set_current_dir(cwd);
+        }
+        if let Some(ref home) = self.original_home {
+            std::env::set_var("HOME", home);
+        } else if self.original_home.is_none() {
+            // Note: std::env::remove_var is not safe in multi-threaded contexts, but here scenarios run sequentially
+            std::env::remove_var("HOME");
+        }
         if let Some(engine) = self.engine.take() {
             tokio::spawn(async move {
                 let _ = engine.shutdown().await;

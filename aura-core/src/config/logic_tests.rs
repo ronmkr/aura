@@ -117,3 +117,37 @@ fn test_invalid_dns_resolver_type() {
     let result = toml::from_str::<Config>(toml_str);
     assert!(result.is_err());
 }
+
+#[test]
+fn test_apply_cli_overrides() {
+    let mut config = Config::default();
+    config.apply_cli_overrides(
+        Some("custom_dir".to_string()),
+        Some(12345),
+        Some("http://proxy.com".to_string()),
+        Some(9999),
+        Some("token123".to_string()),
+    );
+
+    assert_eq!(config.storage.download_dir, "custom_dir");
+    assert_eq!(config.bandwidth.global_download_limit, 12345);
+    assert_eq!(config.network.proxy, Some("http://proxy.com".to_string()));
+    assert_eq!(config.network.rpc_port, 9999);
+    assert_eq!(config.network.rpc_secret, Some("token123".to_string()));
+}
+
+#[test]
+fn test_load_resolved_custom_path() {
+    use std::io::Write;
+    let mut temp = tempfile::NamedTempFile::new().unwrap();
+    let toml_content = r#"
+        [network]
+        listen_port = 7777
+    "#;
+    temp.write_all(toml_content.as_bytes()).unwrap();
+
+    let path_str = temp.path().to_str().unwrap();
+    let config = Config::load_resolved(Some(path_str)).unwrap();
+    assert_eq!(config.network.listen_port, 7777);
+    assert_eq!(config.config_path, Some(temp.path().to_path_buf()));
+}
