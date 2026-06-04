@@ -58,7 +58,24 @@ impl ProtocolWorker for HttpWorker {
 
             match response_res {
                 Ok(response) => {
-                    if response.status().is_success() {
+                    let status = response.status();
+                    let sent_range = segment.length != u64::MAX || segment.offset > 0;
+
+                    // If we requested a range but the server ignored it (200 OK
+                    // instead of 206 Partial Content), the body starts at byte 0
+                    // — writing it at segment.offset would silently corrupt the
+                    // file. Return a retriable error so the orchestrator can
+                    // restart in single-stream mode. (Issue #251, ADR-0059)
+                    if sent_range && status == reqwest::StatusCode::OK && segment.offset > 0 {
+                        return Err(Error::Protocol(format!(
+                            "Server returned 200 OK for a ranged request at offset {}. \
+                             Range header was not honoured — refusing to write at wrong \
+                             offset to prevent data corruption. Restart in single-stream mode.",
+                            segment.offset
+                        )));
+                    }
+
+                    if status.is_success() {
                         let mut buffer = BytesMut::with_capacity(16384);
 
                         let mut stream = response.bytes_stream();
@@ -117,12 +134,12 @@ impl ProtocolWorker for HttpWorker {
                             segment,
                             data: buffer,
                         });
-                    } else if Self::is_retryable(response.status()) && attempts < max_attempts {
+                    } else if Self::is_retryable(status) && attempts < max_attempts {
                         attempts += 1;
                         let delay = self.options.retry_delay_secs * (2u64.pow(attempts - 1));
                         tracing::warn!(
                             %task_id,
-                            status = %response.status(),
+                            status = %status,
                             attempt = attempts,
                             delay_secs = delay,
                             "Transient HTTP error, retrying"
@@ -130,10 +147,7 @@ impl ProtocolWorker for HttpWorker {
                         tokio::time::sleep(std::time::Duration::from_secs(delay)).await;
                         continue;
                     } else {
-                        return Err(Error::Protocol(format!(
-                            "HTTP error status: {}",
-                            response.status()
-                        )));
+                        return Err(Error::Protocol(format!("HTTP error status: {}", status)));
                     }
                 }
                 Err(e) if attempts < max_attempts => {

@@ -5,6 +5,11 @@ All active development tasks, technical debt, and feature requests are managed e
 ## Open Tasks
 
 ### High (P1)
+- [ ] **security: Pre-download disk space verification to prevent corrupt partial files** (Issue #242) `[module:storage, priority:high]`
+- [ ] **feat: HTTP/FTP checksum verification (SHA-256/SHA-1) for download integrity** (Issue #243) `[module:core, priority:high]`
+- [ ] **feat: Download history log and missing aria2 RPC methods (tellStopped, getVersion)** (Issue #244) `[module:daemon, priority:high]`
+- [ ] **feat: File descriptor limit management at daemon startup** (Issue #249) `[module:daemon, priority:high]`
+- [ ] **feat: RPC rate limiting (prevent local DoS via task flooding)** (Issue #250) `[module:daemon, priority:high]`
 
 ### Moderate (P2)
 - [ ] **infra: Add CI cross-platform matrix and cargo audit workflow** (Issue #148) `[infra, priority:moderate]`
@@ -20,6 +25,15 @@ All active development tasks, technical debt, and feature requests are managed e
 
 ## Completed Tasks
 
+- [x] **security: URI scheme allowlist + SSRF mitigation (ADR-0059) — file:// exfiltration blocked** (Issues #241, #244) `[module:daemon, module:core, priority:critical]`
+- [x] **security: RPC secret value removed from log output** (Issue #239) `[module:daemon, priority:critical]`
+- [x] **security: /metrics endpoint gated behind X-Aura-Token authentication** (Issue #253) `[module:daemon, priority:high]`
+- [x] **security: Remove moz-extension:// from CORS allowlist — Chrome-only (ADR-0049)** `[module:daemon, priority:high]`
+- [x] **bug: HTTP 200-instead-of-206 data corruption on range-resume prevented** (Issue #251) `[module:core, priority:critical]`
+- [x] **security: Content-Disposition path traversal sanitization + RFC 5987 filename* support** (Issue #252) `[module:core, priority:critical]`
+- [x] **reliability: Global panic hook writes crash report to ~/.aura/crash.log** (Issue #247) `[module:daemon, priority:high]`
+- [x] **reliability: Double Ctrl+C force-quit + 5-second graceful shutdown timeout** (Issue #225) `[module:daemon, priority:high]`
+- [x] **security: SecretScrubber extended — .netrc, PEM private keys, URL-encoded creds, AWS tokens** (Issue #229) `[module:daemon, priority:high]`
 - [x] **bug: Initialize and persist Prometheus metrics registry in daemon state** (Issue #212) `[module:daemon, priority:moderate]`
 - [x] **feat: Implement hierarchical configuration file resolution and CLI overrides** (Issue #214) `[module:core, module:daemon, module:cli, priority:high]`
 - [x] **feat: PolicyManager error classification and retry coordinator** (Issue #211) `[module:core, priority:high]`

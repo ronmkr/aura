@@ -76,15 +76,80 @@ fn get_or_create_rpc_secret(provided_secret: Option<String>) -> Result<String, s
     }
 
     info!(
-        "No RPC secret provided. Generated new token and saved to {:?}",
+        "No RPC secret provided. Generated new secret and saved to {:?}. \
+         Copy it from that file to authenticate RPC calls.",
         path
     );
-    info!("RPC Secret: {}", new_secret);
+    // SECURITY: Never log the secret value — it is visible in log aggregators
+    // and the system journal. Users must read it from the file directly. (#239)
 
     Ok(new_secret)
 }
 
+/// Installs a global panic hook that writes a crash report to `~/.aura/crash.log`
+/// before the process exits. This ensures panics in any Tokio task produce a
+/// diagnosable crash record rather than a silent exit. (Issue #246, ADR-0064)
+fn install_panic_hook() {
+    std::panic::set_hook(Box::new(|info| {
+        // Determine crash log path
+        let crash_path = std::env::var_os("HOME")
+            .or_else(|| std::env::var_os("USERPROFILE"))
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| std::path::PathBuf::from("."))
+            .join(".aura")
+            .join("crash.log");
+
+        let timestamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+
+        let location = info
+            .location()
+            .map(|l| format!("{}:{}:{}", l.file(), l.line(), l.column()))
+            .unwrap_or_else(|| "<unknown location>".to_string());
+
+        let payload = info
+            .payload()
+            .downcast_ref::<&str>()
+            .copied()
+            .or_else(|| info.payload().downcast_ref::<String>().map(String::as_str))
+            .unwrap_or("<non-string panic payload>");
+
+        let log_entry = format!(
+            "=== AURA DAEMON CRASH REPORT ===\n\
+             Timestamp : {}\n\
+             Location  : {}\n\
+             Message   : {}\n\
+             ================================\n",
+            timestamp, location, payload
+        );
+
+        // Write to crash.log; if that fails, fall back to stderr
+        let written = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&crash_path)
+            .and_then(|mut f| {
+                use std::io::Write;
+                f.write_all(log_entry.as_bytes())
+            });
+
+        if written.is_err() {
+            // Last-resort: write to stderr
+            eprintln!("{}", log_entry);
+        } else {
+            eprintln!(
+                "aura-daemon crashed. See crash report at: {}",
+                crash_path.display()
+            );
+        }
+    }));
+}
+
 pub async fn run(args: Args) -> Result<(), Box<dyn std::error::Error>> {
+    install_panic_hook();
+
     // Setup JSON tracing for audit logs if not already set
     let _ = tracing_subscriber::registry()
         .with(tracing_subscriber::EnvFilter::new(
@@ -163,35 +228,72 @@ pub async fn run(args: Args) -> Result<(), Box<dyn std::error::Error>> {
     let (shutdown_tx, mut shutdown_rx) = tokio::sync::mpsc::channel::<()>(1);
     let engine_clone = Arc::clone(&engine);
     tokio::spawn(async move {
+        // ---- First signal: begin graceful shutdown ----
         #[cfg(unix)]
         {
             use tokio::signal::unix::{signal, SignalKind};
             let mut sigint = signal(SignalKind::interrupt()).unwrap();
             let mut sigterm = signal(SignalKind::terminate()).unwrap();
-
             tokio::select! {
-                _ = sigint.recv() => {
-                    info!("Received SIGINT, initiating graceful shutdown");
-                }
-                _ = sigterm.recv() => {
-                    info!("Received SIGTERM, initiating graceful shutdown");
-                }
+                _ = sigint.recv() => info!("Received SIGINT, initiating graceful shutdown (send again to force quit)"),
+                _ = sigterm.recv() => info!("Received SIGTERM, initiating graceful shutdown (send again to force quit)"),
             }
         }
         #[cfg(not(unix))]
         {
             let _ = tokio::signal::ctrl_c().await;
-            info!("Received Ctrl+C, initiating graceful shutdown");
+            info!("Received Ctrl+C, initiating graceful shutdown (press again to force quit)");
         }
 
-        if let Err(e) = engine_clone.shutdown().await {
-            tracing::error!("Failed to shut down engine gracefully: {}", e);
-        } else {
-            info!("Engine shutdown completed successfully");
+        // Race: 5-second graceful shutdown vs. second signal (force quit)
+        // ADR-0058: 5-second timeout; second signal causes immediate exit.
+        let shutdown_result = tokio::select! {
+            result = async {
+                match tokio::time::timeout(
+                    std::time::Duration::from_secs(5),
+                    engine_clone.shutdown(),
+                ).await {
+                    Ok(Ok(())) => {
+                        info!("Engine shutdown completed successfully");
+                        Ok(())
+                    }
+                    Ok(Err(e)) => {
+                        tracing::error!("Engine shutdown error: {}", e);
+                        Err(e)
+                    }
+                    Err(_) => {
+                        tracing::warn!("Engine shutdown timed out after 5s — forcing exit");
+                        Ok(())
+                    }
+                }
+            } => result,
+
+            // Second signal: force-quit immediately
+            _ = async {
+                #[cfg(unix)]
+                {
+                    use tokio::signal::unix::{signal, SignalKind};
+                    let mut sigint2 = signal(SignalKind::interrupt()).unwrap();
+                    let mut sigterm2 = signal(SignalKind::terminate()).unwrap();
+                    tokio::select! {
+                        _ = sigint2.recv() => {}
+                        _ = sigterm2.recv() => {}
+                    }
+                }
+                #[cfg(not(unix))]
+                {
+                    let _ = tokio::signal::ctrl_c().await;
+                }
+            } => {
+                tracing::warn!("Second shutdown signal received — forcing immediate exit");
+                std::process::exit(130); // SIGINT exit code convention
+            }
+        };
+
+        if let Err(e) = shutdown_result {
+            tracing::error!("Shutdown failed: {}", e);
         }
 
-        // Wait a short grace period for in-flight flushes (ADR 0058 timeout)
-        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
         let _ = shutdown_tx.send(()).await;
     });
 
@@ -203,7 +305,7 @@ pub async fn run(args: Args) -> Result<(), Box<dyn std::error::Error>> {
                 origin_bytes.starts_with(b"http://localhost")
                     || origin_bytes.starts_with(b"http://127.0.0.1")
                     || origin_bytes.starts_with(b"chrome-extension://")
-                    || origin_bytes.starts_with(b"moz-extension://")
+                // moz-extension:// removed — Chrome-only per ADR-0049
             },
         ))
         .allow_methods([axum::http::Method::GET, axum::http::Method::POST])

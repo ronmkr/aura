@@ -10,17 +10,26 @@ fn get_secret_regexes() -> &'static [Regex] {
             Regex::new(r"(?i)bearer\s+[a-zA-Z0-9_\-\.\~+\/]+=*").unwrap(),
             // Basic authorization headers (base64)
             Regex::new(r"(?i)authorization:\s*basic\s+[a-zA-Z0-9_\-\.\~+\/]+=*").unwrap(),
-            // Netrc password entries or inline URI passwords
-            Regex::new(r"//[^:/]+:[^@]+@").unwrap(), // matches user:password in URLs
+            // Inline URI passwords: //user:password@host
+            Regex::new(r"//[^:/]+:[^@/]+@").unwrap(),
             // Cookie headers
             Regex::new(r"(?i)cookie:\s*[^\n]+").unwrap(),
-            // General secrets and API keys (e.g. rpc-secret=value)
+            // General secret/token key=value or key:value in JSON logs
             Regex::new(
-                r"(?i)(rpc-secret|rpc_secret|password|secret|token)\s*=\s*[a-zA-Z0-9_\-\.\~+]+",
+                r"(?i)(rpc-secret|rpc_secret|password|secret|token|api[_-]?key|access[_-]?key)\s*=\s*[a-zA-Z0-9_\-\.\~+]+",
             )
             .unwrap(),
-            Regex::new(r#"(?i)"(rpc-secret|rpc_secret|password|secret|token)"\s*:\s*"[^"]+""#)
+            Regex::new(r#"(?i)"(rpc-secret|rpc_secret|password|secret|token|api[_-]?key|access[_-]?key)"\s*:\s*"[^"]+""#)
                 .unwrap(),
+            // .netrc password entries: "password somevalue"
+            Regex::new(r"(?i)\bpassword\s+[^\s]+").unwrap(),
+            // PEM private key blocks
+            Regex::new(r"-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----")
+                .unwrap(),
+            // URL-encoded passwords: %3A = ':', detect common encoded credential patterns
+            Regex::new(r"(?i)(password|secret|token)%3[Aa][^&\s]+").unwrap(),
+            // AWS-style secret access keys (40 char base62 after keyword)
+            Regex::new(r"(?i)(aws_secret_access_key|aws_session_token)\s*[=:]\s*[a-zA-Z0-9/+]{20,}").unwrap(),
         ]
     })
 }
@@ -60,6 +69,8 @@ impl<W: Write> Write for ScrubbingWriter<W> {
                             "Authorization: Basic [REDACTED]".to_string()
                         } else if s.to_lowercase().contains("cookie") {
                             "Cookie: [REDACTED]".to_string()
+                        } else if s.contains("PRIVATE KEY") {
+                            "-----BEGIN [REDACTED] PRIVATE KEY-----\n[REDACTED]\n-----END [REDACTED] PRIVATE KEY-----".to_string()
                         } else if s.contains(':') {
                             if let Some(key) = caps.get(1) {
                                 format!("\"{}\":\"[REDACTED]\"", key.as_str())

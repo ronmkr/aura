@@ -1,7 +1,11 @@
 # ADR 0042: Internationalization (i18n) Architecture
 
 ## Status
-Proposed
+Proposed — Deferred (lowest priority; see Priority note below)
+
+## Priority
+
+**Lowest** — i18n is explicitly deferred until all P0–P3 security, correctness, and stability issues are resolved. The CLI, TUI, and daemon will remain English-only until this ADR is accepted and implementation begins. See GitHub issue #190.
 
 ## Context
 Aura is intended for a global audience. Hardcoded English strings in the CLI, TUI, and logs make it difficult for non-English speakers to use the tool effectively.
@@ -18,4 +22,5 @@ Aura is intended for a global audience. Hardcoded English strings in the CLI, TU
 
 ## Consequences
 - **Pros**: Reach a global user base, clean separation of code and content, and professional UI/UX.
-- **Cons**: Significant refactoring required to externalize all existing strings; slightly larger binary size due to resource embedding.
+- **Cons**: Significant refactoring required to externalize all existing strings; slightly larger binary size due to resource embedding. Implementation cannot begin until all user-facing string surfaces are stable — premature i18n during active development creates high churn in `.ftl` files.
+

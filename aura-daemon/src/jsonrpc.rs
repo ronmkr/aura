@@ -1,4 +1,5 @@
 use super::types::{AppState, JsonRpcRequest, JsonRpcResponse};
+use aura_core::net_util::validate_download_uri;
 use aura_core::orchestrator::Engine;
 use aura_core::task::TaskType;
 use aura_core::TaskId;
@@ -92,6 +93,14 @@ async fn handle_add_uri(engine: &Engine, params: Option<Value>) -> Result<Value,
 
     if uris.is_empty() {
         return Err(json!({ "code": -32602, "message": "Empty URI list" }));
+    }
+
+    // Validate each URI before entering the pipeline (ADR-0059: SSRF mitigation)
+    // Blocks file://, data:, javascript:, RFC1918, loopback, and link-local addresses.
+    for uri in &uris {
+        if let Err(e) = validate_download_uri(uri) {
+            return Err(json!({ "code": -32602, "message": e.to_string() }));
+        }
     }
 
     let mut priority = 3;
