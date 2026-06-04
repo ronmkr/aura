@@ -72,6 +72,14 @@ jobs:
         config-file: ./.github/codeql/codeql-config.yml
 
     - name: Perform CodeQL Analysis
+      id: analyze
       uses: github/codeql-action/analyze@v4
       with:
         category: "/language:${{matrix.language}}"
+
+    - name: Generate CodeQL Summary
+      if: always()
+      env:
+        SARIF_DIR: ${{ steps.analyze.outputs.sarif-output }}
+      run: |
+        python scripts/parse_sarif.py
