@@ -7,6 +7,9 @@ pub(crate) fn harden_file(file: &File, length: u64) -> Result<()> {
     use std::os::unix::io::AsRawFd;
     let fd = file.as_raw_fd();
 
+    // SAFETY: The raw file descriptor `fd` is valid for the duration of the function since `file` is borrowed.
+    // The `statfs` structure is zero-initialized and safe to write to via `fstatfs`.
+    // The `ioctl` and `fallocate` syscalls use standard Linux constants and are safe to invoke on a valid descriptor.
     unsafe {
         let mut stat: libc::statfs = std::mem::zeroed();
         if libc::fstatfs(fd, &mut stat) == 0 {
@@ -44,6 +47,8 @@ pub(crate) fn harden_file(file: &File, length: u64) -> Result<()> {
 
 #[cfg(target_os = "linux")]
 pub(crate) fn is_network_share_fd(fd: std::os::unix::io::RawFd) -> bool {
+    // SAFETY: The file descriptor `fd` is assumed to be valid. The `statfs` struct is
+    // zero-initialized and safe to receive filesystem stats from `fstatfs`.
     unsafe {
         let mut stat: libc::statfs = std::mem::zeroed();
         if libc::fstatfs(fd, &mut stat) == 0 {
@@ -58,6 +63,9 @@ pub(crate) fn is_network_share_fd(fd: std::os::unix::io::RawFd) -> bool {
 
 #[cfg(target_os = "macos")]
 pub(crate) fn is_network_share_fd(fd: std::os::unix::io::RawFd) -> bool {
+    // SAFETY: The file descriptor `fd` is assumed to be valid. The `statfs` struct is
+    // zero-initialized and safe to populate. Reading `f_fstypename` is safe as the string length
+    // is verified to be within the bounds of the array and null-terminated before slice creation.
     unsafe {
         let mut stat: libc::statfs = std::mem::zeroed();
         if libc::fstatfs(fd, &mut stat) == 0 {
@@ -106,6 +114,9 @@ pub(crate) fn harden_file(file: &File, length: u64) -> Result<()> {
         return Ok(());
     }
 
+    // SAFETY: The raw file descriptor `fd` is valid for the duration of the function.
+    // `store` is initialized correctly and its reference passed to `fcntl` matches the F_PREALLOCATE signature.
+    // The call to `ftruncate` uses the same descriptor and a valid length.
     unsafe {
         let mut store = libc::fstore_t {
             fst_flags: libc::F_ALLOCATECONTIG,
@@ -176,6 +187,8 @@ pub(crate) fn apply_fadvise_dontneed(file: &tokio::fs::File, offset: u64, len: u
     {
         use std::os::unix::io::AsRawFd;
         let fd = file.as_raw_fd();
+        // SAFETY: The raw file descriptor `fd` is valid for the duration of the function.
+        // `posix_fadvise` is safely invoked with standard POSIX constants and does not modify program state.
         unsafe {
             libc::posix_fadvise(
                 fd,
@@ -196,6 +209,8 @@ pub(crate) fn apply_fadvise_sequential(file: &tokio::fs::File) {
     {
         use std::os::unix::io::AsRawFd;
         let fd = file.as_raw_fd();
+        // SAFETY: The raw file descriptor `fd` is valid for the duration of the function.
+        // `posix_fadvise` is safely invoked with standard POSIX constants to hint sequential access.
         unsafe {
             libc::posix_fadvise(fd, 0, 0, libc::POSIX_FADV_SEQUENTIAL);
         }
