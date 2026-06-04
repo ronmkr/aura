@@ -127,6 +127,8 @@ fn test_apply_cli_overrides() {
         Some("http://proxy.com".to_string()),
         Some(9999),
         Some("token123".to_string()),
+        Some("cert_path".to_string()),
+        Some("key_path".to_string()),
     );
 
     assert_eq!(config.storage.download_dir, "custom_dir");
@@ -134,6 +136,8 @@ fn test_apply_cli_overrides() {
     assert_eq!(config.network.proxy, Some("http://proxy.com".to_string()));
     assert_eq!(config.network.rpc_port, 9999);
     assert_eq!(config.network.rpc_secret, Some("token123".to_string()));
+    assert_eq!(config.network.tls_cert, Some("cert_path".to_string()));
+    assert_eq!(config.network.tls_key, Some("key_path".to_string()));
 }
 
 #[test]

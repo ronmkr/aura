@@ -152,6 +152,7 @@ impl Config {
         Ok(config)
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn apply_cli_overrides(
         &mut self,
         download_dir: Option<String>,
@@ -159,6 +160,8 @@ impl Config {
         proxy: Option<String>,
         rpc_port: Option<u16>,
         rpc_secret: Option<String>,
+        tls_cert: Option<String>,
+        tls_key: Option<String>,
     ) {
         if let Some(d) = download_dir {
             self.storage.download_dir = d;
@@ -174,6 +177,12 @@ impl Config {
         }
         if let Some(secret) = rpc_secret {
             self.network.rpc_secret = Some(secret);
+        }
+        if let Some(cert) = tls_cert {
+            self.network.tls_cert = Some(cert);
+        }
+        if let Some(key) = tls_key {
+            self.network.tls_key = Some(key);
         }
     }
 }

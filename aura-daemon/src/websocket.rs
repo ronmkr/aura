@@ -11,12 +11,13 @@ use serde_json::json;
 use std::sync::Arc;
 use tracing::{error, info};
 
-pub async fn handle_ws(
-    ws: WebSocketUpgrade,
+pub async fn ws_auth_middleware(
+    State(state): State<Arc<AppState>>,
     headers: HeaderMap,
     Query(query): Query<WsQuery>,
-    State(state): State<Arc<AppState>>,
-) -> impl IntoResponse {
+    req: axum::extract::Request,
+    next: axum::middleware::Next,
+) -> Result<axum::response::Response, StatusCode> {
     let token = query
         .token
         .or_else(|| {
@@ -32,10 +33,17 @@ pub async fn handle_ws(
 
     if let Some(ref expected_secret) = state.rpc_secret {
         if token.as_deref() != Some(expected_secret) {
-            return (StatusCode::UNAUTHORIZED, "Unauthorized").into_response();
+            return Err(StatusCode::UNAUTHORIZED);
         }
     }
 
+    Ok(next.run(req).await)
+}
+
+pub async fn handle_ws(
+    ws: WebSocketUpgrade,
+    State(state): State<Arc<AppState>>,
+) -> impl IntoResponse {
     ws.on_upgrade(move |socket| ws_session(socket, state.engine.clone()))
 }
 
@@ -77,3 +85,7 @@ pub async fn ws_session(socket: WebSocket, engine: Arc<Engine>) {
 
     info!("WebSocket connection closed");
 }
+
+#[cfg(test)]
+#[path = "websocket_tests.rs"]
+mod tests;

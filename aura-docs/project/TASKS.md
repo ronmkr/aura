@@ -5,16 +5,13 @@ All active development tasks, technical debt, and feature requests are managed e
 ## Open Tasks
 
 ### High (P1)
-- [ ] **fix: Add WorkerCommand::EndgameFetch variant and broadcast overflow guard (ADR-0039)** (Issue #227) `[module:core, priority:critical]`
-- [ ] **feat: RPC TLS support via --tls-cert / --tls-key flags (ADR-0056)** (Issue #226) `[module:daemon, priority:critical]`
+- [x] **feat: RPC TLS support via --tls-cert / --tls-key flags (ADR-0056)** (Issue #226) `[module:daemon, priority:critical]`
 
 ### Moderate (P2)
 - [ ] **infra: Add CI cross-platform matrix and cargo audit workflow** (Issue #148) `[infra, priority:moderate]`
 - [ ] **feat: ResourceGovernor per-tenant fair-share limit and metadata safety margin** (Issue #234) `[module:core, priority:moderate]`
 - [ ] **feat: Hook ResourceGovernor into HTTP and FTP workers** (Issue #235) `[module:core, priority:moderate]`
-- [ ] **test: Add unit tests for aura-daemon jsonrpc.rs and websocket.rs** (Issue #236) `[module:daemon, priority:moderate]`
-- [ ] **fix: BEP-12 tracker tier promotion on successful announce** (Issue #237) `[module:core, priority:moderate]`
-- [ ] **fix: Flush DHT routing table explicitly in engine.shutdown()** (Issue #238) `[module:core, priority:moderate]`
+- [x] **test: Add unit tests for aura-daemon jsonrpc.rs and websocket.rs** (Issue #236) `[module:daemon, priority:moderate]`
 - [ ] **feat: ETag and Last-Modified conditional GET for incremental file refresh** (Issue #255) `[module:core, priority:moderate]`
 - [ ] **perf: Share reqwest HTTP connection pool across segment workers for same-host downloads** (Issue #256) `[module:core, priority:moderate]`
 - [ ] **feat: BitTorrent seeding ratio and maximum seeding time limits** (Issue #257) `[module:core, priority:moderate]`
@@ -30,6 +27,9 @@ All active development tasks, technical debt, and feature requests are managed e
 
 ## Completed Tasks
 
+- [x] **fix: Add WorkerCommand::EndgameFetch variant and broadcast overflow guard (ADR-0039)** (Issue #227) `[module:core, priority:critical]`
+- [x] **fix: BEP-12 tracker tier promotion on successful announce** (Issue #237) `[module:core, priority:moderate]`
+- [x] **fix: Flush DHT routing table explicitly in engine.shutdown()** (Issue #238) `[module:core, priority:moderate]`
 - [x] **security: Pre-download disk space verification to prevent corrupt partial files** (Issue #242) `[module:storage, priority:high]`
 - [x] **feat: HTTP/FTP checksum verification (SHA-256/SHA-1) for download integrity** (Issue #243) `[module:core, priority:high]`
 - [x] **feat: RPC rate limiting (prevent local DoS via task flooding)** (Issue #246) `[module:daemon, priority:high]`

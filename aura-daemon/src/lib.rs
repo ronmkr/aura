@@ -5,6 +5,7 @@ pub mod jsonrpc;
 pub mod metrics;
 pub mod router;
 pub mod scrubber;
+pub mod tls;
 pub mod types;
 pub mod websocket;
 
@@ -25,6 +26,9 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 pub struct Args {
     pub daemonize: bool,
     pub config: aura_core::Config,
+    pub tls_cert: Option<String>,
+    pub tls_key: Option<String>,
+    pub generate_tls_cert: bool,
 }
 
 fn get_or_create_rpc_secret(provided_secret: Option<String>) -> Result<String, std::io::Error> {
@@ -172,6 +176,8 @@ pub async fn run(args: Args) -> Result<(), Box<dyn std::error::Error>> {
     adjust_file_descriptor_limit(&mut config);
     let rpc_secret = get_or_create_rpc_secret(config.network.rpc_secret.clone())?;
     let rpc_port = config.network.rpc_port;
+    let config_tls_cert = config.network.tls_cert.clone();
+    let config_tls_key = config.network.tls_key.clone();
 
     let (engine, orchestrator, storage) = match Engine::new(config).await {
         Ok(res) => res,
@@ -319,15 +325,39 @@ pub async fn run(args: Args) -> Result<(), Box<dyn std::error::Error>> {
 
     // Restrict bind from 0.0.0.0 to 127.0.0.1
     let addr = format!("127.0.0.1:{}", rpc_port);
-    let listener = tokio::net::TcpListener::bind(&addr).await?;
-    info!("RPC Server listening on http://{}", addr);
 
-    axum::serve(listener, app)
-        .with_graceful_shutdown(async move {
+    let tls_cert = args.tls_cert.or(config_tls_cert);
+    let tls_key = args.tls_key.or(config_tls_key);
+
+    if let Some((cert_path, key_path)) = tls::setup_tls(args.generate_tls_cert, tls_cert, tls_key)?
+    {
+        let rustls_config =
+            axum_server::tls_rustls::RustlsConfig::from_pem_file(cert_path, key_path).await?;
+        let handle = axum_server::Handle::new();
+        let shutdown_handle = handle.clone();
+
+        tokio::spawn(async move {
             let _ = shutdown_rx.recv().await;
-            info!("RPC server stopped");
-        })
-        .await?;
+            info!("RPC server stopping (HTTPS)");
+            shutdown_handle.graceful_shutdown(Some(std::time::Duration::from_secs(5)));
+        });
+
+        info!("RPC Server listening (HTTPS) on https://{}", addr);
+        axum_server::bind_rustls(addr.parse::<std::net::SocketAddr>()?, rustls_config)
+            .handle(handle)
+            .serve(app.into_make_service())
+            .await?;
+    } else {
+        let listener = tokio::net::TcpListener::bind(&addr).await?;
+        info!("RPC Server listening on http://{}", addr);
+
+        axum::serve(listener, app)
+            .with_graceful_shutdown(async move {
+                let _ = shutdown_rx.recv().await;
+                info!("RPC server stopped");
+            })
+            .await?;
+    }
 
     Ok(())
 }

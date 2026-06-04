@@ -77,7 +77,7 @@ fn when_apply_cli_overrides(world: &mut crate::AuraWorld, step: &Step) {
     }
 
     let config = world.resolved_config.as_mut().expect("No resolved config");
-    config.apply_cli_overrides(download_dir, limit, None, None, None);
+    config.apply_cli_overrides(download_dir, limit, None, None, None, None, None);
 }
 
 #[then(

@@ -112,3 +112,7 @@ pub async fn handle_jsonrpc(
             .into_response(),
     }
 }
+
+#[cfg(test)]
+#[path = "../jsonrpc_tests.rs"]
+mod tests;
