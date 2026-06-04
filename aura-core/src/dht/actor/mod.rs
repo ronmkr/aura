@@ -118,8 +118,28 @@ impl DhtActor {
     pub async fn run(mut self) -> Result<()> {
         info!("DHT Actor started");
 
-        // Load persisted nodes
-        self.load_nodes().await;
+        // Resolve ~/.aura/dht.dat
+        let dht_path = {
+            let home = std::env::var_os("HOME")
+                .or_else(|| std::env::var_os("USERPROFILE"))
+                .map(std::path::PathBuf::from);
+            let mut p = match home {
+                Some(h) => h,
+                None => std::path::PathBuf::from("."),
+            };
+            p.push(".aura");
+            p.push("dht.dat");
+            p
+        };
+
+        // Load persisted nodes from file, fall back to db if it fails
+        if let Err(e) = crate::dht::PersistentState::load(&mut self, &dht_path).await {
+            debug!(
+                "Failed to load DHT state from file (falling back to database): {}",
+                e
+            );
+            self.load_nodes().await;
+        }
 
         // Bootstrap with some standard routers
         let bootstrap_nodes = vec![
@@ -162,6 +182,9 @@ impl DhtActor {
                     }
                 }
                 _ = save_interval.tick() => {
+                    if let Err(e) = crate::dht::PersistentState::save(&self, &dht_path).await {
+                        debug!("Failed to save DHT state to file: {}", e);
+                    }
                     self.save_nodes().await;
                 }
                 _ = ping_interval.tick() => {
@@ -246,5 +269,67 @@ impl DhtActor {
         for addr in nodes {
             let _ = self.send_ping(addr).await;
         }
+    }
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+struct PersistedNode {
+    id: [u8; 20],
+    addr: SocketAddr,
+}
+
+#[async_trait::async_trait]
+impl crate::dht::PersistentState for DhtActor {
+    async fn save(&self, path: &std::path::Path) -> crate::Result<()> {
+        let rt = self.routing_table.lock().await;
+        let mut nodes = Vec::new();
+        for bucket in &rt.buckets {
+            for node in &bucket.nodes {
+                nodes.push(PersistedNode {
+                    id: node.id,
+                    addr: node.addr,
+                });
+            }
+        }
+        drop(rt);
+
+        if let Some(parent) = path.parent() {
+            tokio::fs::create_dir_all(parent).await?;
+        }
+
+        let json = serde_json::to_string_pretty(&nodes)
+            .map_err(|e| crate::Error::Storage(format!("Failed to serialize DHT nodes: {}", e)))?;
+
+        tokio::fs::write(path, json).await?;
+        debug!(
+            ?path,
+            count = nodes.len(),
+            "Saved DHT routing table to file"
+        );
+        Ok(())
+    }
+
+    async fn load(&mut self, path: &std::path::Path) -> crate::Result<()> {
+        if !path.exists() {
+            return Ok(());
+        }
+
+        let data = tokio::fs::read(path).await?;
+        let nodes: Vec<PersistedNode> = serde_json::from_slice(&data).map_err(|e| {
+            crate::Error::Storage(format!("Failed to deserialize DHT nodes: {}", e))
+        })?;
+
+        let mut rt = self.routing_table.lock().await;
+        let count = nodes.len();
+        for p_node in nodes {
+            rt.insert(crate::dht::routing::Node {
+                id: p_node.id,
+                addr: p_node.addr,
+            });
+            // Try to ping the loaded node to verify/refresh it
+            let _ = self.send_ping(p_node.addr).await;
+        }
+        info!(?path, count, "Loaded DHT routing table from file");
+        Ok(())
     }
 }

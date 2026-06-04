@@ -72,7 +72,7 @@ fn test_empty_config_deserialization() {
     assert_eq!(config.bandwidth.max_concurrent_downloads, 10);
     assert_eq!(config.bittorrent.max_peers_per_torrent, 200);
     assert_eq!(config.storage.download_dir, ".".to_string());
-    assert_eq!(config.vpn.auto_connect, false);
+    assert!(!config.vpn.auto_connect);
     assert_eq!(config.general.log_level, "info".to_string());
     assert_eq!(config.general.theme.primary, "#0000FF");
 }

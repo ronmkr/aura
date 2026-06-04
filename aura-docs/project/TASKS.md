@@ -4,13 +4,7 @@ All active development tasks, technical debt, and feature requests are managed e
 
 ## Open Tasks
 
-### Critical (P0)
-- [ ] **feat: Implement ResourceGovernor for global memory backpressure** (Issue #207) `[module:core, priority:critical]`
-
 ### High (P1)
-- [ ] **feat: Advisory file locking (flock) on active download files** (Issue #208) `[module:storage, priority:high]`
-- [ ] **feat: Generational write-request validation in Storage Engine** (Issue #209) `[module:storage, priority:high]`
-- [ ] **feat: PersistentState trait and DHT routing table persistence** (Issue #210) `[module:core, priority:high]`
 - [ ] **feat: PolicyManager error classification and retry coordinator** (Issue #211) `[module:core, priority:high]`
 - [ ] **feat: Implement hierarchical configuration file resolution and CLI overrides** (Issue #214) `[module:core, module:daemon, module:cli, priority:high]`
 
@@ -29,6 +23,10 @@ All active development tasks, technical debt, and feature requests are managed e
 
 ## Completed Tasks
 
+- [x] **feat: Implement ResourceGovernor for global memory backpressure** (Issue #207) `[module:core, priority:critical]`
+- [x] **feat: Advisory file locking (flock) on active download files** (Issue #208) `[module:storage, priority:high]`
+- [x] **feat: Generational write-request validation in Storage Engine** (Issue #209) `[module:storage, priority:high]`
+- [x] **feat: PersistentState trait and DHT routing table persistence** (Issue #210) `[module:core, priority:high]`
 - [x] **chore: Document safety invariants for all unsafe blocks** (Issue #213) `[module:core, priority:moderate]`
 - [x] **bug: Remove default hardcoded RPC secret token** (Issue #201) `[module:daemon, priority:critical]`
 - [x] **bug: Daemon binds to 0.0.0.0 (all interfaces) by default** (Issue #202) `[module:daemon, priority:critical]`
