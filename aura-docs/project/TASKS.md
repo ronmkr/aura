@@ -20,7 +20,6 @@ All active development tasks, technical debt, and feature requests are managed e
 - [ ] **chore: Refactor FTPS to use rustls (ADR 0048 parity)** (Issue #189) `[module:worker, priority:moderate]`
 - [ ] **feat: Prioritized Streaming Mode for Media Playback** (Issue #28) `[module:core, priority:moderate]`
 - [ ] **feat: Cloud Storage Support (S3, Google Drive)** (Issue #10) `[module:core, priority:moderate]`
-- [ ] **chore: Document safety invariants for all unsafe blocks** (Issue #213) `[module:core, priority:moderate]`
 
 ### Low / Minor (P3)
 - [ ] **feat: Implement i18n Architecture (ADR 0042)** (Issue #190) `[module:i18n, priority:low]`
@@ -30,6 +29,7 @@ All active development tasks, technical debt, and feature requests are managed e
 
 ## Completed Tasks
 
+- [x] **chore: Document safety invariants for all unsafe blocks** (Issue #213) `[module:core, priority:moderate]`
 - [x] **bug: Remove default hardcoded RPC secret token** (Issue #201) `[module:daemon, priority:critical]`
 - [x] **bug: Daemon binds to 0.0.0.0 (all interfaces) by default** (Issue #202) `[module:daemon, priority:critical]`
 - [x] **bug: Permissive CORS configuration allows arbitrary cross-origin requests** (Issue #203) `[module:daemon, priority:critical]`

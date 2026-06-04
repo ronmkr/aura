@@ -13,6 +13,9 @@ pub fn try_enable_ktls<S: std::os::unix::io::AsRawFd>(_stream: &S) -> std::io::R
     {
         let fd = _stream.as_raw_fd();
         let tls = b"tls\0";
+        // SAFETY: The raw file descriptor `fd` is valid as long as `_stream` is alive,
+        // and `tls` is a static null-terminated C-string buffer whose pointer and length
+        // are valid and safe to pass to `setsockopt`.
         let ret = unsafe {
             libc::setsockopt(
                 fd,
