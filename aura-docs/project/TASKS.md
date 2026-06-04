@@ -7,9 +7,6 @@ All active development tasks, technical debt, and feature requests are managed e
 ### High (P1)
 - [ ] **fix: Add WorkerCommand::EndgameFetch variant and broadcast overflow guard (ADR-0039)** (Issue #227) `[module:core, priority:critical]`
 - [ ] **feat: RPC TLS support via --tls-cert / --tls-key flags (ADR-0056)** (Issue #226) `[module:daemon, priority:critical]`
-- [ ] **security: Pre-download disk space verification to prevent corrupt partial files** (Issue #242) `[module:storage, priority:high]`
-- [ ] **feat: HTTP/FTP checksum verification (SHA-256/SHA-1) for download integrity** (Issue #243) `[module:core, priority:high]`
-- [ ] **feat: RPC rate limiting (prevent local DoS via task flooding)** (Issue #246) `[module:daemon, priority:high]`
 
 ### Moderate (P2)
 - [ ] **infra: Add CI cross-platform matrix and cargo audit workflow** (Issue #148) `[infra, priority:moderate]`
@@ -33,6 +30,9 @@ All active development tasks, technical debt, and feature requests are managed e
 
 ## Completed Tasks
 
+- [x] **security: Pre-download disk space verification to prevent corrupt partial files** (Issue #242) `[module:storage, priority:high]`
+- [x] **feat: HTTP/FTP checksum verification (SHA-256/SHA-1) for download integrity** (Issue #243) `[module:core, priority:high]`
+- [x] **feat: RPC rate limiting (prevent local DoS via task flooding)** (Issue #246) `[module:daemon, priority:high]`
 - [x] **fix: Send tracker Stopped events on graceful shutdown (ADR-0058 Edge Case 3)** (Issue #228) `[module:core, priority:high]`
 - [x] **docs: Standardize machine-readable Status field in all 58 ADRs** (Issue #232) `[docs, priority:high]`
 - [x] **feat: Completed download history log and aria2 RPC compatibility (tellStopped, getVersion)** (Issue #248) `[module:daemon, priority:high]`
