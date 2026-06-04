@@ -111,3 +111,46 @@ async fn test_dht_persistent_state_serialization() {
         assert_eq!(closest[0].addr, node_addr);
     }
 }
+
+#[tokio::test]
+async fn test_dht_save_now_command() {
+    use crate::dht::routing::Node;
+    use tempfile::tempdir;
+    use tokio::sync::oneshot;
+
+    let (tx, rx) = mpsc::channel(1);
+
+    let tmp_dir = tempdir().unwrap();
+    std::env::set_var("HOME", tmp_dir.path());
+    std::env::set_var("USERPROFILE", tmp_dir.path());
+
+    let dht = DhtActor::new("127.0.0.1", [1; 20], rx, None, 0, None)
+        .await
+        .unwrap();
+
+    let node_id = [2u8; 20];
+    let node_addr: SocketAddr = "127.0.0.1:9999".parse().unwrap();
+    {
+        let mut rt = dht.routing_table.lock().await;
+        rt.insert(Node {
+            id: node_id,
+            addr: node_addr,
+        });
+    }
+
+    let handle = tokio::spawn(async move {
+        let _ = dht.run().await;
+    });
+
+    let (reply_tx, reply_rx) = oneshot::channel();
+    tx.send(DhtCommand::SaveNow(reply_tx)).await.unwrap();
+
+    reply_rx.await.unwrap();
+
+    let mut expected_path = tmp_dir.path().to_path_buf();
+    expected_path.push(".aura");
+    expected_path.push("dht.dat");
+    assert!(expected_path.exists());
+
+    handle.abort();
+}

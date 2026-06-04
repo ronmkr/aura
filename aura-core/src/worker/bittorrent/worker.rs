@@ -46,6 +46,7 @@ pub struct BtWorker {
     pub peer_id: [u8; 20],
     pub my_id: [u8; 20],
     pub current_piece: Option<usize>,
+    pub is_endgame: bool,
     pub active_guard: Option<crate::piece_picker::PieceGuard>,
     pub bytes_received: u64,
     pub bytes_requested: u64,
@@ -72,6 +73,7 @@ impl BtWorker {
             peer_id: options.peer_id,
             my_id: options.my_id,
             current_piece: None,
+            is_endgame: false,
             active_guard: None,
             bytes_received: 0,
             bytes_requested: 0,
@@ -245,6 +247,7 @@ impl BtWorker {
                                 }
                                 self.active_guard = None;
                                 self.current_piece = None;
+                                self.is_endgame = false;
                                 self.bytes_received = 0;
                                 self.bytes_requested = 0;
                                 self.piece_buffer.clear();
@@ -255,6 +258,7 @@ impl BtWorker {
                             if self.current_piece.is_none() {
                                 debug!(addr = %peer_addr, %piece_idx, "Received forced piece request (Endgame)");
                                 self.current_piece = Some(piece_idx);
+                                self.is_endgame = false;
                                 self.bytes_received = 0;
                                 self.bytes_requested = 0;
                                 let state_clone = task.state.clone();
@@ -266,6 +270,29 @@ impl BtWorker {
                                     });
                                 });
                                 self.active_guard = Some(guard);
+                                self.trigger_request(&mut ctx).await?;
+                            }
+                        }
+                        WorkerCommand::EndgameFetch(piece_idx) => {
+                            if self.current_piece.is_none() {
+                                debug!(addr = %peer_addr, %piece_idx, "Received forced piece request (EndgameFetch)");
+                                self.current_piece = Some(piece_idx);
+                                self.is_endgame = true;
+                                self.bytes_received = 0;
+                                self.bytes_requested = 0;
+                                let state_clone = task.state.clone();
+                                let guard = crate::piece_picker::PieceGuard::new(piece_idx, move |idx| {
+                                    tokio::spawn(async move {
+                                        if let Some(picker) = state_clone.picker.lock().await.as_mut() {
+                                            picker.release_piece(idx);
+                                        }
+                                    });
+                                });
+                                self.active_guard = Some(guard);
+                                self.trigger_request(&mut ctx).await?;
+                            } else if self.current_piece == Some(piece_idx) && !self.is_endgame {
+                                debug!(addr = %peer_addr, %piece_idx, "Promoting current piece request to EndgameFetch");
+                                self.is_endgame = true;
                                 self.trigger_request(&mut ctx).await?;
                             }
                         }

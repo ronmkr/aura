@@ -22,6 +22,7 @@ pub enum DhtCommand {
         info_hash: InfoHash,
         port: u16,
     },
+    SaveNow(tokio::sync::oneshot::Sender<()>),
 }
 
 pub struct DhtSecrets {
@@ -178,6 +179,13 @@ impl DhtActor {
                         }
                         DhtCommand::Announce { info_hash, port } => {
                             self.handle_announce(info_hash, port).await?;
+                        }
+                        DhtCommand::SaveNow(reply_tx) => {
+                            if let Err(e) = crate::dht::PersistentState::save(&self, &dht_path).await {
+                                debug!("Failed to save DHT state to file in SaveNow: {}", e);
+                            }
+                            self.save_nodes().await;
+                            let _ = reply_tx.send(());
                         }
                     }
                 }

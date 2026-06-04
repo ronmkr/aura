@@ -91,6 +91,36 @@ impl Orchestrator {
             Command::Shutdown => {
                 info!("Orchestrator shutting down");
 
+                // Explicitly flush DHT routing table during shutdown (ADR-0017)
+                let (dht_save_tx, dht_save_rx) = tokio::sync::oneshot::channel();
+                if let Err(e) = self
+                    .dht_tx
+                    .send(crate::dht::DhtCommand::SaveNow(dht_save_tx))
+                    .await
+                {
+                    tracing::warn!("Failed to send SaveNow command to DHT actor: {}", e);
+                } else {
+                    // Await acknowledgement with a short timeout
+                    match tokio::time::timeout(std::time::Duration::from_millis(500), dht_save_rx)
+                        .await
+                    {
+                        Ok(Ok(())) => {
+                            info!("DHT routing table successfully flushed on shutdown");
+                        }
+                        Ok(Err(e)) => {
+                            tracing::warn!(
+                                "DHT actor closed channel before SaveNow completed: {}",
+                                e
+                            );
+                        }
+                        Err(_) => {
+                            tracing::warn!(
+                                "Timeout waiting for DHT routing table flush on shutdown"
+                            );
+                        }
+                    }
+                }
+
                 // Send Stopped event announcements to all active trackers during shutdown (ADR-0058 Edge Case 3).
                 let config = self.config.load();
                 let port = config.network.listen_port;

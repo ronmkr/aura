@@ -55,6 +55,7 @@ impl super::BtWorker {
                 }
                 self.active_guard = None;
                 self.current_piece = None;
+                self.is_endgame = false;
                 self.bytes_received = 0;
                 self.bytes_requested = 0;
                 self.piece_buffer.clear();
@@ -66,7 +67,12 @@ impl super::BtWorker {
         let piece_length = torrent.info.piece_length;
         let total_length = torrent.total_length();
 
-        let max_in_flight = self.pipeline_size as u64 * BLOCK_SIZE as u64;
+        let pipeline_size = if self.is_endgame {
+            self.pipeline_size * 2
+        } else {
+            self.pipeline_size
+        };
+        let max_in_flight = pipeline_size as u64 * BLOCK_SIZE as u64;
 
         if let Some(piece_idx) = self.current_piece {
             let piece_total_len = torrent
@@ -163,6 +169,7 @@ impl super::BtWorker {
 
                     info!(addr = %self.peer_addr, %piece_idx, "Starting piece download");
                     self.current_piece = Some(piece_idx);
+                    self.is_endgame = false;
                     self.bytes_received = 0;
                     self.bytes_requested = 0;
                     self.piece_buffer = BytesMut::with_capacity(piece_total_len as usize);

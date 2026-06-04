@@ -158,6 +158,7 @@ impl BtWorker {
             }
             self.active_guard = None;
             self.current_piece = None;
+            self.is_endgame = false;
             self.bytes_received = 0;
             self.bytes_requested = 0;
             self.piece_buffer.clear();
@@ -271,6 +272,7 @@ impl BtWorker {
             self.memory_guard = None;
             self.active_guard = None;
             self.current_piece = None;
+            self.is_endgame = false;
             self.bytes_received = 0;
             self.bytes_requested = 0;
             self.piece_buffer.clear();
