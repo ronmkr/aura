@@ -24,7 +24,7 @@ Aura's design is driven by a series of formal Architecture Decision Records. The
 | [0018](../adr/0018-hooks-hsts-ftp.md) | ADR 0018: Hooks, HSTS, and Multi-Channel Protocols | Implemented (2026-05-06, commit 0777b1ab) |
 | [0019](../adr/0019-buffer-pool-and-caching.md) | ADR 0019: Buffer Pool and Write-Back Caching | Superceded (by Issue #160, 2026-05-30, PR #164) |
 | [0020](../adr/0020-engine-api.md) | ADR 0020: Engine API and Library Embeddability | Implemented (2026-05-06, commit 0777b1ab) |
-| [0021](../adr/0021-network-filesystem-optimization.md) | ADR 0021: Network Filesystem Optimization (NFS/SMB) | Partially Implemented (Audit 2026-06-03) |
+| [0021](../adr/0021-network-filesystem-optimization.md) | ADR 0021: Network Filesystem Optimization (NFS/SMB) | Implemented (2026-06-04) |
 | [0022](../adr/0022-disk-io-scheduling.md) | ADR 0022: Advanced Disk I/O Scheduling and Kernel Hinting | Partially Implemented (Audit 2026-06-03) |
 | [0023](../adr/0023-adaptive-scaling-and-aggregation.md) | ADR 0023: Adaptive Connection Scaling and Sourced Aggregation | Partially Implemented (2026-05-25, PR #90) |
 | [0024](../adr/0024-integrity-scrubbing.md) | ADR 0024: Integrity Scrubbing and Torrent Refreshing | Implemented (2026-05-06, commit 0777b1ab) |

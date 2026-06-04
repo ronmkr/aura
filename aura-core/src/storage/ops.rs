@@ -298,6 +298,8 @@ impl StorageEngine {
                 .open(&part_path)
                 .await?;
 
+            crate::storage::sys::try_lock_file(&file)?;
+
             if crate::storage::sys::is_network_share(&file) {
                 self.network_shares.insert(id);
             }

@@ -205,3 +205,51 @@ pub(crate) fn apply_fadvise_sequential(file: &tokio::fs::File) {
         let _ = file;
     }
 }
+
+pub(crate) fn try_lock_file(file: &tokio::fs::File) -> crate::Result<()> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd};
+        let fd = file.as_raw_fd();
+        // SAFETY: We temporarily wrap the raw file descriptor in a standard library File
+        // to invoke try_lock. We immediately call into_raw_fd to prevent dropping the File
+        // from closing the descriptor, which is owned by the tokio wrapper.
+        unsafe {
+            let std_file = std::fs::File::from_raw_fd(fd);
+            let res = match std_file.try_lock() {
+                Ok(()) => Ok(()),
+                Err(std::fs::TryLockError::WouldBlock) => Err(crate::Error::Storage(
+                    "File is locked by another process".to_string(),
+                )),
+                Err(std::fs::TryLockError::Error(e)) => Err(crate::Error::Io(e)),
+            };
+            let _ = std_file.into_raw_fd();
+            res
+        }
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::io::{AsRawHandle, FromRawHandle, IntoRawHandle};
+        let handle = file.as_raw_handle();
+        // SAFETY: We temporarily wrap the raw file handle in a standard library File
+        // to invoke try_lock. We immediately call into_raw_handle to prevent dropping the File
+        // from closing the handle, which is owned by the tokio wrapper.
+        unsafe {
+            let std_file = std::fs::File::from_raw_handle(handle);
+            let res = match std_file.try_lock() {
+                Ok(()) => Ok(()),
+                Err(std::fs::TryLockError::WouldBlock) => Err(crate::Error::Storage(
+                    "File is locked by another process".to_string(),
+                )),
+                Err(std::fs::TryLockError::Error(e)) => Err(crate::Error::Io(e)),
+            };
+            let _ = std_file.into_raw_handle();
+            res
+        }
+    }
+    #[cfg(not(any(unix, windows)))]
+    {
+        let _ = file;
+        Ok(())
+    }
+}

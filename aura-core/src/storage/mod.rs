@@ -11,3 +11,5 @@ pub use engine::*;
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_locking;
