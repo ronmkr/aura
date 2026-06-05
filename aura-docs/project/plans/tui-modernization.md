@@ -1,4 +1,4 @@
-# Blueprint: Interactive TUI Modernization (Galactic Dashboard 2.0)
+# Blueprint: Interactive TUI Modernization (Command Center)
 
 This document serves as the high-level roadmap and technical specification for modernizing the Aura Terminal User Interface (TUI). It is designed to be accessible to any developer, providing context, logic explanations, and architectural diagrams.
 
@@ -15,13 +15,13 @@ To ensure this modernization is achievable, maintainable, and lightning-fast, we
 2. **Zero-Allocation Rendering**: The UI rendering loop must be exceptionally fast. We will borrow references (`&str`, `&[Task]`) during the `ratatui` draw phase rather than cloning data, ensuring zero-allocation screen refreshes.
 3. **RPC Efficiency**: Avoid N+1 query problems. The TUI will batch requests to the Daemon and heavily debounce interactions (e.g., waiting 200ms during rapid scrolling before requesting task details).
 4. **Straightforward Data Structures**: For selective downloading, avoid complex interval trees unless proven necessary by benchmarks. A simple `BitVec` or flat array map for the `FileMask` will be the starting point. Simplicity minimizes bugs.
-5. **Incremental Delivery**: "Done is better than perfect." We will ship the Dashboard 2.0 first, then layer on Discovery, then Selective Downloading. 
+5. **Incremental Delivery**: "Done is better than perfect." We will ship the Main Dashboard first, then layer on Discovery, then Selective Downloading. 
 
 ---
 
 ## 📚 Glossary of Terms
 - **Mission**: A single download task (HTTP, FTP, BitTorrent, or Metalink).
-- **GID**: Galactic ID - the unique identifier for every mission.
+- **GID**: Global ID - the unique identifier for every mission.
 - **Piece Overlap**: When a single data block (piece) contains bytes from two different files.
 - **Sparkline**: A small, high-density line graph (using Braille characters) to show throughput over time.
 - **View Router**: The logic that decides which screen to show (Dashboard vs. Mission Control).
@@ -43,7 +43,7 @@ Instead of a single large loop, we will use a **Stateful View Pattern**:
 
 ---
 
-## 🛰️ Phase 1: Foundation & Dashboard 2.0
+## 🛰️ Phase 1: Foundation & Main Dashboard
 **Objective**: Build the framework for navigation and the split-screen layout.
 
 ### Technical Logic:

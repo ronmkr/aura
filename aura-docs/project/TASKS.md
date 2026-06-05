@@ -5,9 +5,9 @@ All active development tasks, technical debt, and feature requests are managed e
 ## Open Tasks
 
 ### High (P1)
-- [ ] **epic: Interactive TUI Modernization (Galactic Pilot Dashboard 2.0)** `[module:tui, priority:high]`
+- [ ] **epic: Interactive TUI Modernization (Command Center)** `[module:tui, priority:high]`
     - [ ] Refactor TUI to stateful Multi-View architecture (Dashboard, Mission Control, File Selector).
-    - [ ] Implement Dashboard 2.0 with split-layout (Task List + Real-time Detail Panel).
+    - [ ] Implement the Main Dashboard with split-layout (Task List + Real-time Detail Panel).
     - [ ] Add Sparkline throughput visualization and progress gauges.
 - [ ] **feat: Intelligent Protocol Detection and Bulk Task Ingestion** `[module:core, module:daemon, module:cli, priority:high]`
     - [ ] Centralized `ProtocolDetector` for HTTP/FTP/BT/Metalink.
