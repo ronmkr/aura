@@ -16,6 +16,24 @@ impl ProtocolWorker for HttpWorker {
         storage_tx: Option<mpsc::Sender<crate::storage::StorageRequest>>,
         throttler: std::sync::Arc<crate::throttler::Throttler>,
     ) -> Result<PieceData> {
+        let mut _guard = if let Some(ref gov) = self.options.resource_governor {
+            let req_size = if segment.length == u64::MAX {
+                65536
+            } else {
+                segment.length as usize
+            };
+            while !gov.request_allocation(&self.options.tenant_id, req_size, false) {
+                tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+            }
+            Some(crate::orchestrator::resource_governor::MemoryGuard::new(
+                gov.clone(),
+                self.options.tenant_id.clone(),
+                req_size,
+            ))
+        } else {
+            None
+        };
+
         let mut attempts = 0;
         let max_attempts = self.options.retry_count;
 
@@ -76,6 +94,26 @@ impl ProtocolWorker for HttpWorker {
                     }
 
                     if status.is_success() {
+                        if let Some(content_len) = response.content_length() {
+                            if let Some(ref gov) = self.options.resource_governor {
+                                let exact_size = content_len as usize;
+                                _guard = None;
+                                while !gov.request_allocation(
+                                    &self.options.tenant_id,
+                                    exact_size,
+                                    false,
+                                ) {
+                                    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+                                }
+                                _guard =
+                                    Some(crate::orchestrator::resource_governor::MemoryGuard::new(
+                                        gov.clone(),
+                                        self.options.tenant_id.clone(),
+                                        exact_size,
+                                    ));
+                            }
+                        }
+
                         let mut buffer = BytesMut::with_capacity(16384);
 
                         let mut stream = response.bytes_stream();

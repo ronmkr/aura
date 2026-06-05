@@ -24,6 +24,8 @@ async fn test_ftp_worker_retry_on_connection_failure() {
         3,
         0,
         None,
+        None,
+        None,
     );
 
     let result = worker.resolve_metadata().await;

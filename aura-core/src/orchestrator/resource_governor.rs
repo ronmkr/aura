@@ -8,30 +8,60 @@ use std::sync::Mutex;
 #[derive(Debug)]
 pub struct ResourceGovernor {
     limit: usize,
+    safety_margin: usize,
     current_allocated: AtomicUsize,
     tenant_allocations: Mutex<HashMap<TenantId, usize>>,
 }
 
 impl ResourceGovernor {
-    /// Creates a new ResourceGovernor with the specified memory limit in bytes.
+    /// Creates a new ResourceGovernor with the specified memory limit and safety margin in bytes.
     /// A limit of 0 denotes unlimited memory allocations.
-    pub fn new(limit: usize) -> Self {
+    pub fn new(limit: usize, safety_margin: usize) -> Self {
         Self {
             limit,
+            safety_margin,
             current_allocated: AtomicUsize::new(0),
             tenant_allocations: Mutex::new(HashMap::new()),
         }
     }
 
     /// Attempts to reserve memory. Returns true if within limit, false if budget exceeded.
-    pub fn request_allocation(&self, tenant_id: &Option<TenantId>, requested_bytes: usize) -> bool {
+    pub fn request_allocation(
+        &self,
+        tenant_id: &Option<TenantId>,
+        requested_bytes: usize,
+        is_metadata: bool,
+    ) -> bool {
         if self.limit == 0 {
             return true;
         }
         let mut allocs = self.tenant_allocations.lock().unwrap();
         let current = self.current_allocated.load(Ordering::Relaxed);
-        if current + requested_bytes > self.limit {
+
+        // Standard piece downloads are rejected if within safety margin
+        let effective_limit = if is_metadata {
+            self.limit
+        } else {
+            self.limit.saturating_sub(self.safety_margin)
+        };
+
+        if current + requested_bytes > effective_limit {
             return false;
+        }
+
+        // Fair-share limit checks for standard downloads when other tenants are active
+        if !is_metadata {
+            if let Some(ref tid) = tenant_id {
+                let active_tenants = allocs.iter().filter(|(k, &v)| v > 0 && *k != tid).count();
+                let current_tenant_usage = allocs.get(tid).copied().unwrap_or(0);
+                if active_tenants > 0 {
+                    let total_active = active_tenants + 1;
+                    let fair_share = self.limit / total_active;
+                    if current_tenant_usage + requested_bytes > fair_share {
+                        return false;
+                    }
+                }
+            }
         }
 
         if let Some(ref tid) = tenant_id {

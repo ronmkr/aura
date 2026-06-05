@@ -1,7 +1,7 @@
 # ADR 0057: ResourceGovernor for Global Memory Backpressure
 
 ## Status
-Implemented (2026-06-03, Issue #207)
+Implemented (2026-06-03, Issue #207). Safety margins, fair-share limits, and HTTP/FTP worker integration added in `feat/resource-governor-limits` (2026-06-05, Issues #234, #235).
 
 ## Context
 Following the removal of the dedicated `BufferPool` actor (ADR 0019), memory allocation in Aura is decentralized. Protocol Workers allocate `BytesMut` buffers directly and pass them down channels to the Storage Engine. Without a central tracking system, extreme high-speed downloads or large swarm populations can lead to unbounded allocations in channel buffers and memory queues, risking Out-Of-Memory (OOM) process crashes (GAP-01).
@@ -12,6 +12,9 @@ Following the removal of the dedicated `BufferPool` actor (ADR 0019), memory all
 3. **Allocation Hook/Gate**: Protocol Workers must request a memory budget allocation before allocating large piece buffers.
 4. **Piece Picking Backpressure**: Integrate the resource governor with the `PiecePicker` in the `Orchestrator`. If the memory budget is exceeded, the `PiecePicker` will refuse to assign new pieces to requesting workers, forcing workers to pause requests until the storage queue drains and memory is freed.
 5. **Configurable Memory Limits**: Enforce configurable hard limits and soft limits (e.g., 512MB default limit) via `Aura.toml`.
+6. **Safety Margin**: Reserve a configurable metadata safety margin where metadata and critical allocations are permitted to proceed, while data allocations are choked if the memory limit minus safety margin is breached (Issue #234).
+7. **Per-Tenant Fair-Share Limit**: Cap standard download allocations per tenant to `limit / active_tenants` when multiple tenants are actively downloading (Issue #234).
+8. **HTTP & FTP Worker Integration**: Integrate the resource governor directly into HTTP and FTP worker pipelines, performing sleep-retry backpressure loops when allocations are temporarily rejected, and dynamically adjusting allocation size upon receiving HTTP `Content-Length` headers (Issue #235).
 
 ## Edge Cases
 1. **Deadlock from Complete Memory Saturation**: If the memory limit is strictly enforced and channels are blocked, workers waiting to flush metadata might be blocked by the `PiecePicker` refusing allocations, creating a deadlock. To prevent this, metadata allocations and block validation tasks will have a reserved "safety margin" that cannot be choked by standard piece downloads.

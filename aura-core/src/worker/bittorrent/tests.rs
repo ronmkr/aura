@@ -84,7 +84,7 @@ async fn test_failed_connection_transitions_to_disconnected() {
     let (lpd_tx, _) = mpsc::channel(1);
 
     let info_hash = crate::InfoHash::V1([0; 20]);
-    let governor = Arc::new(crate::orchestrator::resource_governor::ResourceGovernor::new(0));
+    let governor = Arc::new(crate::orchestrator::resource_governor::ResourceGovernor::new(0, 0));
     let task = Arc::new(BtTask::from_magnet(
         crate::TaskId(12345),
         info_hash,

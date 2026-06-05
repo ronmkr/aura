@@ -132,12 +132,11 @@ impl super::BtWorker {
                         piece_length
                     };
 
-                    if !ctx
-                        .task
-                        .state
-                        .resource_governor
-                        .request_allocation(&ctx.task.state.tenant_id, piece_total_len as usize)
-                    {
+                    if !ctx.task.state.resource_governor.request_allocation(
+                        &ctx.task.state.tenant_id,
+                        piece_total_len as usize,
+                        false,
+                    ) {
                         picker.release_piece(piece_idx);
                         drop(picker_guard);
                         drop(bf_guard);

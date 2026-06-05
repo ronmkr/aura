@@ -13,7 +13,7 @@ async fn test_choking_algorithm_tit_for_tat() {
 
     let info_hash = crate::InfoHash::V1([0; 20]);
     let governor =
-        std::sync::Arc::new(crate::orchestrator::resource_governor::ResourceGovernor::new(0));
+        std::sync::Arc::new(crate::orchestrator::resource_governor::ResourceGovernor::new(0, 0));
     let task = BtTask::from_magnet(
         crate::TaskId(12345),
         info_hash,

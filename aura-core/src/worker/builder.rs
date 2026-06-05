@@ -16,6 +16,9 @@ pub struct WorkerBuilder {
     dns_resolver: Option<std::sync::Arc<crate::net_util::TokioResolver>>,
     hsts_cache: Option<crate::security::HstsCache>,
     alt_svc_cache: Option<crate::security::AltSvcCache>,
+    resource_governor:
+        Option<std::sync::Arc<crate::orchestrator::resource_governor::ResourceGovernor>>,
+    tenant_id: Option<crate::TenantId>,
 }
 
 impl WorkerBuilder {
@@ -33,6 +36,8 @@ impl WorkerBuilder {
             dns_resolver: None,
             hsts_cache: None,
             alt_svc_cache: None,
+            resource_governor: None,
+            tenant_id: None,
         }
     }
 
@@ -97,6 +102,19 @@ impl WorkerBuilder {
         self
     }
 
+    pub fn resource_governor(
+        mut self,
+        governor: std::sync::Arc<crate::orchestrator::resource_governor::ResourceGovernor>,
+    ) -> Self {
+        self.resource_governor = Some(governor);
+        self
+    }
+
+    pub fn tenant_id(mut self, tenant_id: Option<crate::TenantId>) -> Self {
+        self.tenant_id = tenant_id;
+        self
+    }
+
     pub fn build_http(self) -> HttpWorker {
         HttpWorker::new(crate::worker::http::HttpWorkerOptions {
             uri: self.uri,
@@ -111,6 +129,8 @@ impl WorkerBuilder {
             dns_resolver: self.dns_resolver,
             hsts_cache: self.hsts_cache,
             alt_svc_cache: self.alt_svc_cache,
+            resource_governor: self.resource_governor,
+            tenant_id: self.tenant_id,
         })
     }
 
@@ -121,6 +141,8 @@ impl WorkerBuilder {
             self.retry_count,
             self.retry_delay_secs,
             self.credential_provider,
+            self.resource_governor,
+            self.tenant_id,
         )
     }
 }

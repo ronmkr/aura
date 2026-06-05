@@ -12,6 +12,7 @@ pub struct StorageConfig {
     pub read_ahead_kb: u32,
     pub write_buffer_kb: u32,
     pub memory_limit_mb: u32,
+    pub memory_safety_margin_mb: u32,
 }
 
 impl Default for StorageConfig {
@@ -26,6 +27,7 @@ impl Default for StorageConfig {
             read_ahead_kb: 128,
             write_buffer_kb: 256,
             memory_limit_mb: 512,
+            memory_safety_margin_mb: 51,
         }
     }
 }

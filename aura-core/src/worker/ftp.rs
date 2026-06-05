@@ -53,6 +53,9 @@ pub struct FtpWorker {
     retry_count: u32,
     retry_delay_secs: u64,
     credential_provider: Option<std::sync::Arc<crate::config::credentials::CredentialProvider>>,
+    pub(crate) resource_governor:
+        Option<std::sync::Arc<crate::orchestrator::resource_governor::ResourceGovernor>>,
+    pub(crate) tenant_id: Option<crate::TenantId>,
 }
 
 impl FtpWorker {
@@ -62,6 +65,10 @@ impl FtpWorker {
         retry_count: u32,
         retry_delay_secs: u64,
         credential_provider: Option<std::sync::Arc<crate::config::credentials::CredentialProvider>>,
+        resource_governor: Option<
+            std::sync::Arc<crate::orchestrator::resource_governor::ResourceGovernor>,
+        >,
+        tenant_id: Option<crate::TenantId>,
     ) -> Self {
         Self {
             uri,
@@ -69,6 +76,8 @@ impl FtpWorker {
             retry_count,
             retry_delay_secs,
             credential_provider,
+            resource_governor,
+            tenant_id,
         }
     }
 
@@ -245,6 +254,24 @@ impl ProtocolWorker for FtpWorker {
         storage_tx: Option<mpsc::Sender<crate::storage::StorageRequest>>,
         throttler: std::sync::Arc<crate::throttler::Throttler>,
     ) -> Result<PieceData> {
+        let mut _guard = if let Some(ref gov) = self.resource_governor {
+            let req_size = if segment.length == u64::MAX {
+                65536
+            } else {
+                segment.length as usize
+            };
+            while !gov.request_allocation(&self.tenant_id, req_size, false) {
+                tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+            }
+            Some(crate::orchestrator::resource_governor::MemoryGuard::new(
+                gov.clone(),
+                self.tenant_id.clone(),
+                req_size,
+            ))
+        } else {
+            None
+        };
+
         let mut ftp = self.connect().await?;
         let url = Url::parse(&self.uri)
             .map_err(|e| Error::Protocol(format!("Invalid FTP URL: {}", e)))?;
