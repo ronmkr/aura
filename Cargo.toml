@@ -40,7 +40,7 @@ rcgen = "0.13"
 bytes = "1"
 bytesize = "2.3.1"
 chrono = { version = "0.4", features = ["serde"] }
-chrono-tz = { version = "0.9", features = ["serde"] }
+chrono-tz = { version = "0.10", features = ["serde"] }
 clap = { version = "4", features = ["derive"] }
 crab_nat = "0.7.6"
 criterion = { version = "0.8", features = ["async_tokio"] }
