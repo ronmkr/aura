@@ -33,6 +33,8 @@ pub struct Metadata {
     pub name: Option<String>,
     pub range_supported: bool,
     pub padding_ranges: Vec<crate::task::Range>,
+    pub etag: Option<String>,
+    pub last_modified: Option<String>,
 }
 
 use crate::throttler::Throttler;

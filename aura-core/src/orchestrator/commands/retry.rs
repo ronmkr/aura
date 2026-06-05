@@ -39,6 +39,7 @@ impl Orchestrator {
             let dns_resolver = self.dns_resolver.clone();
             let hsts_cache = self.hsts_cache.clone();
             let alt_svc_cache = self.alt_svc_cache.clone();
+            let client_pool = self.client_pool.clone();
 
             tracing::info!(%id, %sub_id, %uri, "Retrying/Self-healing Degraded subtask");
 
@@ -57,6 +58,7 @@ impl Orchestrator {
                             .credential_provider(provider_clone)
                             .hsts_cache(hsts_cache)
                             .alt_svc_cache(alt_svc_cache)
+                            .client_pool(client_pool)
                             .build_http();
                         match worker.resolve_metadata().await {
                             Ok(m) => {

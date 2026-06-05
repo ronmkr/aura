@@ -1,4 +1,5 @@
 pub mod aggregation;
+pub mod conditional_get;
 pub mod config;
 pub mod credentials;
 pub mod daemon;

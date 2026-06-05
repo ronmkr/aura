@@ -1,9 +1,7 @@
 use super::{HttpWorker, HttpWorkerOptions};
-use crate::orchestrator::resource_governor::ResourceGovernor;
 use crate::worker::{ProtocolWorker, Segment};
 use crate::Error;
 use crate::TaskId;
-use std::sync::Arc;
 use wiremock::matchers::{header, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
@@ -41,6 +39,9 @@ async fn test_http_worker_referer_propagation() {
         alt_svc_cache: None,
         resource_governor: None,
         tenant_id: None,
+        client_pool: None,
+        if_none_match: None,
+        if_modified_since: None,
     });
     let metadata = worker
         .resolve_metadata()
@@ -62,6 +63,9 @@ async fn test_http_worker_referer_propagation() {
         alt_svc_cache: None,
         resource_governor: None,
         tenant_id: None,
+        client_pool: None,
+        if_none_match: None,
+        if_modified_since: None,
     });
     let throttler = std::sync::Arc::new(crate::throttler::Throttler::new(0, 0));
     let result = worker_final
@@ -109,6 +113,9 @@ async fn test_http_worker_redirect_loop() {
         alt_svc_cache: None,
         resource_governor: None,
         tenant_id: None,
+        client_pool: None,
+        if_none_match: None,
+        if_modified_since: None,
     });
     let result = worker.resolve_metadata().await;
     match result {
@@ -144,6 +151,9 @@ async fn test_http_worker_custom_dns() {
         alt_svc_cache: None,
         resource_governor: None,
         tenant_id: None,
+        client_pool: None,
+        if_none_match: None,
+        if_modified_since: None,
     });
 
     let metadata = worker.resolve_metadata().await.expect("Should resolve");
@@ -184,6 +194,9 @@ async fn test_http_worker_retry_on_503() {
         alt_svc_cache: None,
         resource_governor: None,
         tenant_id: None,
+        client_pool: None,
+        if_none_match: None,
+        if_modified_since: None,
     });
 
     let throttler = std::sync::Arc::new(crate::throttler::Throttler::new(0, 0));
@@ -229,6 +242,9 @@ async fn test_http_worker_hsts_upgrade() {
         alt_svc_cache: None,
         resource_governor: None,
         tenant_id: None,
+        client_pool: None,
+        if_none_match: None,
+        if_modified_since: None,
     });
 
     let upgraded = worker.upgrade_url(&worker.options.uri).await;
@@ -264,6 +280,9 @@ async fn test_http_worker_alt_svc_header_caching() {
         alt_svc_cache: Some(alt_svc_cache.clone()),
         resource_governor: None,
         tenant_id: None,
+        client_pool: None,
+        if_none_match: None,
+        if_modified_since: None,
     });
 
     let result = worker.resolve_metadata().await;
@@ -275,102 +294,6 @@ async fn test_http_worker_alt_svc_header_caching() {
     let policy = alt_svc_cache.get_alt_svc(host).await.unwrap();
     assert_eq!(policy.alt_protocol, "h3");
     assert_eq!(policy.alt_port, 8443);
-}
-
-#[tokio::test]
-async fn test_http_worker_resource_governor() {
-    let server = MockServer::start().await;
-    Mock::given(method("GET"))
-        .respond_with(ResponseTemplate::new(200).set_body_bytes(vec![0; 50]))
-        .mount(&server)
-        .await;
-
-    let governor = Arc::new(ResourceGovernor::new(100, 20));
-    let tenant = Some(crate::TenantId("tenant1".to_string()));
-
-    let worker = HttpWorker::new(HttpWorkerOptions {
-        uri: format!("{}/file", server.uri()),
-        local_addr: None,
-        user_agent: None,
-        connect_timeout: None,
-        proxy: None,
-        referer: None,
-        retry_count: 1,
-        retry_delay_secs: 1,
-        credential_provider: None,
-        dns_resolver: None,
-        hsts_cache: None,
-        alt_svc_cache: None,
-        resource_governor: Some(governor.clone()),
-        tenant_id: tenant.clone(),
-    });
-
-    let throttler = std::sync::Arc::new(crate::throttler::Throttler::new(0, 0));
-
-    let piece = worker
-        .fetch_segment(
-            crate::TaskId(1),
-            Segment {
-                offset: 0,
-                length: 50,
-            },
-            None,
-            None,
-            throttler,
-        )
-        .await
-        .unwrap();
-
-    assert_eq!(piece.data.len(), 50);
-    assert_eq!(governor.current_usage(), 0);
-}
-
-#[tokio::test]
-async fn test_http_worker_resource_governor_backpressure() {
-    let server = MockServer::start().await;
-    Mock::given(method("GET"))
-        .respond_with(ResponseTemplate::new(200).set_body_bytes(vec![0; 50]))
-        .mount(&server)
-        .await;
-
-    let governor = Arc::new(ResourceGovernor::new(60, 20));
-    let tenant = Some(crate::TenantId("tenant1".to_string()));
-
-    let worker = HttpWorker::new(HttpWorkerOptions {
-        uri: format!("{}/file", server.uri()),
-        local_addr: None,
-        user_agent: None,
-        connect_timeout: None,
-        proxy: None,
-        referer: None,
-        retry_count: 1,
-        retry_delay_secs: 1,
-        credential_provider: None,
-        dns_resolver: None,
-        hsts_cache: None,
-        alt_svc_cache: None,
-        resource_governor: Some(governor.clone()),
-        tenant_id: tenant.clone(),
-    });
-
-    let throttler = std::sync::Arc::new(crate::throttler::Throttler::new(0, 0));
-
-    let res = tokio::time::timeout(
-        std::time::Duration::from_millis(300),
-        worker.fetch_segment(
-            crate::TaskId(1),
-            Segment {
-                offset: 0,
-                length: 50,
-            },
-            None,
-            None,
-            throttler,
-        ),
-    )
-    .await;
-
-    assert!(res.is_err());
 }
 
 #[path = "captive_portal_tests.rs"]

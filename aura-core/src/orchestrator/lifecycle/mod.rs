@@ -104,6 +104,7 @@ impl Orchestrator {
             let alt_svc_cache = self.alt_svc_cache.clone();
             let resource_governor_clone = self.resource_governor.clone();
             let tenant_id = meta_task.tenant_id.clone();
+            let client_pool = self.client_pool.clone();
 
             let existing_bt = self.get_bt_task(sub_id);
 
@@ -122,6 +123,7 @@ impl Orchestrator {
                             .credential_provider(provider_clone.clone())
                             .hsts_cache(hsts_cache)
                             .alt_svc_cache(alt_svc_cache)
+                            .client_pool(client_pool)
                             .build_http();
                         match worker.resolve_metadata().await {
                             Ok(m) => {
@@ -240,6 +242,8 @@ impl Orchestrator {
                                 name: Some(torrent.info.name.clone()),
                                 range_supported: true,
                                 padding_ranges: torrent.get_padding_ranges(),
+                                etag: None,
+                                last_modified: None,
                             };
                             let _ = subtask_tx
                                 .send(SubTaskEvent::Matured(id, sub_id, metadata))

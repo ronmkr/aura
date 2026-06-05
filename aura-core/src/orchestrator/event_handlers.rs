@@ -193,3 +193,7 @@ impl Orchestrator {
 #[cfg(test)]
 #[path = "event_handlers_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "dag_cycle_tests.rs"]
+mod dag_cycle_tests;

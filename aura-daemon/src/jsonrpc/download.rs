@@ -135,6 +135,15 @@ pub async fn handle_unpause(engine: &Engine, params: Option<Value>) -> Result<Va
     Ok(json!("OK"))
 }
 
+pub async fn handle_refresh(engine: &Engine, params: Option<Value>) -> Result<Value, Value> {
+    let gid = parse_gid(params)?;
+    engine
+        .refresh(gid)
+        .await
+        .map_err(|e| json!({ "code": -32000, "message": e.to_string() }))?;
+    Ok(json!("OK"))
+}
+
 pub async fn handle_remove(engine: &Engine, params: Option<Value>) -> Result<Value, Value> {
     let gid = parse_gid(params)?;
     engine

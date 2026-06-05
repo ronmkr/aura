@@ -22,4 +22,5 @@ Many file-hosting servers (Rapidshare, Megashare) and even standard HTTP servers
 ## Implementation Status (Audit 2026-06-03)
 - **Adaptive Connection Scaling**: Implemented in `aura-core/src/orchestrator/scheduler.rs` (2026-05-25, PR #90).
 - **Sourced Aggregation**: Implemented for HTTP/BitTorrent/Metalink via PR #91 (2026-05-25).
+- **Connection Pool Sharing**: Shared reqwest HTTP connection pool across same-host workers implemented in Issue #256.
 - **Usenet Integration**: Pending (Issue #22, NNTP support).

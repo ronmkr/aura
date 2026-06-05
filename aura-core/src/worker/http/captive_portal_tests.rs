@@ -46,6 +46,9 @@ async fn test_http_worker_html_landing_page_resolution_success() {
         alt_svc_cache: None,
         resource_governor: None,
         tenant_id: None,
+        client_pool: None,
+        if_none_match: None,
+        if_modified_since: None,
     });
 
     let result = worker.resolve_metadata().await;
@@ -92,6 +95,9 @@ async fn test_http_worker_html_landing_page_resolution_failure() {
         alt_svc_cache: None,
         resource_governor: None,
         tenant_id: None,
+        client_pool: None,
+        if_none_match: None,
+        if_modified_since: None,
     });
 
     let result = worker.resolve_metadata().await;
@@ -137,6 +143,9 @@ async fn test_http_worker_captive_portal_detection() {
         alt_svc_cache: None,
         resource_governor: None,
         tenant_id: None,
+        client_pool: None,
+        if_none_match: None,
+        if_modified_since: None,
     });
 
     let result = worker.resolve_metadata().await;

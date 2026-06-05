@@ -240,6 +240,8 @@ impl FtpWorker {
             name,
             range_supported: true,
             padding_ranges: Vec::new(),
+            etag: None,
+            last_modified: None,
         })
     }
 }

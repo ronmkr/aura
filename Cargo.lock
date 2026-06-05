@@ -185,6 +185,8 @@ dependencies = [
  "aura-daemon",
  "aura-tui",
  "clap",
+ "reqwest",
+ "serde_json",
  "tokio",
  "tracing",
  "tracing-subscriber",

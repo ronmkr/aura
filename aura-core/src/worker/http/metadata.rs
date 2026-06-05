@@ -133,6 +133,14 @@ impl HttpWorker {
                             request = request.header("Referer", ref_uri);
                         }
 
+                        if let Some(ref etag) = self.options.if_none_match {
+                            request = request.header(reqwest::header::IF_NONE_MATCH, etag);
+                        }
+                        if let Some(ref last_modified) = self.options.if_modified_since {
+                            request =
+                                request.header(reqwest::header::IF_MODIFIED_SINCE, last_modified);
+                        }
+
                         if let Some(ref provider) = self.options.credential_provider {
                             if let Ok(url) = url::Url::parse(uri) {
                                 if let Some(host) = url.host_str() {
@@ -152,7 +160,9 @@ impl HttpWorker {
 
                 match res {
                     Ok(resp) => {
-                        if resp.status().is_success() || resp.status().is_redirection() {
+                        if resp.status() == reqwest::StatusCode::NOT_MODIFIED {
+                            return Err(Error::NotModified);
+                        } else if resp.status().is_success() || resp.status().is_redirection() {
                             break resp;
                         } else if Self::is_retryable(resp.status()) && attempts < max_attempts {
                             attempts += 1;
@@ -326,12 +336,26 @@ impl HttpWorker {
             tracing::info!(%current_uri, ?total_length, ?name, "Metadata resolved successfully");
             let range_supported = response.status() == reqwest::StatusCode::PARTIAL_CONTENT;
 
+            let etag = response
+                .headers()
+                .get(reqwest::header::ETAG)
+                .and_then(|h| h.to_str().ok())
+                .map(|s| s.to_string());
+
+            let last_modified = response
+                .headers()
+                .get(reqwest::header::LAST_MODIFIED)
+                .and_then(|h| h.to_str().ok())
+                .map(|s| s.to_string());
+
             return Ok(Metadata {
                 final_uri: current_uri,
                 total_length,
                 name,
                 range_supported,
                 padding_ranges: Vec::new(),
+                etag,
+                last_modified,
             });
         }
     }

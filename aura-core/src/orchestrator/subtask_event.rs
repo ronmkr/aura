@@ -30,4 +30,7 @@ pub enum SubTaskEvent {
     ScrubberEvent(crate::scrubber::ScrubberEvent),
     RoamingDetected,
     PeersDiscovered(TaskId),
+    RefreshMatured(TaskId, TaskId, Metadata),
+    RefreshNotModified(TaskId, TaskId),
+    RefreshFailed(TaskId, TaskId, String),
 }

@@ -7,6 +7,7 @@ pub mod lifecycle;
 pub mod mapping;
 pub mod monitors;
 pub mod policy_manager;
+pub mod refresh;
 pub mod resource_governor;
 pub mod runner;
 pub mod state;
