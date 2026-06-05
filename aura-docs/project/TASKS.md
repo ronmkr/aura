@@ -21,9 +21,13 @@ All active development tasks, technical debt, and feature requests are managed e
     - [ ] CLI parity: Add `aura show-files <gid>` and `--select-file 1,5-10` flags.
 
 ### Moderate (P2)
-- [ ] **feat: Real-time Search and Command Palette for TUI** `[module:tui, priority:moderate]`
+- [ ] **feat: Real-time Search, Command Palette, and World-Class UX** `[module:tui, priority:moderate]`
     - [ ] Real-time task list filtering with `/` search mode.
-    - [ ] Interactive help modal (`?`) and hotkey command palette.
+    - [ ] Interactive help modal (`?`) and fuzzy-searchable Command Palette (`:` or `Ctrl+P`).
+    - [ ] Implement Vim motions (`j/k`, `h/l`, `gg`, `G`).
+    - [ ] Actionable Error Recovery prompts in Mission Details.
+    - [ ] Native OS Desktop Notifications via `notify-rust`.
+    - [ ] Zero-friction ingest: Terminal Drag-and-Drop and OS Clipboard monitoring.
 - [ ] **infra: Add CI cross-platform matrix and cargo audit workflow** (Issue #148) `[infra, priority:moderate]`
 - [x] **feat: ETag and Last-Modified conditional GET for incremental file refresh** (Issue #255) `[module:core, priority:moderate]`
 - [ ] **perf: Share reqwest HTTP connection pool across segment workers for same-host downloads** (Issue #256) `[module:core, priority:moderate]`

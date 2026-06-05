@@ -30,6 +30,13 @@ We will modernize the `aura-tui` and update the `aura-core` engine to support a 
    - Introduce `aura.addFromFolder` (to recursively scan and ingest `.torrent`/`.metalink` files up to a depth limit) and `aura.addFromFile` (to ingest bulk URL lists).
    - Expose these capabilities via both the TUI ("Discovery Modal") and the CLI for headless parity.
 
+4. **World-Class Ergonomics & OS Integration**:
+   - Introduce a Command Palette (`Ctrl+P` or `:`) to fuzzy-search actions, eliminating the need to memorize hotkeys.
+   - Implement first-class Vim-motions (`j/k`, `h/l`) for lightning-fast power-user navigation.
+   - Integrate native OS Desktop Notifications (`notify-rust`) for background task completion and critical errors.
+   - Implement zero-friction ingest vectors: Terminal Drag-and-Drop interception and OS Clipboard monitoring.
+   - Introduce "Actionable Error Recovery" to guide users out of failure states (e.g., prompting a cache clear on Disk Full) rather than displaying dead-end errors.
+
 ## Consequences
 - **Pros**:
   - Significantly improves user experience, transforming the tool from a background daemon monitor into a powerful interactive manager.

@@ -97,8 +97,15 @@ In BitTorrent, data is divided into fixed-size "Pieces" (e.g., 1MB).
 ---
 
 ## 🌟 Phase 5: Delightful UX & OS Integration ("The Mole Polish")
-**Objective**: Elevate the TUI from a "good utility" to a "world-class application" by anticipating user friction.
+**Objective**: Elevate the TUI from a "good utility" to a "world-class application" by anticipating user friction and maximizing ergonomics.
 
+- **The "Cmd+K" Command Palette**: Pressing `:` or `Ctrl+P` opens a fuzzy-searchable overlay. Users can type commands (e.g., "pause all") instead of memorizing hotkeys. It also displays the mapped hotkey for discoverability.
+- **Advanced Sorting & Multi-Filter (Inspired by `stig`)**: The `/` search should allow complex queries (e.g., `status:active size:>1G`). Allow sorting the Dashboard by clicking column headers or via the Command Palette (e.g., `sort by ETA`).
+- **Remote Daemon Management**: Like `transmission-remote-cli`, the TUI should be capable of connecting to remote Aura Daemons (via JSON-RPC + TLS) rather than just the local engine, enabling "Seedbox" management directly from the local terminal.
+- **Desktop Notifications**: Integrate native OS notifications (via `notify-rust`). Ping the user when a massive mission completes or if a critical halt (e.g., "Disk Full") occurs, allowing them to confidently "walk away" from the terminal.
+- **Drag-and-Drop Terminal Support**: Intercept absolute paths pasted into the terminal (standard behavior when dragging a file into iTerm/Windows Terminal). Instantly recognize `.torrent` or `.metalink` files and trigger the "Add Mission" flow.
+- **First-Class Vim Motions**: Full ergonomic support for power users. `j/k` for vertical navigation, `h/l` for tab switching, `gg` for top, `G` for bottom, and `/` for search.
+- **Actionable Error Recovery**: Instead of dead-end red error text, the Mission Details panel will suggest fixes based on the error state (e.g., `[Disk Full] -> Press [c] to clear cache`, `[Corrupt] -> Press [s] to run scrubber`).
 - **Clipboard Integration (Zero-Click Add)**: The TUI automatically detects URLs/Magnets in the OS clipboard and displays a non-intrusive banner: `🔗 Link detected in clipboard. Press [Enter] to add.`
 - **"Open in OS" Support**: When a task is `✅ Complete`, pressing `[o]` utilizes native OS handlers (`open` on macOS, `xdg-open` on Linux, `start` on Windows) to open the downloaded file or reveal it in the file explorer.
 - **"Boss Key" / Panic Hide**: Double-tapping `Esc` instantly minimizes the TUI or obfuscates sensitive download names for privacy.
