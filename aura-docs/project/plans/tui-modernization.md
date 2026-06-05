@@ -43,25 +43,31 @@ Instead of a single large loop, we will use a **Stateful View Pattern**:
 
 ---
 
-## 🔍 Phase 2: Intelligent Discovery
-**Objective**: Let users add tasks by pointing to folders or "Mission Files" (URL lists).
+## 🔍 Phase 2: Intelligent Discovery & Bulk Ingestion
+**Objective**: Let users add tasks by pointing to folders or "Mission Files" (URL lists), with full CLI parity.
 
 ### Technical Logic:
 - **Protocol Detector**: A function that "peeks" at a string and decides if it's a URL, a Magnet link, or a Torrent file path.
 - **Bulk Ingestion**:
   - `addFromFolder`: Scans for `.torrent` files and automatically launches missions for all found items.
   - `addFromFile`: Reads a `.txt` file where each line is a new download target.
+- **CLI Parity**: 
+  - Update `aura-cli` to handle directory paths as arguments (auto-scanning for torrents/metalinks).
+  - Update `aura-cli` to accept text files as input (`--from-file` or `aura input.txt`) to enqueue multiple tasks.
 
 ---
 
 ## 📂 Phase 3: Selective Downloading (File Selector)
-**Objective**: Deciding exactly which files you want from a 10GB torrent package.
+**Objective**: Deciding exactly which files you want from a 10GB torrent package, supported in both TUI and CLI.
 
 ### The "Shared Piece" Challenge:
 In BitTorrent, data is divided into fixed-size "Pieces" (e.g., 1MB).
 - **Edge Case**: If File A ends at byte 1,000,500 and File B starts at 1,000,501, they both share "Piece #10".
 - **Logic**: If a user selects File A but NOT File B, Aura **must still download** Piece #10.
 - **Implementation**: We will create a `FileMask` that maps selected files to their required byte ranges.
+- **CLI Parity**:
+  - Add `aura show-files <torrent>` to list files with their indices.
+  - Add `--select-file 1,3,5-10` flag to `aura-cli` for headless selection.
 
 ---
 
