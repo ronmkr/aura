@@ -20,8 +20,11 @@ impl Orchestrator {
                 id,
                 priority,
                 depends_on,
+                seed_ratio,
+                seed_time,
             } => {
-                self.handle_change_option(id, priority, depends_on).await?;
+                self.handle_change_option(id, priority, depends_on, seed_ratio, seed_time)
+                    .await?;
             }
             Command::Pause(id) => {
                 self.handle_pause(id).await?;

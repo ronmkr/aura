@@ -190,8 +190,24 @@ pub async fn handle_change_option(engine: &Engine, params: Option<Value>) -> Res
         depends_on = Some(list);
     }
 
+    let seed_ratio = options.get("seed-ratio").and_then(|v| {
+        if let Some(s) = v.as_str() {
+            s.parse::<f32>().ok()
+        } else {
+            v.as_f64().map(|f| f as f32)
+        }
+    });
+
+    let seed_time = options.get("seed-time").and_then(|v| {
+        if let Some(s) = v.as_str() {
+            s.parse::<u32>().ok()
+        } else {
+            v.as_u64().map(|n| n as u32)
+        }
+    });
+
     engine
-        .change_option(id, priority, depends_on)
+        .change_option(id, priority, depends_on, seed_ratio, seed_time)
         .await
         .map_err(|e| json!({ "code": -32000, "message": e.to_string() }))?;
 

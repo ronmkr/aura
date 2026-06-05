@@ -90,6 +90,8 @@ pub struct MetaTask {
     pub depends_on: Vec<TaskId>,
     pub stall_ticks: u32,
     pub created_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub seed_ratio: Option<f32>,
+    pub seed_time: Option<u32>,
 }
 
 /// Represents the serializable state of a MetaTask for persistence.
@@ -114,6 +116,10 @@ pub struct TaskState {
     pub blacklisted_uris: Option<Vec<String>>,
     pub depends_on: Option<Vec<TaskId>>,
     pub created_at: Option<chrono::DateTime<chrono::Utc>>,
+    #[serde(default)]
+    pub seed_ratio: Option<f32>,
+    #[serde(default)]
+    pub seed_time: Option<u32>,
 }
 
 impl MetaTask {
@@ -138,6 +144,8 @@ impl MetaTask {
             blacklisted_uris: Some(self.blacklisted_uris.clone()),
             depends_on: Some(self.depends_on.clone()),
             created_at: self.created_at,
+            seed_ratio: self.seed_ratio,
+            seed_time: self.seed_time,
         }
     }
 
@@ -164,6 +172,8 @@ impl MetaTask {
             depends_on: state.depends_on.unwrap_or_default(),
             stall_ticks: 0,
             created_at: state.created_at,
+            seed_ratio: state.seed_ratio,
+            seed_time: state.seed_time,
         }
     }
 
@@ -190,6 +200,8 @@ impl MetaTask {
             depends_on: Vec::new(),
             stall_ticks: 0,
             created_at: Some(chrono::Utc::now()),
+            seed_ratio: None,
+            seed_time: None,
         }
     }
 

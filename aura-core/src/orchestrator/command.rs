@@ -25,6 +25,8 @@ pub enum Command {
         id: TaskId,
         priority: Option<u32>,
         depends_on: Option<Vec<TaskId>>,
+        seed_ratio: Option<f32>,
+        seed_time: Option<u32>,
     },
     Pause(TaskId),
     Resume(TaskId),

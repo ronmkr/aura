@@ -20,7 +20,7 @@ pub struct CompletedTaskRecord {
 
 #[cfg(test)]
 thread_local! {
-    pub static HISTORY_PATH_OVERRIDE: std::cell::RefCell<Option<std::path::PathBuf>> = std::cell::RefCell::new(None);
+    pub static HISTORY_PATH_OVERRIDE: std::cell::RefCell<Option<std::path::PathBuf>> = const { std::cell::RefCell::new(None) };
 }
 
 pub struct HistoryManager;

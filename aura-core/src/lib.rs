@@ -46,6 +46,12 @@ pub enum Checksum {
     Sha512(String),
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+pub enum SeedingCompleteReason {
+    RatioReached,
+    TimeExpired,
+}
+
 /// Newtype for Download Task identifiers to ensure type safety.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct TaskId(pub u64);

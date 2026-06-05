@@ -62,41 +62,87 @@ impl Orchestrator {
 
     pub(crate) async fn check_seed_limits(&mut self) {
         let config = self.config.load();
-        let target_ratio = config.bittorrent.seed_ratio;
-        let target_time = config.bittorrent.seed_time_mins as i64;
+        let global_ratio = config.bittorrent.seeding.min_ratio;
+        let global_time_secs = config.bittorrent.seeding.max_seeding_time_secs;
+        let global_stop_on_either = config.bittorrent.seeding.stop_on_either;
 
-        let mut to_pause = Vec::new();
+        let mut to_stop = Vec::new();
         for (id, task) in &self.tasks {
             if task.phase == crate::task::DownloadPhase::Complete {
-                // Check Ratio
-                if target_ratio > 0.0 {
-                    let current_ratio = if task.completed_length > 0 {
-                        task.uploaded_length as f64 / task.completed_length as f64
+                let is_bittorrent = task
+                    .subtasks
+                    .iter()
+                    .any(|sub| sub.task_type == crate::task::TaskType::BitTorrent);
+                if !is_bittorrent {
+                    continue;
+                }
+
+                let target_ratio = task.seed_ratio.unwrap_or(global_ratio);
+                let target_time_secs = task
+                    .seed_time
+                    .map(|mins| mins as u64 * 60)
+                    .unwrap_or(global_time_secs);
+
+                let ratio_limit_active = target_ratio > 0.0;
+                let time_limit_active = target_time_secs > 0;
+
+                if !ratio_limit_active && !time_limit_active {
+                    continue;
+                }
+
+                let ratio_reached = if ratio_limit_active {
+                    let current_ratio = if task.total_length > 0 {
+                        task.uploaded_length as f64 / task.total_length as f64
                     } else {
                         0.0
                     };
-                    if current_ratio >= target_ratio as f64 {
-                        tracing::info!(%id, current_ratio, target_ratio, "Seed ratio reached, pausing task");
-                        to_pause.push(*id);
-                        continue;
-                    }
-                }
+                    current_ratio >= target_ratio as f64
+                } else {
+                    false
+                };
 
-                // Check Time
-                if target_time > 0 {
+                let time_reached = if time_limit_active {
                     if let Some(start_time) = task.seeding_start_time {
-                        let elapsed = chrono::Utc::now() - start_time;
-                        if elapsed.num_minutes() >= target_time {
-                            tracing::info!(%id, elapsed_mins = elapsed.num_minutes(), target_time, "Seed time limit reached, pausing task");
-                            to_pause.push(*id);
+                        let elapsed_secs =
+                            (chrono::Utc::now() - start_time).num_seconds().max(0) as u64;
+                        elapsed_secs >= target_time_secs
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                };
+
+                let should_stop = match (ratio_limit_active, time_limit_active) {
+                    (true, true) => {
+                        if global_stop_on_either {
+                            ratio_reached || time_reached
+                        } else {
+                            ratio_reached && time_reached
                         }
                     }
+                    (true, false) => ratio_reached,
+                    (false, true) => time_reached,
+                    (false, false) => false,
+                };
+
+                if should_stop {
+                    let reason = if ratio_reached
+                        && (!time_reached || global_stop_on_either || !time_limit_active)
+                    {
+                        crate::SeedingCompleteReason::RatioReached
+                    } else {
+                        crate::SeedingCompleteReason::TimeExpired
+                    };
+                    to_stop.push((*id, reason));
                 }
             }
         }
 
-        for id in to_pause {
+        for (id, reason) in to_stop {
+            tracing::info!(%id, ?reason, "Seeding limit reached, stopping task");
             let _ = self.handle_pause(id).await;
+            let _ = self.event_tx.send(Event::SeedingComplete { id, reason });
         }
     }
 }

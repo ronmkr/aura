@@ -189,9 +189,12 @@ impl Orchestrator {
         id: TaskId,
         priority: Option<u32>,
         depends_on: Option<Vec<TaskId>>,
+        seed_ratio: Option<f32>,
+        seed_time: Option<u32>,
     ) -> Result<()> {
         let mut priority_changed = false;
         let mut depends_changed = false;
+        let mut seeding_changed = false;
 
         if let Some(p) = priority {
             if let Some(task) = self.tasks.get_mut(&id) {
@@ -234,7 +237,27 @@ impl Orchestrator {
             }
         }
 
-        if priority_changed || depends_changed {
+        if let Some(ratio) = seed_ratio {
+            if let Some(task) = self.tasks.get_mut(&id) {
+                if task.seed_ratio != Some(ratio) {
+                    info!(%id, from = ?task.seed_ratio, to = ?Some(ratio), "Updating task seed_ratio override");
+                    task.seed_ratio = Some(ratio);
+                    seeding_changed = true;
+                }
+            }
+        }
+
+        if let Some(time) = seed_time {
+            if let Some(task) = self.tasks.get_mut(&id) {
+                if task.seed_time != Some(time) {
+                    info!(%id, from = ?task.seed_time, to = ?Some(time), "Updating task seed_time override");
+                    task.seed_time = Some(time);
+                    seeding_changed = true;
+                }
+            }
+        }
+
+        if priority_changed || depends_changed || seeding_changed {
             let _ = self.save_task(id).await;
         }
 

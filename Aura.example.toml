@@ -54,8 +54,11 @@ request_pipeline_size = 10             # Number of in-flight requests per peer
 dht_enabled = true                     # Enable Distributed Hash Table
 pex_enabled = true                     # Enable Peer Exchange
 lpd_enabled = false                    # Enable Local Peer Discovery (Multicast)
-seed_ratio = 1.0                       # Default seed ratio target
-seed_time_mins = 0                     # Seed time limit (0 for infinite)
+[bittorrent.seeding]
+min_ratio        = 1.0  # Stop when uploaded >= downloaded × ratio (0.0 = seed forever)
+max_seeding_time = 0    # Stop after N seconds (0 = no time limit)
+stop_on_either   = true # true = stop on EITHER condition; false = require BOTH
+
 endgame_mode_enabled = true            # Enable parallel fetching for final blocks
 min_split_size_mb = 20                 # Minimum piece/segment size for splitting
 
