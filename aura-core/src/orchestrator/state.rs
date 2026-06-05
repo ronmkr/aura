@@ -62,6 +62,7 @@ pub struct Orchestrator {
     pub(crate) hsts_cache: crate::security::HstsCache,
     pub(crate) alt_svc_cache: crate::security::AltSvcCache,
     pub(crate) policy_manager: crate::orchestrator::policy_manager::PolicyManager,
+    pub(crate) client_pool: crate::worker::http::ClientPool,
 }
 
 impl Orchestrator {
@@ -181,6 +182,7 @@ impl Orchestrator {
                 hsts_cache: crate::security::HstsCache::new(),
                 alt_svc_cache: crate::security::AltSvcCache::new(),
                 policy_manager: crate::orchestrator::policy_manager::PolicyManager::new(),
+                client_pool: crate::worker::http::ClientPool::new(),
             },
             event_tx,
         )

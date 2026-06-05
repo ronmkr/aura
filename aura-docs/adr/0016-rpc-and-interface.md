@@ -15,6 +15,7 @@ Implemented (2026-05-06, commit 0777b1ab)
 ## Implementation Status (Audit 2026-06-03)
 - **RPC Server & Interface Binding**: Initially implemented in commit `0777b1ab` (2026-05-06).
 - **WebSocket Telemetry**: Fully implemented via PR #106 (2026-05-28).
+- **Refresh API**: Conditional GET (ETag/Last-Modified) refresh RPC API (`aura.refreshUri`) added in Issue #255.
 - **Security Gaps**: Audit identified that the RPC daemon binds to `0.0.0.0` by default (GAP-07b / Issue #202), uses a public hardcoded default token (GAP-07a / Issue #201), has permissive CORS (GAP-41 / Issue #203), and does not support TLS (GAP-47). A security hardening effort is required to address these (see ADR 0056).
 
 ## Alternatives Considered

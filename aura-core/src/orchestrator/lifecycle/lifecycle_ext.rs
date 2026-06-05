@@ -20,6 +20,8 @@ impl Orchestrator {
                 name: Some(torrent.info.name.clone()),
                 range_supported: true,
                 padding_ranges: torrent.get_padding_ranges(),
+                etag: None,
+                last_modified: None,
             };
             self.handle_subtask_matured(meta_id, sub_id, metadata)
                 .await?;
@@ -66,6 +68,16 @@ impl Orchestrator {
                     });
                     needs_reregister = true;
                 }
+            }
+
+            // Keep ETag and Last-Modified headers
+            if metadata.etag.is_some() {
+                meta_task.etag = metadata.etag.clone();
+                needs_reregister = true;
+            }
+            if metadata.last_modified.is_some() {
+                meta_task.last_modified = metadata.last_modified.clone();
+                needs_reregister = true;
             }
 
             // Update name if currently unnamed or if server provides a better one (with extension)

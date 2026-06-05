@@ -10,6 +10,16 @@ impl Orchestrator {
                 self.handle_subtask_matured(meta_id, sub_id, metadata)
                     .await?;
             }
+            SubTaskEvent::RefreshMatured(meta_id, sub_id, metadata) => {
+                self.handle_refresh_matured(meta_id, sub_id, metadata)
+                    .await?;
+            }
+            SubTaskEvent::RefreshNotModified(meta_id, sub_id) => {
+                self.handle_refresh_not_modified(meta_id, sub_id).await?;
+            }
+            SubTaskEvent::RefreshFailed(meta_id, sub_id, err) => {
+                self.handle_refresh_failed(meta_id, sub_id, err).await?;
+            }
             SubTaskEvent::MetadataReceived(meta_id, sub_id, torrent) => {
                 self.handle_bt_metadata_received(meta_id, sub_id, *torrent)
                     .await?;

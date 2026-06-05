@@ -39,4 +39,5 @@ pub enum Command {
     RetrySubtask(TaskId, TaskId),
     Scrub(TaskId),
     RefreshDiscovery(TaskId),
+    Refresh(TaskId),
 }

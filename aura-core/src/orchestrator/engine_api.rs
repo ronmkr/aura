@@ -127,6 +127,14 @@ impl Engine {
         Ok(())
     }
 
+    pub async fn refresh(&self, id: TaskId) -> Result<()> {
+        self.command_tx
+            .send(Command::Refresh(id))
+            .await
+            .map_err(|e| Error::Engine(format!("Failed to send Refresh command: {}", e)))?;
+        Ok(())
+    }
+
     pub async fn load_tasks_from_dir(&self, dir: &str) -> Result<()> {
         let mut entries = tokio::fs::read_dir(dir)
             .await

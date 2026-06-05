@@ -157,6 +157,7 @@ impl Orchestrator {
                 let alt_svc_cache = self.alt_svc_cache.clone();
                 let resource_governor_clone = self.resource_governor.clone();
                 let tenant_id_clone = meta_task.tenant_id.clone();
+                let client_pool = self.client_pool.clone();
 
                 let subtask_tx_progress = subtask_tx.clone();
                 let progress_handle = tokio::spawn(async move {
@@ -190,6 +191,7 @@ impl Orchestrator {
                                 .alt_svc_cache(alt_svc_cache)
                                 .resource_governor(resource_governor_clone.clone())
                                 .tenant_id(tenant_id_clone.clone())
+                                .client_pool(client_pool)
                                 .build_http();
                             let segment = Segment {
                                 offset: range.start,

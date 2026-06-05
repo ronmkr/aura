@@ -92,6 +92,8 @@ pub struct MetaTask {
     pub created_at: Option<chrono::DateTime<chrono::Utc>>,
     pub seed_ratio: Option<f32>,
     pub seed_time: Option<u32>,
+    pub etag: Option<String>,
+    pub last_modified: Option<String>,
 }
 
 /// Represents the serializable state of a MetaTask for persistence.
@@ -120,6 +122,10 @@ pub struct TaskState {
     pub seed_ratio: Option<f32>,
     #[serde(default)]
     pub seed_time: Option<u32>,
+    #[serde(default)]
+    pub etag: Option<String>,
+    #[serde(default)]
+    pub last_modified: Option<String>,
 }
 
 impl MetaTask {
@@ -146,6 +152,8 @@ impl MetaTask {
             created_at: self.created_at,
             seed_ratio: self.seed_ratio,
             seed_time: self.seed_time,
+            etag: self.etag.clone(),
+            last_modified: self.last_modified.clone(),
         }
     }
 
@@ -174,6 +182,8 @@ impl MetaTask {
             created_at: state.created_at,
             seed_ratio: state.seed_ratio,
             seed_time: state.seed_time,
+            etag: state.etag,
+            last_modified: state.last_modified,
         }
     }
 
@@ -202,6 +212,8 @@ impl MetaTask {
             created_at: Some(chrono::Utc::now()),
             seed_ratio: None,
             seed_time: None,
+            etag: None,
+            last_modified: None,
         }
     }
 

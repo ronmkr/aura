@@ -9,7 +9,7 @@ All active development tasks, technical debt, and feature requests are managed e
 
 ### Moderate (P2)
 - [ ] **infra: Add CI cross-platform matrix and cargo audit workflow** (Issue #148) `[infra, priority:moderate]`
-- [ ] **feat: ETag and Last-Modified conditional GET for incremental file refresh** (Issue #255) `[module:core, priority:moderate]`
+- [x] **feat: ETag and Last-Modified conditional GET for incremental file refresh** (Issue #255) `[module:core, priority:moderate]`
 - [ ] **perf: Share reqwest HTTP connection pool across segment workers for same-host downloads** (Issue #256) `[module:core, priority:moderate]`
 - [ ] **feat: BitTorrent seeding ratio and maximum seeding time limits** (Issue #257) `[module:core, priority:moderate]`
 - [ ] **feat: Prioritized Streaming Mode for Media Playback** (Issue #28) `[module:core, priority:moderate]`

@@ -5,7 +5,71 @@ pub(crate) mod segment;
 #[cfg(test)]
 mod tests;
 
+#[cfg(test)]
+#[path = "tests_governor.rs"]
+mod tests_governor;
+
+#[cfg(test)]
+#[path = "tests_conditional_pool.rs"]
+mod tests_conditional_pool;
+
 use std::sync::Arc;
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct ClientKey {
+    pub scheme: String,
+    pub host: String,
+    pub port: u16,
+}
+
+impl ClientKey {
+    pub fn from_uri(uri: &str) -> Option<Self> {
+        let url = url::Url::parse(uri).ok()?;
+        let scheme = url.scheme().to_string();
+        let host = url.host_str()?.to_string();
+        let port = url.port_or_known_default()?;
+        Some(Self { scheme, host, port })
+    }
+}
+
+#[derive(Clone, Default)]
+pub struct ClientPool {
+    clients: Arc<std::sync::Mutex<std::collections::HashMap<ClientKey, Arc<reqwest::Client>>>>,
+}
+
+impl ClientPool {
+    pub fn new() -> Self {
+        Self {
+            clients: Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
+        }
+    }
+
+    pub fn get_or_create<F>(&self, key: ClientKey, create_fn: F) -> Arc<reqwest::Client>
+    where
+        F: FnOnce() -> reqwest::Client,
+    {
+        let mut lock = self.clients.lock().unwrap();
+        lock.retain(|_, client| Arc::strong_count(client) > 1);
+
+        if let Some(client) = lock.get(&key) {
+            client.clone()
+        } else {
+            let client = Arc::new(create_fn());
+            lock.insert(key, client.clone());
+            client
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        let lock = self.clients.lock().unwrap();
+        lock.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        let lock = self.clients.lock().unwrap();
+        lock.is_empty()
+    }
+}
 
 /// Options for creating a new HttpWorker.
 pub struct HttpWorkerOptions {
@@ -23,11 +87,14 @@ pub struct HttpWorkerOptions {
     pub alt_svc_cache: Option<crate::security::AltSvcCache>,
     pub resource_governor: Option<Arc<crate::orchestrator::resource_governor::ResourceGovernor>>,
     pub tenant_id: Option<crate::TenantId>,
+    pub client_pool: Option<ClientPool>,
+    pub if_none_match: Option<String>,
+    pub if_modified_since: Option<String>,
 }
 
 /// A specialized worker for the HTTP(S) protocol.
 pub struct HttpWorker {
-    pub(crate) client: reqwest::Client,
+    pub(crate) client: Arc<reqwest::Client>,
     pub(crate) http3_client: std::sync::Mutex<Option<reqwest::Client>>,
     pub(crate) options: HttpWorkerOptions,
 }
@@ -227,7 +294,15 @@ impl HttpWorker {
             builder = builder.dns_resolver(Arc::new(wrapped));
         }
 
-        let client = builder.build().expect("Failed to build HTTP client");
+        let client = if let (Some(ref pool), Some(key)) =
+            (&options.client_pool, ClientKey::from_uri(&options.uri))
+        {
+            pool.get_or_create(key, || {
+                builder.build().expect("Failed to build HTTP client")
+            })
+        } else {
+            Arc::new(builder.build().expect("Failed to build HTTP client"))
+        };
 
         Self {
             client,

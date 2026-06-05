@@ -66,6 +66,7 @@ pub async fn handle_jsonrpc(
                 "aria2.unpause" => handle_unpause(&state.engine, payload.params).await,
                 "aria2.remove" => handle_remove(&state.engine, payload.params).await,
                 "aria2.changeOption" => handle_change_option(&state.engine, payload.params).await,
+                "aura.refreshUri" => handle_refresh(&state.engine, payload.params).await,
                 "aura.getConfig" => handle_get_config(&state.engine).await,
                 "aria2.getVersion" => handle_get_version().await,
                 "aria2.getSessionInfo" => handle_get_session_info().await,

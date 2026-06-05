@@ -145,4 +145,96 @@ impl Orchestrator {
             let _ = self.event_tx.send(Event::SeedingComplete { id, reason });
         }
     }
+
+    pub(crate) async fn handle_refresh(&mut self, id: TaskId) -> Result<()> {
+        let meta_task = self.tasks.get(&id).ok_or(crate::Error::TaskNotFound(id))?;
+
+        // We only support refreshing HTTP tasks
+        let http_subtasks: Vec<_> = meta_task
+            .subtasks
+            .iter()
+            .filter(|s| s.task_type == crate::task::TaskType::Http)
+            .cloned()
+            .collect();
+
+        if http_subtasks.is_empty() {
+            return Err(crate::Error::Protocol(
+                "Refresh is only supported for HTTP tasks".to_string(),
+            ));
+        }
+
+        let config_clone = self.config.clone();
+        let subtask_tx = self.subtask_tx.clone();
+        let client_pool = self.client_pool.clone();
+        let provider_clone = self.credential_provider.clone();
+        let dns_resolver = self.dns_resolver.clone();
+        let hsts_cache = self.hsts_cache.clone();
+        let alt_svc_cache = self.alt_svc_cache.clone();
+
+        let etag = meta_task.etag.clone();
+        let last_modified = meta_task.last_modified.clone();
+        let local_addr = self.resolve_local_addr();
+
+        // Spawn a metadata check for each HTTP subtask
+        for sub_task in http_subtasks {
+            let sub_id = sub_task.id;
+            let uri = sub_task.uri.clone();
+            let subtask_tx_clone = subtask_tx.clone();
+            let client_pool_clone = client_pool.clone();
+            let provider_clone_c = provider_clone.clone();
+            let dns_resolver_c = dns_resolver.clone();
+            let hsts_cache_c = hsts_cache.clone();
+            let alt_svc_cache_c = alt_svc_cache.clone();
+            let etag_val = etag.clone();
+            let lm_val = last_modified.clone();
+            let config_clone_c = config_clone.clone();
+
+            tokio::spawn(async move {
+                let config = config_clone_c.load();
+                let worker = crate::worker::WorkerBuilder::new(uri)
+                    .local_addr(local_addr)
+                    .dns_resolver(dns_resolver_c)
+                    .user_agent(Some(config.network.user_agent.clone()))
+                    .connect_timeout(Some(config.network.connect_timeout_secs))
+                    .proxy(config.network.proxy.clone())
+                    .retry_count(config.network.http_retry_count)
+                    .retry_delay_secs(config.network.http_retry_delay_secs)
+                    .credential_provider(provider_clone_c)
+                    .hsts_cache(hsts_cache_c)
+                    .alt_svc_cache(alt_svc_cache_c)
+                    .client_pool(client_pool_clone)
+                    .if_none_match(etag_val)
+                    .if_modified_since(lm_val)
+                    .build_http();
+
+                match worker.resolve_metadata().await {
+                    Ok(m) => {
+                        let _ = subtask_tx_clone
+                            .send(crate::orchestrator::SubTaskEvent::RefreshMatured(
+                                id, sub_id, m,
+                            ))
+                            .await;
+                    }
+                    Err(crate::Error::NotModified) => {
+                        let _ = subtask_tx_clone
+                            .send(crate::orchestrator::SubTaskEvent::RefreshNotModified(
+                                id, sub_id,
+                            ))
+                            .await;
+                    }
+                    Err(e) => {
+                        let _ = subtask_tx_clone
+                            .send(crate::orchestrator::SubTaskEvent::RefreshFailed(
+                                id,
+                                sub_id,
+                                e.to_string(),
+                            ))
+                            .await;
+                    }
+                }
+            });
+        }
+
+        Ok(())
+    }
 }

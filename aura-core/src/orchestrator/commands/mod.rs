@@ -29,6 +29,9 @@ impl Orchestrator {
             Command::Pause(id) => {
                 self.handle_pause(id).await?;
             }
+            Command::Refresh(id) => {
+                self.handle_refresh(id).await?;
+            }
             Command::Resume(id) => {
                 self.handle_resume(id).await?;
             }

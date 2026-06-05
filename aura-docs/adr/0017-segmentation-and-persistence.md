@@ -14,6 +14,7 @@ For protocols that lack a natural piece structure (HTTP, FTP), standard engines 
 ## Implementation Status (Audit 2026-06-03)
 - **Segmenter**: HTTP range fetching is implemented inline in `worker/http/segment.rs`, but a formal `Segmenter` component and dynamic segment splitting are pending (GAP-08).
 - **Discovery Persistence**: The `PersistentState` trait and DHT routing table serialization to `dht.dat` are pending implementation (GAP-04 / Issue #210).
+- **TaskState Persistence**: ETag and Last-Modified persistence for conditional GETs implemented in Issue #255.
 
 ## Alternatives Considered
 - **Fixed-size Splitting**: Only split the file at the start. *Rejected:* Doesn't account for servers that don't support Range requests or for mirrors with different speeds.

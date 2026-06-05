@@ -27,5 +27,6 @@ Modern networking requires minimizing latency through parallel connection attemp
 ## Implementation Status (Audit 2026-06-03)
 - **Happy Eyeballs (RFC 8305)**: Implemented in DNS racing (2026-05-29, PR #140).
 - **Alt-Svc Resolution & HTTP/3**: Implemented in HTTP/3 QUIC and Alt-Svc support (2026-06-03, PR #198).
+- **Connection Pool Sharing**: Shared reqwest HTTP connection pool across segment workers implemented in Issue #256.
 - **Prioritized Streaming**: Pending (Issue #28, prioritized streaming mode).
 

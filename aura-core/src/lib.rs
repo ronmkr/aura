@@ -158,6 +158,9 @@ pub enum Error {
 
     #[error("Engine error: {0}")]
     Engine(String),
+
+    #[error("Not modified")]
+    NotModified,
 }
 
 /// A specialized Result type for Aura operations.

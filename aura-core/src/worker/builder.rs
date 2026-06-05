@@ -19,6 +19,9 @@ pub struct WorkerBuilder {
     resource_governor:
         Option<std::sync::Arc<crate::orchestrator::resource_governor::ResourceGovernor>>,
     tenant_id: Option<crate::TenantId>,
+    client_pool: Option<crate::worker::http::ClientPool>,
+    if_none_match: Option<String>,
+    if_modified_since: Option<String>,
 }
 
 impl WorkerBuilder {
@@ -38,6 +41,9 @@ impl WorkerBuilder {
             alt_svc_cache: None,
             resource_governor: None,
             tenant_id: None,
+            client_pool: None,
+            if_none_match: None,
+            if_modified_since: None,
         }
     }
 
@@ -115,6 +121,21 @@ impl WorkerBuilder {
         self
     }
 
+    pub fn client_pool(mut self, pool: crate::worker::http::ClientPool) -> Self {
+        self.client_pool = Some(pool);
+        self
+    }
+
+    pub fn if_none_match(mut self, etag: Option<String>) -> Self {
+        self.if_none_match = etag;
+        self
+    }
+
+    pub fn if_modified_since(mut self, last_modified: Option<String>) -> Self {
+        self.if_modified_since = last_modified;
+        self
+    }
+
     pub fn build_http(self) -> HttpWorker {
         HttpWorker::new(crate::worker::http::HttpWorkerOptions {
             uri: self.uri,
@@ -131,6 +152,9 @@ impl WorkerBuilder {
             alt_svc_cache: self.alt_svc_cache,
             resource_governor: self.resource_governor,
             tenant_id: self.tenant_id,
+            client_pool: self.client_pool,
+            if_none_match: self.if_none_match,
+            if_modified_since: self.if_modified_since,
         })
     }
 
