@@ -28,6 +28,10 @@ pub enum TaskEvent {
     Completed,
     /// An error occurred during the download process.
     Error(String),
+    /// Seeding limit reached.
+    SeedingComplete {
+        reason: crate::SeedingCompleteReason,
+    },
 }
 
 /// A handle to an active or pending download task.
@@ -84,6 +88,9 @@ impl TaskHandle {
                     Event::TaskCompleted(ev_id) if ev_id == id => yield TaskEvent::Completed,
                     Event::TaskError { id: ev_id, message } if ev_id == id => {
                         yield TaskEvent::Error(message)
+                    }
+                    Event::SeedingComplete { id: ev_id, reason } if ev_id == id => {
+                        yield TaskEvent::SeedingComplete { reason }
                     }
                     _ => {}
                 }

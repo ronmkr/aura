@@ -8,5 +8,6 @@ pub mod hooks;
 pub mod integrity;
 pub mod networking;
 pub mod reliability;
+pub mod seeding_limits;
 pub mod storage;
 pub mod swarm;

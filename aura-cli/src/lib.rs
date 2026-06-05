@@ -102,6 +102,8 @@ pub async fn run(args: Args) -> Result<()> {
         return Ok(());
     }
 
+    let mut is_torrent_task = std::collections::HashMap::new();
+
     // If output is specified, we treat all URIs as sources for that one output
     if let Some(output_name) = &args.output {
         let id = TaskId(rand::rng().random());
@@ -110,7 +112,7 @@ pub async fn run(args: Args) -> Result<()> {
 
         let mut sources = Vec::new();
         for (uri, _, _) in tasks_to_add {
-            let ttype = if uri.ends_with(".torrent") {
+            let ttype = if uri.ends_with(".torrent") || uri.starts_with("magnet:") {
                 TaskType::BitTorrent
             } else if uri.starts_with("ftp://") || uri.starts_with("ftps://") {
                 TaskType::Ftp
@@ -119,6 +121,9 @@ pub async fn run(args: Args) -> Result<()> {
             };
             sources.push((uri, ttype));
         }
+
+        let has_torrent = sources.iter().any(|(_, t)| *t == TaskType::BitTorrent);
+        is_torrent_task.insert(id, has_torrent);
 
         engine
             .add_task_with_options(aura_core::orchestrator::command::AddTaskArgs {
@@ -141,7 +146,7 @@ pub async fn run(args: Args) -> Result<()> {
                 storage.register_task(id, path, 0, None, Vec::new()).await;
             }
 
-            let ttype = if uri.ends_with(".torrent") {
+            let ttype = if uri.ends_with(".torrent") || uri.starts_with("magnet:") {
                 TaskType::BitTorrent
             } else if uri.ends_with(".metalink") || uri.ends_with(".meta4") {
                 TaskType::Http
@@ -150,6 +155,10 @@ pub async fn run(args: Args) -> Result<()> {
             } else {
                 TaskType::Http
             };
+
+            let is_torrent = ttype == TaskType::BitTorrent;
+            is_torrent_task.insert(id, is_torrent);
+
             engine
                 .add_task_with_options(aura_core::orchestrator::command::AddTaskArgs {
                     id,
@@ -231,7 +240,11 @@ pub async fn run(args: Args) -> Result<()> {
             }
             Event::TaskCompleted(id) => {
                 if let Some(pb) = bars.get(&id) {
-                    pb.finish_with_message(format!("Task {} complete", id));
+                    if is_torrent_task.get(&id).copied().unwrap_or(false) {
+                        pb.set_message("Seeding...");
+                    } else {
+                        pb.finish_with_message(format!("Task {} complete", id));
+                    }
                 }
                 if !bars.is_empty() && bars.values().all(|b| b.is_finished()) {
                     break;
@@ -253,6 +266,14 @@ pub async fn run(args: Args) -> Result<()> {
             Event::TaskResumed(id) => {
                 if let Some(pb) = bars.get(&id) {
                     pb.set_message(format!("Task {} resumed", id.0));
+                }
+            }
+            Event::SeedingComplete { id, reason } => {
+                if let Some(pb) = bars.get(&id) {
+                    pb.finish_with_message(format!("Task {} seeding complete ({:?})", id, reason));
+                }
+                if !bars.is_empty() && bars.values().all(|b| b.is_finished()) {
+                    break;
                 }
             }
         }

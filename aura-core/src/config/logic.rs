@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 // Import and re-export all sub-configs from their dedicated sibling modules (Facade Pattern)
 pub use super::bandwidth::BandwidthConfig;
-pub use super::bittorrent::BitTorrentConfig;
+pub use super::bittorrent::{BitTorrentConfig, SeedingConfig};
 pub use super::general::{CredentialConfig, GeneralConfig, ThemeConfig};
 pub use super::hooks::HookConfig;
 pub use super::limits::LimitsConfig;

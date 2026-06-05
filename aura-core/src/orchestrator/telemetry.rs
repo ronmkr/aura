@@ -23,4 +23,8 @@ pub enum Event {
         id: TaskId,
         message: String,
     },
+    SeedingComplete {
+        id: TaskId,
+        reason: crate::SeedingCompleteReason,
+    },
 }

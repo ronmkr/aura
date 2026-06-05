@@ -84,12 +84,16 @@ impl Engine {
         id: TaskId,
         priority: Option<u32>,
         depends_on: Option<Vec<TaskId>>,
+        seed_ratio: Option<f32>,
+        seed_time: Option<u32>,
     ) -> Result<()> {
         self.command_tx
             .send(Command::ChangeOption {
                 id,
                 priority,
                 depends_on,
+                seed_ratio,
+                seed_time,
             })
             .await
             .map_err(|e| Error::Engine(format!("Failed to send ChangeOption command: {}", e)))?;

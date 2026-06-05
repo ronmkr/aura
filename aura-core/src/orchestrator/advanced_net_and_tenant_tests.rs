@@ -76,6 +76,8 @@ async fn test_multi_tenant_path_isolation_and_throttling() {
         extensions: HashMap::new(),
         depends_on: Vec::new(),
         stall_ticks: 0,
+        seed_ratio: None,
+        seed_time: None,
     };
     orch.tasks.insert(meta_id, meta);
 
@@ -172,6 +174,8 @@ async fn test_captive_portal_pausing() {
         depends_on: Vec::new(),
         follow_on: None,
         stall_ticks: 0,
+        seed_ratio: None,
+        seed_time: None,
     };
     orch.tasks.insert(meta_id, meta);
 
@@ -252,6 +256,8 @@ async fn test_interface_roaming_reconnector() {
         depends_on: Vec::new(),
         follow_on: None,
         stall_ticks: 0,
+        seed_ratio: None,
+        seed_time: None,
     };
     orch.tasks.insert(meta_id, meta);
 

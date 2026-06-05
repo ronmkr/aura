@@ -107,6 +107,8 @@ async fn test_racing_workers_are_cancelled_on_range_finished() {
         follow_on: None,
         stall_ticks: 0,
         created_at: None,
+        seed_ratio: None,
+        seed_time: None,
     };
 
     orch.tasks.insert(meta_id, meta);
@@ -164,6 +166,8 @@ async fn test_dependency_cycle_detection() {
         depends_on: Vec::new(),
         stall_ticks: 0,
         created_at: None,
+        seed_ratio: None,
+        seed_time: None,
     };
     orch.tasks.insert(TaskId(1), meta_a);
 
@@ -190,6 +194,8 @@ async fn test_dependency_cycle_detection() {
         depends_on: vec![TaskId(1)],
         stall_ticks: 0,
         created_at: None,
+        seed_ratio: None,
+        seed_time: None,
     };
     orch.tasks.insert(TaskId(2), meta_b);
 
@@ -216,6 +222,8 @@ async fn test_dependency_cycle_detection() {
         depends_on: vec![TaskId(2)],
         stall_ticks: 0,
         created_at: None,
+        seed_ratio: None,
+        seed_time: None,
     };
     orch.tasks.insert(TaskId(3), meta_c);
 
@@ -256,6 +264,8 @@ async fn test_dependency_waiting_state_and_unblocking() {
         depends_on: Vec::new(),
         stall_ticks: 0,
         created_at: None,
+        seed_ratio: None,
+        seed_time: None,
     };
     orch.tasks.insert(TaskId(1), meta_a);
 
@@ -317,6 +327,8 @@ async fn test_follow_on_custom_trigger() {
         depends_on: Vec::new(),
         stall_ticks: 0,
         created_at: None,
+        seed_ratio: None,
+        seed_time: None,
     };
     orch.tasks.insert(meta_id, meta);
 
@@ -369,7 +381,7 @@ async fn test_dag_cycle_detection_via_add_and_change_options() {
 
     // 3. Attempting to add Task A depending on B should fail (cycle)
     let res = orch
-        .handle_change_option(TaskId(1), None, Some(vec![TaskId(2)]))
+        .handle_change_option(TaskId(1), None, Some(vec![TaskId(2)]), None, None)
         .await;
 
     assert!(res.is_err());
