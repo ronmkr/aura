@@ -60,15 +60,12 @@ impl RecursiveCrawler {
         let links_clone = Rc::clone(&links);
 
         let mut rewriter = HtmlRewriter::new(
-            Settings {
-                element_content_handlers: vec![element!("a[href]", move |el| {
-                    if let Some(href) = el.get_attribute("href") {
-                        links_clone.borrow_mut().push(href);
-                    }
-                    Ok(())
-                })],
-                ..Settings::default()
-            },
+            Settings::default().append_element_content_handler(element!("a[href]", move |el| {
+                if let Some(href) = el.get_attribute("href") {
+                    links_clone.borrow_mut().push(href);
+                }
+                Ok(())
+            })),
             |_c: &[u8]| {},
         );
 

@@ -62,7 +62,7 @@ pub async fn ws_session(socket: WebSocket, engine: Arc<Engine>) {
             });
 
             if let Ok(text) = serde_json::to_string(&msg) {
-                if let Err(e) = sender.send(Message::Text(text)).await {
+                if let Err(e) = sender.send(Message::Text(text.into())).await {
                     error!("Failed to send WS message: {}", e);
                     break;
                 }
