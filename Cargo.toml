@@ -83,7 +83,7 @@ suppaftp = { version = "8.0.3", features = ["tokio", "tokio-rustls-ring"] }
 rustls = { version = "0.23.40", features = ["ring"] }
 rustls-native-certs = "0.8.3"
 rustix = { version = "1.1.4", features = ["fs"] }
-rlimit = "0.10.1"
+rlimit = "0.11.0"
 tempfile = "3"
 thiserror = "2"
 tokio = { version = "1", features = ["full", "tracing"] }
