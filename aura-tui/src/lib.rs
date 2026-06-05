@@ -61,17 +61,37 @@ where
 
         if event::poll(timeout)? {
             if let Event::Key(key) = event::read()? {
-                match key.code {
-                    KeyCode::Char('q') => app.should_quit = true,
-                    KeyCode::Down | KeyCode::Char('j') => app.next(),
-                    KeyCode::Up | KeyCode::Char('k') => app.previous(),
-                    KeyCode::Char('p') => {
-                        app.pause_selected().await?;
+                if key.code == KeyCode::Char('q') {
+                    app.should_quit = true;
+                } else {
+                    match &app.view_state {
+                        app::ViewState::Dashboard => match key.code {
+                            KeyCode::Down | KeyCode::Char('j') => app.next(),
+                            KeyCode::Up | KeyCode::Char('k') => app.previous(),
+                            KeyCode::Home | KeyCode::Char('g') => app.first(),
+                            KeyCode::End | KeyCode::Char('G') => app.last(),
+                            KeyCode::Char('p') => {
+                                app.pause_selected().await?;
+                            }
+                            KeyCode::Char('r') => {
+                                app.resume_selected().await?;
+                            }
+                            KeyCode::Enter => {
+                                if let Some(i) = app.table_state.selected() {
+                                    if let Some(dl) = app.downloads.get(i) {
+                                        app.view_state =
+                                            app::ViewState::MissionControl(dl.gid.clone());
+                                    }
+                                }
+                            }
+                            _ => {}
+                        },
+                        app::ViewState::MissionControl(_) => {
+                            if key.code == KeyCode::Esc {
+                                app.view_state = app::ViewState::Dashboard;
+                            }
+                        }
                     }
-                    KeyCode::Char('r') => {
-                        app.resume_selected().await?;
-                    }
-                    _ => {}
                 }
             }
         }

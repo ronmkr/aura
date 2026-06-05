@@ -2,6 +2,12 @@ use crate::theme::Theme;
 use ratatui::widgets::TableState;
 use serde_json::json;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ViewState {
+    Dashboard,
+    MissionControl(String), // GID of the task
+}
+
 #[derive(Debug, serde::Deserialize, Clone)]
 pub struct DownloadInfo {
     pub gid: String,
@@ -17,6 +23,7 @@ pub struct App {
     pub client: reqwest::Client,
     pub downloads: Vec<DownloadInfo>,
     pub table_state: TableState,
+    pub view_state: ViewState,
     pub should_quit: bool,
     pub error_msg: Option<String>,
     pub theme: Theme,
@@ -30,6 +37,7 @@ impl App {
             client: reqwest::Client::new(),
             downloads: Vec::new(),
             table_state,
+            view_state: ViewState::Dashboard,
             should_quit: false,
             error_msg: None,
             theme: Theme::default(),
@@ -110,6 +118,18 @@ impl App {
             None => 0,
         };
         self.table_state.select(Some(i));
+    }
+
+    pub fn first(&mut self) {
+        if !self.downloads.is_empty() {
+            self.table_state.select(Some(0));
+        }
+    }
+
+    pub fn last(&mut self) {
+        if !self.downloads.is_empty() {
+            self.table_state.select(Some(self.downloads.len() - 1));
+        }
     }
 
     pub async fn pause_selected(&mut self) -> anyhow::Result<()> {
