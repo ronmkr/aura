@@ -138,8 +138,14 @@ impl Orchestrator {
         let credential_provider = Arc::new(credential_provider);
 
         let limit_bytes = (initial_config.storage.memory_limit_mb as usize) * 1024 * 1024;
-        let resource_governor =
-            Arc::new(crate::orchestrator::resource_governor::ResourceGovernor::new(limit_bytes));
+        let safety_margin_bytes =
+            (initial_config.storage.memory_safety_margin_mb as usize) * 1024 * 1024;
+        let resource_governor = Arc::new(
+            crate::orchestrator::resource_governor::ResourceGovernor::new(
+                limit_bytes,
+                safety_margin_bytes,
+            ),
+        );
 
         (
             Self {

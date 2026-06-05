@@ -36,7 +36,7 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .route("/", get(index_handler))
         .route("/health", get(health_handler))
         .route("/metrics", get(authenticated_metrics_handler))
-        .route("/*file", get(static_handler))
+        .route("/{*file}", get(static_handler))
         .route("/jsonrpc", post(handle_jsonrpc))
         .route(
             "/ws",

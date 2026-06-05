@@ -155,6 +155,8 @@ impl Orchestrator {
                 let dns_resolver = self.dns_resolver.clone();
                 let hsts_cache = self.hsts_cache.clone();
                 let alt_svc_cache = self.alt_svc_cache.clone();
+                let resource_governor_clone = self.resource_governor.clone();
+                let tenant_id_clone = meta_task.tenant_id.clone();
 
                 let subtask_tx_progress = subtask_tx.clone();
                 let progress_handle = tokio::spawn(async move {
@@ -186,6 +188,8 @@ impl Orchestrator {
                                 .credential_provider(provider_clone)
                                 .hsts_cache(hsts_cache)
                                 .alt_svc_cache(alt_svc_cache)
+                                .resource_governor(resource_governor_clone.clone())
+                                .tenant_id(tenant_id_clone.clone())
                                 .build_http();
                             let segment = Segment {
                                 offset: range.start,
@@ -222,6 +226,8 @@ impl Orchestrator {
                             let worker = crate::worker::WorkerBuilder::new(uri)
                                 .local_addr(local_addr)
                                 .credential_provider(provider_clone)
+                                .resource_governor(resource_governor_clone.clone())
+                                .tenant_id(tenant_id_clone.clone())
                                 .build_ftp();
                             let segment = Segment {
                                 offset: range.start,

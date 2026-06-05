@@ -18,10 +18,20 @@ pub struct CompletedTaskRecord {
     pub completed_at: chrono::DateTime<chrono::Utc>,
 }
 
+#[cfg(test)]
+thread_local! {
+    pub static HISTORY_PATH_OVERRIDE: std::cell::RefCell<Option<std::path::PathBuf>> = std::cell::RefCell::new(None);
+}
+
 pub struct HistoryManager;
 
 impl HistoryManager {
     pub fn get_history_path() -> std::path::PathBuf {
+        #[cfg(test)]
+        if let Some(path) = HISTORY_PATH_OVERRIDE.with(|p| p.borrow().clone()) {
+            return path;
+        }
+
         let home = std::env::var_os("HOME")
             .or_else(|| std::env::var_os("USERPROFILE"))
             .map(std::path::PathBuf::from)
@@ -30,6 +40,11 @@ impl HistoryManager {
     }
 
     pub fn get_old_history_path() -> std::path::PathBuf {
+        #[cfg(test)]
+        if let Some(path) = HISTORY_PATH_OVERRIDE.with(|p| p.borrow().clone()) {
+            return path.with_extension("old.jsonl");
+        }
+
         let home = std::env::var_os("HOME")
             .or_else(|| std::env::var_os("USERPROFILE"))
             .map(std::path::PathBuf::from)

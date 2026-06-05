@@ -7,12 +7,11 @@ static TEST_MUTEX: std::sync::Mutex<()> = std::sync::Mutex::new(());
 fn test_history_append_and_read() {
     let _lock = TEST_MUTEX.lock().unwrap();
 
-    let orig_home = std::env::var_os("HOME");
-    let orig_userprofile = std::env::var_os("USERPROFILE");
-
     let tmp_dir = tempdir().unwrap();
-    std::env::set_var("HOME", tmp_dir.path());
-    std::env::set_var("USERPROFILE", tmp_dir.path());
+    let history_file = tmp_dir.path().join("history.jsonl");
+
+    // Set the path override
+    HISTORY_PATH_OVERRIDE.with(|p| *p.borrow_mut() = Some(history_file));
 
     // Purge first
     HistoryManager::purge_history();
@@ -41,15 +40,6 @@ fn test_history_append_and_read() {
     // Cleanup
     HistoryManager::purge_history();
 
-    // Restore
-    if let Some(h) = orig_home {
-        std::env::set_var("HOME", h);
-    } else {
-        std::env::remove_var("HOME");
-    }
-    if let Some(u) = orig_userprofile {
-        std::env::set_var("USERPROFILE", u);
-    } else {
-        std::env::remove_var("USERPROFILE");
-    }
+    // Clear override
+    HISTORY_PATH_OVERRIDE.with(|p| *p.borrow_mut() = None);
 }

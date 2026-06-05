@@ -5,13 +5,10 @@ All active development tasks, technical debt, and feature requests are managed e
 ## Open Tasks
 
 ### High (P1)
-- [x] **feat: RPC TLS support via --tls-cert / --tls-key flags (ADR-0056)** (Issue #226) `[module:daemon, priority:critical]`
+*(No active tasks)*
 
 ### Moderate (P2)
 - [ ] **infra: Add CI cross-platform matrix and cargo audit workflow** (Issue #148) `[infra, priority:moderate]`
-- [ ] **feat: ResourceGovernor per-tenant fair-share limit and metadata safety margin** (Issue #234) `[module:core, priority:moderate]`
-- [ ] **feat: Hook ResourceGovernor into HTTP and FTP workers** (Issue #235) `[module:core, priority:moderate]`
-- [x] **test: Add unit tests for aura-daemon jsonrpc.rs and websocket.rs** (Issue #236) `[module:daemon, priority:moderate]`
 - [ ] **feat: ETag and Last-Modified conditional GET for incremental file refresh** (Issue #255) `[module:core, priority:moderate]`
 - [ ] **perf: Share reqwest HTTP connection pool across segment workers for same-host downloads** (Issue #256) `[module:core, priority:moderate]`
 - [ ] **feat: BitTorrent seeding ratio and maximum seeding time limits** (Issue #257) `[module:core, priority:moderate]`
@@ -27,43 +24,197 @@ All active development tasks, technical debt, and feature requests are managed e
 
 ## Completed Tasks
 
+- [x] **feat: ResourceGovernor per-tenant fair-share limit and metadata safety margin** (Issue #234) `[module:core, priority:moderate]`
+  - **Completion Commit**: `3a17d06`
+  - **Key Changes**:
+    - Implemented `safety_margin` checks in `ResourceGovernor` to choke data requests when allocations breach `limit - safety_margin`, while allowing metadata allocations up to the full limit.
+    - Added per-tenant fair-share caps that restrict a single tenant's standard download allocations to `limit / active_tenants` when other tenants are active, exempting critical metadata requests from fair-share.
+    - Added comprehensive unit tests in `resource_governor_tests.rs` verifying safety margins, tenant isolation, and fair-share allocation behavior.
+- [x] **feat: Hook ResourceGovernor into HTTP and FTP workers** (Issue #235) `[module:core, priority:moderate]`
+  - **Completion Commit**: `3a17d06`
+  - **Key Changes**:
+    - Updated `WorkerBuilder` to accept and inject `resource_governor` and `tenant_id` options into HTTP and FTP workers.
+    - Integrated `MemoryGuard` allocation gates and sleeping backpressure retry loops into `HttpWorker` and `FtpWorker` segment fetching loops.
+    - Implemented dynamic allocation resizing in the HTTP worker by reading the `Content-Length` header on successful response headers to release the nominal allocation and reserve the exact size.
+    - Added integration tests verifying backpressure throttling and allocation checks under high memory pressure.
+- [x] **feat: RPC TLS support via --tls-cert / --tls-key flags (ADR-0056)** (Issue #226) `[module:daemon, priority:critical]`
+  - **Completion Commit**: `bc6d871` (PR #261)
+  - **Key Changes**:
+    - Added `--tls-cert`, `--tls-key`, and `--generate-tls-cert` CLI flags to `aura` daemon.
+    - Implemented dynamic self-signed certificate generation using `rcgen` when cert/key paths are not provided.
+    - Configured secure Unix file permissions (`0600`) for generated TLS keys.
+    - Integrated `axum-server` with `tls-rustls` to serve HTTPS and WSS (WebSocket Secure) connections.
+- [x] **test: Add unit tests for aura-daemon jsonrpc.rs and websocket.rs** (Issue #236) `[module:daemon, priority:moderate]`
+  - **Completion Commit**: `bc6d871` (PR #261)
+  - **Key Changes**:
+    - Created `jsonrpc_tests.rs` covering RPC header auth, Bearer tokens, invalid schemes (SSRF blocks), and request validation.
+    - Created `websocket_tests.rs` covering query-parameter token validation, custom headers, and bearer prefix formats.
+    - Implemented custom `ws_auth_middleware` in `websocket.rs` to validate handshakes prior to Axum websocket upgrade.
 - [x] **fix: Add WorkerCommand::EndgameFetch variant and broadcast overflow guard (ADR-0039)** (Issue #227) `[module:core, priority:critical]`
+  - **Completion Commit**: `8ae43a1` (PR #260)
+  - **Key Changes**:
+    - Added a dedicated `WorkerCommand::EndgameFetch` variant to separate endgame block fetches from normal piece fetches.
+    - Implemented error handling on broadcast channel sends to catch and log overflow events during endgame phase.
+    - Configured `BtWorker` to double its pipeline queue size when in endgame mode.
 - [x] **fix: BEP-12 tracker tier promotion on successful announce** (Issue #237) `[module:core, priority:moderate]`
+  - **Completion Commit**: `8ae43a1` (PR #260)
+  - **Key Changes**:
+    - Implemented logic in `tracker/logic.rs` to promote successfully responding trackers to the front of their respective tiers.
+    - Added `test_bep12_tracker_tiers` to verify correct tier promotion and ordering.
 - [x] **fix: Flush DHT routing table explicitly in engine.shutdown()** (Issue #238) `[module:core, priority:moderate]`
+  - **Completion Commit**: `8ae43a1` (PR #260)
+  - **Key Changes**:
+    - Introduced `DhtCommand::SaveNow` to force the DHT actor to save the routing table to `dht.dat` immediately.
+    - Updated engine shutdown logic to dispatch `SaveNow` to the DHT actor and await confirmation.
 - [x] **security: Pre-download disk space verification to prevent corrupt partial files** (Issue #242) `[module:storage, priority:high]`
+  - **Completion Commit**: `ba26d56` (PR #259)
+  - **Key Changes**:
+    - Added disk space check to ensure there is enough space on target partition before allocating files.
+    - Added `flush_scheduler_tasks` to Storage Engine to guarantee read-after-write consistency for space calculations.
 - [x] **feat: HTTP/FTP checksum verification (SHA-256/SHA-1) for download integrity** (Issue #243) `[module:core, priority:high]`
+  - **Completion Commit**: `ba26d56` (PR #259)
+  - **Key Changes**:
+    - Added checksum verification for completed HTTP/FTP downloads via `[[checksum]]` support in configuration.
+    - Updated storage flow to validate SHA-256 and SHA-1 hashes of written bytes.
 - [x] **feat: RPC rate limiting (prevent local DoS via task flooding)** (Issue #246) `[module:daemon, priority:high]`
+  - **Completion Commit**: `ba26d56` (PR #259)
+  - **Key Changes**:
+    - Implemented task limits and max task capacities on the JSON-RPC daemon to mitigate DoS/memory exhaustion.
 - [x] **fix: Send tracker Stopped events on graceful shutdown (ADR-0058 Edge Case 3)** (Issue #228) `[module:core, priority:high]`
+  - **Completion Commit**: `ba26d56` (PR #259)
+  - **Key Changes**:
+    - Added graceful shutdown handler to send `Stopped` event announces to BitTorrent trackers.
 - [x] **docs: Standardize machine-readable Status field in all 58 ADRs** (Issue #232) `[docs, priority:high]`
+  - **Completion Commit**: `ba26d56` (PR #259)
+  - **Key Changes**:
+    - Standardized the `Status:` field in frontmatter across all ADR markdown documents.
+    - Removed redundant top-level status headers to ensure consistency and parsing capability.
 - [x] **feat: Completed download history log and aria2 RPC compatibility (tellStopped, getVersion)** (Issue #248) `[module:daemon, priority:high]`
+  - **Completion Commit**: `ba26d56` (PR #259)
+  - **Key Changes**:
+    - Implemented JSONL-based download history tracking at `~/.aura/history.jsonl`.
+    - Added 11 missing `aria2` compatibility JSON-RPC API methods.
+    - Created `aura history` CLI command to retrieve and query history records.
 - [x] **bug: No URL deduplication — same URI creates unlimited tasks filling disk** (Issue #250) `[module:core, priority:high]`
+  - **Completion Commit**: `ba26d56` (PR #259)
+  - **Key Changes**:
+    - Implemented URI deduplication logic to prevent redundant concurrent download tasks of the same resource.
 - [x] **feat: File descriptor limit management at daemon startup** (Issue #251) `[module:daemon, priority:high]`
+  - **Completion Commit**: `ba26d56` (PR #259)
+  - **Key Changes**:
+    - Implemented dynamic `setrlimit` (`RLIMIT_NOFILE`) adjustment at daemon startup on Unix systems to maximize open file descriptor limits.
 - [x] **feat: Time-based bandwidth scheduling via [[bandwidth.schedule]] config** (Issue #249) `[module:core, priority:moderate]`
+  - **Completion Commit**: `ba26d56` (PR #259)
+  - **Key Changes**:
+    - Implemented time-based speed throttling schedules parsed from `Aura.toml` configuration.
+    - Implemented config hot-reloading that dynamically triggers bandwidth schedule updates.
 - [x] **chore: Refactor FTPS to use rustls (ADR-0048 parity) — suppaftp migrated to tokio-rustls-ring** (Issue #189) `[module:worker, priority:moderate]`
+  - **Completion Commit**: `91bc1ee` (PR #224)
+  - **Key Changes**:
+    - Replaced `native-tls` in `suppaftp` with `tokio-rustls-ring` backend.
+    - Integrated native root certs lookup via `rustls-native-certs` for secure certificate validation.
+    - Fixed backoff calculation overflow bug.
 - [x] **feat: Add /health endpoint for Docker liveness probes (ADR-0051)** (Issue #240) `[module:daemon, priority:low]`
+  - **Completion Commit**: `be472d9` (PR #258)
+  - **Key Changes**:
+    - Added unauthenticated `/health` endpoint to Axum router returning `200 OK`.
 - [x] **security: URI scheme allowlist + SSRF mitigation (ADR-0059) — file:// exfiltration blocked** (Issues #241, #244) `[module:daemon, module:core, priority:critical]`
+  - **Completion Commit**: `be472d9` (PR #258)
+  - **Key Changes**:
+    - Implemented scheme validation block for unsafe protocols (`file://`, `data:`, `javascript:`, `blob:`).
+    - Added checks to block requests to RFC 1918 private and link-local IP addresses.
 - [x] **security: RPC secret value removed from log output** (Issue #239) `[module:daemon, priority:critical]`
+  - **Completion Commit**: `be472d9` (PR #258)
+  - **Key Changes**:
+    - Modified daemon startup logging to prevent leaking the generated or custom RPC secret token in the stdout logs.
 - [x] **security: /metrics endpoint gated behind X-Aura-Token authentication** (Issue #253) `[module:daemon, priority:high]`
+  - **Completion Commit**: `be472d9` (PR #258)
+  - **Key Changes**:
+    - Applied authentication middleware to the `/metrics` endpoint to ensure it requires a valid `X-Aura-Token` header.
 - [x] **security: Remove moz-extension:// from CORS allowlist — Chrome-only (ADR-0049)** `[module:daemon, priority:high]`
+  - **Completion Commit**: `be472d9` (PR #258)
+  - **Key Changes**:
+    - Restricted CORS origins list by removing `moz-extension://` to restrict extension access to Chrome-only platforms.
 - [x] **bug: HTTP 200-instead-of-206 data corruption on range-resume prevented** (Issue #251) `[module:core, priority:critical]`
+  - **Completion Commit**: `be472d9` (PR #258)
+  - **Key Changes**:
+    - Added validation on HTTP range request responses to fail-fast if server returns HTTP 200 instead of HTTP 206, preventing overwriting or corrupting already downloaded parts.
 - [x] **security: Content-Disposition path traversal sanitization + RFC 5987 filename* support** (Issue #252) `[module:core, priority:critical]`
+  - **Completion Commit**: `be472d9` (PR #258)
+  - **Key Changes**:
+    - Implemented RFC 6266 / RFC 5987 compliant Content-Disposition header parser with `filename*` encoding support.
+    - Added null-byte stripping, directory traversal validation, and truncation to POSIX `NAME_MAX` limit.
 - [x] **reliability: Global panic hook writes crash report to ~/.aura/crash.log** (Issue #247) `[module:daemon, priority:high]`
+  - **Completion Commit**: `be472d9` (PR #258)
+  - **Key Changes**:
+    - Installed a custom panic hook that catches panics and writes diagnostic tracebacks to `~/.aura/crash.log`.
 - [x] **reliability: Double Ctrl+C force-quit + 5-second graceful shutdown timeout** (Issue #225) `[module:daemon, priority:high]`
+  - **Completion Commit**: `be472d9` (PR #258)
+  - **Key Changes**:
+    - Implemented double Ctrl+C handling to immediately exit daemon process on second interrupt.
+    - Added 5-second maximum graceful shutdown timeout.
 - [x] **security: SecretScrubber extended — .netrc, PEM private keys, URL-encoded creds, AWS tokens** (Issue #229) `[module:daemon, priority:high]`
+  - **Completion Commit**: `be472d9` (PR #258)
+  - **Key Changes**:
+    - Extended sanitization regex patterns in `SecretScrubber` to capture and redact PEM files, AWS credentials, `.netrc`, and URL-encoded query strings.
 - [x] **bug: Initialize and persist Prometheus metrics registry in daemon state** (Issue #212) `[module:daemon, priority:moderate]`
+  - **Completion Commit**: `78169f8` (PR #223)
+  - **Key Changes**:
+    - Fixed prometheus registry reset bug by initializing it once and storing it inside the daemon's persistent state.
 - [x] **feat: Implement hierarchical configuration file resolution and CLI overrides** (Issue #214) `[module:core, module:daemon, module:cli, priority:high]`
+  - **Completion Commit**: `4f78323` (PR #222)
+  - **Key Changes**:
+    - Implemented configuration resolution hierarchy: CLI flags -> environment variables -> local config -> global config -> default values.
 - [x] **feat: PolicyManager error classification and retry coordinator** (Issue #211) `[module:core, priority:high]`
+  - **Completion Commit**: `6e5b3d1` (PR #221)
+  - **Key Changes**:
+    - Implemented `PolicyManager` component to classify HTTP/FTP/BitTorrent errors and manage task retry backoffs.
 - [x] **feat: Implement ResourceGovernor for global memory backpressure** (Issue #207) `[module:core, priority:critical]`
+  - **Completion Commit**: `c4d908c` (PR #216)
+  - **Key Changes**:
+    - Implemented `ResourceGovernor` to track memory allocation across all active workers.
+    - Added backpressure control loops to throttle block reading when global memory thresholds are crossed.
 - [x] **feat: Advisory file locking (flock) on active download files** (Issue #208) `[module:storage, priority:high]`
+  - **Completion Commit**: `107c33f` (PR #218)
+  - **Key Changes**:
+    - Implemented cross-platform advisory file locking using `flock` on active download segments.
 - [x] **feat: Generational write-request validation in Storage Engine** (Issue #209) `[module:storage, priority:high]`
+  - **Completion Commit**: `f0c4ce3` (PR #217)
+  - **Key Changes**:
+    - Implemented generational write validation logic in `StorageEngine` to reject write commands targeting older task runs.
 - [x] **feat: PersistentState trait and DHT routing table persistence** (Issue #210) `[module:core, priority:high]`
+  - **Completion Commit**: `46455b0` (PR #220)
+  - **Key Changes**:
+    - Defined `PersistentState` trait for structured save/restore of engine components.
+    - Integrated DHT routing table state persistence to `dht.dat`.
 - [x] **chore: Document safety invariants for all unsafe blocks** (Issue #213) `[module:core, priority:moderate]`
+  - **Completion Commit**: `0dac1d2` (PR #219)
+  - **Key Changes**:
+    - Added required `// SAFETY:` explanatory comments preceding all `unsafe` code block usages.
 - [x] **bug: Remove default hardcoded RPC secret token** (Issue #201) `[module:daemon, priority:critical]`
+  - **Completion Commit**: `aa313dd` (PR #215)
+  - **Key Changes**:
+    - Replaced default hardcoded secrets with dynamically-generated high-entropy random tokens written securely to runtime config.
 - [x] **bug: Daemon binds to 0.0.0.0 (all interfaces) by default** (Issue #202) `[module:daemon, priority:critical]`
+  - **Completion Commit**: `aa313dd` (PR #215)
+  - **Key Changes**:
+    - Changed the default server listen bind address from `0.0.0.0` to `127.0.0.1` to enhance local security.
 - [x] **bug: Permissive CORS configuration allows arbitrary cross-origin requests** (Issue #203) `[module:daemon, priority:critical]`
+  - **Completion Commit**: `aa313dd` (PR #215)
+  - **Key Changes**:
+    - Restricted cross-origin resource sharing (CORS) rules to only permit connections from localhost interfaces and verified Chrome/Firefox extensions.
 - [x] **feat: SandboxRoot path traversal confinement for Storage Engine** (Issue #204) `[module:storage, priority:critical]`
+  - **Completion Commit**: `aa313dd` (PR #215)
+  - **Key Changes**:
+    - Added path normalization and validation logic to restrict file writes to within the designated `SandboxRoot` directory.
 - [x] **feat: SecretScrubber tracing layer for credentials sanitization** (Issue #205) `[module:core, priority:critical]`
+  - **Completion Commit**: `aa313dd` (PR #215)
+  - **Key Changes**:
+    - Added structured tracing subscriber filtering out API keys, tokens, and basic auth components from debug output.
 - [x] **bug: Implement graceful shutdown and signal handling in daemon/cli** (Issue #206) `[module:daemon, module:cli, priority:high]`
+  - **Completion Commit**: `aa313dd` (PR #215)
+  - **Key Changes**:
+    - Created unified shutdown coordinator handling SIGINT/SIGTERM to cleanly abort download loops and persist metadata.
 - [x] **feat: Implement Bit-Bucket virtual files (BEP 47)** (Issue #183) `[completed, module:storage]`
 - [x] **docs: Synchronize ARCHITECTURE.md with source tree** (Issue #186) `[completed, module:docs]`
 - [x] **feat: Graduate VPN Providers to full Controller Mode** (Issue #185) `[completed, module:vpn, priority:high]`

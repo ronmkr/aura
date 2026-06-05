@@ -34,13 +34,13 @@ aura-cli = { path = "aura-cli" }
 aura-core = { path = "aura-core" }
 aura-daemon = { path = "aura-daemon" }
 aura-tui = { path = "aura-tui" }
-axum = { version = "0.7", features = ["ws"] }
+axum = { version = "0.8", features = ["ws"] }
 axum-server = { version = "0.7", features = ["tls-rustls"] }
 rcgen = "0.13"
 bytes = "1"
 bytesize = "2.3.1"
 chrono = { version = "0.4", features = ["serde"] }
-chrono-tz = { version = "0.9", features = ["serde"] }
+chrono-tz = { version = "0.10", features = ["serde"] }
 clap = { version = "4", features = ["derive"] }
 crab_nat = "0.7.6"
 criterion = { version = "0.8", features = ["async_tokio"] }
@@ -51,12 +51,12 @@ futures-util = { version = "0.3", features = ["sink"] }
 fs2 = "0.4.3"
 hex = "0.4.3"
 hickory-resolver = { version = "0.26.1", features = ["tokio", "serde", "webpki-roots", "https-aws-lc-rs", "tls-aws-lc-rs", "system-config"] }
-igd-next = { version = "0.17.0", features = ["aio_tokio", "tokio"] }
+igd-next = { version = "0.17.1", features = ["aio_tokio", "tokio"] }
 libc = "0.2.186"
 indicatif = "0.18"
 local-ip-address = "0.6.12"
 lru = "0.18.0"
-lol_html = "2.0"
+lol_html = "3.0"
 md-5 = "0.11"
 metrics = "0.24.6"
 metrics-exporter-prometheus = "0.18.3"
@@ -83,7 +83,7 @@ suppaftp = { version = "8.0.3", features = ["tokio", "tokio-rustls-ring"] }
 rustls = { version = "0.23.40", features = ["ring"] }
 rustls-native-certs = "0.8.3"
 rustix = { version = "1.1.4", features = ["fs"] }
-rlimit = "0.10.1"
+rlimit = "0.11.0"
 tempfile = "3"
 thiserror = "2"
 tokio = { version = "1", features = ["full", "tracing"] }

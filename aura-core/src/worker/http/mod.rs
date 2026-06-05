@@ -21,6 +21,8 @@ pub struct HttpWorkerOptions {
     pub dns_resolver: Option<Arc<crate::net_util::TokioResolver>>,
     pub hsts_cache: Option<crate::security::HstsCache>,
     pub alt_svc_cache: Option<crate::security::AltSvcCache>,
+    pub resource_governor: Option<Arc<crate::orchestrator::resource_governor::ResourceGovernor>>,
+    pub tenant_id: Option<crate::TenantId>,
 }
 
 /// A specialized worker for the HTTP(S) protocol.

@@ -44,6 +44,8 @@ async fn test_http_worker_html_landing_page_resolution_success() {
         dns_resolver: None,
         hsts_cache: None,
         alt_svc_cache: None,
+        resource_governor: None,
+        tenant_id: None,
     });
 
     let result = worker.resolve_metadata().await;
@@ -88,6 +90,8 @@ async fn test_http_worker_html_landing_page_resolution_failure() {
         dns_resolver: None,
         hsts_cache: None,
         alt_svc_cache: None,
+        resource_governor: None,
+        tenant_id: None,
     });
 
     let result = worker.resolve_metadata().await;
@@ -131,6 +135,8 @@ async fn test_http_worker_captive_portal_detection() {
         dns_resolver: None,
         hsts_cache: None,
         alt_svc_cache: None,
+        resource_governor: None,
+        tenant_id: None,
     });
 
     let result = worker.resolve_metadata().await;
