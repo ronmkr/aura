@@ -5,9 +5,23 @@ All active development tasks, technical debt, and feature requests are managed e
 ## Open Tasks
 
 ### High (P1)
-*(No active tasks)*
+- [ ] **epic: Interactive TUI Modernization (Galactic Pilot Dashboard 2.0)** `[module:tui, priority:high]`
+    - [ ] Refactor TUI to stateful Multi-View architecture (Dashboard, Mission Control, File Selector).
+    - [ ] Implement Dashboard 2.0 with split-layout (Task List + Real-time Detail Panel).
+    - [ ] Add Sparkline throughput visualization and progress gauges.
+- [ ] **feat: Intelligent Protocol Detection and Bulk Task Ingestion** `[module:core, module:daemon, priority:high]`
+    - [ ] Centralized `ProtocolDetector` for HTTP/FTP/BT/Metalink.
+    - [ ] RPC methods for `aura.addFromFolder` (torrents/metalinks) and `aura.addFromFile` (URL lists).
+    - [ ] Interactive "Discovery Modal" in TUI for single/bulk mission addition.
+- [ ] **feat: Interactive BitTorrent File Selection and Selective Downloading** `[module:core, module:tui, priority:high]`
+    - [ ] Update `PiecePicker` and `Storage` to support skipping pieces for non-selected files.
+    - [ ] Implement `aura.getFiles` and `aura.setFileSelection` RPC methods.
+    - [ ] Build interactive tree-view File Selector widget in TUI.
 
 ### Moderate (P2)
+- [ ] **feat: Real-time Search and Command Palette for TUI** `[module:tui, priority:moderate]`
+    - [ ] Real-time task list filtering with `/` search mode.
+    - [ ] Interactive help modal (`?`) and hotkey command palette.
 - [ ] **infra: Add CI cross-platform matrix and cargo audit workflow** (Issue #148) `[infra, priority:moderate]`
 - [x] **feat: ETag and Last-Modified conditional GET for incremental file refresh** (Issue #255) `[module:core, priority:moderate]`
 - [ ] **perf: Share reqwest HTTP connection pool across segment workers for same-host downloads** (Issue #256) `[module:core, priority:moderate]`
