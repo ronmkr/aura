@@ -277,6 +277,56 @@ impl Orchestrator {
                     }
                 }
             }
+            Command::GetFiles(id, reply_tx) => {
+                let mut result = None;
+                if let Some(task) = self.tasks.get(&id) {
+                    if let Some(ext) = task.extensions.get("bittorrent") {
+                        if let Ok(bt_task) = ext.clone().as_any_arc().downcast::<BtTask>() {
+                            if let Some(torrent) = bt_task.state.torrent.lock().await.clone() {
+                                if let Some(files) = torrent.info.files {
+                                    result = Some(files);
+                                } else if let Some(v2_files) = torrent.flatten_v2_files() {
+                                    result = Some(
+                                        v2_files
+                                            .into_iter()
+                                            .map(|f| crate::torrent::File {
+                                                length: f.length,
+                                                path: f.path,
+                                                attr: None,
+                                            })
+                                            .collect(),
+                                    );
+                                } else if let Some(len) = torrent.info.length {
+                                    // Single file torrent
+                                    result = Some(vec![crate::torrent::File {
+                                        length: len,
+                                        path: vec![torrent.info.name.clone()],
+                                        attr: None,
+                                    }]);
+                                }
+                            }
+                        }
+                    }
+                }
+                let _ = reply_tx.send(result);
+            }
+            Command::SetFileSelection(id, selection) => {
+                if let Some(task) = self.tasks.get_mut(&id) {
+                    if let Some(ext) = task.extensions.get("bittorrent") {
+                        if let Ok(bt_task) = ext.clone().as_any_arc().downcast::<BtTask>() {
+                            task.selected_files = Some(selection.clone());
+                            if let Some(torrent) = bt_task.state.torrent.lock().await.clone() {
+                                let selected_pieces = torrent.compute_selected_pieces(&selection);
+                                let mut picker_guard = bt_task.state.picker.lock().await;
+                                if let Some(ref mut picker) = *picker_guard {
+                                    picker.selected_pieces = selected_pieces;
+                                }
+                            }
+                            let _ = self.save_task(id).await;
+                        }
+                    }
+                }
+            }
         }
         Ok(())
     }

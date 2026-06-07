@@ -66,6 +66,78 @@ impl Torrent {
         }
     }
 
+    pub fn selected_total_length(&self, selected_files: &[bool]) -> u64 {
+        if self.info.length.is_some() {
+            return self.total_length();
+        }
+
+        let mut total = 0;
+        if let Some(files) = &self.info.files {
+            for (idx, file) in files.iter().enumerate() {
+                if selected_files.get(idx).copied().unwrap_or(true) {
+                    total += file.length;
+                }
+            }
+        } else if let Some(v2_files) = self.flatten_v2_files() {
+            for (idx, file) in v2_files.iter().enumerate() {
+                if selected_files.get(idx).copied().unwrap_or(true) {
+                    total += file.length;
+                }
+            }
+        }
+        total
+    }
+
+    pub fn compute_selected_pieces(&self, selected_files: &[bool]) -> crate::bitfield::Bitfield {
+        let num_pieces = self.pieces_count();
+        let mut selected = crate::bitfield::Bitfield::new(num_pieces);
+
+        let piece_length = self.info.piece_length;
+        if self.info.length.is_some() {
+            for p in 0..num_pieces {
+                selected.set(p, true);
+            }
+            return selected;
+        }
+
+        let mut current_offset = 0;
+
+        if let Some(files) = &self.info.files {
+            for (idx, file) in files.iter().enumerate() {
+                let start_offset = current_offset;
+                let end_offset = start_offset + file.length;
+                current_offset = end_offset;
+
+                if selected_files.get(idx).copied().unwrap_or(true) && file.length > 0 {
+                    let start_piece = (start_offset / piece_length) as usize;
+                    let end_piece = ((end_offset - 1) / piece_length) as usize;
+                    for p in start_piece..=end_piece {
+                        if p < num_pieces {
+                            selected.set(p, true);
+                        }
+                    }
+                }
+            }
+        } else if let Some(v2_files) = self.flatten_v2_files() {
+            for (idx, file) in v2_files.iter().enumerate() {
+                let start_offset = current_offset;
+                let end_offset = start_offset + file.length;
+                current_offset = end_offset;
+
+                if selected_files.get(idx).copied().unwrap_or(true) && file.length > 0 {
+                    let start_piece = (start_offset / piece_length) as usize;
+                    let end_piece = ((end_offset - 1) / piece_length) as usize;
+                    for p in start_piece..=end_piece {
+                        if p < num_pieces {
+                            selected.set(p, true);
+                        }
+                    }
+                }
+            }
+        }
+        selected
+    }
+
     pub fn pieces_count(&self) -> usize {
         if let Some(pieces) = &self.info.pieces {
             pieces.len() / 20
@@ -105,13 +177,13 @@ impl Torrent {
         Ok(hash)
     }
 
-    /// Returns a list of byte ranges that correspond to padding files (BEP 47).
-    pub fn get_padding_ranges(&self) -> Vec<crate::task::Range> {
+    /// Returns a list of byte ranges that correspond to padding files (BEP 47) and unselected files.
+    pub fn get_padding_ranges(&self, selected_files: Option<&[bool]>) -> Vec<crate::task::Range> {
         let mut ranges = Vec::new();
         let mut current_offset = 0;
 
         if let Some(files) = &self.info.files {
-            for file in files {
+            for (idx, file) in files.iter().enumerate() {
                 let is_padding = if let Some(ref attr) = file.attr {
                     attr.contains('p')
                 } else {
@@ -119,7 +191,29 @@ impl Torrent {
                     file.path.first().map(|s| s == ".pad").unwrap_or(false)
                 };
 
-                if is_padding {
+                let is_unselected = !selected_files
+                    .map(|s| s.get(idx).copied().unwrap_or(true))
+                    .unwrap_or(true);
+
+                if is_padding || is_unselected {
+                    ranges.push(crate::task::Range {
+                        start: current_offset,
+                        end: current_offset + file.length,
+                    });
+                }
+                current_offset += file.length;
+            }
+        } else if let Some(v2_files) = self.flatten_v2_files() {
+            for (idx, file) in v2_files.iter().enumerate() {
+                let is_unselected = !selected_files
+                    .map(|s| s.get(idx).copied().unwrap_or(true))
+                    .unwrap_or(true);
+
+                // Assuming v2 doesn't have explicit attr for padding in our flatten_v2_files logic,
+                // but we can at least skip unselected.
+                let is_padding = file.path.first().map(|s| s == ".pad").unwrap_or(false);
+
+                if is_padding || is_unselected {
                     ranges.push(crate::task::Range {
                         start: current_offset,
                         end: current_offset + file.length,

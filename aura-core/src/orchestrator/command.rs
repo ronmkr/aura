@@ -40,4 +40,9 @@ pub enum Command {
     Scrub(TaskId),
     RefreshDiscovery(TaskId),
     Refresh(TaskId),
+    GetFiles(
+        TaskId,
+        tokio::sync::oneshot::Sender<Option<Vec<crate::torrent::File>>>,
+    ),
+    SetFileSelection(TaskId, Vec<bool>),
 }

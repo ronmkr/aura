@@ -14,12 +14,17 @@ impl Orchestrator {
         if let Some(bt_task) = self.get_bt_task(sub_id) {
             bt_task.state.mature(torrent.clone()).await;
 
+            let selected_files = self
+                .tasks
+                .get(&meta_id)
+                .and_then(|t| t.selected_files.clone());
+
             let metadata = crate::worker::Metadata {
                 final_uri: format!("magnet:?xt={}", bt_task.state.info_hash.to_magnet_urn()),
                 total_length: Some(torrent.total_length()),
                 name: Some(torrent.info.name.clone()),
                 range_supported: true,
-                padding_ranges: torrent.get_padding_ranges(),
+                padding_ranges: torrent.get_padding_ranges(selected_files.as_deref()),
                 etag: None,
                 last_modified: None,
             };

@@ -64,7 +64,8 @@ where
                 if key.code == KeyCode::Char('q') {
                     app.should_quit = true;
                 } else {
-                    match &app.view_state {
+                    let view_state = app.view_state.clone();
+                    match view_state {
                         app::ViewState::Dashboard => match key.code {
                             KeyCode::Down | KeyCode::Char('j') => app.next(),
                             KeyCode::Up | KeyCode::Char('k') => app.previous(),
@@ -86,11 +87,30 @@ where
                             }
                             _ => {}
                         },
-                        app::ViewState::MissionControl(_) => {
-                            if key.code == KeyCode::Esc {
-                                app.view_state = app::ViewState::Dashboard;
+                        app::ViewState::MissionControl(gid) => match key.code {
+                            KeyCode::Esc => app.view_state = app::ViewState::Dashboard,
+                            KeyCode::Char('f') => {
+                                let gid_clone = gid.clone();
+                                app.fetch_files(&gid_clone).await?;
+                                app.view_state = app::ViewState::FileSelector(gid.clone())
                             }
-                        }
+                            _ => {}
+                        },
+                        app::ViewState::FileSelector(gid) => match key.code {
+                            KeyCode::Esc => {
+                                app.view_state = app::ViewState::MissionControl(gid.clone());
+                            }
+                            KeyCode::Down | KeyCode::Char('j') => app.file_next(),
+                            KeyCode::Up | KeyCode::Char('k') => app.file_previous(),
+                            KeyCode::Char(' ') | KeyCode::Enter => {
+                                app.toggle_file_selection();
+                            }
+                            KeyCode::Char('s') => {
+                                app.submit_file_selection(&gid).await?;
+                                app.view_state = app::ViewState::MissionControl(gid.clone());
+                            }
+                            _ => {}
+                        },
                     }
                 }
             }

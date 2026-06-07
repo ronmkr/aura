@@ -184,6 +184,7 @@ dependencies = [
  "aura-core",
  "aura-daemon",
  "aura-tui",
+ "bytesize",
  "clap",
  "reqwest",
  "serde_json",

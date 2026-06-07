@@ -82,6 +82,10 @@ pub async fn handle_jsonrpc(
                     handle_change_global_option(&state.engine, payload.params).await
                 }
                 "aria2.getGlobalStat" => handle_get_global_stat(&state.engine).await,
+                "aura.getFiles" => handle_get_files(&state.engine, payload.params).await,
+                "aura.setFileSelection" => {
+                    handle_set_file_selection(&state.engine, payload.params).await
+                }
                 _ => Err(json!({ "code": -32601, "message": "Method not found" })),
             };
             (res, None)

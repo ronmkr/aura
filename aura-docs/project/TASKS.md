@@ -5,21 +5,21 @@ All active development tasks, technical debt, and feature requests are managed e
 ## Open Tasks
 
 ### High (P1)
-- [ ] **epic: Interactive TUI Modernization (Command Center)** `[module:tui, priority:high]`
-    - [ ] Refactor TUI to stateful Multi-View architecture (Dashboard, Mission Control, File Selector).
-    - [ ] Implement the Main Dashboard with split-layout (Task List + Real-time Detail Panel).
-    - [ ] Add Sparkline throughput visualization and progress gauges.
+- [x] **epic: Interactive TUI Modernization (Command Center)** `[module:tui, priority:high]`
+    - [x] Refactor TUI to stateful Multi-View architecture (Dashboard, Mission Control, File Selector).
+    - [x] Implement the Main Dashboard with split-layout (Task List + Real-time Detail Panel).
+    - [x] Add Sparkline throughput visualization and progress gauges.
 - [ ] **feat: Intelligent Protocol Detection and Bulk Task Ingestion** `[module:core, module:daemon, module:cli, priority:high]`
     - [ ] Centralized `ProtocolDetector` for HTTP/FTP/BT/Metalink.
     - [ ] RPC methods for `aura.addFromFolder` (torrents/metalinks) and `aura.addFromFile` (URL lists).
     - [ ] Interactive "Discovery Modal" in TUI for single/bulk mission addition.
     - [ ] CLI parity: Support directory paths and `--from-file` flag for headless bulk addition.
-- [ ] **feat: Interactive BitTorrent File Selection and Selective Downloading** `[module:core, module:tui, module:cli, priority:high]`
-    - [ ] Update `PiecePicker` and `Storage` to support skipping pieces for non-selected files.
-    - [ ] Implement `aura.getFiles` and `aura.setFileSelection` RPC methods.
-    - [ ] Build interactive tree-view File Selector widget in TUI.
-    - [ ] CLI parity: Add `aura show-files <gid>` and `--select-file 1,5-10` flags.
-
+### High (P1)
+- [x] **feat: Interactive BitTorrent File Selection and Selective Downloading** `[module:core, module:tui, module:cli, priority:high]`
+    - [x] Update `PiecePicker` and `Storage` to support skipping pieces for non-selected files.
+    - [x] Implement `aura.getFiles` and `aura.setFileSelection` RPC methods.
+    - [x] Build interactive tree-view File Selector widget in TUI.
+    - [x] CLI parity: Add `aura show-files <gid>` and `--select-file` flags.
 ### Moderate (P2)
 - [ ] **feat: Real-time Search, Command Palette, and World-Class UX** `[module:tui, priority:moderate]`
     - [ ] Real-time task list filtering with `/` search mode.

@@ -110,6 +110,7 @@ pub async fn handle_tell_active(engine: &Engine) -> Result<Value, Value> {
                 "totalLength": t.total_length.to_string(),
                 "completedLength": t.completed_length.to_string(),
                 "name": t.name,
+                "selectedFiles": t.selected_files,
             })
         })
         .collect();
@@ -258,6 +259,7 @@ pub async fn handle_tell_waiting(engine: &Engine, params: Option<Value>) -> Resu
                     .collect::<Vec<String>>(),
                 None,
                 &keys,
+                t.selected_files.as_deref(),
             )
         })
         .collect();
@@ -294,6 +296,7 @@ pub async fn handle_get_status(engine: &Engine, params: Option<Value>) -> Result
                 .collect::<Vec<String>>(),
             None,
             &keys,
+            t.selected_files.as_deref(),
         ));
     }
 
@@ -313,8 +316,44 @@ pub async fn handle_get_status(engine: &Engine, params: Option<Value>) -> Result
             &rec.uris,
             rec.error.as_deref(),
             &keys,
+            None,
         ));
     }
 
     Err(json!({ "code": -32000, "message": "Task not found" }))
+}
+
+pub async fn handle_get_files(engine: &Engine, params: Option<Value>) -> Result<Value, Value> {
+    let id = parse_gid(params.clone())?;
+
+    let files = engine
+        .get_files(id)
+        .await
+        .map_err(|e| json!({ "code": -32000, "message": e.to_string() }))?;
+
+    match files {
+        Some(f) => Ok(json!(f)),
+        None => Err(
+            json!({ "code": -32000, "message": "Files not available or not a BitTorrent task" }),
+        ),
+    }
+}
+
+pub async fn handle_set_file_selection(
+    engine: &Engine,
+    params: Option<Value>,
+) -> Result<Value, Value> {
+    let id = parse_gid(params.clone())?;
+
+    let params_val =
+        params.ok_or_else(|| json!({ "code": -32602, "message": "Invalid params" }))?;
+    let selection: Vec<bool> = serde_json::from_value(params_val[1].clone())
+        .map_err(|_| json!({ "code": -32602, "message": "Invalid boolean array" }))?;
+
+    engine
+        .set_file_selection(id, selection)
+        .await
+        .map_err(|e| json!({ "code": -32000, "message": e.to_string() }))?;
+
+    Ok(json!("OK"))
 }

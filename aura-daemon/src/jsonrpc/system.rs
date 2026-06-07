@@ -70,6 +70,7 @@ pub async fn handle_tell_stopped(engine: &Engine, params: Option<Value>) -> Resu
                 &rec.uris,
                 rec.error.as_deref(),
                 &keys,
+                None,
             )
         })
         .collect();

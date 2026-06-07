@@ -42,6 +42,7 @@ impl BtTaskState {
         resource_governor: Arc<crate::orchestrator::resource_governor::ResourceGovernor>,
         tenant_id: Option<TenantId>,
         config: Arc<arc_swap::ArcSwap<crate::Config>>,
+        selected_files: Option<&[bool]>,
     ) -> Self {
         let num_pieces = torrent.pieces_count();
         let info_hash = if let Some(h2) = torrent.info_hash_v2().unwrap_or(None) {
@@ -52,11 +53,18 @@ impl BtTaskState {
 
         let bf = bitfield.unwrap_or_else(|| Bitfield::new(num_pieces));
 
+        let picker = if let Some(selection) = selected_files {
+            let selected_pieces = torrent.compute_selected_pieces(selection);
+            PiecePicker::with_selection(num_pieces, selected_pieces)
+        } else {
+            PiecePicker::new(num_pieces)
+        };
+
         Self {
             info_hash,
             torrent: Mutex::new(Some(torrent)),
             bitfield: Mutex::new(Some(bf)),
-            picker: Mutex::new(Some(PiecePicker::new(num_pieces))),
+            picker: Mutex::new(Some(picker)),
             registry: Mutex::new(PeerRegistry::new()),
             sequential: std::sync::atomic::AtomicBool::new(false),
             db,
@@ -157,6 +165,7 @@ impl BtTask {
         resource_governor: Arc<crate::orchestrator::resource_governor::ResourceGovernor>,
         tenant_id: Option<TenantId>,
         config: Arc<arc_swap::ArcSwap<crate::Config>>,
+        selected_files: Option<&[bool]>,
     ) -> Result<Self> {
         let data = tokio::fs::read(path)
             .await
@@ -171,6 +180,7 @@ impl BtTask {
                 resource_governor,
                 tenant_id,
                 config,
+                selected_files,
             )),
             dht_tx,
             lpd_tx,

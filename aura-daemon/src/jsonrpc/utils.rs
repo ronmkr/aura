@@ -22,6 +22,7 @@ pub fn format_task_value(
     uris: &[String],
     error_msg: Option<&str>,
     keys: &Option<Vec<String>>,
+    selected_files: Option<&[bool]>,
 ) -> Value {
     let mut map = serde_json::Map::new();
 
@@ -48,6 +49,7 @@ pub fn format_task_value(
         "errorCode": err_code.to_string(),
         "errorMessage": error_msg.unwrap_or("").to_string(),
         "name": name.to_string(),
+        "selectedFiles": selected_files,
     });
 
     if let Some(ref k) = keys {

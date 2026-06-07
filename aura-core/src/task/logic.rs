@@ -94,6 +94,7 @@ pub struct MetaTask {
     pub seed_time: Option<u32>,
     pub etag: Option<String>,
     pub last_modified: Option<String>,
+    pub selected_files: Option<Vec<bool>>,
 }
 
 /// Represents the serializable state of a MetaTask for persistence.
@@ -126,6 +127,8 @@ pub struct TaskState {
     pub etag: Option<String>,
     #[serde(default)]
     pub last_modified: Option<String>,
+    #[serde(default)]
+    pub selected_files: Option<Vec<bool>>,
 }
 
 impl MetaTask {
@@ -154,6 +157,7 @@ impl MetaTask {
             seed_time: self.seed_time,
             etag: self.etag.clone(),
             last_modified: self.last_modified.clone(),
+            selected_files: self.selected_files.clone(),
         }
     }
 
@@ -184,6 +188,7 @@ impl MetaTask {
             seed_time: state.seed_time,
             etag: state.etag,
             last_modified: state.last_modified,
+            selected_files: state.selected_files,
         }
     }
 
@@ -214,6 +219,7 @@ impl MetaTask {
             seed_time: None,
             etag: None,
             last_modified: None,
+            selected_files: None,
         }
     }
 

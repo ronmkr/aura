@@ -104,6 +104,7 @@ impl Orchestrator {
             let alt_svc_cache = self.alt_svc_cache.clone();
             let resource_governor_clone = self.resource_governor.clone();
             let tenant_id = meta_task.tenant_id.clone();
+            let selected_files = meta_task.selected_files.clone();
             let client_pool = self.client_pool.clone();
 
             let existing_bt = self.get_bt_task(sub_id);
@@ -189,6 +190,7 @@ impl Orchestrator {
                                     resource_governor_clone.clone(),
                                     tenant_id.clone(),
                                     config_clone.clone(),
+                                    selected_files.as_deref(),
                                 )
                                 .await
                             };
@@ -241,7 +243,8 @@ impl Orchestrator {
                                 total_length: Some(total_length),
                                 name: Some(torrent.info.name.clone()),
                                 range_supported: true,
-                                padding_ranges: torrent.get_padding_ranges(),
+                                padding_ranges: torrent
+                                    .get_padding_ranges(selected_files.as_deref()),
                                 etag: None,
                                 last_modified: None,
                             };

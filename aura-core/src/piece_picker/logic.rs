@@ -15,16 +15,34 @@ pub struct PiecePicker {
     peer_bitfields: HashMap<String, Bitfield>,
     /// Pieces currently being requested by workers.
     in_progress: Bitfield,
+    /// The pieces that are selected for download.
+    pub selected_pieces: Bitfield,
 }
 
 impl PiecePicker {
     /// Creates a new PiecePicker for a task with a given number of pieces.
     pub fn new(num_pieces: usize) -> Self {
+        let mut selected = Bitfield::new(num_pieces);
+        for i in 0..num_pieces {
+            selected.set(i, true);
+        }
         Self {
             num_pieces,
             piece_counts: vec![0; num_pieces],
             peer_bitfields: HashMap::new(),
             in_progress: Bitfield::new(num_pieces),
+            selected_pieces: selected,
+        }
+    }
+
+    /// Creates a new PiecePicker with specific piece selection.
+    pub fn with_selection(num_pieces: usize, selected_pieces: Bitfield) -> Self {
+        Self {
+            num_pieces,
+            piece_counts: vec![0; num_pieces],
+            peer_bitfields: HashMap::new(),
+            in_progress: Bitfield::new(num_pieces),
+            selected_pieces,
         }
     }
 
@@ -100,7 +118,11 @@ impl PiecePicker {
 
         if sequential {
             for i in 0..self.num_pieces {
-                if !my_bitfield.get(i) && peer_bf.get(i) && !self.in_progress.get(i) {
+                if self.selected_pieces.get(i)
+                    && !my_bitfield.get(i)
+                    && peer_bf.get(i)
+                    && !self.in_progress.get(i)
+                {
                     self.in_progress.set(i, true);
                     return Some(i);
                 }
@@ -113,8 +135,11 @@ impl PiecePicker {
         let mut total_candidates = 0;
 
         for i in 0..self.num_pieces {
-            // Skip pieces I already have, or peer doesn't have, or already in progress
-            if my_bitfield.get(i) || !peer_bf.get(i) || self.in_progress.get(i) {
+            if !self.selected_pieces.get(i)
+                || my_bitfield.get(i)
+                || !peer_bf.get(i)
+                || self.in_progress.get(i)
+            {
                 continue;
             }
 
@@ -154,12 +179,21 @@ impl PiecePicker {
 
     /// Determines if the task is in "Endgame Mode".
     pub fn is_endgame(&self, my_bitfield: &Bitfield) -> bool {
-        let remaining = self.num_pieces - my_bitfield.count_set();
-        // Endgame triggers when very few pieces are left (e.g., < 3 or < 1%)
+        let mut selected_count = 0;
+        let mut my_selected_count = 0;
+        for i in 0..self.num_pieces {
+            if self.selected_pieces.get(i) {
+                selected_count += 1;
+                if my_bitfield.get(i) {
+                    my_selected_count += 1;
+                }
+            }
+        }
+        let remaining = selected_count - my_selected_count;
         if remaining == 0 {
             return false;
         }
-        remaining <= 3 || (remaining as f32 / self.num_pieces as f32) < 0.01
+        remaining <= 3 || (remaining as f32 / selected_count as f32) < 0.01
     }
 
     /// Picks a piece even if it's already in progress (redundant fetching).
@@ -168,7 +202,7 @@ impl PiecePicker {
 
         let mut available = Vec::new();
         for i in 0..self.num_pieces {
-            if !my_bitfield.get(i) && peer_bf.get(i) {
+            if self.selected_pieces.get(i) && !my_bitfield.get(i) && peer_bf.get(i) {
                 available.push(i);
             }
         }

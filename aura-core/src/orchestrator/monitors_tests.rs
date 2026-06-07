@@ -84,6 +84,7 @@ async fn test_adaptive_scaling_min_connections() {
         seed_time: None,
         etag: None,
         last_modified: None,
+        selected_files: None,
     };
 
     orchestrator.tasks.insert(TaskId(1), task);
@@ -141,6 +142,7 @@ async fn test_check_seed_limits() {
         seed_time: None,
         etag: None,
         last_modified: None,
+        selected_files: None,
     };
 
     let sub_task2 = SubTask {
@@ -184,6 +186,7 @@ async fn test_check_seed_limits() {
         seed_time: None,
         etag: None,
         last_modified: None,
+        selected_files: None,
     };
 
     let sub_task3 = SubTask {
@@ -227,6 +230,7 @@ async fn test_check_seed_limits() {
         seed_time: None,
         etag: None,
         last_modified: None,
+        selected_files: None,
     };
 
     orchestrator.tasks.insert(TaskId(1), task1);

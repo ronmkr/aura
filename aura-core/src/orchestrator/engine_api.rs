@@ -239,4 +239,24 @@ impl Engine {
         let paginated = records.into_iter().skip(offset).take(num).collect();
         Ok(paginated)
     }
+
+    pub async fn get_files(&self, id: TaskId) -> Result<Option<Vec<crate::torrent::File>>> {
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        self.command_tx
+            .send(Command::GetFiles(id, tx))
+            .await
+            .map_err(|e| Error::Engine(format!("Failed to send GetFiles command: {}", e)))?;
+        rx.await
+            .map_err(|_| Error::Engine("Engine shut down before replying".to_string()))
+    }
+
+    pub async fn set_file_selection(&self, id: TaskId, selection: Vec<bool>) -> Result<()> {
+        self.command_tx
+            .send(Command::SetFileSelection(id, selection))
+            .await
+            .map_err(|e| {
+                Error::Engine(format!("Failed to send SetFileSelection command: {}", e))
+            })?;
+        Ok(())
+    }
 }

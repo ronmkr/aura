@@ -1,5 +1,7 @@
 use clap::{Parser, Subcommand};
 
+mod cli_client;
+
 #[derive(Parser, Debug)]
 #[command(author, version, about = "Aura - The Next-Gen Download Manager", long_about = None)]
 struct Cli {
@@ -98,6 +100,19 @@ enum Commands {
         /// The GID of the task to refresh
         gid: u64,
     },
+    /// Show files for a BitTorrent task
+    ShowFiles {
+        /// The GID of the task
+        gid: u64,
+    },
+    /// Select specific files for a BitTorrent task
+    SelectFiles {
+        /// The GID of the task
+        gid: u64,
+        /// Indices of files to download (comma-separated, e.g., 0,2,5)
+        #[arg(short, long, value_delimiter = ',')]
+        indices: Vec<usize>,
+    },
 }
 
 #[tokio::main]
@@ -183,7 +198,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             aura_cli::run_history(limit, &format, filter).await?;
         }
         Some(Commands::Refresh { gid }) => {
-            run_refresh(config.network.rpc_port, config.network.rpc_secret, gid).await?;
+            cli_client::run_refresh(config.network.rpc_port, config.network.rpc_secret, gid)
+                .await?;
+        }
+        Some(Commands::ShowFiles { gid }) => {
+            cli_client::run_show_files(config.network.rpc_port, config.network.rpc_secret, gid)
+                .await?;
+        }
+        Some(Commands::SelectFiles { gid, indices }) => {
+            cli_client::run_select_files(
+                config.network.rpc_port,
+                config.network.rpc_secret,
+                gid,
+                indices,
+            )
+            .await?;
         }
         None => {
             // Default CLI behavior
@@ -204,61 +233,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 cmd.print_help()?;
             }
         }
-    }
-
-    Ok(())
-}
-
-async fn run_refresh(
-    port: u16,
-    secret: Option<String>,
-    gid: u64,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let client = reqwest::Client::new();
-
-    // Resolve secret
-    let secret = match secret {
-        Some(s) => Some(s),
-        None => {
-            let home = std::env::var_os("HOME")
-                .or_else(|| std::env::var_os("USERPROFILE"))
-                .map(std::path::PathBuf::from);
-            if let Some(h) = home {
-                let p = h.join(".aura").join("rpc_secret");
-                if p.exists() {
-                    std::fs::read_to_string(&p)
-                        .ok()
-                        .map(|s| s.trim().to_string())
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        }
-    };
-
-    let url = format!("http://localhost:{}/jsonrpc", port);
-    let mut req = client.post(&url);
-    if let Some(ref sec) = secret {
-        req = req.header("X-Aura-Token", sec);
-    }
-
-    let payload = serde_json::json!({
-        "jsonrpc": "2.0",
-        "method": "aura.refreshUri",
-        "params": [gid.to_string()],
-        "id": "cli-refresh"
-    });
-
-    let resp = req.json(&payload).send().await?;
-    let body: serde_json::Value = resp.json().await?;
-
-    if let Some(err) = body.get("error") {
-        eprintln!("Error refreshing task: {}", err);
-        std::process::exit(1);
-    } else {
-        println!("Refresh request sent successfully for GID {}", gid);
     }
 
     Ok(())
