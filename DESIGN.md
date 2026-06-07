@@ -140,4 +140,5 @@ warning = "#FFFF00"                    # Retrying tasks
 
 ##  Interaction
 - **Hotkeys**: `a` (Add), `p` (Pause), `r` (Resume), `d` (Delete), `q` (Quit).
-- **Update Frequency**: 500ms UI ticks.
+- **Update Frequency**: 500ms UI ticks (Configurable via `tui.tick_rate_ms`).
+

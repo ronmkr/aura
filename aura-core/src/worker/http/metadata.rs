@@ -118,7 +118,7 @@ impl HttpWorker {
         let mut current_uri = self.options.uri.clone();
         let mut referer: Option<String> = None;
         let mut redirect_count = 0;
-        let max_redirects = 20;
+        let max_redirects = self.options.max_redirects;
 
         loop {
             current_uri = self.upgrade_url(&current_uri).await;
@@ -166,7 +166,8 @@ impl HttpWorker {
                             break resp;
                         } else if Self::is_retryable(resp.status()) && attempts < max_attempts {
                             attempts += 1;
-                            let delay = self.options.retry_delay_secs * (2u64.pow(attempts - 1));
+                            let delay =
+                                self.options.http_retry_delay_secs * (2u64.pow(attempts - 1));
                             tracing::warn!(
                                 status = %resp.status(),
                                 attempt = attempts,
@@ -184,7 +185,7 @@ impl HttpWorker {
                     }
                     Err(e) if attempts < max_attempts => {
                         attempts += 1;
-                        let delay = self.options.retry_delay_secs * (2u64.pow(attempts - 1));
+                        let delay = self.options.http_retry_delay_secs * (2u64.pow(attempts - 1));
                         tracing::warn!(
                             error = %e,
                             attempt = attempts,

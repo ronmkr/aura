@@ -12,7 +12,7 @@ use tracing::{info, warn};
 pub struct Engine {
     pub(crate) command_tx: mpsc::Sender<Command>,
     pub(crate) event_tx: broadcast::Sender<Event>,
-    pub(crate) config: Arc<ArcSwap<crate::Config>>,
+    pub config: Arc<ArcSwap<crate::Config>>,
 }
 
 impl std::fmt::Debug for Engine {
@@ -23,13 +23,15 @@ impl std::fmt::Debug for Engine {
 
 impl Engine {
     pub async fn new(config: crate::Config) -> Result<(Self, Orchestrator, StorageEngine)> {
+        let (command_tx, command_rx) = mpsc::channel(config.limits.command_channel_capacity);
+        let (storage_tx, storage_rx) = mpsc::channel(config.limits.storage_channel_capacity);
+        let (completion_tx, completion_rx) =
+            mpsc::channel::<StorageEvent>(config.limits.storage_channel_capacity);
+        let (dht_tx, dht_rx) = mpsc::channel(config.limits.command_channel_capacity);
+        let (nat_tx, nat_rx) = mpsc::channel(config.limits.command_channel_capacity);
+        let (lpd_tx, lpd_rx) = mpsc::channel(config.limits.command_channel_capacity);
+
         let config = Arc::new(ArcSwap::from_pointee(config));
-        let (command_tx, command_rx) = mpsc::channel(100);
-        let (storage_tx, storage_rx) = mpsc::channel(100);
-        let (completion_tx, completion_rx) = mpsc::channel::<StorageEvent>(100);
-        let (dht_tx, dht_rx) = mpsc::channel(100);
-        let (nat_tx, nat_rx) = mpsc::channel(100);
-        let (lpd_tx, lpd_rx) = mpsc::channel(100);
 
         let initial_config = config.load();
         let local_addr = {

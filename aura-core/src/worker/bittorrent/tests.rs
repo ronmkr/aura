@@ -114,8 +114,11 @@ async fn test_failed_connection_transitions_to_disconnected() {
         peer_id: [0; 20],
         my_id: [0; 20],
         proxy: None,
-        throttler: Arc::new(crate::throttler::Throttler::new(0, 0)),
+        throttler: Arc::new(crate::throttler::Throttler::new(0, 0, 100)),
         pex_enabled: false,
+        pipeline_size: 10,
+        connect_timeout_secs: 5,
+        happy_eyeballs_stagger_ms: 250,
     });
 
     let (storage_tx, _) = mpsc::channel(1);

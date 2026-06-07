@@ -69,12 +69,16 @@ impl BtTaskState {
             p
         };
 
+        let mut registry = PeerRegistry::new();
+        registry.eviction_threshold = bt_config.peer_eviction_threshold;
+        registry.eviction_percent = bt_config.peer_eviction_percent;
+
         Self {
             info_hash,
             torrent: Mutex::new(Some(torrent)),
             bitfield: Mutex::new(Some(bf)),
             picker: Mutex::new(Some(picker)),
-            registry: Mutex::new(PeerRegistry::new()),
+            registry: Mutex::new(registry),
             sequential: std::sync::atomic::AtomicBool::new(false),
             db,
             pieces_count: std::sync::atomic::AtomicUsize::new(num_pieces),

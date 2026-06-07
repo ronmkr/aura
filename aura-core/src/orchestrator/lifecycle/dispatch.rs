@@ -64,7 +64,8 @@ impl Orchestrator {
                     .get(&sub_id)
                     .cloned()
                     .unwrap_or_else(|| {
-                        let (tx, _) = tokio::sync::broadcast::channel(1024);
+                        let capacity = self.config.load().limits.event_channel_capacity;
+                        let (tx, _) = tokio::sync::broadcast::channel(capacity);
                         tx
                     });
                 let my_id = self.peer_id;
@@ -106,6 +107,8 @@ impl Orchestrator {
 
                     let config_clone = config_arc.clone();
                     tokio::spawn(async move {
+                        let bt_config = config_clone.load().bittorrent.clone();
+                        let net_config = config_clone.load().network.clone();
                         let mut worker = crate::worker::bittorrent::BtWorker::new(
                             crate::worker::bittorrent::BtWorkerOptions {
                                 peer_addr: peer_addr.clone(),
@@ -114,7 +117,10 @@ impl Orchestrator {
                                 my_id,
                                 proxy,
                                 throttler: throttler_clone,
-                                pex_enabled: config_clone.load().bittorrent.pex_enabled,
+                                pex_enabled: bt_config.pex_enabled,
+                                happy_eyeballs_stagger_ms: net_config.happy_eyeballs_stagger_ms,
+                                pipeline_size: bt_config.request_pipeline_size,
+                                connect_timeout_secs: net_config.connect_timeout_secs,
                             },
                         );
                         worker.local_addr = local_addr;
@@ -184,8 +190,12 @@ impl Orchestrator {
                                 .user_agent(Some(config.network.user_agent.clone()))
                                 .connect_timeout(Some(config.network.connect_timeout_secs))
                                 .proxy(config.network.proxy.clone())
+                                .max_redirects(config.network.max_redirects)
                                 .retry_count(config.network.http_retry_count)
                                 .retry_delay_secs(config.network.http_retry_delay_secs)
+                                .happy_eyeballs_stagger_ms(config.network.happy_eyeballs_stagger_ms)
+                                .http_buffer_capacity(config.network.http_buffer_capacity)
+                                .http_concurrent_requests(config.network.http_concurrent_requests)
                                 .credential_provider(provider_clone)
                                 .hsts_cache(hsts_cache)
                                 .alt_svc_cache(alt_svc_cache)

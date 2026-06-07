@@ -23,6 +23,7 @@ async fn test_ftp_worker_retry_on_connection_failure() {
         None,
         3,
         0,
+        250,
         None,
         None,
         None,

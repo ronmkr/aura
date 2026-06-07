@@ -73,8 +73,10 @@ pub async fn handle_jsonrpc(
                 "aria2.tellStopped" => handle_tell_stopped(&state.engine, payload.params).await,
                 "aria2.tellWaiting" => handle_tell_waiting(&state.engine, payload.params).await,
                 "aria2.getStatus" => handle_get_status(&state.engine, payload.params).await,
-                "aria2.purgeDownloadResult" => handle_purge_download_result().await,
-                "aria2.removeDownloadResult" => handle_remove_download_result(payload.params).await,
+                "aria2.purgeDownloadResult" => handle_purge_download_result(&state.engine).await,
+                "aria2.removeDownloadResult" => {
+                    handle_remove_download_result(&state.engine, payload.params).await
+                }
                 "aria2.saveSession" => handle_save_session().await,
                 "aria2.shutdown" => handle_shutdown(&state.engine).await,
                 "aria2.forceShutdown" => handle_shutdown(&state.engine).await,

@@ -301,7 +301,7 @@ pub async fn handle_get_status(engine: &Engine, params: Option<Value>) -> Result
     }
 
     let history = engine
-        .tell_history(0, 100000)
+        .tell_history(0, engine.config.load().limits.history_record_limit)
         .await
         .map_err(|e| json!({ "code": -32000, "message": e.to_string() }))?;
 

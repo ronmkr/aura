@@ -35,6 +35,10 @@ pub struct BitTorrentConfig {
     pub endgame_threshold_percent: f32,
     pub min_split_size_mb: u64,
     pub max_connections_per_torrent: usize,
+    pub peer_id_prefix: String,
+    pub peer_eviction_threshold: usize,
+    pub peer_eviction_percent: f32,
+    pub peer_idle_penalty_threshold_secs: f64,
 }
 
 impl Default for BitTorrentConfig {
@@ -53,6 +57,10 @@ impl Default for BitTorrentConfig {
             endgame_threshold_percent: 0.01,
             min_split_size_mb: 20,
             max_connections_per_torrent: 200,
+            peer_id_prefix: "-AR0001-".to_string(),
+            peer_eviction_threshold: 500,
+            peer_eviction_percent: 0.1,
+            peer_idle_penalty_threshold_secs: 60.0,
         }
     }
 }

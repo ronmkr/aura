@@ -24,7 +24,11 @@ async fn test_http_worker_resource_governor() {
         proxy: None,
         referer: None,
         retry_count: 1,
-        retry_delay_secs: 1,
+        http_retry_delay_secs: 1,
+        max_redirects: 20,
+        happy_eyeballs_stagger_ms: 250,
+        http_buffer_capacity: 16384,
+        http_concurrent_requests: 32,
         credential_provider: None,
         dns_resolver: None,
         hsts_cache: None,
@@ -36,7 +40,7 @@ async fn test_http_worker_resource_governor() {
         if_modified_since: None,
     });
 
-    let throttler = std::sync::Arc::new(crate::throttler::Throttler::new(0, 0));
+    let throttler = std::sync::Arc::new(crate::throttler::Throttler::new(0, 0, 100));
 
     let piece = worker
         .fetch_segment(
@@ -75,7 +79,11 @@ async fn test_http_worker_resource_governor_backpressure() {
         proxy: None,
         referer: None,
         retry_count: 1,
-        retry_delay_secs: 1,
+        http_retry_delay_secs: 1,
+        max_redirects: 20,
+        happy_eyeballs_stagger_ms: 250,
+        http_buffer_capacity: 16384,
+        http_concurrent_requests: 32,
         credential_provider: None,
         dns_resolver: None,
         hsts_cache: None,
@@ -87,7 +95,7 @@ async fn test_http_worker_resource_governor_backpressure() {
         if_modified_since: None,
     });
 
-    let throttler = std::sync::Arc::new(crate::throttler::Throttler::new(0, 0));
+    let throttler = std::sync::Arc::new(crate::throttler::Throttler::new(0, 0, 100));
 
     let res = tokio::time::timeout(
         std::time::Duration::from_millis(300),

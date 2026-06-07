@@ -146,7 +146,8 @@ impl Orchestrator {
         });
 
         if let Some(scrub_command_rx) = self.scrub_rx.take() {
-            let (scrub_event_tx, mut scrub_event_rx) = tokio::sync::mpsc::channel(1024);
+            let capacity = self.config.load().limits.command_channel_capacity;
+            let (scrub_event_tx, mut scrub_event_rx) = tokio::sync::mpsc::channel(capacity);
             let scrubber =
                 crate::scrubber::IntegrityScrubber::new(scrub_command_rx, scrub_event_tx);
             tokio::spawn(scrubber.run());

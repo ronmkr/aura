@@ -58,7 +58,8 @@ impl Orchestrator {
                             error: Some("Task removed by user".to_string()),
                             completed_at: chrono::Utc::now(),
                         };
-                        crate::history::HistoryManager::append_record(record);
+                        let config = self.config.load();
+                        crate::history::HistoryManager::append_record(&config, record);
                     }
                 }
                 let throttler = if let Some(task) = self.tasks.get(&id) {
@@ -258,19 +259,15 @@ impl Orchestrator {
                             .and_then(|e| e.clone().as_any_arc().downcast::<BtTask>().ok())
                         {
                             let info_hash = bt_task.state.info_hash;
+                            let config = self.config.load();
+                            let port = config.network.listen_port;
                             let _ = self
                                 .dht_tx
-                                .send(crate::dht::DhtCommand::Announce {
-                                    info_hash,
-                                    port: 6881,
-                                })
+                                .send(crate::dht::DhtCommand::Announce { info_hash, port })
                                 .await;
                             let _ = self
                                 .lpd_tx
-                                .send(crate::lpd::LpdCommand::Announce {
-                                    info_hash,
-                                    port: 6881,
-                                })
+                                .send(crate::lpd::LpdCommand::Announce { info_hash, port })
                                 .await;
                             tracing::info!(%id, "Refreshed peer discovery via DHT and LPD");
                         }

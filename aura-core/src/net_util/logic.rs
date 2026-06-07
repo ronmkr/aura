@@ -67,6 +67,7 @@ async fn race_connect(
     addrs: Vec<SocketAddr>,
     _interface: Option<&str>,
     local_addr: Option<IpAddr>,
+    stagger_ms: u64,
 ) -> Result<TcpStream> {
     if addrs.is_empty() {
         return Err(Error::Config(
@@ -98,7 +99,7 @@ async fn race_connect(
         return Ok(stream);
     }
 
-    // Race addresses with a 250ms staggered start
+    // Race addresses with a staggered start
     let mut futures = futures_util::stream::FuturesUnordered::new();
 
     for (i, addr) in addrs.into_iter().enumerate() {
@@ -106,7 +107,7 @@ async fn race_connect(
 
         futures.push(async move {
             if i > 0 {
-                tokio::time::sleep(tokio::time::Duration::from_millis(i as u64 * 250)).await;
+                tokio::time::sleep(tokio::time::Duration::from_millis(i as u64 * stagger_ms)).await;
             }
 
             let socket = if addr.is_ipv4() {
@@ -146,6 +147,7 @@ pub async fn connect_tcp_bound(
     interface: Option<&str>,
     local_addr: Option<IpAddr>,
     proxy: Option<&str>,
+    stagger_ms: u64,
 ) -> Result<TcpStream> {
     if let Some(p) = proxy {
         if let Some(proxy_addr) = p.strip_prefix("socks5://") {
@@ -159,7 +161,7 @@ pub async fn connect_tcp_bound(
                 })?
                 .collect();
 
-            let stream = race_connect(addrs, interface, local_addr).await?;
+            let stream = race_connect(addrs, interface, local_addr, stagger_ms).await?;
 
             tracing::debug!("Negotiating SOCKS5 proxy connection to {}", remote_addr);
             let socks_stream =
@@ -176,8 +178,7 @@ pub async fn connect_tcp_bound(
     }
 
     // Single remote_addr provided. Usually workers have already resolved.
-    // In a future PR, we should accept (host, port) to perform DNS racing here.
-    race_connect(vec![remote_addr], interface, local_addr).await
+    race_connect(vec![remote_addr], interface, local_addr, stagger_ms).await
 }
 
 /// Creates a bound TCP stream to a host/port or SocketAddr, optionally routed through a SOCKS5 proxy.
@@ -188,6 +189,7 @@ pub async fn connect_tcp_bound_host(
     interface: Option<&str>,
     local_addr: Option<IpAddr>,
     proxy: Option<&str>,
+    stagger_ms: u64,
 ) -> Result<TcpStream> {
     let mut resolved_addrs = Vec::new();
     let target = format!("{}:{}", host, port);
@@ -243,7 +245,7 @@ pub async fn connect_tcp_bound_host(
                 })?
                 .collect();
 
-            let stream = race_connect(proxy_resolved, interface, local_addr).await?;
+            let stream = race_connect(proxy_resolved, interface, local_addr, stagger_ms).await?;
 
             tracing::debug!(
                 "Negotiating SOCKS5 proxy connection to resolved target {:?}",
@@ -262,7 +264,7 @@ pub async fn connect_tcp_bound_host(
         }
     }
 
-    race_connect(resolved_addrs, interface, local_addr).await
+    race_connect(resolved_addrs, interface, local_addr, stagger_ms).await
 }
 
 /// Creates a bound UDP socket.

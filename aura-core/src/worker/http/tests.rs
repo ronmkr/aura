@@ -32,7 +32,11 @@ async fn test_http_worker_referer_propagation() {
         proxy: None,
         referer: None,
         retry_count: 5,
-        retry_delay_secs: 2,
+        http_retry_delay_secs: 2,
+        max_redirects: 20,
+        happy_eyeballs_stagger_ms: 250,
+        http_buffer_capacity: 16384,
+        http_concurrent_requests: 32,
         credential_provider: None,
         dns_resolver: None,
         hsts_cache: None,
@@ -56,7 +60,11 @@ async fn test_http_worker_referer_propagation() {
         proxy: None,
         referer: Some(format!("{}/start", server.uri())),
         retry_count: 5,
-        retry_delay_secs: 2,
+        http_retry_delay_secs: 2,
+        max_redirects: 20,
+        happy_eyeballs_stagger_ms: 250,
+        http_buffer_capacity: 16384,
+        http_concurrent_requests: 32,
         credential_provider: None,
         dns_resolver: None,
         hsts_cache: None,
@@ -67,7 +75,7 @@ async fn test_http_worker_referer_propagation() {
         if_none_match: None,
         if_modified_since: None,
     });
-    let throttler = std::sync::Arc::new(crate::throttler::Throttler::new(0, 0));
+    let throttler = std::sync::Arc::new(crate::throttler::Throttler::new(0, 0, 100));
     let result = worker_final
         .fetch_segment(
             TaskId(1),
@@ -106,7 +114,11 @@ async fn test_http_worker_redirect_loop() {
         proxy: None,
         referer: None,
         retry_count: 5,
-        retry_delay_secs: 2,
+        http_retry_delay_secs: 2,
+        max_redirects: 20,
+        happy_eyeballs_stagger_ms: 250,
+        http_buffer_capacity: 16384,
+        http_concurrent_requests: 32,
         credential_provider: None,
         dns_resolver: None,
         hsts_cache: None,
@@ -144,7 +156,11 @@ async fn test_http_worker_custom_dns() {
         proxy: None,
         referer: None,
         retry_count: 5,
-        retry_delay_secs: 2,
+        http_retry_delay_secs: 2,
+        max_redirects: 20,
+        happy_eyeballs_stagger_ms: 250,
+        http_buffer_capacity: 16384,
+        http_concurrent_requests: 32,
         credential_provider: None,
         dns_resolver: Some(resolver_arc),
         hsts_cache: None,
@@ -186,8 +202,12 @@ async fn test_http_worker_retry_on_503() {
         connect_timeout: None,
         proxy: None,
         referer: None,
-        retry_count: 3,      // Max retries
-        retry_delay_secs: 1, // 1s base delay
+        retry_count: 3,           // Max retries
+        http_retry_delay_secs: 1, // 1s base delay
+        max_redirects: 20,
+        happy_eyeballs_stagger_ms: 250,
+        http_buffer_capacity: 16384,
+        http_concurrent_requests: 32,
         credential_provider: None,
         dns_resolver: None,
         hsts_cache: None,
@@ -199,7 +219,7 @@ async fn test_http_worker_retry_on_503() {
         if_modified_since: None,
     });
 
-    let throttler = std::sync::Arc::new(crate::throttler::Throttler::new(0, 0));
+    let throttler = std::sync::Arc::new(crate::throttler::Throttler::new(0, 0, 100));
     let result = worker
         .fetch_segment(
             TaskId(1),
@@ -235,7 +255,11 @@ async fn test_http_worker_hsts_upgrade() {
         proxy: None,
         referer: None,
         retry_count: 3,
-        retry_delay_secs: 1,
+        http_retry_delay_secs: 1,
+        max_redirects: 20,
+        happy_eyeballs_stagger_ms: 250,
+        http_buffer_capacity: 16384,
+        http_concurrent_requests: 32,
         credential_provider: None,
         dns_resolver: None,
         hsts_cache: Some(hsts_cache),
@@ -273,7 +297,11 @@ async fn test_http_worker_alt_svc_header_caching() {
         proxy: None,
         referer: None,
         retry_count: 1,
-        retry_delay_secs: 1,
+        http_retry_delay_secs: 1,
+        max_redirects: 20,
+        happy_eyeballs_stagger_ms: 250,
+        http_buffer_capacity: 16384,
+        http_concurrent_requests: 32,
         credential_provider: None,
         dns_resolver: None,
         hsts_cache: None,

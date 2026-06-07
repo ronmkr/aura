@@ -66,9 +66,11 @@ pub async fn handle_incoming_peer(
                 proxy: ctx.config.network.proxy.clone(),
                 throttler: ctx.throttler,
                 pex_enabled: ctx.config.bittorrent.pex_enabled,
+                pipeline_size: ctx.config.bittorrent.request_pipeline_size,
+                connect_timeout_secs: ctx.config.network.connect_timeout_secs,
+                happy_eyeballs_stagger_ms: ctx.config.network.happy_eyeballs_stagger_ms,
             });
             worker.local_addr = ctx.local_addr;
-            worker.pipeline_size = ctx.config.bittorrent.request_pipeline_size;
 
             let w_cmd_rx = if let Some(tx) = ctx.worker_command_txs.get(&task.id) {
                 tx.subscribe()
@@ -89,6 +91,7 @@ pub async fn handle_incoming_peer(
                         command_rx: w_cmd_rx,
                         token: token.clone(),
                     },
+                    handshake.extension_protocol,
                 )
                 .await
         } else {

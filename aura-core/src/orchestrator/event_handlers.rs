@@ -35,7 +35,8 @@ impl Orchestrator {
                         error: None,
                         completed_at: chrono::Utc::now(),
                     };
-                    crate::history::HistoryManager::append_record(record);
+                    let config = self.config.load();
+                    crate::history::HistoryManager::append_record(&config, record);
                     let _ = self.event_tx.send(Event::TaskProgress {
                         id,
                         completed_bytes: task.total_length,
@@ -172,7 +173,8 @@ impl Orchestrator {
                         error: Some(err.to_string()),
                         completed_at: chrono::Utc::now(),
                     };
-                    crate::history::HistoryManager::append_record(record);
+                    let config = self.config.load();
+                    crate::history::HistoryManager::append_record(&config, record);
                 }
 
                 if exists {

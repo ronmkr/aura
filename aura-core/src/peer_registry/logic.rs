@@ -34,6 +34,8 @@ pub struct PeerState {
 pub struct PeerRegistry {
     peers: HashMap<String, PeerState>, // Key: ip:port
     scorer: Box<dyn super::scorer::PeerScorer>,
+    pub eviction_threshold: usize,
+    pub eviction_percent: f32,
 }
 
 impl PeerRegistry {
@@ -41,6 +43,8 @@ impl PeerRegistry {
         Self {
             peers: HashMap::new(),
             scorer: Box::new(super::scorer::DefaultScorer),
+            eviction_threshold: 500,
+            eviction_percent: 0.1,
         }
     }
 
@@ -48,6 +52,8 @@ impl PeerRegistry {
         Self {
             peers: HashMap::new(),
             scorer,
+            eviction_threshold: 500,
+            eviction_percent: 0.1,
         }
     }
 
@@ -78,7 +84,7 @@ impl PeerRegistry {
         }
 
         // Eviction logic
-        if self.peers.len() > 500 {
+        if self.peers.len() > self.eviction_threshold {
             let mut all_peers: Vec<_> = self
                 .peers
                 .iter()
@@ -86,7 +92,7 @@ impl PeerRegistry {
                 .collect();
             all_peers.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
 
-            let to_evict = all_peers.len() / 10; // Bottom 10%
+            let to_evict = (all_peers.len() as f32 * self.eviction_percent) as usize;
             for (addr, _) in all_peers.iter().take(to_evict) {
                 self.peers.remove(addr);
             }

@@ -234,7 +234,8 @@ impl Engine {
         offset: usize,
         num: usize,
     ) -> Result<Vec<crate::history::CompletedTaskRecord>> {
-        let mut records = crate::history::HistoryManager::read_records();
+        let config = self.config.load();
+        let mut records = crate::history::HistoryManager::read_records(&config);
         records.reverse();
         let paginated = records.into_iter().skip(offset).take(num).collect();
         Ok(paginated)

@@ -119,8 +119,12 @@ impl Orchestrator {
                             .user_agent(Some(config.network.user_agent.clone()))
                             .connect_timeout(Some(config.network.connect_timeout_secs))
                             .proxy(config.network.proxy.clone())
+                            .max_redirects(config.network.max_redirects)
                             .retry_count(config.network.http_retry_count)
                             .retry_delay_secs(config.network.http_retry_delay_secs)
+                            .happy_eyeballs_stagger_ms(config.network.happy_eyeballs_stagger_ms)
+                            .http_buffer_capacity(config.network.http_buffer_capacity)
+                            .http_concurrent_requests(config.network.http_concurrent_requests)
                             .credential_provider(provider_clone.clone())
                             .hsts_cache(hsts_cache)
                             .alt_svc_cache(alt_svc_cache)
@@ -144,6 +148,7 @@ impl Orchestrator {
                     TaskType::Ftp => {
                         let worker = crate::worker::WorkerBuilder::new(uri)
                             .local_addr(local_addr)
+                            .happy_eyeballs_stagger_ms(config.network.happy_eyeballs_stagger_ms)
                             .credential_provider(provider_clone.clone())
                             .build_ftp();
                         match worker.resolve_metadata().await {

@@ -26,7 +26,7 @@ thread_local! {
 pub struct HistoryManager;
 
 impl HistoryManager {
-    pub fn get_history_path() -> std::path::PathBuf {
+    pub fn get_history_path(config: &crate::Config) -> std::path::PathBuf {
         #[cfg(test)]
         if let Some(path) = HISTORY_PATH_OVERRIDE.with(|p| p.borrow().clone()) {
             return path;
@@ -36,10 +36,11 @@ impl HistoryManager {
             .or_else(|| std::env::var_os("USERPROFILE"))
             .map(std::path::PathBuf::from)
             .unwrap_or_else(|| std::path::PathBuf::from("."));
-        home.join(".aura").join("history.jsonl")
+        home.join(&config.general.aura_dir_name)
+            .join(&config.general.history_file_name)
     }
 
-    pub fn get_old_history_path() -> std::path::PathBuf {
+    pub fn get_old_history_path(config: &crate::Config) -> std::path::PathBuf {
         #[cfg(test)]
         if let Some(path) = HISTORY_PATH_OVERRIDE.with(|p| p.borrow().clone()) {
             return path.with_extension("old.jsonl");
@@ -49,11 +50,12 @@ impl HistoryManager {
             .or_else(|| std::env::var_os("USERPROFILE"))
             .map(std::path::PathBuf::from)
             .unwrap_or_else(|| std::path::PathBuf::from("."));
-        home.join(".aura").join("history.old.jsonl")
+        let old_name = format!("{}.old", config.general.history_file_name);
+        home.join(&config.general.aura_dir_name).join(old_name)
     }
 
-    pub fn append_record(record: CompletedTaskRecord) {
-        let path = Self::get_history_path();
+    pub fn append_record(config: &crate::Config, record: CompletedTaskRecord) {
+        let path = Self::get_history_path(config);
         if let Some(parent) = path.parent() {
             let _ = std::fs::create_dir_all(parent);
         }
@@ -84,7 +86,7 @@ impl HistoryManager {
                 let _ = writer.unlock();
 
                 // Check for rotation
-                Self::check_rotation();
+                Self::check_rotation(config);
             }
             Err(e) => {
                 tracing::error!("Failed to open history file for appending: {}", e);
@@ -92,8 +94,8 @@ impl HistoryManager {
         }
     }
 
-    pub fn read_records() -> Vec<CompletedTaskRecord> {
-        let path = Self::get_history_path();
+    pub fn read_records(config: &crate::Config) -> Vec<CompletedTaskRecord> {
+        let path = Self::get_history_path(config);
         if !path.exists() {
             return Vec::new();
         }
@@ -133,15 +135,15 @@ impl HistoryManager {
         }
     }
 
-    pub fn purge_history() {
-        let path = Self::get_history_path();
-        let old_path = Self::get_old_history_path();
+    pub fn purge_history(config: &crate::Config) {
+        let path = Self::get_history_path(config);
+        let old_path = Self::get_old_history_path(config);
         let _ = std::fs::remove_file(path);
         let _ = std::fs::remove_file(old_path);
     }
 
-    pub fn remove_record_by_gid(gid_str: &str) {
-        let path = Self::get_history_path();
+    pub fn remove_record_by_gid(config: &crate::Config, gid_str: &str) {
+        let path = Self::get_history_path(config);
         if !path.exists() {
             return;
         }
@@ -183,8 +185,8 @@ impl HistoryManager {
         }
     }
 
-    fn check_rotation() {
-        let path = Self::get_history_path();
+    fn check_rotation(config: &crate::Config) {
+        let path = Self::get_history_path(config);
         let metadata = match std::fs::metadata(&path) {
             Ok(m) => m,
             Err(_) => return,
@@ -193,14 +195,18 @@ impl HistoryManager {
         let file_size_mb = metadata.len() as f64 / (1024.0 * 1024.0);
 
         // Read lines to check count
-        let records = Self::read_records();
+        let records = Self::read_records(config);
 
-        if file_size_mb > 10.0 || records.len() > 10000 {
+        if file_size_mb > config.limits.history_rotation_mb
+            || records.len() > config.limits.history_rotation_records
+        {
             // Trigger rotation
-            let old_path = Self::get_old_history_path();
+            let old_path = Self::get_old_history_path(config);
 
-            // Keep most recent 5000
-            let split_index = records.len().saturating_sub(5000);
+            // Keep most recent
+            let split_index = records
+                .len()
+                .saturating_sub(config.limits.history_retention_records);
             let (old_records, new_records) = records.split_at(split_index);
 
             // Append old records to history.old.jsonl

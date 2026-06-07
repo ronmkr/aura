@@ -13,8 +13,10 @@ fn test_history_append_and_read() {
     // Set the path override
     HISTORY_PATH_OVERRIDE.with(|p| *p.borrow_mut() = Some(history_file));
 
+    let config = crate::Config::default();
+
     // Purge first
-    HistoryManager::purge_history();
+    HistoryManager::purge_history(&config);
 
     let rec1 = CompletedTaskRecord {
         id: "123".to_string(),
@@ -30,15 +32,15 @@ fn test_history_append_and_read() {
         completed_at: chrono::Utc::now(),
     };
 
-    HistoryManager::append_record(rec1.clone());
+    HistoryManager::append_record(&config, rec1.clone());
 
-    let records = HistoryManager::read_records();
+    let records = HistoryManager::read_records(&config);
     assert_eq!(records.len(), 1);
     assert_eq!(records[0].id, "123");
     assert_eq!(records[0].name, "test1");
 
     // Cleanup
-    HistoryManager::purge_history();
+    HistoryManager::purge_history(&config);
 
     // Clear override
     HISTORY_PATH_OVERRIDE.with(|p| *p.borrow_mut() = None);

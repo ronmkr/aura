@@ -52,6 +52,7 @@ pub struct FtpWorker {
     local_addr: Option<std::net::IpAddr>,
     retry_count: u32,
     retry_delay_secs: u64,
+    happy_eyeballs_stagger_ms: u64,
     credential_provider: Option<std::sync::Arc<crate::config::credentials::CredentialProvider>>,
     pub(crate) resource_governor:
         Option<std::sync::Arc<crate::orchestrator::resource_governor::ResourceGovernor>>,
@@ -59,11 +60,13 @@ pub struct FtpWorker {
 }
 
 impl FtpWorker {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         uri: String,
         local_addr: Option<std::net::IpAddr>,
         retry_count: u32,
         retry_delay_secs: u64,
+        happy_eyeballs_stagger_ms: u64,
         credential_provider: Option<std::sync::Arc<crate::config::credentials::CredentialProvider>>,
         resource_governor: Option<
             std::sync::Arc<crate::orchestrator::resource_governor::ResourceGovernor>,
@@ -75,6 +78,7 @@ impl FtpWorker {
             local_addr,
             retry_count,
             retry_delay_secs,
+            happy_eyeballs_stagger_ms,
             credential_provider,
             resource_governor,
             tenant_id,
@@ -125,12 +129,16 @@ impl FtpWorker {
         let port = url.port().unwrap_or(21);
         let (user, pass) = self.resolve_credentials(&url, host);
 
-        let tcp_stream =
-            crate::net_util::logic::connect_tcp_bound_host(host, port, None, self.local_addr, None)
-                .await
-                .map_err(|e| {
-                    Error::Worker(format!("Failed to connect to FTP host {}: {}", host, e))
-                })?;
+        let tcp_stream = crate::net_util::logic::connect_tcp_bound_host(
+            host,
+            port,
+            None,
+            self.local_addr,
+            None,
+            self.happy_eyeballs_stagger_ms,
+        )
+        .await
+        .map_err(|e| Error::Worker(format!("Failed to connect to FTP host {}: {}", host, e)))?;
 
         // Initialise the FTP control channel over the raw TCP stream.
         // `AsyncRustlsFtpStream` stores `DataStream::Tcp(stream)` internally until

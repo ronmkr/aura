@@ -141,7 +141,8 @@ impl BtWorker {
             if let Ok(msg) = serde_bencode::from_bytes::<MetadataMessage>(bencoded) {
                 if msg.msg_type == 1 {
                     if let Some(ref mut buf) = self.metadata_buffer {
-                        let start = msg.piece as usize * 16384;
+                        let start = msg.piece as usize
+                            * crate::worker::bittorrent::protocol::BLOCK_SIZE as usize;
                         if start + data.len() <= buf.len() {
                             buf[start..start + data.len()].copy_from_slice(data);
                             let full_info_dict = buf.clone().freeze();

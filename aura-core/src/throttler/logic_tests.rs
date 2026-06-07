@@ -2,7 +2,7 @@ use super::*;
 
 #[tokio::test]
 async fn test_proportional_throttling() {
-    let throttler = Throttler::new(100_000, 100_000);
+    let throttler = Throttler::new(100_000, 100_000, 100);
 
     // Register 2 tasks:
     // Task 1: Priority 0 -> Weight = 32

@@ -208,7 +208,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             format,
             filter,
         }) => {
-            aura_cli::run_history(limit, &format, filter).await?;
+            aura_cli::run_history(&config, limit, &format, filter).await?;
         }
         Some(Commands::Refresh { gid }) => {
             cli_client::run_refresh(config.network.rpc_port, config.network.rpc_secret, gid)

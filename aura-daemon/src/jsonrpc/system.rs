@@ -78,16 +78,21 @@ pub async fn handle_tell_stopped(engine: &Engine, params: Option<Value>) -> Resu
     Ok(json!(res))
 }
 
-pub async fn handle_purge_download_result() -> Result<Value, Value> {
-    aura_core::history::HistoryManager::purge_history();
+pub async fn handle_purge_download_result(engine: &Engine) -> Result<Value, Value> {
+    let config = engine.config.load();
+    aura_core::history::HistoryManager::purge_history(&config);
     Ok(json!("OK"))
 }
 
-pub async fn handle_remove_download_result(params: Option<Value>) -> Result<Value, Value> {
+pub async fn handle_remove_download_result(
+    engine: &Engine,
+    params: Option<Value>,
+) -> Result<Value, Value> {
     let params = params.ok_or_else(|| json!({ "code": -32602, "message": "Invalid params" }))?;
     let gid_str: String = serde_json::from_value(params[0].clone())
         .map_err(|_| json!({ "code": -32602, "message": "Invalid GID" }))?;
-    aura_core::history::HistoryManager::remove_record_by_gid(&gid_str);
+    let config = engine.config.load();
+    aura_core::history::HistoryManager::remove_record_by_gid(&config, &gid_str);
     Ok(json!("OK"))
 }
 
@@ -153,7 +158,10 @@ pub async fn handle_get_global_stat(engine: &Engine) -> Result<Value, Value> {
         .filter(|t| t.phase == aura_core::task::DownloadPhase::Waiting)
         .count();
 
-    let history = engine.tell_history(0, 100000).await.unwrap_or_default();
+    let history = engine
+        .tell_history(0, engine.config.load().limits.history_record_limit)
+        .await
+        .unwrap_or_default();
     let num_stopped = history.len();
 
     Ok(json!({

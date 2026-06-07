@@ -8,41 +8,49 @@ dht_port = 6881                        # Port for DHT (UDP)
 rpc_port = 6800                        # Port for JSON-RPC 2.0 server
 # rpc_secret = "your_secret_here"      # Optional secret for RPC authentication
 # tls_cert = "/path/to/cert.pem"        # Optional path to TLS certificate (enables HTTPS/WSS)
-# tls_key = "/path/to/key.pem"          # Optional path to TLS private key (enables HTTPS/WSS)
+# tls_key = "/path/to/key.pem"          # Optional path to TLS private key
 user_agent = "Aura/0.1.0"              # Custom User-Agent string
-connect_timeout_secs = 30              # Connection timeout for all protocols
+connect_timeout_secs = 30              # Socket connection timeout
 tcp_keepalive_secs = 60                # TCP keepalive interval
-# proxy = "http://127.0.0.1:8080"      # Optional global proxy
-dns_resolver = "system"                # DNS resolver: "system", "cloudflare", "google", or an IP address
+# proxy = "socks5://127.0.0.1:9050"     # Global SOCKS5 proxy
+max_redirects = 20                     # Maximum HTTP redirects to follow
+http_retry_count = 5                   # Number of retries for transient HTTP errors
+http_retry_delay_secs = 2              # Initial delay for exponential backoff
+happy_eyeballs_stagger_ms = 250        # Delay between dual-stack connection attempts
+http_buffer_capacity = 16384           # Internal HTTP download buffer size
+http_concurrent_requests = 32          # Max concurrent requests per HTTP worker
 
 [bandwidth]
-# All limits are in bytes per second. 0 means unlimited.
-global_download_limit = 0              # Total download speed cap
-global_upload_limit = 0                # Total upload speed cap
-per_task_download_limit = 0            # Per-download speed cap
-per_task_upload_limit = 0              # Per-download upload cap
-max_concurrent_downloads = 5           # Max active downloads (queued tasks stay in 'Waiting')
-max_active_tasks = 100                 # Total tasks allowed in the engine (active + paused)
-min_connections_per_task = 16          # Minimum connections per individual task
-max_connections_per_task = 128         # Maximum connections per individual task
+global_download_limit = 0              # Global download limit in bytes/s (0 = unlimited)
+global_upload_limit = 0                # Global upload limit in bytes/s
+per_task_download_limit = 0            # Per-task download limit
+per_task_upload_limit = 0              # Per-task upload limit
+max_concurrent_downloads = 10          # Max tasks in 'Downloading' phase
+max_active_tasks = 5                   # Max total tasks (Downloading + Seeding)
+min_connections_per_task = 16          # Minimum connections for adaptive scaling
+max_connections_per_task = 128         # Maximum connections for adaptive scaling
+adaptive_scaling_low_throughput = 1024.0 # Bytes/s threshold to scale UP concurrency
+adaptive_scaling_high_throughput = 1048576.0 # Bytes/s threshold to scale DOWN concurrency
 
 [bittorrent]
 enabled = true                         # Enable BitTorrent protocol
-max_peers_per_torrent = 50             # Max connections per torrent
-max_overall_peers = 200                # Total global peer limit
-request_pipeline_size = 10             # Number of in-flight requests per peer
+max_peers_per_torrent = 200            # Max peers to connect to per torrent
+max_overall_peers = 500                # Global peer limit
+request_pipeline_size = 50             # Number of simultaneous block requests per peer
 dht_enabled = true                     # Enable Distributed Hash Table
 pex_enabled = true                     # Enable Peer Exchange
-lpd_enabled = false                    # Enable Local Peer Discovery (Multicast)
-[bittorrent.seeding]
-min_ratio        = 1.0  # Stop when uploaded >= downloaded × ratio (0.0 = seed forever)
-max_seeding_time = 0    # Stop after N seconds (0 = no time limit)
-stop_on_either   = true # true = stop on EITHER condition; false = require BOTH
-
+lpd_enabled = false                    # Enable Local Peer Discovery
 endgame_mode_enabled = true            # Enable parallel fetching for final blocks
 endgame_threshold_pieces = 3           # Pieces left before entering endgame
 endgame_threshold_percent = 0.01       # Percentage left before entering endgame
 min_split_size_mb = 20                 # Minimum piece/segment size for splitting
+max_connections_per_torrent = 200      # Max connections for a single swarm
+peer_id_prefix = "-AR0001-"            # 8-byte prefix for client identification
+
+[bittorrent.seeding]
+min_ratio = 1.0                        # Stop when uploaded >= downloaded × ratio (0.0 = seed forever)
+max_seeding_time = 0                   # Stop after N seconds (0 = seed forever)
+stop_on_either = true                  # Stop when either ratio or time limit reached
 
 [storage]
 download_dir = "."                     # Default directory for finished files
@@ -52,6 +60,8 @@ allocation_mode = "falloc"             # "none", "prealloc" (zeros), "falloc" (s
 save_session_interval_secs = 30        # Interval to sync .aura control files
 read_ahead_kb = 128                    # Size of read-ahead buffer for seeding
 write_buffer_kb = 256                  # Size of sequential write aggregation buffer
+memory_limit_mb = 512                  # Max memory for piece buffers
+memory_safety_margin_mb = 50           # Reserve memory to prevent OOM
 
 [bulk]
 max_scan_depth = 10                    # Recursion limit for folder scanning
@@ -60,39 +70,15 @@ max_scan_depth = 10                    # Recursion limit for folder scanning
 tick_rate_ms = 500                     # Refresh rate for the interactive TUI
 rpc_url = "http://localhost:6800/jsonrpc" # Default daemon RPC endpoint for TUI
 
-[resource_mapping]
-# Default policy for file name collisions: "AutoRename", "Overwrite", "Skip"
-default_conflict_policy = "AutoRename"
-
-[[resource_mapping.rules]]
-# Sort videos by domain and year
-condition = { Extension = "mp4" }
-target = "videos/{domain}/{year}/{name}"
-
-[hooks]
-# Lifecycle hooks (ADR 0018)
-# on_download_start = "sh notify_start.sh {id}"
-# on_download_complete = "sh notify_done.sh {id} {path}"
-
-[credentials]
-# Credential providers (ADR 0014)
-# netrc_path = "~/.netrc"
-# cookie_file = "/path/to/cookies.txt"
-
-[vpn]
-# Native VPN integration (ADR 0038)
-# type_name = "wireguard"              # "openvpn" or "wireguard"
-# profile_path = "/etc/wireguard/wg0.conf"
-# auto_connect = false                 # Attempt to trigger VPN connection on startup
-# force_tunnel = true                  # Kill-switch: Refuse traffic if VPN tunnel is down
-
 [general]
 log_level = "info"                     # "trace", "debug", "info", "warn", "error"
-check_integrity = true                 # Verify piece hashes during download
-event_poll_interval_ms = 500           # TUI/CLI UI update frequency
+check_integrity = true                 # Verify checksums after download
+event_poll_interval_ms = 500           # Internal refresh rate for state monitors
 daemon_mode = false                    # Start in background as a system service
+aura_dir_name = ".aura"                # Name of the control directory in HOME
+history_file_name = "history.jsonl"    # Name of the history log file
 
-[general.theme]
+[theme]
 primary = "#0000FF"
 accent = "#00FFFF"
 highlight = "#FFFF00"
@@ -104,4 +90,11 @@ warning = "#FFFF00"
 
 [limits]
 allow_duplicate_uris = false           # Allow adding tasks with duplicate URIs
-max_active_tasks = 500                 # Max active tasks allowed in the engine (for non-tenant path)
+max_active_tasks = 500                 # Max active tasks allowed in the engine
+event_channel_capacity = 1024          # Capacity of internal event bus
+command_channel_capacity = 100         # Capacity of command queues
+storage_channel_capacity = 100         # Capacity of storage engine queues
+history_record_limit = 100000          # Max records kept in memory
+history_rotation_mb = 10.0             # Max size of history file before rotation
+history_rotation_records = 10000       # Max records in history file before rotation
+history_retention_records = 5000       # Number of records to keep after rotation

@@ -22,6 +22,9 @@ pub struct BandwidthConfig {
     pub max_active_tasks: usize,
     pub min_connections_per_task: usize,
     pub max_connections_per_task: usize,
+    pub adaptive_scaling_low_throughput: f64,
+    pub adaptive_scaling_high_throughput: f64,
+    pub refill_interval_ms: u64,
     pub schedule: Vec<BandwidthSchedule>,
 }
 
@@ -36,6 +39,9 @@ impl Default for BandwidthConfig {
             max_active_tasks: 5,
             min_connections_per_task: 16,
             max_connections_per_task: 128,
+            adaptive_scaling_low_throughput: 1024.0,
+            adaptive_scaling_high_throughput: 1048576.0,
+            refill_interval_ms: 100,
             schedule: Vec::new(),
         }
     }

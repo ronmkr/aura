@@ -102,18 +102,24 @@ impl Orchestrator {
         db: sled::Db,
         dns_resolver: Arc<crate::net_util::TokioResolver>,
     ) -> (Self, broadcast::Sender<Event>) {
-        let (event_tx, _event_rx) = broadcast::channel(1024);
-        let (subtask_tx, subtask_rx) = mpsc::channel(4096);
-        let (scrub_tx, scrub_rx) = mpsc::channel(1024);
+        let initial_config = config.load();
+        let (event_tx, _event_rx) =
+            broadcast::channel(initial_config.limits.event_channel_capacity);
+        let (subtask_tx, subtask_rx) =
+            mpsc::channel(initial_config.limits.event_channel_capacity * 4);
+        let (scrub_tx, scrub_rx) = mpsc::channel(initial_config.limits.command_channel_capacity);
 
         let mut peer_id = [0u8; 20];
-        peer_id[..8].copy_from_slice(b"-AR0001-");
-        rand::rng().fill(&mut peer_id[8..]);
+        let prefix = initial_config.bittorrent.peer_id_prefix.as_bytes();
+        let prefix_len = prefix.len().min(8);
+        peer_id[..prefix_len].copy_from_slice(&prefix[..prefix_len]);
+        rand::rng().fill(&mut peer_id[prefix_len..]);
 
         let initial_config = config.load();
         let throttler = Arc::new(Throttler::new(
             initial_config.bandwidth.global_download_limit,
             initial_config.bandwidth.global_upload_limit,
+            initial_config.bandwidth.refill_interval_ms,
         ));
 
         let vpn_provider = Self::create_vpn_provider(&initial_config);

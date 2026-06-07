@@ -12,6 +12,10 @@ pub struct WorkerBuilder {
     referer: Option<String>,
     retry_count: u32,
     retry_delay_secs: u64,
+    max_redirects: usize,
+    happy_eyeballs_stagger_ms: u64,
+    http_buffer_capacity: usize,
+    http_concurrent_requests: usize,
     credential_provider: Option<std::sync::Arc<crate::config::credentials::CredentialProvider>>,
     dns_resolver: Option<std::sync::Arc<crate::net_util::TokioResolver>>,
     hsts_cache: Option<crate::security::HstsCache>,
@@ -35,6 +39,10 @@ impl WorkerBuilder {
             referer: None,
             retry_count: 5,
             retry_delay_secs: 2,
+            max_redirects: 20,
+            happy_eyeballs_stagger_ms: 250,
+            http_buffer_capacity: 16384,
+            http_concurrent_requests: 32,
             credential_provider: None,
             dns_resolver: None,
             hsts_cache: None,
@@ -108,6 +116,26 @@ impl WorkerBuilder {
         self
     }
 
+    pub fn max_redirects(mut self, count: usize) -> Self {
+        self.max_redirects = count;
+        self
+    }
+
+    pub fn happy_eyeballs_stagger_ms(mut self, ms: u64) -> Self {
+        self.happy_eyeballs_stagger_ms = ms;
+        self
+    }
+
+    pub fn http_buffer_capacity(mut self, cap: usize) -> Self {
+        self.http_buffer_capacity = cap;
+        self
+    }
+
+    pub fn http_concurrent_requests(mut self, count: usize) -> Self {
+        self.http_concurrent_requests = count;
+        self
+    }
+
     pub fn resource_governor(
         mut self,
         governor: std::sync::Arc<crate::orchestrator::resource_governor::ResourceGovernor>,
@@ -145,7 +173,11 @@ impl WorkerBuilder {
             proxy: self.proxy,
             referer: self.referer,
             retry_count: self.retry_count,
-            retry_delay_secs: self.retry_delay_secs,
+            http_retry_delay_secs: self.retry_delay_secs,
+            max_redirects: self.max_redirects,
+            happy_eyeballs_stagger_ms: self.happy_eyeballs_stagger_ms,
+            http_buffer_capacity: self.http_buffer_capacity,
+            http_concurrent_requests: self.http_concurrent_requests,
             credential_provider: self.credential_provider,
             dns_resolver: self.dns_resolver,
             hsts_cache: self.hsts_cache,
@@ -164,6 +196,7 @@ impl WorkerBuilder {
             self.local_addr,
             self.retry_count,
             self.retry_delay_secs,
+            self.happy_eyeballs_stagger_ms,
             self.credential_provider,
             self.resource_governor,
             self.tenant_id,

@@ -27,6 +27,9 @@ pub struct BtWorkerOptions {
     pub proxy: Option<String>,
     pub throttler: Arc<crate::throttler::Throttler>,
     pub pex_enabled: bool,
+    pub pipeline_size: usize,
+    pub connect_timeout_secs: u64,
+    pub happy_eyeballs_stagger_ms: u64,
 }
 
 /// Arguments for the BitTorrent worker main loop.
@@ -63,6 +66,8 @@ pub struct BtWorker {
     pub pex_enabled: bool,
     pub last_sent_pex_peers: std::collections::HashSet<std::net::SocketAddr>,
     pub requested_hashes: std::collections::HashSet<[u8; 32]>,
+    pub connect_timeout_secs: u64,
+    pub happy_eyeballs_stagger_ms: u64,
 }
 
 impl BtWorker {
@@ -81,7 +86,7 @@ impl BtWorker {
             memory_guard: None,
             current_generation: 0,
             local_addr: None,
-            pipeline_size: 10,
+            pipeline_size: options.pipeline_size,
             metadata_buffer: None,
             ut_metadata_id: None,
             proxy: options.proxy,
@@ -90,6 +95,8 @@ impl BtWorker {
             pex_enabled: options.pex_enabled,
             last_sent_pex_peers: std::collections::HashSet::new(),
             requested_hashes: std::collections::HashSet::new(),
+            connect_timeout_secs: options.connect_timeout_secs,
+            happy_eyeballs_stagger_ms: options.happy_eyeballs_stagger_ms,
         }
     }
 
@@ -100,12 +107,13 @@ impl BtWorker {
         })?;
 
         let mut stream = timeout(
-            std::time::Duration::from_secs(5),
+            std::time::Duration::from_secs(self.connect_timeout_secs),
             crate::net_util::connect_tcp_bound(
                 remote_addr,
                 None,
                 self.local_addr,
                 self.proxy.as_deref(),
+                self.happy_eyeballs_stagger_ms,
             ),
         )
         .await
@@ -114,13 +122,16 @@ impl BtWorker {
         debug!(addr = %self.peer_addr, "Sending handshake...");
         let handshake = Handshake::new(self.info_hash.for_handshake(), self.my_id);
 
-        timeout(std::time::Duration::from_secs(5), async {
-            stream.write_all(&handshake.serialize()).await?;
-            let mut buf = [0u8; HANDSHAKE_LEN];
-            use tokio::io::AsyncReadExt;
-            stream.read_exact(&mut buf).await?;
-            Ok::<[u8; HANDSHAKE_LEN], std::io::Error>(buf)
-        })
+        timeout(
+            std::time::Duration::from_secs(self.connect_timeout_secs),
+            async {
+                stream.write_all(&handshake.serialize()).await?;
+                let mut buf = [0u8; HANDSHAKE_LEN];
+                use tokio::io::AsyncReadExt;
+                stream.read_exact(&mut buf).await?;
+                Ok::<[u8; HANDSHAKE_LEN], std::io::Error>(buf)
+            },
+        )
         .await
         .map_err(|_| Error::Protocol("Peer handshake timeout".to_string()))?
         .map_err(|e| Error::Protocol(format!("Peer handshake error: {}", e)))
@@ -174,8 +185,10 @@ impl BtWorker {
         &mut self,
         stream: TcpStream,
         args: BtWorkerArgs,
+        ext_support: bool,
     ) -> Result<()> {
-        self.run_loop_with_stream_and_ext(stream, args, false).await
+        self.run_loop_with_stream_and_ext(stream, args, ext_support)
+            .await
     }
 
     async fn run_loop_with_stream_and_ext(
@@ -196,6 +209,11 @@ impl BtWorker {
 
         let mut framed = Framed::new(stream, PeerCodec);
 
+        // Send Bitfield
+        if let Some(bf) = task.state.bitfield.lock().await.as_ref() {
+            framed.send(PeerMessage::Bitfield(bf.as_bytes())).await?;
+        }
+
         if ext_support {
             let mut m = std::collections::HashMap::new();
             m.insert("ut_metadata".to_string(), 1);
@@ -204,7 +222,7 @@ impl BtWorker {
             }
             let ext_hs = ExtendedHandshake {
                 m: Some(m),
-                metadata_size: None,
+                metadata_size: None, // Will be filled if needed
             };
             let payload = serde_bencode::to_bytes(&ext_hs).map_err(|e| {
                 Error::Protocol(format!("Failed to encode extended handshake: {}", e))
@@ -225,19 +243,24 @@ impl BtWorker {
         info!(addr = %peer_addr, "Entering main peer message loop");
 
         loop {
-            let mut ctx = PeerHandlerContext {
-                framed: &mut framed,
-                task: &task,
-                meta_id,
-                sub_id,
-                storage_tx: storage_tx.clone(),
-                subtask_tx: subtask_tx.clone(),
-                peer_choking: &mut peer_choking,
-            };
-
             tokio::select! {
                 _ = token.cancelled() => break,
-                Ok(cmd) = command_rx.recv() => {
+                cmd_res = command_rx.recv() => {
+                    let cmd = match cmd_res {
+                        Ok(c) => c,
+                        Err(_) => break, // Broadcast channel closed
+                    };
+
+                    let mut ctx = PeerHandlerContext {
+                        framed: &mut framed,
+                        task: &task,
+                        meta_id,
+                        sub_id,
+                        storage_tx: storage_tx.clone(),
+                        subtask_tx: subtask_tx.clone(),
+                        peer_choking: &mut peer_choking,
+                    };
+
                     match cmd {
                         WorkerCommand::CancelPiece(piece_idx) => {
                             if Some(piece_idx) == self.current_piece {
@@ -342,7 +365,16 @@ impl BtWorker {
                         }
                     }
                 }
-                msg_res = ctx.framed.next() => {
+                msg_res = framed.next() => {
+                    let ctx = PeerHandlerContext {
+                        framed: &mut framed,
+                        task: &task,
+                        meta_id,
+                        sub_id,
+                        storage_tx: storage_tx.clone(),
+                        subtask_tx: subtask_tx.clone(),
+                        peer_choking: &mut peer_choking,
+                    };
                     match msg_res {
                         Some(Ok(msg)) => {
                             self.handle_peer_message(msg, ctx).await?;
@@ -353,6 +385,7 @@ impl BtWorker {
                 },
             }
         }
+
         Ok(())
     }
 }

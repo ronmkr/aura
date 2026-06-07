@@ -23,7 +23,7 @@ impl BtWorker {
             return Ok(true);
         }
 
-        let block_idx_in_piece = (begin / 16384) as usize;
+        let block_idx_in_piece = (begin / crate::worker::bittorrent::protocol::BLOCK_SIZE) as usize;
         if let Ok(expected_block_hash) =
             torrent.block_hash_v2(index as usize, block_idx_in_piece, Some(&task.state.db))
         {
