@@ -1,3 +1,4 @@
+pub mod bulk;
 pub mod command;
 pub mod commands;
 pub mod engine;
@@ -7,6 +8,7 @@ pub mod lifecycle;
 pub mod mapping;
 pub mod monitors;
 pub mod policy_manager;
+pub mod protocol_detector;
 pub mod refresh;
 pub mod resource_governor;
 pub mod runner;

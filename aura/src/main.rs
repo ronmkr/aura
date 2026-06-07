@@ -113,6 +113,19 @@ enum Commands {
         #[arg(short, long, value_delimiter = ',')]
         indices: Vec<usize>,
     },
+    /// Bulk add tasks from a directory (torrents, metalinks)
+    AddFromFolder {
+        /// The directory to scan
+        dir: String,
+        /// Scan recursively
+        #[arg(short, long)]
+        recursive: bool,
+    },
+    /// Bulk add tasks from a text file (list of URIs)
+    AddFromFile {
+        /// The file to read
+        path: String,
+    },
 }
 
 #[tokio::main]
@@ -211,6 +224,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 config.network.rpc_secret,
                 gid,
                 indices,
+            )
+            .await?;
+        }
+        Some(Commands::AddFromFolder { dir, recursive }) => {
+            cli_client::run_add_from_folder(
+                config.network.rpc_port,
+                config.network.rpc_secret,
+                &dir,
+                recursive,
+            )
+            .await?;
+        }
+        Some(Commands::AddFromFile { path }) => {
+            cli_client::run_add_from_file(
+                config.network.rpc_port,
+                config.network.rpc_secret,
+                &path,
             )
             .await?;
         }

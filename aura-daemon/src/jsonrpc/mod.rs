@@ -86,6 +86,8 @@ pub async fn handle_jsonrpc(
                 "aura.setFileSelection" => {
                     handle_set_file_selection(&state.engine, payload.params).await
                 }
+                "aura.addFromFolder" => handle_add_from_folder(&state.engine, payload.params).await,
+                "aura.addFromFile" => handle_add_from_file(&state.engine, payload.params).await,
                 _ => Err(json!({ "code": -32601, "message": "Method not found" })),
             };
             (res, None)

@@ -9,11 +9,11 @@ All active development tasks, technical debt, and feature requests are managed e
     - [x] Refactor TUI to stateful Multi-View architecture (Dashboard, Mission Control, File Selector).
     - [x] Implement the Main Dashboard with split-layout (Task List + Real-time Detail Panel).
     - [x] Add Sparkline throughput visualization and progress gauges.
-- [ ] **feat: Intelligent Protocol Detection and Bulk Task Ingestion** `[module:core, module:daemon, module:cli, priority:high]`
-    - [ ] Centralized `ProtocolDetector` for HTTP/FTP/BT/Metalink.
-    - [ ] RPC methods for `aura.addFromFolder` (torrents/metalinks) and `aura.addFromFile` (URL lists).
-    - [ ] Interactive "Discovery Modal" in TUI for single/bulk mission addition.
-    - [ ] CLI parity: Support directory paths and `--from-file` flag for headless bulk addition.
+- [x] **feat: Intelligent Protocol Detection and Bulk Task Ingestion** `[module:core, module:daemon, module:cli, priority:high]`
+    - [x] Centralized `ProtocolDetector` for HTTP/FTP/BT/Metalink.
+    - [x] RPC methods for `aura.addFromFolder` (torrents/metalinks) and `aura.addFromFile` (URL lists).
+    - [x] Interactive "Discovery Modal" in TUI for single/bulk mission addition.
+    - [x] CLI parity: Support directory paths and `--from-file` flag for headless bulk addition.
 ### High (P1)
 - [x] **feat: Interactive BitTorrent File Selection and Selective Downloading** `[module:core, module:tui, module:cli, priority:high]`
     - [x] Update `PiecePicker` and `Storage` to support skipping pieces for non-selected files.
@@ -21,11 +21,11 @@ All active development tasks, technical debt, and feature requests are managed e
     - [x] Build interactive tree-view File Selector widget in TUI.
     - [x] CLI parity: Add `aura show-files <gid>` and `--select-file` flags.
 ### Moderate (P2)
-- [ ] **feat: Real-time Search, Command Palette, and World-Class UX** `[module:tui, priority:moderate]`
-    - [ ] Real-time task list filtering with `/` search mode.
-    - [ ] Interactive help modal (`?`) and fuzzy-searchable Command Palette (`:` or `Ctrl+P`).
-    - [ ] Implement Vim motions (`j/k`, `h/l`, `gg`, `G`).
-    - [ ] Actionable Error Recovery prompts in Mission Details.
+- [x] **feat: Real-time Search, Command Palette, and World-Class UX** `[module:tui, priority:moderate]`
+    - [x] Real-time task list filtering with `/` search mode.
+    - [x] Interactive help modal (`?`) and fuzzy-searchable Command Palette (`:` or `Ctrl+P`).
+    - [x] Implement Vim motions (`j/k`, `h/l`, `gg`, `G`).
+    - [x] Actionable Error Recovery prompts in Mission Details.
     - [ ] Native OS Desktop Notifications via `notify-rust`.
     - [ ] Zero-friction ingest: Terminal Drag-and-Drop and OS Clipboard monitoring.
 - [ ] **infra: Add CI cross-platform matrix and cargo audit workflow** (Issue #148) `[infra, priority:moderate]`

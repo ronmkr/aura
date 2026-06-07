@@ -1,71 +1,9 @@
+use super::state::{App, DownloadInfo, FileInfo, ViewState};
 use crate::theme::Theme;
-use ratatui::widgets::TableState;
 use serde_json::json;
-use std::collections::{HashMap, VecDeque};
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ViewState {
-    Dashboard,
-    MissionControl(String), // GID of the task
-    FileSelector(String),   // GID of the task
-}
-
-#[derive(Debug, serde::Deserialize, Clone)]
-pub struct DownloadInfo {
-    pub gid: String,
-    pub status: String,
-    #[serde(rename = "totalLength")]
-    pub total_length: String,
-    #[serde(rename = "completedLength")]
-    pub completed_length: String,
-    #[serde(rename = "downloadSpeed", default)]
-    pub download_speed: String,
-    pub name: String,
-    #[serde(rename = "selectedFiles", default)]
-    pub selected_files: Option<Vec<bool>>,
-}
-
-#[derive(Debug, serde::Deserialize, Clone)]
-pub struct FileInfo {
-    pub length: u64,
-    pub path: Vec<String>,
-    #[serde(default)]
-    pub selected: bool,
-}
-
-pub struct App {
-    pub client: reqwest::Client,
-    pub downloads: Vec<DownloadInfo>,
-    pub table_state: TableState,
-    pub view_state: ViewState,
-    pub should_quit: bool,
-    pub error_msg: Option<String>,
-    pub theme: Theme,
-    pub speed_history: HashMap<String, VecDeque<u64>>,
-    pub files: Vec<FileInfo>,
-    pub file_table_state: TableState,
-}
+use std::collections::VecDeque;
 
 impl App {
-    pub fn new() -> App {
-        let mut table_state = TableState::default();
-        table_state.select(Some(0));
-        let mut file_table_state = TableState::default();
-        file_table_state.select(Some(0));
-        App {
-            client: reqwest::Client::new(),
-            downloads: Vec::new(),
-            table_state,
-            view_state: ViewState::Dashboard,
-            should_quit: false,
-            error_msg: None,
-            theme: Theme::default(),
-            speed_history: HashMap::new(),
-            files: Vec::new(),
-            file_table_state,
-        }
-    }
-
     pub async fn fetch_files(&mut self, gid: &str) -> anyhow::Result<()> {
         let res = self
             .client
@@ -115,42 +53,6 @@ impl App {
             .send()
             .await?;
         Ok(())
-    }
-
-    pub fn toggle_file_selection(&mut self) {
-        if let Some(i) = self.file_table_state.selected() {
-            if let Some(f) = self.files.get_mut(i) {
-                f.selected = !f.selected;
-            }
-        }
-    }
-
-    pub fn file_next(&mut self) {
-        let i = match self.file_table_state.selected() {
-            Some(i) => {
-                if i >= self.files.len().saturating_sub(1) {
-                    0
-                } else {
-                    i + 1
-                }
-            }
-            None => 0,
-        };
-        self.file_table_state.select(Some(i));
-    }
-
-    pub fn file_previous(&mut self) {
-        let i = match self.file_table_state.selected() {
-            Some(i) => {
-                if i == 0 {
-                    self.files.len().saturating_sub(1)
-                } else {
-                    i - 1
-                }
-            }
-            None => 0,
-        };
-        self.file_table_state.select(Some(i));
     }
 
     pub async fn fetch_theme(&mut self) -> anyhow::Result<()> {
@@ -213,46 +115,6 @@ impl App {
         Ok(())
     }
 
-    pub fn next(&mut self) {
-        let i = match self.table_state.selected() {
-            Some(i) => {
-                if i >= self.downloads.len().saturating_sub(1) {
-                    0
-                } else {
-                    i + 1
-                }
-            }
-            None => 0,
-        };
-        self.table_state.select(Some(i));
-    }
-
-    pub fn previous(&mut self) {
-        let i = match self.table_state.selected() {
-            Some(i) => {
-                if i == 0 {
-                    self.downloads.len().saturating_sub(1)
-                } else {
-                    i - 1
-                }
-            }
-            None => 0,
-        };
-        self.table_state.select(Some(i));
-    }
-
-    pub fn first(&mut self) {
-        if !self.downloads.is_empty() {
-            self.table_state.select(Some(0));
-        }
-    }
-
-    pub fn last(&mut self) {
-        if !self.downloads.is_empty() {
-            self.table_state.select(Some(self.downloads.len() - 1));
-        }
-    }
-
     pub async fn pause_selected(&mut self) -> anyhow::Result<()> {
         if let Some(i) = self.table_state.selected() {
             if let Some(dl) = self.downloads.get(i) {
@@ -288,6 +150,121 @@ impl App {
                     .await;
             }
         }
+        Ok(())
+    }
+
+    pub async fn submit_discovery(&mut self) -> anyhow::Result<()> {
+        let input = self.discovery_input.trim().to_string();
+        if input.is_empty() {
+            self.view_state = ViewState::Dashboard;
+            return Ok(());
+        }
+
+        let is_path = std::path::Path::new(&input).exists();
+
+        if is_path {
+            let is_dir = tokio::fs::metadata(&input)
+                .await
+                .map(|m| m.is_dir())
+                .unwrap_or(false);
+            if is_dir {
+                self.client
+                    .post("http://localhost:6800/jsonrpc")
+                    .json(&json!({
+                        "jsonrpc": "2.0",
+                        "method": "aura.addFromFolder",
+                        "params": [input, self.discovery_recursive],
+                        "id": "tui-discovery"
+                    }))
+                    .send()
+                    .await?;
+            } else {
+                self.client
+                    .post("http://localhost:6800/jsonrpc")
+                    .json(&json!({
+                        "jsonrpc": "2.0",
+                        "method": "aura.addFromFile",
+                        "params": [input],
+                        "id": "tui-discovery"
+                    }))
+                    .send()
+                    .await?;
+            }
+        } else {
+            self.client
+                .post("http://localhost:6800/jsonrpc")
+                .json(&json!({
+                    "jsonrpc": "2.0",
+                    "method": "aria2.addUri",
+                    "params": [[input]],
+                    "id": "tui-discovery"
+                }))
+                .send()
+                .await?;
+        }
+
+        self.discovery_input.clear();
+        self.view_state = ViewState::Dashboard;
+        Ok(())
+    }
+
+    pub async fn submit_command(&mut self) -> anyhow::Result<()> {
+        let cmd = self.command_input.trim().to_lowercase();
+        self.command_input.clear();
+        self.view_state = ViewState::Dashboard;
+
+        if cmd == "quit" || cmd == "q" {
+            self.should_quit = true;
+        } else if cmd == "pause-all" {
+            self.pause_all().await?;
+        } else if cmd == "resume-all" {
+            self.resume_all().await?;
+        } else if cmd == "help" {
+            self.view_state = ViewState::Help;
+        } else if let Some(stripped) = cmd.strip_prefix("add ") {
+            let uri = stripped.trim().to_string();
+            if !uri.is_empty() {
+                self.client
+                    .post("http://localhost:6800/jsonrpc")
+                    .json(&json!({
+                        "jsonrpc": "2.0",
+                        "method": "aria2.addUri",
+                        "params": [[uri]],
+                        "id": "tui-cmd-add"
+                    }))
+                    .send()
+                    .await?;
+            }
+        }
+
+        Ok(())
+    }
+
+    pub async fn pause_all(&mut self) -> anyhow::Result<()> {
+        let _ = self
+            .client
+            .post("http://localhost:6800/jsonrpc")
+            .json(&json!({
+                "jsonrpc": "2.0",
+                "method": "aria2.pauseAll",
+                "id": "tui-pause-all"
+            }))
+            .send()
+            .await;
+        Ok(())
+    }
+
+    pub async fn resume_all(&mut self) -> anyhow::Result<()> {
+        let _ = self
+            .client
+            .post("http://localhost:6800/jsonrpc")
+            .json(&json!({
+                "jsonrpc": "2.0",
+                "method": "aria2.unpauseAll",
+                "id": "tui-resume-all"
+            }))
+            .send()
+            .await;
         Ok(())
     }
 }

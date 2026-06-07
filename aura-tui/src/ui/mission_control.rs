@@ -10,11 +10,13 @@ use ratatui::{
 
 pub fn draw_mission_control(f: &mut Frame, app: &mut App, area: Rect, gid: &str) {
     let mut name = "Unknown".to_string();
+    let mut status = "unknown".to_string();
     let mut speed = 0;
     let mut total = 0;
     let mut completed = 0;
     if let Some(dl) = app.downloads.iter().find(|d| d.gid == gid) {
         name = dl.name.clone();
+        status = dl.status.clone();
         speed = dl.download_speed.parse().unwrap_or(0);
         total = dl.total_length.parse().unwrap_or(0);
         completed = dl.completed_length.parse().unwrap_or(0);
@@ -32,22 +34,54 @@ pub fn draw_mission_control(f: &mut Frame, app: &mut App, area: Rect, gid: &str)
         )
         .split(area);
 
-    let text = vec![
+    let mut error_hint = None;
+    if status == "error" && app.downloads.iter().any(|d| d.gid == gid) {
+        // Ideally we'd have a specific error code, but for now we'll string match
+        // as a "World-Class" heuristic
+        let err_msg = app.error_msg.clone().unwrap_or_default().to_lowercase();
+        if err_msg.contains("disk full") || err_msg.contains("no space") {
+            error_hint = Some("[Action: Clear cache or free space, then hit 'r']");
+        } else if err_msg.contains("connection") || err_msg.contains("timeout") {
+            error_hint = Some("[Action: Check network and hit 'r' to retry]");
+        } else {
+            error_hint = Some("[Action: Hit 'r' to attempt manual retry]");
+        }
+    }
+
+    let mut text = vec![
         Line::from(vec![Span::styled(
             format!("Mission Control: {}", name),
             Style::default().add_modifier(Modifier::BOLD),
         )]),
         Line::from(format!("GID: {}", gid)),
+        Line::from(format!("Status: {}", status)),
         Line::from(""),
+    ];
+
+    if let Some(hint) = error_hint {
+        text.push(Line::from(vec![Span::styled(
+            hint,
+            Style::default()
+                .fg(app.theme.error)
+                .add_modifier(Modifier::BOLD),
+        )]));
+        text.push(Line::from(""));
+    }
+
+    text.extend(vec![
         Line::from(vec![Span::styled(
             "[Press 'f' to open File Selector]",
+            Style::default().fg(app.theme.highlight),
+        )]),
+        Line::from(vec![Span::styled(
+            "[Press 'r' to Refresh/Retry Mission]",
             Style::default().fg(app.theme.highlight),
         )]),
         Line::from(vec![Span::styled(
             "[Press Esc to return to Dashboard]",
             Style::default().fg(app.theme.highlight),
         )]),
-    ];
+    ]);
     let mc_panel = Paragraph::new(text)
         .block(Block::default().borders(Borders::ALL).title(" Overview "))
         .wrap(Wrap { trim: true });

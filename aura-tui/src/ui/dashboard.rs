@@ -1,4 +1,4 @@
-use crate::app::App;
+use crate::app::{App, ViewState};
 use bytesize::ByteSize;
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
@@ -9,10 +9,34 @@ use ratatui::{
 };
 
 pub fn draw_dashboard(f: &mut Frame, app: &mut App, area: Rect) {
+    let dashboard_chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints(
+            if app.view_state == ViewState::Search {
+                [Constraint::Length(3), Constraint::Min(0)]
+            } else {
+                [Constraint::Length(0), Constraint::Min(0)]
+            }
+            .as_ref(),
+        )
+        .split(area);
+
+    if app.view_state == ViewState::Search {
+        let search_block = Paragraph::new(app.search_query.as_str())
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title(" Search Tasks "),
+            )
+            .style(Style::default().fg(app.theme.accent));
+        f.render_widget(search_block, dashboard_chunks[0]);
+    }
+
+    let main_area = dashboard_chunks[1];
     let main_chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([Constraint::Percentage(60), Constraint::Percentage(40)].as_ref())
-        .split(area);
+        .split(main_area);
 
     // Left side: Task Table
     let header_cells = ["Name", "Status", "Progress", "Speed", "Size"]
@@ -29,33 +53,50 @@ pub fn draw_dashboard(f: &mut Frame, app: &mut App, area: Rect) {
         .height(1)
         .bottom_margin(1);
 
-    let rows = app.downloads.iter().map(|item| {
-        let total = item.total_length.parse::<u64>().unwrap_or(0);
-        let completed = item.completed_length.parse::<u64>().unwrap_or(0);
-        let speed = item.download_speed.parse::<u64>().unwrap_or(0);
-        let progress = if total > 0 {
-            (completed as f64 / total as f64) * 100.0
+    let filtered = app
+        .filtered_downloads()
+        .into_iter()
+        .cloned()
+        .collect::<Vec<_>>();
+    let rows: Vec<Row> = if filtered.is_empty() {
+        vec![Row::new(vec![Cell::from(if app.search_query.is_empty() {
+            "No active missions."
         } else {
-            0.0
-        };
+            "No missions match your search."
+        })
+        .style(Style::default().fg(app.theme.highlight))])]
+    } else {
+        filtered
+            .iter()
+            .map(|item| {
+                let total = item.total_length.parse::<u64>().unwrap_or(0);
+                let completed = item.completed_length.parse::<u64>().unwrap_or(0);
+                let speed = item.download_speed.parse::<u64>().unwrap_or(0);
+                let progress = if total > 0 {
+                    (completed as f64 / total as f64) * 100.0
+                } else {
+                    0.0
+                };
 
-        let status_style = match item.status.as_str() {
-            "active" => Style::default().fg(app.theme.success),
-            "paused" => Style::default().fg(app.theme.warning),
-            "error" => Style::default().fg(app.theme.error),
-            _ => Style::default().fg(app.theme.foreground),
-        };
+                let status_style = match item.status.as_str() {
+                    "active" => Style::default().fg(app.theme.success),
+                    "paused" => Style::default().fg(app.theme.warning),
+                    "error" => Style::default().fg(app.theme.error),
+                    _ => Style::default().fg(app.theme.foreground),
+                };
 
-        Row::new(vec![
-            Cell::from(item.name.clone()),
-            Cell::from(item.status.clone()).style(status_style),
-            Cell::from(format!("{:.1}%", progress)),
-            Cell::from(format!("{}/s", ByteSize::b(speed))),
-            Cell::from(ByteSize::b(total).to_string()),
-        ])
-        .height(1)
-        .bottom_margin(0)
-    });
+                Row::new(vec![
+                    Cell::from(item.name.clone()),
+                    Cell::from(item.status.clone()).style(status_style),
+                    Cell::from(format!("{:.1}%", progress)),
+                    Cell::from(format!("{}/s", ByteSize::b(speed))),
+                    Cell::from(ByteSize::b(total).to_string()),
+                ])
+                .height(1)
+                .bottom_margin(0)
+            })
+            .collect()
+    };
 
     let t = Table::new(
         rows,
@@ -71,7 +112,7 @@ pub fn draw_dashboard(f: &mut Frame, app: &mut App, area: Rect) {
     .block(
         Block::default()
             .borders(Borders::ALL)
-            .title(" Active Missions "),
+            .title(format!(" Active Missions ({}) ", filtered.len())),
     )
     .row_highlight_style(
         Style::default()
@@ -84,7 +125,7 @@ pub fn draw_dashboard(f: &mut Frame, app: &mut App, area: Rect) {
 
     // Right side: Detail Panel
     if let Some(i) = app.table_state.selected() {
-        if let Some(dl) = app.downloads.get(i) {
+        if let Some(dl) = filtered.get(i) {
             let total = dl.total_length.parse::<u64>().unwrap_or(0);
             let completed = dl.completed_length.parse::<u64>().unwrap_or(0);
             let speed = dl.download_speed.parse::<u64>().unwrap_or(0);

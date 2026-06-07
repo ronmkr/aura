@@ -63,41 +63,73 @@ where
             if let Event::Key(key) = event::read()? {
                 if key.code == KeyCode::Char('q') {
                     app.should_quit = true;
+                } else if key.code == KeyCode::Char('?') {
+                    if app.view_state == app::ViewState::Help {
+                        app.view_state = app::ViewState::Dashboard;
+                    } else {
+                        app.view_state = app::ViewState::Help;
+                    }
                 } else {
                     let view_state = app.view_state.clone();
                     match view_state {
                         app::ViewState::Dashboard => match key.code {
                             KeyCode::Down | KeyCode::Char('j') => app.next(),
                             KeyCode::Up | KeyCode::Char('k') => app.previous(),
+                            KeyCode::Right | KeyCode::Char('l') | KeyCode::Enter => {
+                                let filtered = app.filtered_downloads();
+                                if let Some(i) = app.table_state.selected() {
+                                    if let Some(dl) = filtered.get(i) {
+                                        app.view_state =
+                                            app::ViewState::MissionControl(dl.gid.clone());
+                                    }
+                                }
+                            }
                             KeyCode::Home | KeyCode::Char('g') => app.first(),
                             KeyCode::End | KeyCode::Char('G') => app.last(),
+                            KeyCode::Char('/') => {
+                                app.search_query.clear();
+                                app.view_state = app::ViewState::Search;
+                            }
                             KeyCode::Char('p') => {
                                 app.pause_selected().await?;
                             }
                             KeyCode::Char('r') => {
                                 app.resume_selected().await?;
                             }
-                            KeyCode::Enter => {
-                                if let Some(i) = app.table_state.selected() {
-                                    if let Some(dl) = app.downloads.get(i) {
-                                        app.view_state =
-                                            app::ViewState::MissionControl(dl.gid.clone());
-                                    }
-                                }
+                            KeyCode::Char('a') => {
+                                app.discovery_input.clear();
+                                app.view_state = app::ViewState::Discovery;
                             }
                             _ => {}
                         },
                         app::ViewState::MissionControl(gid) => match key.code {
-                            KeyCode::Esc => app.view_state = app::ViewState::Dashboard,
-                            KeyCode::Char('f') => {
+                            KeyCode::Esc | KeyCode::Left | KeyCode::Char('h') => {
+                                app.view_state = app::ViewState::Dashboard
+                            }
+                            KeyCode::Right | KeyCode::Char('l') | KeyCode::Char('f') => {
                                 let gid_clone = gid.clone();
                                 app.fetch_files(&gid_clone).await?;
                                 app.view_state = app::ViewState::FileSelector(gid.clone())
                             }
+                            KeyCode::Char('r') => {
+                                let gid_clone = gid.clone();
+                                if let Ok(id) = gid_clone.parse::<u64>() {
+                                    app.client
+                                        .post("http://localhost:6800/jsonrpc")
+                                        .json(&serde_json::json!({
+                                            "jsonrpc": "2.0",
+                                            "method": "aura.refreshUri",
+                                            "params": [id.to_string()],
+                                            "id": "tui-refresh"
+                                        }))
+                                        .send()
+                                        .await?;
+                                }
+                            }
                             _ => {}
                         },
                         app::ViewState::FileSelector(gid) => match key.code {
-                            KeyCode::Esc => {
+                            KeyCode::Esc | KeyCode::Left | KeyCode::Char('h') => {
                                 app.view_state = app::ViewState::MissionControl(gid.clone());
                             }
                             KeyCode::Down | KeyCode::Char('j') => app.file_next(),
@@ -111,6 +143,60 @@ where
                             }
                             _ => {}
                         },
+                        app::ViewState::Discovery => match key.code {
+                            KeyCode::Esc => {
+                                app.discovery_input.clear();
+                                app.view_state = app::ViewState::Dashboard;
+                            }
+                            KeyCode::Enter => {
+                                app.submit_discovery().await?;
+                            }
+                            KeyCode::Char(c) => {
+                                app.discovery_input.push(c);
+                            }
+                            KeyCode::Backspace => {
+                                app.discovery_input.pop();
+                            }
+                            KeyCode::Tab => {
+                                app.discovery_recursive = !app.discovery_recursive;
+                            }
+                            _ => {}
+                        },
+                        app::ViewState::Search => match key.code {
+                            KeyCode::Esc | KeyCode::Enter => {
+                                app.view_state = app::ViewState::Dashboard;
+                            }
+                            KeyCode::Char(c) => {
+                                app.search_query.push(c);
+                                app.clamp_selection();
+                            }
+                            KeyCode::Backspace => {
+                                app.search_query.pop();
+                                app.clamp_selection();
+                            }
+                            _ => {}
+                        },
+                        app::ViewState::CommandPalette => match key.code {
+                            KeyCode::Esc => {
+                                app.command_input.clear();
+                                app.view_state = app::ViewState::Dashboard;
+                            }
+                            KeyCode::Enter => {
+                                app.submit_command().await?;
+                            }
+                            KeyCode::Char(c) => {
+                                app.command_input.push(c);
+                            }
+                            KeyCode::Backspace => {
+                                app.command_input.pop();
+                            }
+                            _ => {}
+                        },
+                        app::ViewState::Help => {
+                            if key.code == KeyCode::Esc || key.code == KeyCode::Char('?') {
+                                app.view_state = app::ViewState::Dashboard;
+                            }
+                        }
                     }
                 }
             }

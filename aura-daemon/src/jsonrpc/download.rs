@@ -357,3 +357,37 @@ pub async fn handle_set_file_selection(
 
     Ok(json!("OK"))
 }
+
+pub async fn handle_add_from_folder(
+    engine: &Engine,
+    params: Option<Value>,
+) -> Result<Value, Value> {
+    let params = params.ok_or_else(|| json!({ "code": -32602, "message": "Invalid params" }))?;
+    let dir = params[0]
+        .as_str()
+        .ok_or_else(|| json!({ "code": -32602, "message": "Invalid directory path" }))?;
+    let recursive = params[1].as_bool().unwrap_or(false);
+
+    let ids = engine
+        .add_from_folder(None, dir, recursive)
+        .await
+        .map_err(|e| json!({ "code": -32000, "message": e.to_string() }))?;
+
+    let res: Vec<String> = ids.into_iter().map(|id| id.0.to_string()).collect();
+    Ok(json!(res))
+}
+
+pub async fn handle_add_from_file(engine: &Engine, params: Option<Value>) -> Result<Value, Value> {
+    let params = params.ok_or_else(|| json!({ "code": -32602, "message": "Invalid params" }))?;
+    let path = params[0]
+        .as_str()
+        .ok_or_else(|| json!({ "code": -32602, "message": "Invalid file path" }))?;
+
+    let ids = engine
+        .add_from_file(None, path)
+        .await
+        .map_err(|e| json!({ "code": -32000, "message": e.to_string() }))?;
+
+    let res: Vec<String> = ids.into_iter().map(|id| id.0.to_string()).collect();
+    Ok(json!(res))
+}

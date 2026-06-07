@@ -162,6 +162,83 @@ pub async fn run_select_files(
     Ok(())
 }
 
+pub async fn run_add_from_folder(
+    port: u16,
+    secret: Option<String>,
+    dir: &str,
+    recursive: bool,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let client = reqwest::Client::new();
+    let secret = resolve_rpc_secret(secret);
+
+    let url = format!("http://localhost:{}/jsonrpc", port);
+    let mut req = client.post(&url);
+    if let Some(ref sec) = secret {
+        req = req.header("X-Aura-Token", sec);
+    }
+
+    let payload = json!({
+        "jsonrpc": "2.0",
+        "method": "aura.addFromFolder",
+        "params": [dir, recursive],
+        "id": "cli-add-folder"
+    });
+
+    let resp = req.json(&payload).send().await?;
+    let body: serde_json::Value = resp.json().await?;
+
+    if let Some(err) = body.get("error") {
+        eprintln!("Error adding from folder: {}", err);
+        std::process::exit(1);
+    } else if let Some(result) = body.get("result") {
+        let ids: Vec<String> = serde_json::from_value(result.clone())?;
+        println!("Successfully added {} tasks from folder.", ids.len());
+        for id in ids {
+            println!("  Added task GID: {}", id);
+        }
+    }
+
+    Ok(())
+}
+
+pub async fn run_add_from_file(
+    port: u16,
+    secret: Option<String>,
+    path: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let client = reqwest::Client::new();
+    let secret = resolve_rpc_secret(secret);
+
+    let url = format!("http://localhost:{}/jsonrpc", port);
+    let mut req = client.post(&url);
+    if let Some(ref sec) = secret {
+        req = req.header("X-Aura-Token", sec);
+    }
+
+    let payload = json!({
+        "jsonrpc": "2.0",
+        "method": "aura.addFromFile",
+        "params": [path],
+        "id": "cli-add-file"
+    });
+
+    let resp = req.json(&payload).send().await?;
+    let body: serde_json::Value = resp.json().await?;
+
+    if let Some(err) = body.get("error") {
+        eprintln!("Error adding from file: {}", err);
+        std::process::exit(1);
+    } else if let Some(result) = body.get("result") {
+        let ids: Vec<String> = serde_json::from_value(result.clone())?;
+        println!("Successfully added {} tasks from file.", ids.len());
+        for id in ids {
+            println!("  Added task GID: {}", id);
+        }
+    }
+
+    Ok(())
+}
+
 fn resolve_rpc_secret(secret: Option<String>) -> Option<String> {
     match secret {
         Some(s) => Some(s),
