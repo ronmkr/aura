@@ -118,7 +118,7 @@ impl Engine {
                     name,
                     sources: vec![(line.to_string(), detected.to_task_type())],
                     checksum: None,
-                    priority: 3,
+                    priority: self.config.load().limits.default_task_priority,
                     streaming_mode: false,
                     depends_on: Vec::new(),
                     follow_on: None,

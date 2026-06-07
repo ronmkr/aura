@@ -30,7 +30,7 @@ pub struct OrchestratorChannels {
 }
 
 #[derive(Clone)]
-pub(crate) struct OrchestratorHandle {
+pub struct OrchestratorHandle {
     pub config: Arc<ArcSwap<crate::Config>>,
     pub dns_resolver: Arc<crate::net_util::TokioResolver>,
     pub credential_provider: Arc<crate::config::credentials::CredentialProvider>,
@@ -135,14 +135,20 @@ impl Orchestrator {
     pub(crate) fn get_bt_task(&self, id: TaskId) -> Option<Arc<BtTask>> {
         // Try as meta_id
         if let Some(task) = self.tasks.get(&id) {
-            if let Some(ext) = task.extensions.get("bittorrent") {
+            if let Some(ext) = task
+                .extensions
+                .get(crate::worker::bittorrent::BT_EXTENSION_KEY)
+            {
                 return ext.clone().as_any_arc().downcast::<BtTask>().ok();
             }
         }
         // Try as sub_id
         for task in self.tasks.values() {
             if task.subtasks.iter().any(|s| s.id == id) {
-                if let Some(ext) = task.extensions.get("bittorrent") {
+                if let Some(ext) = task
+                    .extensions
+                    .get(crate::worker::bittorrent::BT_EXTENSION_KEY)
+                {
                     return ext.clone().as_any_arc().downcast::<BtTask>().ok();
                 }
             }
@@ -153,7 +159,10 @@ impl Orchestrator {
     pub(crate) fn iter_bt_tasks(&self) -> Vec<(TaskId, Arc<BtTask>)> {
         let mut results = Vec::new();
         for task in self.tasks.values() {
-            if let Some(ext) = task.extensions.get("bittorrent") {
+            if let Some(ext) = task
+                .extensions
+                .get(crate::worker::bittorrent::BT_EXTENSION_KEY)
+            {
                 if let Ok(bt) = ext.clone().as_any_arc().downcast::<BtTask>() {
                     results.push((task.id, bt));
                 }
@@ -195,6 +204,17 @@ impl Orchestrator {
             peer_id: self.peer_id,
             db: self.db.clone(),
             vpn_provider: self.vpn_provider.clone(),
+        }
+    }
+
+    pub(crate) fn emit_progress(&self, id: TaskId) {
+        if let Some(task) = self.tasks.get(&id) {
+            let _ = self.event_tx.send(Event::TaskProgress {
+                id,
+                completed_bytes: task.completed_length,
+                uploaded_bytes: task.uploaded_length,
+                total_bytes: task.total_length,
+            });
         }
     }
 

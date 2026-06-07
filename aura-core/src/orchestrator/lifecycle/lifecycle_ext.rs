@@ -191,12 +191,16 @@ impl Orchestrator {
             meta_task.mark_range_complete(sub_id, range);
 
             let mut is_bt_complete = false;
-            if let Some(bt_task) = meta_task.extensions.get("bittorrent").and_then(|e| {
-                e.clone()
-                    .as_any_arc()
-                    .downcast::<crate::worker::bittorrent::task::BtTask>()
-                    .ok()
-            }) {
+            if let Some(bt_task) = meta_task
+                .extensions
+                .get(crate::worker::bittorrent::BT_EXTENSION_KEY)
+                .and_then(|e| {
+                    e.clone()
+                        .as_any_arc()
+                        .downcast::<crate::worker::bittorrent::task::BtTask>()
+                        .ok()
+                })
+            {
                 let bf_guard = bt_task.state.bitfield.lock().await;
                 let picker_guard = bt_task.state.picker.lock().await;
                 if let (Some(b), Some(picker)) = (bf_guard.as_ref(), picker_guard.as_ref()) {

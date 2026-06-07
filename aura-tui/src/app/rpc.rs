@@ -1,23 +1,33 @@
 use super::state::{App, DownloadInfo, FileInfo, ViewState};
 use crate::theme::Theme;
-use serde_json::json;
+use serde_json::{json, Value};
 use std::collections::VecDeque;
 
 impl App {
+    async fn call_rpc(
+        &self,
+        method: &str,
+        params: Option<Value>,
+        id: &str,
+    ) -> anyhow::Result<serde_json::Value> {
+        let mut body = json!({
+            "jsonrpc": aura_core::JSONRPC_VERSION,
+            "method": method,
+            "id": id
+        });
+        if let Some(p) = params {
+            body["params"] = p;
+        }
+
+        let res = self.client.post(&self.rpc_url).json(&body).send().await?;
+        Ok(res.json().await?)
+    }
+
     pub async fn fetch_files(&mut self, gid: &str) -> anyhow::Result<()> {
-        let res = self
-            .client
-            .post(&self.rpc_url)
-            .json(&json!({
-                "jsonrpc": "2.0",
-                "method": "aura.getFiles",
-                "params": [gid],
-                "id": "tui-files"
-            }))
-            .send()
+        let body = self
+            .call_rpc("aura.getFiles", Some(json!([gid])), "tui-files")
             .await?;
 
-        let body: serde_json::Value = res.json().await?;
         if let Some(result) = body.get("result") {
             let mut files: Vec<FileInfo> = serde_json::from_value(result.clone())?;
 
@@ -42,33 +52,19 @@ impl App {
     pub async fn submit_file_selection(&self, gid: &str) -> anyhow::Result<()> {
         let selection: Vec<bool> = self.files.iter().map(|f| f.selected).collect();
         let _ = self
-            .client
-            .post(&self.rpc_url)
-            .json(&json!({
-                "jsonrpc": "2.0",
-                "method": "aura.setFileSelection",
-                "params": [gid, selection],
-                "id": "tui-set-files"
-            }))
-            .send()
+            .call_rpc(
+                "aura.setFileSelection",
+                Some(json!([gid, selection])),
+                "tui-set-files",
+            )
             .await?;
         Ok(())
     }
 
     pub async fn fetch_config(&mut self) -> anyhow::Result<()> {
-        let res = self
-            .client
-            .post(&self.rpc_url)
-            .json(&json!({
-                "jsonrpc": "2.0",
-                "method": "aura.getConfig",
-                "id": "tui-config"
-            }))
-            .send()
-            .await;
+        let res = self.call_rpc("aura.getConfig", None, "tui-config").await;
 
-        if let Ok(response) = res {
-            let body: serde_json::Value = response.json().await?;
+        if let Ok(body) = res {
             if let Some(result) = body.get("result") {
                 self.theme = Theme::from_config(result);
 
@@ -84,20 +80,10 @@ impl App {
     }
 
     pub async fn tick(&mut self) -> anyhow::Result<()> {
-        let res = self
-            .client
-            .post(&self.rpc_url)
-            .json(&json!({
-                "jsonrpc": "2.0",
-                "method": "aura.tellActive",
-                "id": "tui"
-            }))
-            .send()
-            .await;
+        let res = self.call_rpc("aura.tellActive", None, "tui").await;
 
         match res {
-            Ok(response) => {
-                let body: serde_json::Value = response.json().await?;
+            Ok(body) => {
                 if let Some(result) = body.get("result") {
                     let new_downloads: Vec<DownloadInfo> = serde_json::from_value(result.clone())?;
                     for dl in &new_downloads {
@@ -126,15 +112,7 @@ impl App {
         if let Some(i) = self.table_state.selected() {
             if let Some(dl) = self.downloads.get(i) {
                 let _ = self
-                    .client
-                    .post(&self.rpc_url)
-                    .json(&json!({
-                        "jsonrpc": "2.0",
-                        "method": "aura.pause",
-                        "params": [dl.gid],
-                        "id": "tui"
-                    }))
-                    .send()
+                    .call_rpc("aura.pause", Some(json!([dl.gid])), "tui")
                     .await;
             }
         }
@@ -145,15 +123,7 @@ impl App {
         if let Some(i) = self.table_state.selected() {
             if let Some(dl) = self.downloads.get(i) {
                 let _ = self
-                    .client
-                    .post(&self.rpc_url)
-                    .json(&json!({
-                        "jsonrpc": "2.0",
-                        "method": "aura.unpause",
-                        "params": [dl.gid],
-                        "id": "tui"
-                    }))
-                    .send()
+                    .call_rpc("aura.unpause", Some(json!([dl.gid])), "tui")
                     .await;
             }
         }
@@ -175,38 +145,18 @@ impl App {
                 .map(|m| m.is_dir())
                 .unwrap_or(false);
             if is_dir {
-                self.client
-                    .post(&self.rpc_url)
-                    .json(&json!({
-                        "jsonrpc": "2.0",
-                        "method": "aura.addFromFolder",
-                        "params": [input, self.discovery_recursive],
-                        "id": "tui-discovery"
-                    }))
-                    .send()
-                    .await?;
+                self.call_rpc(
+                    "aura.addFromFolder",
+                    Some(json!([input, self.discovery_recursive])),
+                    "tui-discovery",
+                )
+                .await?;
             } else {
-                self.client
-                    .post(&self.rpc_url)
-                    .json(&json!({
-                        "jsonrpc": "2.0",
-                        "method": "aura.addFromFile",
-                        "params": [input],
-                        "id": "tui-discovery"
-                    }))
-                    .send()
+                self.call_rpc("aura.addFromFile", Some(json!([input])), "tui-discovery")
                     .await?;
             }
         } else {
-            self.client
-                .post(&self.rpc_url)
-                .json(&json!({
-                    "jsonrpc": "2.0",
-                    "method": "aura.addUri",
-                    "params": [[input]],
-                    "id": "tui-discovery"
-                }))
-                .send()
+            self.call_rpc("aura.addUri", Some(json!([[input]])), "tui-discovery")
                 .await?;
         }
 
@@ -231,15 +181,7 @@ impl App {
         } else if let Some(stripped) = cmd.strip_prefix("add ") {
             let uri = stripped.trim().to_string();
             if !uri.is_empty() {
-                self.client
-                    .post(&self.rpc_url)
-                    .json(&json!({
-                        "jsonrpc": "2.0",
-                        "method": "aura.addUri",
-                        "params": [[uri]],
-                        "id": "tui-cmd-add"
-                    }))
-                    .send()
+                self.call_rpc("aura.addUri", Some(json!([[uri]])), "tui-cmd-add")
                     .await?;
             }
         }
@@ -248,29 +190,13 @@ impl App {
     }
 
     pub async fn pause_all(&mut self) -> anyhow::Result<()> {
-        let _ = self
-            .client
-            .post(&self.rpc_url)
-            .json(&json!({
-                "jsonrpc": "2.0",
-                "method": "aura.pauseAll",
-                "id": "tui-pause-all"
-            }))
-            .send()
-            .await;
+        let _ = self.call_rpc("aura.pauseAll", None, "tui-pause-all").await;
         Ok(())
     }
 
     pub async fn resume_all(&mut self) -> anyhow::Result<()> {
         let _ = self
-            .client
-            .post(&self.rpc_url)
-            .json(&json!({
-                "jsonrpc": "2.0",
-                "method": "aura.unpauseAll",
-                "id": "tui-resume-all"
-            }))
-            .send()
+            .call_rpc("aura.unpauseAll", None, "tui-resume-all")
             .await;
         Ok(())
     }

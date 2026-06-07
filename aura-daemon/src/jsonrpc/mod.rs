@@ -23,7 +23,7 @@ pub fn authenticate(
 ) -> Result<(), (StatusCode, Json<Value>)> {
     if let Some(expected_secret) = secret {
         let auth_header = headers
-            .get("X-Aura-Token")
+            .get(aura_core::RPC_AUTH_HEADER)
             .or_else(|| headers.get("Authorization"));
 
         let is_valid = match auth_header {
@@ -37,7 +37,9 @@ pub fn authenticate(
         if !is_valid {
             return Err((
                 StatusCode::UNAUTHORIZED,
-                Json(json!({ "error": "Unauthorized. Invalid or missing X-Aura-Token." })),
+                Json(
+                    json!({ "error": format!("Unauthorized. Invalid or missing {}.", aura_core::RPC_AUTH_HEADER) }),
+                ),
             ));
         }
     }
@@ -101,7 +103,7 @@ pub async fn handle_jsonrpc(
         Ok(res) => (
             StatusCode::OK,
             Json(json!(JsonRpcResponse {
-                jsonrpc: "2.0".to_string(),
+                jsonrpc: aura_core::JSONRPC_VERSION.to_string(),
                 result: Some(res),
                 error: None,
                 id: payload.id,
@@ -112,7 +114,7 @@ pub async fn handle_jsonrpc(
         Err(err) => (
             StatusCode::OK,
             Json(json!(JsonRpcResponse {
-                jsonrpc: "2.0".to_string(),
+                jsonrpc: aura_core::JSONRPC_VERSION.to_string(),
                 result: None,
                 error: Some(err),
                 id: payload.id,

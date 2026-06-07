@@ -1,69 +1,12 @@
-//! task: Core representations of download tasks and their lifecycles.
-
+use super::extension::TaskExtension;
+use super::phase::{DownloadPhase, FollowOnAction, TaskType};
+use super::range::Range;
+use super::subtask::SubTask;
+use crate::bitfield::Bitfield;
 use crate::{TaskId, TenantId};
 use serde::{Deserialize, Serialize};
-
-/// Represents the current lifecycle state of a Download Task.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum DownloadPhase {
-    MetadataExchange,
-    Downloading,
-    Verifying,
-    Paused,
-    Complete,
-    Error,
-    Degraded,
-    Waiting,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub enum TaskType {
-    Http,
-    BitTorrent,
-    Ftp,
-}
-
-/// Represents a byte range [start, end)
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
-pub struct Range {
-    pub start: u64,
-    pub end: u64,
-}
-
-impl Range {
-    pub fn length(&self) -> u64 {
-        self.end.saturating_sub(self.start)
-    }
-}
-
-/// A sub-segment of a download, managed by a specific protocol worker.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SubTask {
-    pub id: TaskId, // Unique for each subtask
-    pub task_type: TaskType,
-    pub uri: String,
-    pub assigned_ranges: Vec<Range>,
-    pub total_length: u64,
-    pub completed_length: u64,
-    pub active: bool,
-    pub phase: DownloadPhase,
-    pub target_concurrency: usize,
-    pub recent_bytes_downloaded: u64,
-    pub ewma_throughput: f64,
-    pub retry_count: u32,
-}
-
-use super::extension::TaskExtension;
-use crate::bitfield::Bitfield;
 use std::collections::HashMap;
 use std::sync::Arc;
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub enum FollowOnAction {
-    AutoStartTorrent,
-    AutoStartMetalink,
-    Custom(String),
-}
 
 /// The high-level representation of a logical download operation.
 /// A MetaTask can manage multiple SubTasks (sources).
@@ -201,7 +144,7 @@ impl MetaTask {
             completed_length: 0,
             uploaded_length: 0,
             phase: DownloadPhase::Downloading,
-            priority: 3,
+            priority: 3, /* TODO: use config */
             streaming_mode: false,
             range_supported: true, // Assume supported until proven otherwise
             follow_on: None,
@@ -290,8 +233,6 @@ impl MetaTask {
         }
 
         // 2. Work Stealing / Racing (ADR 0005)
-        // If no pending ranges, look for "lagging" in-flight ranges to race against.
-        // A range is lagging if its assigned subtask's throughput is significantly below average.
         if !self.range_supported {
             return None;
         }

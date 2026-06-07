@@ -16,6 +16,7 @@ pub struct LimitsConfig {
     pub pex_interval_secs: u64,
     pub bandwidth_scheduling_interval_secs: u64,
     pub network_roaming_check_interval_secs: u64,
+    pub default_task_priority: u32,
 }
 
 impl Default for LimitsConfig {
@@ -34,6 +35,7 @@ impl Default for LimitsConfig {
             pex_interval_secs: 60,
             bandwidth_scheduling_interval_secs: 60,
             network_roaming_check_interval_secs: 5,
+            default_task_priority: 3,
         }
     }
 }

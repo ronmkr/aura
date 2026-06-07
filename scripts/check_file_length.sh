@@ -1,14 +1,14 @@
 #!/bin/bash
 # scripts/check_file_length.sh
 # Enforces Aura's strict modularity standards:
-# 1. No Rust source file in the workspace's src/ directories may exceed 400 lines.
+# 1. No Rust source file in the workspace's src/ directories may exceed 350 lines.
 # 2. Progressively enforces separate-test files: new/modified production source files must not contain inline test modules (mod tests).
 
-LIMIT=400
+LIMIT=350
 FAILED=0
 
 echo "========================================================="
-echo "🔍 Starting Aura Modularity & 400-Line Limit Check..."
+echo "🔍 Starting Aura Modularity & 350-Line Limit Check..."
 echo "========================================================="
 
 # 1. Get the list of modified files in the current branch relative to origin/main (if in git environment)
@@ -79,7 +79,7 @@ done < <(find . -type f -name "*.rs" | grep "/src/")
 echo "---------------------------------------------------------"
 if [ "$FAILED" -ne 0 ]; then
     echo "❌ ERROR: Modularity check failed!"
-    echo "   - Ensure no source files exceed 400 lines (refactor into submodules)."
+    echo "   - Ensure no source files exceed 350 lines (refactor into submodules)."
     echo "   - Ensure all new/modified unit tests occupy their own separate files."
     echo "========================================================="
     exit 1

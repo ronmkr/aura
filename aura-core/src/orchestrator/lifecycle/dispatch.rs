@@ -68,7 +68,7 @@ impl Orchestrator {
                     });
                 let bt_task = match meta_task
                     .extensions
-                    .get("bittorrent")
+                    .get(crate::worker::bittorrent::BT_EXTENSION_KEY)
                     .and_then(|e| e.clone().as_any_arc().downcast::<BtTask>().ok())
                 {
                     Some(bt) => bt.clone(),

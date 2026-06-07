@@ -21,13 +21,27 @@ pub mod telemetry;
 pub mod vpn_enforcement;
 pub mod worker_command;
 
-pub use crate::config::ResourceMappingConfig;
 pub use command::Command;
 pub use engine::Engine;
 pub use mapping::MappingEngine;
-pub use policy_manager::{ErrorSeverity, PolicyManager};
-pub use resource_governor::{MemoryGuard, ResourceGovernor};
-pub use state::Orchestrator;
+pub use policy_manager::ErrorSeverity;
+pub use state::{Orchestrator, OrchestratorHandle};
 pub use subtask_event::SubTaskEvent;
 pub use telemetry::Event;
 pub use worker_command::WorkerCommand;
+
+#[cfg(test)]
+#[path = "tests_racing.rs"]
+mod tests_racing;
+
+#[cfg(test)]
+#[path = "tests_dependencies.rs"]
+mod tests_dependencies;
+
+#[cfg(test)]
+#[path = "dag_cycle_tests.rs"]
+mod dag_cycle_tests;
+
+#[cfg(test)]
+#[path = "advanced_net_and_tenant_tests.rs"]
+mod advanced_net_and_tenant_tests;

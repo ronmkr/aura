@@ -1,37 +1,67 @@
-use serde_json::json;
-use std::path::PathBuf;
+use serde_json::{json, Value};
+
+struct RpcClient {
+    client: reqwest::Client,
+    url: String,
+    secret: Option<String>,
+}
+
+impl RpcClient {
+    fn new(port: u16, secret: Option<String>) -> Self {
+        Self {
+            client: reqwest::Client::new(),
+            url: format!("http://localhost:{}/jsonrpc", port),
+            secret: aura_core::Config::resolve_rpc_secret(secret),
+        }
+    }
+
+    async fn call(
+        &self,
+        method: &str,
+        params: Vec<Value>,
+        id: &str,
+    ) -> Result<Value, Box<dyn std::error::Error>> {
+        let mut req = self.client.post(&self.url);
+        if let Some(ref sec) = self.secret {
+            req = req.header(aura_core::RPC_AUTH_HEADER, sec);
+        }
+
+        let payload = json!({
+            "jsonrpc": aura_core::JSONRPC_VERSION,
+            "method": method,
+            "params": params,
+            "id": id
+        });
+
+        let resp = req.json(&payload).send().await?;
+        let body: Value = resp.json().await?;
+        Ok(body)
+    }
+
+    fn check_error(&self, body: &Value, action: &str) {
+        if let Some(err) = body.get("error") {
+            eprintln!("Error {}: {}", action, err);
+            std::process::exit(1);
+        }
+    }
+}
 
 pub async fn run_refresh(
     port: u16,
     secret: Option<String>,
     gid: u64,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let client = reqwest::Client::new();
-    let secret = resolve_rpc_secret(secret);
+    let rpc = RpcClient::new(port, secret);
+    let body = rpc
+        .call(
+            "aura.refreshUri",
+            vec![json!(gid.to_string())],
+            "cli-refresh",
+        )
+        .await?;
 
-    let url = format!("http://localhost:{}/jsonrpc", port);
-    let mut req = client.post(&url);
-    if let Some(ref sec) = secret {
-        req = req.header("X-Aura-Token", sec);
-    }
-
-    let payload = json!({
-        "jsonrpc": "2.0",
-        "method": "aura.refreshUri",
-        "params": [gid.to_string()],
-        "id": "cli-refresh"
-    });
-
-    let resp = req.json(&payload).send().await?;
-    let body: serde_json::Value = resp.json().await?;
-
-    if let Some(err) = body.get("error") {
-        eprintln!("Error refreshing task: {}", err);
-        std::process::exit(1);
-    } else {
-        println!("Refresh request sent successfully for GID {}", gid);
-    }
-
+    rpc.check_error(&body, "refreshing task");
+    println!("Refresh request sent successfully for GID {}", gid);
     Ok(())
 }
 
@@ -40,32 +70,19 @@ pub async fn run_show_files(
     secret: Option<String>,
     gid: u64,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let client = reqwest::Client::new();
-    let secret = resolve_rpc_secret(secret);
+    let rpc = RpcClient::new(port, secret);
+    let body = rpc
+        .call(
+            "aura.getFiles",
+            vec![json!(gid.to_string())],
+            "cli-show-files",
+        )
+        .await?;
 
-    let url = format!("http://localhost:{}/jsonrpc", port);
-    let mut req = client.post(&url);
-    if let Some(ref sec) = secret {
-        req = req.header("X-Aura-Token", sec);
-    }
-
-    let payload = json!({
-        "jsonrpc": "2.0",
-        "method": "aura.getFiles",
-        "params": [gid.to_string()],
-        "id": "cli-show-files"
-    });
-
-    let resp = req.json(&payload).send().await?;
-    let body: serde_json::Value = resp.json().await?;
-
-    if let Some(err) = body.get("error") {
-        eprintln!("Error fetching files: {}", err);
-        std::process::exit(1);
-    }
+    rpc.check_error(&body, "fetching files");
 
     if let Some(result) = body.get("result") {
-        let files: Vec<serde_json::Value> = serde_json::from_value(result.clone())?;
+        let files: Vec<Value> = serde_json::from_value(result.clone())?;
         println!("{:<5} {:<10} {:<10}", "Idx", "Size", "Path");
         println!("{}", "-".repeat(40));
         for (i, f) in files.iter().enumerate() {
@@ -93,24 +110,18 @@ pub async fn run_select_files(
     gid: u64,
     indices: Vec<usize>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let client = reqwest::Client::new();
-    let secret = resolve_rpc_secret(secret);
-
-    let url = format!("http://localhost:{}/jsonrpc", port);
+    let rpc = RpcClient::new(port, secret);
 
     // First, get the files to know the total count
-    let mut req = client.post(&url);
-    if let Some(ref sec) = secret {
-        req = req.header("X-Aura-Token", sec);
-    }
-    let get_payload = json!({
-        "jsonrpc": "2.0",
-        "method": "aura.getFiles",
-        "params": [gid.to_string()],
-        "id": "cli-select-pre-fetch"
-    });
-    let resp = req.json(&get_payload).send().await?;
-    let body: serde_json::Value = resp.json().await?;
+    let body = rpc
+        .call(
+            "aura.getFiles",
+            vec![json!(gid.to_string())],
+            "cli-select-pre-fetch",
+        )
+        .await?;
+
+    rpc.check_error(&body, "fetching files for selection");
 
     let total_files = body
         .get("result")
@@ -138,26 +149,16 @@ pub async fn run_select_files(
     }
 
     // Now send the selection
-    let mut req = client.post(&url);
-    if let Some(ref sec) = secret {
-        req = req.header("X-Aura-Token", sec);
-    }
-    let set_payload = json!({
-        "jsonrpc": "2.0",
-        "method": "aura.setFileSelection",
-        "params": [gid.to_string(), selection],
-        "id": "cli-set-files"
-    });
+    let body = rpc
+        .call(
+            "aura.setFileSelection",
+            vec![json!(gid.to_string()), json!(selection)],
+            "cli-set-files",
+        )
+        .await?;
 
-    let resp = req.json(&set_payload).send().await?;
-    let body: serde_json::Value = resp.json().await?;
-
-    if let Some(err) = body.get("error") {
-        eprintln!("Error setting file selection: {}", err);
-        std::process::exit(1);
-    } else {
-        println!("File selection updated successfully for GID {}", gid);
-    }
+    rpc.check_error(&body, "setting file selection");
+    println!("File selection updated successfully for GID {}", gid);
 
     Ok(())
 }
@@ -168,29 +169,17 @@ pub async fn run_add_from_folder(
     dir: &str,
     recursive: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let client = reqwest::Client::new();
-    let secret = resolve_rpc_secret(secret);
+    let rpc = RpcClient::new(port, secret);
+    let body = rpc
+        .call(
+            "aura.addFromFolder",
+            vec![json!(dir), json!(recursive)],
+            "cli-add-folder",
+        )
+        .await?;
 
-    let url = format!("http://localhost:{}/jsonrpc", port);
-    let mut req = client.post(&url);
-    if let Some(ref sec) = secret {
-        req = req.header("X-Aura-Token", sec);
-    }
-
-    let payload = json!({
-        "jsonrpc": "2.0",
-        "method": "aura.addFromFolder",
-        "params": [dir, recursive],
-        "id": "cli-add-folder"
-    });
-
-    let resp = req.json(&payload).send().await?;
-    let body: serde_json::Value = resp.json().await?;
-
-    if let Some(err) = body.get("error") {
-        eprintln!("Error adding from folder: {}", err);
-        std::process::exit(1);
-    } else if let Some(result) = body.get("result") {
+    rpc.check_error(&body, "adding from folder");
+    if let Some(result) = body.get("result") {
         let ids: Vec<String> = serde_json::from_value(result.clone())?;
         println!("Successfully added {} tasks from folder.", ids.len());
         for id in ids {
@@ -206,29 +195,13 @@ pub async fn run_add_from_file(
     secret: Option<String>,
     path: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let client = reqwest::Client::new();
-    let secret = resolve_rpc_secret(secret);
+    let rpc = RpcClient::new(port, secret);
+    let body = rpc
+        .call("aura.addFromFile", vec![json!(path)], "cli-add-file")
+        .await?;
 
-    let url = format!("http://localhost:{}/jsonrpc", port);
-    let mut req = client.post(&url);
-    if let Some(ref sec) = secret {
-        req = req.header("X-Aura-Token", sec);
-    }
-
-    let payload = json!({
-        "jsonrpc": "2.0",
-        "method": "aura.addFromFile",
-        "params": [path],
-        "id": "cli-add-file"
-    });
-
-    let resp = req.json(&payload).send().await?;
-    let body: serde_json::Value = resp.json().await?;
-
-    if let Some(err) = body.get("error") {
-        eprintln!("Error adding from file: {}", err);
-        std::process::exit(1);
-    } else if let Some(result) = body.get("result") {
+    rpc.check_error(&body, "adding from file");
+    if let Some(result) = body.get("result") {
         let ids: Vec<String> = serde_json::from_value(result.clone())?;
         println!("Successfully added {} tasks from file.", ids.len());
         for id in ids {
@@ -237,27 +210,4 @@ pub async fn run_add_from_file(
     }
 
     Ok(())
-}
-
-fn resolve_rpc_secret(secret: Option<String>) -> Option<String> {
-    match secret {
-        Some(s) => Some(s),
-        None => {
-            let home = std::env::var_os("HOME")
-                .or_else(|| std::env::var_os("USERPROFILE"))
-                .map(PathBuf::from);
-            if let Some(h) = home {
-                let p = h.join(".aura").join("rpc_secret");
-                if p.exists() {
-                    std::fs::read_to_string(&p)
-                        .ok()
-                        .map(|s| s.trim().to_string())
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        }
-    }
 }

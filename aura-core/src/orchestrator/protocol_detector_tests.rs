@@ -1,6 +1,6 @@
-use super::*;
-use std::fs;
+use crate::orchestrator::protocol_detector::{DetectedType, ProtocolDetector};
 use tempfile::tempdir;
+use tokio::fs;
 
 #[tokio::test]
 async fn test_detect_uri_schemes() {
@@ -28,12 +28,13 @@ async fn test_detect_uri_schemes() {
 
 #[tokio::test]
 async fn test_detect_info_hashes() {
-    // v1 hex
+    // 40-char Hex (v1)
     assert_eq!(
         ProtocolDetector::detect("dca7c79e604f3261621217e472658b191c03975a").await,
         Some(DetectedType::BitTorrent)
     );
-    // v2 hex
+
+    // 64-char Hex (v2)
     assert_eq!(
         ProtocolDetector::detect(
             "dca7c79e604f3261621217e472658b191c03975adca7c79e604f3261621217e4"
@@ -41,7 +42,8 @@ async fn test_detect_info_hashes() {
         .await,
         Some(DetectedType::BitTorrent)
     );
-    // v1 base32
+
+    // 32-char Base32 (v1)
     assert_eq!(
         ProtocolDetector::detect("33T4PH3AJ4ZGCSQSCHEHEXTLCGFAHF22").await,
         Some(DetectedType::BitTorrent)
@@ -49,48 +51,51 @@ async fn test_detect_info_hashes() {
 }
 
 #[tokio::test]
-async fn test_detect_local_files() {
+async fn test_detect_extensions_fallback() {
     let dir = tempdir().unwrap();
 
-    // Torrent file by extension
+    // .torrent file
     let torrent_path = dir.path().join("test.torrent");
-    fs::write(&torrent_path, "d8:announce0:e").unwrap();
+    fs::write(&torrent_path, b"d8:announce3:url e")
+        .await
+        .unwrap();
     assert_eq!(
         ProtocolDetector::detect(torrent_path.to_str().unwrap()).await,
         Some(DetectedType::BitTorrent)
     );
 
-    // Metalink file by extension
+    // .metalink file
     let metalink_path = dir.path().join("test.metalink");
     fs::write(
         &metalink_path,
-        "<?xml version=\"1.0\"?><metalink></metalink>",
+        b"<?xml version=\"1.0\" encoding=\"utf-8\"?><metalink/>",
     )
+    .await
     .unwrap();
     assert_eq!(
         ProtocolDetector::detect(metalink_path.to_str().unwrap()).await,
         Some(DetectedType::Metalink)
     );
 
-    // Torrent file by content (no extension)
-    let unknown_torrent = dir.path().join("unknown_bt");
-    fs::write(&unknown_torrent, "d8:announce3:url7:comment5:helloe").unwrap();
+    // Unknown file with .torrent extension
+    let unknown_torrent = dir.path().join("fake.torrent");
+    fs::write(&unknown_torrent, b"not a torrent").await.unwrap();
     assert_eq!(
         ProtocolDetector::detect(unknown_torrent.to_str().unwrap()).await,
         Some(DetectedType::BitTorrent)
     );
 
-    // Metalink file by content (no extension)
-    let unknown_metalink = dir.path().join("unknown_ml");
-    fs::write(&unknown_metalink, "<metalink version=\"4.0\"></metalink>").unwrap();
+    // Unknown file with .metalink extension
+    let unknown_metalink = dir.path().join("fake.metalink");
+    fs::write(&unknown_metalink, b"not a metalink")
+        .await
+        .unwrap();
     assert_eq!(
         ProtocolDetector::detect(unknown_metalink.to_str().unwrap()).await,
         Some(DetectedType::Metalink)
     );
-}
 
-#[tokio::test]
-async fn test_detect_extensions_fallback() {
+    // Just extension-based detection (no file exists)
     assert_eq!(
         ProtocolDetector::detect("some_file.torrent").await,
         Some(DetectedType::BitTorrent)

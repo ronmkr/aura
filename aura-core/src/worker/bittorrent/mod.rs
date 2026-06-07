@@ -12,3 +12,5 @@ pub use protocol::{
     HANDSHAKE_LEN,
 };
 pub use worker::*;
+
+pub const BT_EXTENSION_KEY: &str = "bittorrent";

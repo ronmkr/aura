@@ -421,6 +421,7 @@ name = "aura-tui"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "aura-core",
  "bytesize",
  "crossterm",
  "ratatui",

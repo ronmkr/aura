@@ -192,6 +192,36 @@ impl Config {
             self.network.tls_key = Some(key);
         }
     }
+
+    pub fn rpc_secret_path() -> std::path::PathBuf {
+        let home = std::env::var_os("HOME")
+            .or_else(|| std::env::var_os("USERPROFILE"))
+            .map(std::path::PathBuf::from);
+
+        let mut path = match home {
+            Some(h) => h,
+            None => std::path::PathBuf::from("."),
+        };
+        path.push(".aura");
+        path.push("rpc_secret");
+        path
+    }
+
+    pub fn resolve_rpc_secret(provided: Option<String>) -> Option<String> {
+        if let Some(s) = provided {
+            return Some(s);
+        }
+
+        let path = Self::rpc_secret_path();
+        if path.exists() {
+            std::fs::read_to_string(&path)
+                .ok()
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+        } else {
+            None
+        }
+    }
 }
 
 fn merge_toml_values(base: &mut toml::Value, overrides: toml::Value) {

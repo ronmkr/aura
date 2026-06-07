@@ -38,12 +38,7 @@ impl Orchestrator {
                     let config = self.config.load();
                     crate::history::HistoryManager::append_record(&config, record);
                     self.notification_service.notify_complete(&task.name);
-                    let _ = self.event_tx.send(Event::TaskProgress {
-                        id,
-                        completed_bytes: task.total_length,
-                        uploaded_bytes: task.uploaded_length,
-                        total_bytes: task.total_length,
-                    });
+                    self.emit_progress(id);
 
                     let (follow_on, tenant_id, priority, streaming_mode, task_name) =
                         if let Some(task) = self.tasks.get(&id) {
@@ -181,11 +176,3 @@ impl Orchestrator {
         Ok(())
     }
 }
-
-#[cfg(test)]
-#[path = "event_handlers_tests.rs"]
-mod tests;
-
-#[cfg(test)]
-#[path = "dag_cycle_tests.rs"]
-mod dag_cycle_tests;

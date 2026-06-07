@@ -65,13 +65,14 @@ impl Engine {
         sources: Vec<(String, TaskType)>,
         checksum: Option<crate::Checksum>,
     ) -> Result<crate::api::TaskHandle> {
+        let config = self.config.load();
         self.add_task_with_options(crate::orchestrator::command::AddTaskArgs {
             id,
             tenant_id,
             name,
             sources,
             checksum,
-            priority: 3,
+            priority: config.limits.default_task_priority,
             streaming_mode: false,
             depends_on: Vec::new(),
             follow_on: None,

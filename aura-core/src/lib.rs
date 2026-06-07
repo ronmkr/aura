@@ -57,6 +57,8 @@ pub enum SeedingCompleteReason {
 pub struct TaskId(pub u64);
 
 pub const DEFAULT_TASK_NAME: &str = "unnamed";
+pub const RPC_AUTH_HEADER: &str = "X-Aura-Token";
+pub const JSONRPC_VERSION: &str = "2.0";
 
 impl TaskId {
     pub fn random() -> Self {

@@ -136,7 +136,10 @@ impl Orchestrator {
 
                 let mut announce_futures = Vec::new();
                 for meta_task in self.tasks.values() {
-                    if let Some(ext) = meta_task.extensions.get("bittorrent") {
+                    if let Some(ext) = meta_task
+                        .extensions
+                        .get(crate::worker::bittorrent::BT_EXTENSION_KEY)
+                    {
                         if let Ok(bt_task) = ext.clone().as_any_arc().downcast::<BtTask>() {
                             if let Some(torrent) = bt_task.state.torrent.lock().await.clone() {
                                 let tracker_clone = std::sync::Arc::clone(&tracker);
@@ -180,7 +183,7 @@ impl Orchestrator {
                         {
                             if let Some(bt_task) = meta_task
                                 .extensions
-                                .get("bittorrent")
+                                .get(crate::worker::bittorrent::BT_EXTENSION_KEY)
                                 .and_then(|e| e.clone().as_any_arc().downcast::<BtTask>().ok())
                             {
                                 let base_dir = self.resolve_base_dir(&meta_task.tenant_id);
@@ -218,7 +221,7 @@ impl Orchestrator {
                     {
                         if let Some(bt_task) = meta_task
                             .extensions
-                            .get("bittorrent")
+                            .get(crate::worker::bittorrent::BT_EXTENSION_KEY)
                             .and_then(|e| e.clone().as_any_arc().downcast::<BtTask>().ok())
                         {
                             let info_hash = bt_task.state.info_hash;
@@ -240,7 +243,10 @@ impl Orchestrator {
             Command::GetFiles(id, reply_tx) => {
                 let mut result = None;
                 if let Some(task) = self.tasks.get(&id) {
-                    if let Some(ext) = task.extensions.get("bittorrent") {
+                    if let Some(ext) = task
+                        .extensions
+                        .get(crate::worker::bittorrent::BT_EXTENSION_KEY)
+                    {
                         if let Ok(bt_task) = ext.clone().as_any_arc().downcast::<BtTask>() {
                             if let Some(torrent) = bt_task.state.torrent.lock().await.clone() {
                                 if let Some(files) = torrent.info.files {
@@ -272,7 +278,10 @@ impl Orchestrator {
             }
             Command::SetFileSelection(id, selection) => {
                 if let Some(task) = self.tasks.get_mut(&id) {
-                    if let Some(ext) = task.extensions.get("bittorrent") {
+                    if let Some(ext) = task
+                        .extensions
+                        .get(crate::worker::bittorrent::BT_EXTENSION_KEY)
+                    {
                         if let Ok(bt_task) = ext.clone().as_any_arc().downcast::<BtTask>() {
                             task.selected_files = Some(selection.clone());
                             if let Some(torrent) = bt_task.state.torrent.lock().await.clone() {

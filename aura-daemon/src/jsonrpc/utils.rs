@@ -5,6 +5,16 @@ pub fn rpc_error(code: i64, message: impl Into<String>) -> Value {
     json!({ "code": code, "message": message.into() })
 }
 
+pub trait RpcResultExt<T> {
+    fn rpc_map_err(self) -> Result<T, Value>;
+}
+
+impl<T, E: std::fmt::Display> RpcResultExt<T> for Result<T, E> {
+    fn rpc_map_err(self) -> Result<T, Value> {
+        self.map_err(|e| rpc_error(-32000, e.to_string()))
+    }
+}
+
 pub fn parse_gid(params: Option<Value>) -> Result<TaskId, Value> {
     let params = params.ok_or_else(|| rpc_error(-32602, "Invalid params"))?;
     let gid_str: String =
