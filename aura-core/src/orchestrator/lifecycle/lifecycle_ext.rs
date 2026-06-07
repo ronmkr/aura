@@ -18,10 +18,15 @@ impl Orchestrator {
                 .tasks
                 .get(&meta_id)
                 .and_then(|t| t.selected_files.clone());
+            let total_length = if let Some(ref selection) = selected_files {
+                torrent.selected_total_length(selection)
+            } else {
+                torrent.total_length()
+            };
 
             let metadata = crate::worker::Metadata {
                 final_uri: format!("magnet:?xt={}", bt_task.state.info_hash.to_magnet_urn()),
-                total_length: Some(torrent.total_length()),
+                total_length: Some(total_length),
                 name: Some(torrent.info.name.clone()),
                 range_supported: true,
                 padding_ranges: torrent.get_padding_ranges(selected_files.as_deref()),
@@ -208,7 +213,28 @@ impl Orchestrator {
 
             meta_task.mark_range_complete(sub_id, range);
 
-            if meta_task.is_complete()
+            let mut is_bt_complete = false;
+            if let Some(bt_task) = meta_task.extensions.get("bittorrent").and_then(|e| {
+                e.clone()
+                    .as_any_arc()
+                    .downcast::<crate::worker::bittorrent::task::BtTask>()
+                    .ok()
+            }) {
+                let bf_guard = bt_task.state.bitfield.lock().await;
+                let picker_guard = bt_task.state.picker.lock().await;
+                if let (Some(b), Some(picker)) = (bf_guard.as_ref(), picker_guard.as_ref()) {
+                    let mut complete = true;
+                    for i in 0..picker.num_pieces {
+                        if picker.selected_pieces.get(i) && !b.get(i) {
+                            complete = false;
+                            break;
+                        }
+                    }
+                    is_bt_complete = complete;
+                }
+            }
+
+            if (meta_task.is_complete() || is_bt_complete)
                 && meta_task.phase != DownloadPhase::Verifying
                 && meta_task.phase != DownloadPhase::Complete
             {

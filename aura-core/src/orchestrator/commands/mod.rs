@@ -317,6 +317,7 @@ impl Orchestrator {
                             task.selected_files = Some(selection.clone());
                             if let Some(torrent) = bt_task.state.torrent.lock().await.clone() {
                                 let selected_pieces = torrent.compute_selected_pieces(&selection);
+                                task.total_length = torrent.selected_total_length(&selection);
                                 let mut picker_guard = bt_task.state.picker.lock().await;
                                 if let Some(ref mut picker) = *picker_guard {
                                     picker.selected_pieces = selected_pieces;
