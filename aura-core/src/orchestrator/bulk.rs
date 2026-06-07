@@ -55,8 +55,7 @@ impl Engine {
                                 .unwrap_or("unnamed")
                                 .to_string();
 
-                            use rand::RngExt;
-                            let id = TaskId(rand::rng().random());
+                            let id = TaskId::random();
                             match self
                                 .add_task_with_sources(
                                     id,
@@ -112,8 +111,7 @@ impl Engine {
                 );
 
                 // Construct full AddTaskArgs to ensure tenant_id is preserved
-                use rand::RngExt;
-                let id = TaskId(rand::rng().random());
+                let id = TaskId::random();
                 let args = crate::orchestrator::command::AddTaskArgs {
                     id,
                     tenant_id: tenant_id.clone(),

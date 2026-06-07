@@ -60,18 +60,7 @@ impl Orchestrator {
 
                     // Handle follow-on actions (ADR 0029)
                     if let Some(follow_on) = follow_on {
-                        let config = self.config.load();
-                        let base_dir = if let Some(ref tid) = tenant_id {
-                            if let Some(ctx) = self.tenants.get(tid) {
-                                ctx.disk_path_root.clone().unwrap_or_else(|| {
-                                    std::path::PathBuf::from(&config.storage.download_dir)
-                                })
-                            } else {
-                                std::path::PathBuf::from(&config.storage.download_dir)
-                            }
-                        } else {
-                            std::path::PathBuf::from(&config.storage.download_dir)
-                        };
+                        let base_dir = self.resolve_base_dir(&tenant_id);
                         let file_path = base_dir.join(&task_name);
 
                         match follow_on {
@@ -82,7 +71,7 @@ impl Orchestrator {
                                     .unwrap_or(false)
                                 {
                                     info!(%id, ?file_path, "Auto-starting follow-on Torrent task");
-                                    let new_id = TaskId(rand::random());
+                                    let new_id = TaskId::random();
                                     let _ = self
                                         .handle_add_task(AddTaskArgs {
                                             id: new_id,
@@ -108,7 +97,7 @@ impl Orchestrator {
                                     .unwrap_or(false)
                                 {
                                     info!(%id, ?file_path, "Auto-starting follow-on Metalink task");
-                                    let new_id = TaskId(rand::random());
+                                    let new_id = TaskId::random();
                                     let _ = self
                                         .handle_add_task(AddTaskArgs {
                                             id: new_id,
@@ -129,7 +118,7 @@ impl Orchestrator {
                             }
                             crate::task::FollowOnAction::Custom(uri) => {
                                 info!(%id, %uri, "Starting custom follow-on task");
-                                let new_id = TaskId(rand::random());
+                                let new_id = TaskId::random();
                                 let _ = self
                                     .handle_add_task(AddTaskArgs {
                                         id: new_id,

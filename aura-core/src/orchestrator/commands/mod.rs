@@ -63,15 +63,7 @@ impl Orchestrator {
                     }
                 }
                 let throttler = if let Some(task) = self.tasks.get(&id) {
-                    if let Some(ref tid) = task.tenant_id {
-                        if let Some(ctx) = self.tenants.get(tid) {
-                            ctx.throttler.clone()
-                        } else {
-                            self.throttler.clone()
-                        }
-                    } else {
-                        self.throttler.clone()
-                    }
+                    self.resolve_throttler(&task.tenant_id)
                 } else {
                     self.throttler.clone()
                 };
@@ -191,22 +183,7 @@ impl Orchestrator {
                                 .get("bittorrent")
                                 .and_then(|e| e.clone().as_any_arc().downcast::<BtTask>().ok())
                             {
-                                let config = self.config.load();
-                                let base_dir: std::path::PathBuf = if let Some(ref tid) =
-                                    meta_task.tenant_id
-                                {
-                                    if let Some(ctx) = self.tenants.get(tid) {
-                                        if let Some(ref root) = ctx.disk_path_root {
-                                            root.clone()
-                                        } else {
-                                            std::path::PathBuf::from(&config.storage.download_dir)
-                                        }
-                                    } else {
-                                        std::path::PathBuf::from(&config.storage.download_dir)
-                                    }
-                                } else {
-                                    std::path::PathBuf::from(&config.storage.download_dir)
-                                };
+                                let base_dir = self.resolve_base_dir(&meta_task.tenant_id);
                                 let path = base_dir.join(&meta_task.name);
                                 let _ = self
                                     .scrub_tx
@@ -219,21 +196,7 @@ impl Orchestrator {
                             }
                         }
                     } else if let Some(checksum) = meta_task.checksum.clone() {
-                        let config = self.config.load();
-                        let base_dir: std::path::PathBuf =
-                            if let Some(ref tid) = meta_task.tenant_id {
-                                if let Some(ctx) = self.tenants.get(tid) {
-                                    if let Some(ref root) = ctx.disk_path_root {
-                                        root.clone()
-                                    } else {
-                                        std::path::PathBuf::from(&config.storage.download_dir)
-                                    }
-                                } else {
-                                    std::path::PathBuf::from(&config.storage.download_dir)
-                                }
-                            } else {
-                                std::path::PathBuf::from(&config.storage.download_dir)
-                            };
+                        let base_dir = self.resolve_base_dir(&meta_task.tenant_id);
                         let path = base_dir.join(&meta_task.name);
                         let _ = self
                             .scrub_tx

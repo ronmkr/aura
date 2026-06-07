@@ -33,7 +33,7 @@ pub async fn handle_extension_add(
         TaskType::Http
     };
 
-    let id = TaskId(rand::random());
+    let id = TaskId::random();
     let name = "browser-download".to_string();
     let sources = vec![(uri, ttype)];
 

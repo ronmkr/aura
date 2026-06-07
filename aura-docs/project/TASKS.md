@@ -8,6 +8,8 @@ All active development tasks, technical debt, and feature requests are managed e
 - [x] **epic: Final Branding & API Standardization** `[module:all, priority:high]`
     - [x] Renamed all legacy `aria2` references to `aura` globally (RPC, strings, docs).
     - [x] Refactored all functions with `too_many_arguments` into clean parameter structs.
+    - [x] Deduplicated path resolution, throttler lookups, and TaskId generation.
+    - [x] Centralized JSON-RPC error handling with `rpc_error` helper.
     - [x] Zero Clippy warning policy enforced across all crates.
     - [x] Updated `aura-dev` skill to mandate zero hardcoded values and struct-based args.
 
@@ -33,7 +35,7 @@ All active development tasks, technical debt, and feature requests are managed e
     - [x] Interactive help modal (`?`) and fuzzy-searchable Command Palette (`:` or `Ctrl+P`).
     - [x] Implement Vim motions (`j/k`, `h/l`, `gg`, `G`).
     - [x] Actionable Error Recovery prompts in Mission Details.
-    - [ ] Native OS Desktop Notifications via `notify-rust`.
+    - [x] Native OS Desktop Notifications via `notify-rust`.
     - [ ] Zero-friction ingest: Terminal Drag-and-Drop and OS Clipboard monitoring.
 - [ ] **infra: Add CI cross-platform matrix and cargo audit workflow** (Issue #148) `[infra, priority:moderate]`
 - [x] **feat: ETag and Last-Modified conditional GET for incremental file refresh** (Issue #255) `[module:core, priority:moderate]`

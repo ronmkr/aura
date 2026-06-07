@@ -1,4 +1,5 @@
 use super::types::{AppState, JsonRpcRequest, JsonRpcResponse};
+use crate::jsonrpc::utils::rpc_error;
 use axum::{
     extract::State,
     http::{HeaderMap, StatusCode},
@@ -90,7 +91,7 @@ pub async fn handle_jsonrpc(
                 }
                 "aura.addFromFolder" => handle_add_from_folder(&state.engine, payload.params).await,
                 "aura.addFromFile" => handle_add_from_file(&state.engine, payload.params).await,
-                _ => Err(json!({ "code": -32601, "message": "Method not found" })),
+                _ => Err(rpc_error(-32601, "Method not found")),
             };
             (res, None)
         }

@@ -1,4 +1,5 @@
 use super::utils::{format_task_value, parse_gid};
+use crate::jsonrpc::utils::rpc_error;
 use aura_core::net_util::validate_download_uri;
 use aura_core::orchestrator::Engine;
 use aura_core::task::TaskType;
@@ -9,19 +10,19 @@ pub async fn handle_add_uri(
     engine: &Engine,
     params: Option<Value>,
 ) -> Result<(Value, Option<bool>), Value> {
-    let params = params.ok_or_else(|| json!({ "code": -32602, "message": "Invalid params" }))?;
-    let uris: Vec<String> = serde_json::from_value(params[0].clone())
-        .map_err(|_| json!({ "code": -32602, "message": "Invalid URIs" }))?;
+    let params = params.ok_or_else(|| rpc_error(-32602, "Invalid params"))?;
+    let uris: Vec<String> =
+        serde_json::from_value(params[0].clone()).map_err(|_| rpc_error(-32602, "Invalid URIs"))?;
 
     if uris.is_empty() {
-        return Err(json!({ "code": -32602, "message": "Empty URI list" }));
+        return Err(rpc_error(-32602, "Empty URI list"));
     }
 
     // Validate each URI before entering the pipeline (ADR-0059: SSRF mitigation)
     // Blocks file://, data:, javascript:, RFC1918, loopback, and link-local addresses.
     for uri in &uris {
         if let Err(e) = validate_download_uri(uri) {
-            return Err(json!({ "code": -32602, "message": e.to_string() }));
+            return Err(rpc_error(-32602, e.to_string()));
         }
     }
 
@@ -32,9 +33,10 @@ pub async fn handle_add_uri(
     if let Some(options) = params.get(1) {
         if let Some(p) = options.get("priority").and_then(|v| v.as_u64()) {
             if p > 5 {
-                return Err(
-                    json!({ "code": -32602, "message": "Invalid priority: must be between 0 and 5" }),
-                );
+                return Err(rpc_error(
+                    -32602,
+                    "Invalid priority: must be between 0 and 5",
+                ));
             }
             priority = p as u32;
         }
@@ -58,19 +60,19 @@ pub async fn handle_add_uri(
         }
     }
 
-    let id = TaskId(rand::random());
+    let id = TaskId::random();
     let name = "rpc-download".to_string();
-    let sources: Vec<(String, TaskType)> = uris
-        .into_iter()
-        .map(|u| {
-            let ttype = if u.ends_with(".torrent") {
-                TaskType::BitTorrent
-            } else {
-                TaskType::Http
-            };
-            (u, ttype)
-        })
-        .collect();
+    let mut sources = Vec::new();
+    for uri in uris {
+        let ttype = if let Some(detected) =
+            aura_core::orchestrator::protocol_detector::ProtocolDetector::detect(&uri).await
+        {
+            detected.to_task_type()
+        } else {
+            TaskType::Http // Default fallback
+        };
+        sources.push((uri, ttype));
+    }
 
     let add_result = engine
         .add_task_with_options(aura_core::orchestrator::command::AddTaskArgs {
@@ -91,7 +93,7 @@ pub async fn handle_add_uri(
         Err(aura_core::Error::DuplicateTask(existing_id)) => {
             Ok((json!(existing_id.0.to_string()), Some(true)))
         }
-        Err(e) => Err(json!({ "code": -32000, "message": e.to_string() })),
+        Err(e) => Err(rpc_error(-32000, e.to_string())),
     }
 }
 
@@ -99,7 +101,7 @@ pub async fn handle_tell_active(engine: &Engine) -> Result<Value, Value> {
     let active = engine
         .tell_active()
         .await
-        .map_err(|e| json!({ "code": -32000, "message": e.to_string() }))?;
+        .map_err(|e| rpc_error(-32000, e.to_string()))?;
 
     let res: Vec<Value> = active
         .into_iter()
@@ -123,7 +125,7 @@ pub async fn handle_pause(engine: &Engine, params: Option<Value>) -> Result<Valu
     engine
         .pause(gid)
         .await
-        .map_err(|e| json!({ "code": -32000, "message": e.to_string() }))?;
+        .map_err(|e| rpc_error(-32000, e.to_string()))?;
     Ok(json!("OK"))
 }
 
@@ -132,7 +134,7 @@ pub async fn handle_unpause(engine: &Engine, params: Option<Value>) -> Result<Va
     engine
         .resume(gid)
         .await
-        .map_err(|e| json!({ "code": -32000, "message": e.to_string() }))?;
+        .map_err(|e| rpc_error(-32000, e.to_string()))?;
     Ok(json!("OK"))
 }
 
@@ -141,7 +143,7 @@ pub async fn handle_refresh(engine: &Engine, params: Option<Value>) -> Result<Va
     engine
         .refresh(gid)
         .await
-        .map_err(|e| json!({ "code": -32000, "message": e.to_string() }))?;
+        .map_err(|e| rpc_error(-32000, e.to_string()))?;
     Ok(json!("OK"))
 }
 
@@ -150,23 +152,23 @@ pub async fn handle_remove(engine: &Engine, params: Option<Value>) -> Result<Val
     engine
         .remove(gid)
         .await
-        .map_err(|e| json!({ "code": -32000, "message": e.to_string() }))?;
+        .map_err(|e| rpc_error(-32000, e.to_string()))?;
     Ok(json!("OK"))
 }
 
 pub async fn handle_change_option(engine: &Engine, params: Option<Value>) -> Result<Value, Value> {
-    let params = params.ok_or_else(|| json!({ "code": -32602, "message": "Invalid params" }))?;
-    let gid_str: String = serde_json::from_value(params[0].clone())
-        .map_err(|_| json!({ "code": -32602, "message": "Invalid GID" }))?;
+    let params = params.ok_or_else(|| rpc_error(-32602, "Invalid params"))?;
+    let gid_str: String =
+        serde_json::from_value(params[0].clone()).map_err(|_| rpc_error(-32602, "Invalid GID"))?;
     let id = TaskId(
         gid_str
             .parse::<u64>()
-            .map_err(|_| json!({ "code": -32602, "message": "Invalid GID format" }))?,
+            .map_err(|_| rpc_error(-32602, "Invalid GID format"))?,
     );
 
     let options = params
         .get(1)
-        .ok_or_else(|| json!({ "code": -32602, "message": "Missing options" }))?;
+        .ok_or_else(|| rpc_error(-32602, "Missing options"))?;
 
     let priority = options
         .get("priority")
@@ -175,9 +177,10 @@ pub async fn handle_change_option(engine: &Engine, params: Option<Value>) -> Res
 
     if let Some(p) = priority {
         if p > 5 {
-            return Err(
-                json!({ "code": -32602, "message": "Invalid priority: must be between 0 and 5" }),
-            );
+            return Err(rpc_error(
+                -32602,
+                "Invalid priority: must be between 0 and 5",
+            ));
         }
     }
 
@@ -219,7 +222,7 @@ pub async fn handle_change_option(engine: &Engine, params: Option<Value>) -> Res
     engine
         .change_option(id, priority, depends_on, seed_ratio, seed_time)
         .await
-        .map_err(|e| json!({ "code": -32000, "message": e.to_string() }))?;
+        .map_err(|e| rpc_error(-32000, e.to_string()))?;
 
     Ok(json!("OK"))
 }
@@ -235,7 +238,7 @@ pub async fn handle_tell_waiting(engine: &Engine, params: Option<Value>) -> Resu
     let active = engine
         .tell_active()
         .await
-        .map_err(|e| json!({ "code": -32000, "message": e.to_string() }))?;
+        .map_err(|e| rpc_error(-32000, e.to_string()))?;
 
     let waiting: Vec<Value> = active
         .into_iter()
@@ -265,9 +268,9 @@ pub async fn handle_tell_waiting(engine: &Engine, params: Option<Value>) -> Resu
 }
 
 pub async fn handle_get_status(engine: &Engine, params: Option<Value>) -> Result<Value, Value> {
-    let params = params.ok_or_else(|| json!({ "code": -32602, "message": "Invalid params" }))?;
-    let gid_str: String = serde_json::from_value(params[0].clone())
-        .map_err(|_| json!({ "code": -32602, "message": "Invalid GID" }))?;
+    let params = params.ok_or_else(|| rpc_error(-32602, "Invalid params"))?;
+    let gid_str: String =
+        serde_json::from_value(params[0].clone()).map_err(|_| rpc_error(-32602, "Invalid GID"))?;
     let keys: Option<Vec<String>> = params
         .get(1)
         .and_then(|k| serde_json::from_value(k.clone()).ok());
@@ -277,7 +280,7 @@ pub async fn handle_get_status(engine: &Engine, params: Option<Value>) -> Result
     let active = engine
         .tell_active()
         .await
-        .map_err(|e| json!({ "code": -32000, "message": e.to_string() }))?;
+        .map_err(|e| rpc_error(-32000, e.to_string()))?;
 
     if let Some(t) = active.into_iter().find(|t| t.id.0 == gid) {
         return Ok(format_task_value(crate::jsonrpc::utils::TaskValueParams {
@@ -301,7 +304,7 @@ pub async fn handle_get_status(engine: &Engine, params: Option<Value>) -> Result
     let history = engine
         .tell_history(0, engine.config.load().limits.history_record_limit)
         .await
-        .map_err(|e| json!({ "code": -32000, "message": e.to_string() }))?;
+        .map_err(|e| rpc_error(-32000, e.to_string()))?;
 
     if let Some(rec) = history.into_iter().find(|r| r.id == gid_str) {
         return Ok(format_task_value(crate::jsonrpc::utils::TaskValueParams {
@@ -318,7 +321,7 @@ pub async fn handle_get_status(engine: &Engine, params: Option<Value>) -> Result
         }));
     }
 
-    Err(json!({ "code": -32000, "message": "Task not found" }))
+    Err(rpc_error(-32000, "Task not found"))
 }
 
 pub async fn handle_get_files(engine: &Engine, params: Option<Value>) -> Result<Value, Value> {
@@ -327,13 +330,14 @@ pub async fn handle_get_files(engine: &Engine, params: Option<Value>) -> Result<
     let files = engine
         .get_files(id)
         .await
-        .map_err(|e| json!({ "code": -32000, "message": e.to_string() }))?;
+        .map_err(|e| rpc_error(-32000, e.to_string()))?;
 
     match files {
         Some(f) => Ok(json!(f)),
-        None => Err(
-            json!({ "code": -32000, "message": "Files not available or not a BitTorrent task" }),
-        ),
+        None => Err(rpc_error(
+            -32000,
+            "Files not available or not a BitTorrent task",
+        )),
     }
 }
 
@@ -343,15 +347,14 @@ pub async fn handle_set_file_selection(
 ) -> Result<Value, Value> {
     let id = parse_gid(params.clone())?;
 
-    let params_val =
-        params.ok_or_else(|| json!({ "code": -32602, "message": "Invalid params" }))?;
+    let params_val = params.ok_or_else(|| rpc_error(-32602, "Invalid params"))?;
     let selection: Vec<bool> = serde_json::from_value(params_val[1].clone())
-        .map_err(|_| json!({ "code": -32602, "message": "Invalid boolean array" }))?;
+        .map_err(|_| rpc_error(-32602, "Invalid boolean array"))?;
 
     engine
         .set_file_selection(id, selection)
         .await
-        .map_err(|e| json!({ "code": -32000, "message": e.to_string() }))?;
+        .map_err(|e| rpc_error(-32000, e.to_string()))?;
 
     Ok(json!("OK"))
 }
@@ -360,31 +363,31 @@ pub async fn handle_add_from_folder(
     engine: &Engine,
     params: Option<Value>,
 ) -> Result<Value, Value> {
-    let params = params.ok_or_else(|| json!({ "code": -32602, "message": "Invalid params" }))?;
+    let params = params.ok_or_else(|| rpc_error(-32602, "Invalid params"))?;
     let dir = params[0]
         .as_str()
-        .ok_or_else(|| json!({ "code": -32602, "message": "Invalid directory path" }))?;
+        .ok_or_else(|| rpc_error(-32602, "Invalid directory path"))?;
     let recursive = params[1].as_bool().unwrap_or(false);
 
     let ids = engine
         .add_from_folder(None, dir, recursive)
         .await
-        .map_err(|e| json!({ "code": -32000, "message": e.to_string() }))?;
+        .map_err(|e| rpc_error(-32000, e.to_string()))?;
 
     let res: Vec<String> = ids.into_iter().map(|id| id.0.to_string()).collect();
     Ok(json!(res))
 }
 
 pub async fn handle_add_from_file(engine: &Engine, params: Option<Value>) -> Result<Value, Value> {
-    let params = params.ok_or_else(|| json!({ "code": -32602, "message": "Invalid params" }))?;
+    let params = params.ok_or_else(|| rpc_error(-32602, "Invalid params"))?;
     let path = params[0]
         .as_str()
-        .ok_or_else(|| json!({ "code": -32602, "message": "Invalid file path" }))?;
+        .ok_or_else(|| rpc_error(-32602, "Invalid file path"))?;
 
     let ids = engine
         .add_from_file(None, path)
         .await
-        .map_err(|e| json!({ "code": -32000, "message": e.to_string() }))?;
+        .map_err(|e| rpc_error(-32000, e.to_string()))?;
 
     let res: Vec<String> = ids.into_iter().map(|id| id.0.to_string()).collect();
     Ok(json!(res))

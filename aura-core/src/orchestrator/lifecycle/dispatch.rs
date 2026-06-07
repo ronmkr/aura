@@ -155,15 +155,9 @@ impl Orchestrator {
                 self.worker_cancellation_tokens
                     .insert(sub_id, child_token.clone());
                 let token_clone = child_token;
-                let config_clone = config_arc.clone();
                 let throttler_clone = self.throttler.clone();
-                let provider_clone = self.credential_provider.clone();
-                let dns_resolver = self.dns_resolver.clone();
-                let hsts_cache = self.hsts_cache.clone();
-                let alt_svc_cache = self.alt_svc_cache.clone();
-                let resource_governor_clone = self.resource_governor.clone();
                 let tenant_id_clone = meta_task.tenant_id.clone();
-                let client_pool = self.client_pool.clone();
+                let orchestrator_handle = self.handle();
 
                 let subtask_tx_progress = subtask_tx.clone();
                 let progress_handle = tokio::spawn(async move {
@@ -180,28 +174,11 @@ impl Orchestrator {
                 });
 
                 tokio::spawn(async move {
-                    let config = config_clone.load();
                     match ttype {
                         TaskType::Http => {
                             tracing::debug!(%meta_id, %sub_id, ?range, "Spawning HTTP worker for range");
-                            let worker = crate::worker::WorkerBuilder::new(uri)
-                                .local_addr(local_addr)
-                                .dns_resolver(dns_resolver)
-                                .user_agent(Some(config.network.user_agent.clone()))
-                                .connect_timeout(Some(config.network.connect_timeout_secs))
-                                .proxy(config.network.proxy.clone())
-                                .max_redirects(config.network.max_redirects)
-                                .retry_count(config.network.http_retry_count)
-                                .retry_delay_secs(config.network.http_retry_delay_secs)
-                                .happy_eyeballs_stagger_ms(config.network.happy_eyeballs_stagger_ms)
-                                .http_buffer_capacity(config.network.http_buffer_capacity)
-                                .http_concurrent_requests(config.network.http_concurrent_requests)
-                                .credential_provider(provider_clone)
-                                .hsts_cache(hsts_cache)
-                                .alt_svc_cache(alt_svc_cache)
-                                .resource_governor(resource_governor_clone.clone())
-                                .tenant_id(tenant_id_clone.clone())
-                                .client_pool(client_pool)
+                            let worker = orchestrator_handle
+                                .build_worker_builder(uri, tenant_id_clone)
                                 .build_http();
                             let segment = Segment {
                                 offset: range.start,
@@ -235,11 +212,8 @@ impl Orchestrator {
                             }
                         }
                         TaskType::Ftp => {
-                            let worker = crate::worker::WorkerBuilder::new(uri)
-                                .local_addr(local_addr)
-                                .credential_provider(provider_clone)
-                                .resource_governor(resource_governor_clone.clone())
-                                .tenant_id(tenant_id_clone.clone())
+                            let worker = orchestrator_handle
+                                .build_worker_builder(uri, tenant_id_clone)
                                 .build_ftp();
                             let segment = Segment {
                                 offset: range.start,

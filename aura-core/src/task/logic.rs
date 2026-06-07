@@ -260,7 +260,7 @@ impl MetaTask {
     }
 
     pub fn add_subtask(&mut self, uri: String, task_type: TaskType) -> TaskId {
-        let sub_id = TaskId(rand::random());
+        let sub_id = TaskId::random();
         self.subtasks.push(SubTask {
             id: sub_id,
             task_type,

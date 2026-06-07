@@ -29,6 +29,49 @@ pub struct OrchestratorChannels {
     pub nat_tx: mpsc::Sender<NatCommand>,
 }
 
+#[derive(Clone)]
+pub(crate) struct OrchestratorHandle {
+    pub config: Arc<ArcSwap<crate::Config>>,
+    pub dns_resolver: Arc<crate::net_util::TokioResolver>,
+    pub credential_provider: Arc<crate::config::credentials::CredentialProvider>,
+    pub hsts_cache: crate::security::HstsCache,
+    pub alt_svc_cache: crate::security::AltSvcCache,
+    pub resource_governor: Arc<crate::orchestrator::resource_governor::ResourceGovernor>,
+    pub client_pool: crate::worker::http::ClientPool,
+    pub peer_id: [u8; 20],
+    pub db: sled::Db,
+    pub vpn_provider: Option<Arc<dyn crate::vpn::VpnProvider>>,
+}
+
+impl OrchestratorHandle {
+    pub fn build_worker_builder(
+        &self,
+        uri: String,
+        tenant_id: Option<TenantId>,
+    ) -> crate::worker::WorkerBuilder {
+        let config = self.config.load();
+        let local_addr = self.resolve_local_addr();
+        crate::worker::WorkerBuilder::new(uri)
+            .local_addr(local_addr)
+            .dns_resolver(self.dns_resolver.clone())
+            .user_agent(Some(config.network.user_agent.clone()))
+            .connect_timeout(Some(config.network.connect_timeout_secs))
+            .proxy(config.network.proxy.clone())
+            .max_redirects(config.network.max_redirects)
+            .retry_count(config.network.http_retry_count)
+            .retry_delay_secs(config.network.http_retry_delay_secs)
+            .happy_eyeballs_stagger_ms(config.network.happy_eyeballs_stagger_ms)
+            .http_buffer_capacity(config.network.http_buffer_capacity)
+            .http_concurrent_requests(config.network.http_concurrent_requests)
+            .credential_provider(self.credential_provider.clone())
+            .hsts_cache(self.hsts_cache.clone())
+            .alt_svc_cache(self.alt_svc_cache.clone())
+            .resource_governor(self.resource_governor.clone())
+            .tenant_id(tenant_id)
+            .client_pool(self.client_pool.clone())
+    }
+}
+
 pub struct Orchestrator {
     pub(crate) tasks: HashMap<TaskId, MetaTask>,
     pub(crate) tenants: HashMap<TenantId, TenantContext>,
@@ -95,6 +138,42 @@ impl Orchestrator {
             }
         }
         results
+    }
+
+    pub(crate) fn resolve_base_dir(&self, tenant_id: &Option<TenantId>) -> std::path::PathBuf {
+        let config = self.config.load();
+        if let Some(ref tid) = tenant_id {
+            if let Some(ctx) = self.tenants.get(tid) {
+                if let Some(ref root) = ctx.disk_path_root {
+                    return root.clone();
+                }
+            }
+        }
+        std::path::PathBuf::from(&config.storage.download_dir)
+    }
+
+    pub(crate) fn resolve_throttler(&self, tenant_id: &Option<TenantId>) -> Arc<Throttler> {
+        if let Some(ref tid) = tenant_id {
+            if let Some(ctx) = self.tenants.get(tid) {
+                return ctx.throttler.clone();
+            }
+        }
+        self.throttler.clone()
+    }
+
+    pub(crate) fn handle(&self) -> OrchestratorHandle {
+        OrchestratorHandle {
+            config: self.config.clone(),
+            dns_resolver: self.dns_resolver.clone(),
+            credential_provider: self.credential_provider.clone(),
+            hsts_cache: self.hsts_cache.clone(),
+            alt_svc_cache: self.alt_svc_cache.clone(),
+            resource_governor: self.resource_governor.clone(),
+            client_pool: self.client_pool.clone(),
+            peer_id: self.peer_id,
+            db: self.db.clone(),
+            vpn_provider: self.vpn_provider.clone(),
+        }
     }
 
     pub fn new(

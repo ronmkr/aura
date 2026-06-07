@@ -35,7 +35,9 @@ impl Orchestrator {
         // 2. Pause first to cancel existing task loops cleanly
         let _ = self.handle_pause(meta_id).await;
 
-        // 3. Reset the task state (mutably borrowing from self.tasks)
+        // Determine paths on disk
+        let base_dir = self.resolve_base_dir(&tenant_id);
+
         let (total_length, part_path, final_path) = {
             let meta_task = self
                 .tasks
@@ -61,22 +63,6 @@ impl Orchestrator {
 
             // Regenerate ranges
             meta_task.generate_ranges(128, None);
-
-            // Determine paths on disk
-            let config = self.config.load();
-            let base_dir: std::path::PathBuf = if let Some(ref tid) = tenant_id {
-                if let Some(ctx) = self.tenants.get(tid) {
-                    if let Some(ref root) = ctx.disk_path_root {
-                        root.clone()
-                    } else {
-                        std::path::PathBuf::from(&config.storage.download_dir)
-                    }
-                } else {
-                    std::path::PathBuf::from(&config.storage.download_dir)
-                }
-            } else {
-                std::path::PathBuf::from(&config.storage.download_dir)
-            };
 
             let final_path = base_dir.join(&name);
             let part_path = base_dir.join(format!("{}.part", name));
@@ -106,15 +92,7 @@ impl Orchestrator {
 
         // 6. Re-register task with throttler
         let config = self.config.load();
-        let throttler = if let Some(ref tid) = tenant_id {
-            if let Some(ctx) = self.tenants.get(tid) {
-                ctx.throttler.clone()
-            } else {
-                self.throttler.clone()
-            }
-        } else {
-            self.throttler.clone()
-        };
+        let throttler = self.resolve_throttler(&tenant_id);
 
         throttler
             .register_task(

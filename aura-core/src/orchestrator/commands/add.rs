@@ -67,19 +67,7 @@ impl Orchestrator {
 
         info!(%id, %name, "Adding MetaTask with {} sources", sources.len());
 
-        let base_dir = if let Some(ref tid) = tenant_id {
-            if let Some(ctx) = self.tenants.get(tid) {
-                if let Some(ref root) = ctx.disk_path_root {
-                    root.clone()
-                } else {
-                    std::path::PathBuf::from(&config.storage.download_dir)
-                }
-            } else {
-                std::path::PathBuf::from(&config.storage.download_dir)
-            }
-        } else {
-            std::path::PathBuf::from(&config.storage.download_dir)
-        };
+        let base_dir = self.resolve_base_dir(&tenant_id);
         let control_path = base_dir.join(format!("{}.aura", name));
 
         let (mut meta_task, loaded_bitfield) = if let Ok(data) = std::fs::read(&control_path) {
@@ -160,15 +148,7 @@ impl Orchestrator {
         let token = tokio_util::sync::CancellationToken::new();
         self.cancellation_tokens.insert(id, token.clone());
 
-        let throttler = if let Some(ref tid) = meta_task.tenant_id {
-            if let Some(ctx) = self.tenants.get(tid) {
-                ctx.throttler.clone()
-            } else {
-                self.throttler.clone()
-            }
-        } else {
-            self.throttler.clone()
-        };
+        let throttler = self.resolve_throttler(&meta_task.tenant_id);
 
         throttler
             .register_task(
@@ -179,19 +159,7 @@ impl Orchestrator {
             )
             .await;
 
-        let base_dir = if let Some(ref tid) = meta_task.tenant_id {
-            if let Some(ctx) = self.tenants.get(tid) {
-                if let Some(ref root) = ctx.disk_path_root {
-                    root.clone()
-                } else {
-                    std::path::PathBuf::from(&config.storage.download_dir)
-                }
-            } else {
-                std::path::PathBuf::from(&config.storage.download_dir)
-            }
-        } else {
-            std::path::PathBuf::from(&config.storage.download_dir)
-        };
+        let base_dir = self.resolve_base_dir(&meta_task.tenant_id);
         let path = base_dir.join(&meta_task.name);
         let _ = self
             .storage_tx

@@ -1,13 +1,17 @@
 use aura_core::TaskId;
 use serde_json::{json, Value};
 
+pub fn rpc_error(code: i64, message: impl Into<String>) -> Value {
+    json!({ "code": code, "message": message.into() })
+}
+
 pub fn parse_gid(params: Option<Value>) -> Result<TaskId, Value> {
-    let params = params.ok_or_else(|| json!({ "code": -32602, "message": "Invalid params" }))?;
-    let gid_str: String = serde_json::from_value(params[0].clone())
-        .map_err(|_| json!({ "code": -32602, "message": "Invalid GID" }))?;
+    let params = params.ok_or_else(|| rpc_error(-32602, "Invalid params"))?;
+    let gid_str: String =
+        serde_json::from_value(params[0].clone()).map_err(|_| rpc_error(-32602, "Invalid GID"))?;
     let gid = gid_str
         .parse::<u64>()
-        .map_err(|_| json!({ "code": -32602, "message": "Invalid GID format" }))?;
+        .map_err(|_| rpc_error(-32602, "Invalid GID format"))?;
     Ok(TaskId(gid))
 }
 
