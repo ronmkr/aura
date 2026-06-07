@@ -24,6 +24,7 @@ async fn test_ftp_worker_retry_on_connection_failure() {
         retry_count: 3,
         http_retry_delay_secs: 0,
         happy_eyeballs_stagger_ms: 250,
+        http_buffer_capacity: 16384,
         credential_provider: None,
         resource_governor: None,
         tenant_id: None,

@@ -53,6 +53,7 @@ pub struct FtpWorkerOptions {
     pub retry_count: u32,
     pub http_retry_delay_secs: u64,
     pub happy_eyeballs_stagger_ms: u64,
+    pub http_buffer_capacity: usize,
     pub credential_provider: Option<std::sync::Arc<crate::config::credentials::CredentialProvider>>,
     pub resource_governor:
         Option<std::sync::Arc<crate::orchestrator::resource_governor::ResourceGovernor>>,
@@ -283,11 +284,12 @@ impl ProtocolWorker for FtpWorker {
             .await
             .map_err(|e| Error::Worker(format!("FTP RETR failed: {}", e)))?;
 
-        let mut buffer = BytesMut::with_capacity(16384);
+        let buf_cap = self.options.http_buffer_capacity;
+        let mut buffer = BytesMut::with_capacity(buf_cap);
         let mut total_read: u64 = 0;
 
         while total_read < segment.length {
-            let to_read = std::cmp::min(16384u64, segment.length - total_read) as usize;
+            let to_read = std::cmp::min(buf_cap as u64, segment.length - total_read) as usize;
 
             // Admission control: wait for bandwidth tokens before reading.
             throttler.acquire_download(task_id, to_read as u64).await;

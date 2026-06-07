@@ -8,7 +8,7 @@ use tokio::net::{TcpStream, UdpSocket};
 /// Attempts to negotiate Kernel TLS (kTLS) on a TCP socket for zero-copy performance.
 /// Acting as a no-op on non-supported platforms (macOS/Windows).
 #[cfg(unix)]
-pub fn try_enable_ktls<S: std::os::unix::io::AsRawFd>(_stream: &S) -> std::io::Result<()> {
+pub(crate) fn try_enable_ktls<S: std::os::unix::io::AsRawFd>(_stream: &S) -> std::io::Result<()> {
     #[cfg(target_os = "linux")]
     {
         let fd = _stream.as_raw_fd();

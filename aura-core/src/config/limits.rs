@@ -13,6 +13,9 @@ pub struct LimitsConfig {
     pub history_rotation_records: usize,
     pub history_retention_records: usize,
     pub graceful_shutdown_timeout_secs: u64,
+    pub pex_interval_secs: u64,
+    pub bandwidth_scheduling_interval_secs: u64,
+    pub network_roaming_check_interval_secs: u64,
 }
 
 impl Default for LimitsConfig {
@@ -28,6 +31,9 @@ impl Default for LimitsConfig {
             history_rotation_records: 10000,
             history_retention_records: 5000,
             graceful_shutdown_timeout_secs: 5,
+            pex_interval_secs: 60,
+            bandwidth_scheduling_interval_secs: 60,
+            network_roaming_check_interval_secs: 5,
         }
     }
 }

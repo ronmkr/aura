@@ -95,6 +95,7 @@ command_channel_capacity = 128         # High-priority command capacity
 history_rotation_mb = 10.0             # Max size of history file before rotation
 history_rotation_records = 10000       # Max records in history file before rotation
 history_retention_records = 5000       # Number of records to keep after rotation
+graceful_shutdown_timeout_secs = 5     # Wait time for active workers on exit
 
 [theme]
 primary = "#0000FF"

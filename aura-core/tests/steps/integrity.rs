@@ -46,7 +46,7 @@ async fn when_add_task_with_checksum(world: &mut AuraWorld) {
         world.init_engine(|_| {}).await;
     }
     let engine = world.engine.as_ref().unwrap();
-    let id = TaskId(rand::random());
+    let id = TaskId::random();
     world.last_task_id = Some(id);
 
     let uri = world.mirror_uris.last().unwrap().clone();

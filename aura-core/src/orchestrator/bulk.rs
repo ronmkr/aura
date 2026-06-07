@@ -52,7 +52,7 @@ impl Engine {
                             let name = path
                                 .file_name()
                                 .and_then(|n| n.to_str())
-                                .unwrap_or("unnamed")
+                                .unwrap_or(crate::DEFAULT_TASK_NAME)
                                 .to_string();
 
                             let id = TaskId::random();

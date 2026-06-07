@@ -56,6 +56,8 @@ pub enum SeedingCompleteReason {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct TaskId(pub u64);
 
+pub const DEFAULT_TASK_NAME: &str = "unnamed";
+
 impl TaskId {
     pub fn random() -> Self {
         Self(rand::random())

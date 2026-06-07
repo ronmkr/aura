@@ -84,7 +84,7 @@ impl Orchestrator {
             }
 
             if let Some(new_name) = metadata.name.clone() {
-                if meta_task.name == "unnamed" || meta_task.name.is_empty() {
+                if meta_task.name == crate::DEFAULT_TASK_NAME || meta_task.name.is_empty() {
                     meta_task.name = new_name;
                     needs_reregister = true;
                 }
@@ -106,7 +106,7 @@ impl Orchestrator {
                 let path = if let Some(meta_task) = self.tasks.get(&meta_id) {
                     self.mapping_engine.resolve_path(meta_task, &base_dir)
                 } else {
-                    base_dir.join("unnamed")
+                    base_dir.join(crate::DEFAULT_TASK_NAME)
                 };
 
                 let _ = self

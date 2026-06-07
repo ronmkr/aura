@@ -103,7 +103,9 @@ impl Orchestrator {
                     if let Ok(data) = std::fs::read(&uri) {
                         if let Ok(ml) = crate::metalink::Metalink::parse(&data) {
                             for file in ml.files {
-                                if meta_task.name == "unnamed" || meta_task.name.is_empty() {
+                                if meta_task.name == crate::DEFAULT_TASK_NAME
+                                    || meta_task.name.is_empty()
+                                {
                                     meta_task.name = file.name.clone();
                                 }
                                 if meta_task.total_length == 0 {

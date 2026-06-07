@@ -76,7 +76,7 @@ impl Orchestrator {
                                         .handle_add_task(AddTaskArgs {
                                             id: new_id,
                                             tenant_id: tenant_id.clone(),
-                                            name: "unnamed".to_string(),
+                                            name: crate::DEFAULT_TASK_NAME.to_string(),
                                             sources: vec![(
                                                 file_path.to_string_lossy().to_string(),
                                                 crate::task::TaskType::BitTorrent,
@@ -102,7 +102,7 @@ impl Orchestrator {
                                         .handle_add_task(AddTaskArgs {
                                             id: new_id,
                                             tenant_id: tenant_id.clone(),
-                                            name: "unnamed".to_string(),
+                                            name: crate::DEFAULT_TASK_NAME.to_string(),
                                             sources: vec![(
                                                 file_path.to_string_lossy().to_string(),
                                                 crate::task::TaskType::Http,
@@ -123,7 +123,7 @@ impl Orchestrator {
                                     .handle_add_task(AddTaskArgs {
                                         id: new_id,
                                         tenant_id: tenant_id.clone(),
-                                        name: "unnamed".to_string(),
+                                        name: crate::DEFAULT_TASK_NAME.to_string(),
                                         sources: vec![(uri, crate::task::TaskType::Http)],
                                         checksum: None,
                                         priority,

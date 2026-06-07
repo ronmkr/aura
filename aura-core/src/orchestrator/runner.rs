@@ -32,8 +32,12 @@ impl Orchestrator {
         let mut scaling_interval = tokio::time::interval(std::time::Duration::from_millis(
             config_initial.general.event_poll_interval_ms,
         ));
-        let mut pex_interval = tokio::time::interval(std::time::Duration::from_secs(60));
-        let mut bandwidth_interval = tokio::time::interval(std::time::Duration::from_secs(60));
+        let mut pex_interval = tokio::time::interval(std::time::Duration::from_secs(
+            config_initial.limits.pex_interval_secs,
+        ));
+        let mut bandwidth_interval = tokio::time::interval(std::time::Duration::from_secs(
+            config_initial.limits.bandwidth_scheduling_interval_secs,
+        ));
 
         // VPN Kill-switch Monitor
         let vpn_watch_rx = self.vpn_watch_tx.subscribe();
@@ -116,9 +120,11 @@ impl Orchestrator {
 
         // Network Interface Roaming Reconnector Monitor
         let subtask_tx_roaming = self.subtask_tx.clone();
+        let roaming_interval_secs = config_initial.limits.network_roaming_check_interval_secs;
         tokio::spawn(async move {
             let mut last_ip = local_ip_address::local_ip().ok();
-            let mut interval = tokio::time::interval(std::time::Duration::from_secs(5));
+            let mut interval =
+                tokio::time::interval(std::time::Duration::from_secs(roaming_interval_secs));
             loop {
                 interval.tick().await;
 
