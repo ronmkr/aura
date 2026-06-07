@@ -246,21 +246,18 @@ pub async fn handle_tell_waiting(engine: &Engine, params: Option<Value>) -> Resu
         .skip(offset)
         .take(num)
         .map(|t| {
-            format_task_value(
-                &t.id.0.to_string(),
-                &format!("{:?}", t.phase).to_lowercase(),
-                &t.name,
-                t.total_length,
-                t.completed_length,
-                t.uploaded_length,
-                &t.subtasks
-                    .iter()
-                    .map(|s| s.uri.clone())
-                    .collect::<Vec<String>>(),
-                None,
-                &keys,
-                t.selected_files.as_deref(),
-            )
+            format_task_value(crate::jsonrpc::utils::TaskValueParams {
+                gid: &t.id.0.to_string(),
+                status: &format!("{:?}", t.phase).to_lowercase(),
+                name: &t.name,
+                total_len: t.total_length,
+                completed_len: t.completed_length,
+                uploaded_len: t.uploaded_length,
+                uris: &t.subtasks.iter().map(|s| s.uri.clone()).collect::<Vec<_>>(),
+                error_msg: None,
+                keys: &keys,
+                selected_files: t.selected_files.as_deref(),
+            })
         })
         .collect();
 
@@ -283,21 +280,22 @@ pub async fn handle_get_status(engine: &Engine, params: Option<Value>) -> Result
         .map_err(|e| json!({ "code": -32000, "message": e.to_string() }))?;
 
     if let Some(t) = active.into_iter().find(|t| t.id.0 == gid) {
-        return Ok(format_task_value(
-            &t.id.0.to_string(),
-            &format!("{:?}", t.phase).to_lowercase(),
-            &t.name,
-            t.total_length,
-            t.completed_length,
-            t.uploaded_length,
-            &t.subtasks
+        return Ok(format_task_value(crate::jsonrpc::utils::TaskValueParams {
+            gid: &t.id.0.to_string(),
+            status: &format!("{:?}", t.phase).to_lowercase(),
+            name: &t.name,
+            total_len: t.total_length,
+            completed_len: t.completed_length,
+            uploaded_len: t.uploaded_length,
+            uris: &t
+                .subtasks
                 .iter()
                 .map(|s| s.uri.clone())
                 .collect::<Vec<String>>(),
-            None,
-            &keys,
-            t.selected_files.as_deref(),
-        ));
+            error_msg: None,
+            keys: &keys,
+            selected_files: t.selected_files.as_deref(),
+        }));
     }
 
     let history = engine
@@ -306,18 +304,18 @@ pub async fn handle_get_status(engine: &Engine, params: Option<Value>) -> Result
         .map_err(|e| json!({ "code": -32000, "message": e.to_string() }))?;
 
     if let Some(rec) = history.into_iter().find(|r| r.id == gid_str) {
-        return Ok(format_task_value(
-            &rec.id,
-            &rec.phase.to_lowercase(),
-            &rec.name,
-            rec.total_bytes,
-            rec.downloaded_bytes,
-            rec.uploaded_bytes,
-            &rec.uris,
-            rec.error.as_deref(),
-            &keys,
-            None,
-        ));
+        return Ok(format_task_value(crate::jsonrpc::utils::TaskValueParams {
+            gid: &rec.id,
+            status: &rec.phase.to_lowercase(),
+            name: &rec.name,
+            total_len: rec.total_bytes,
+            completed_len: rec.downloaded_bytes,
+            uploaded_len: rec.uploaded_bytes,
+            uris: &rec.uris,
+            error_msg: rec.error.as_deref(),
+            keys: &keys,
+            selected_files: None,
+        }));
     }
 
     Err(json!({ "code": -32000, "message": "Task not found" }))

@@ -108,7 +108,7 @@ function handleAuraEvent(event) {
 
 async function refreshTasks() {
     try {
-        const activeTasks = await rpcCall('aria2.tellActive');
+        const activeTasks = await rpcCall('aura.tellActive');
         tasks = {};
         elements.tasksContainer.innerHTML = '';
         
@@ -172,17 +172,17 @@ function updateTaskStatus(gid, status) {
 }
 
 window.pauseTask = async (gid) => {
-    await rpcCall('aria2.pause', [[gid]]);
+    await rpcCall('aura.pause', [[gid]]);
     refreshTasks();
 };
 
 window.unpauseTask = async (gid) => {
-    await rpcCall('aria2.unpause', [[gid]]);
+    await rpcCall('aura.unpause', [[gid]]);
     refreshTasks();
 };
 
 window.removeTask = async (gid) => {
-    await rpcCall('aria2.remove', [[gid]]);
+    await rpcCall('aura.remove', [[gid]]);
     refreshTasks();
 };
 
@@ -196,7 +196,7 @@ elements.addTaskBtn.onclick = async () => {
     if (!uri) return;
     
     try {
-        await rpcCall('aria2.addUri', [[uri]]);
+        await rpcCall('aura.addUri', [[uri]]);
         elements.uriInput.value = '';
         setTimeout(refreshTasks, 500); // Give it a moment to appear
     } catch(e) {}

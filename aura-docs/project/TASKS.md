@@ -4,6 +4,13 @@ All active development tasks, technical debt, and feature requests are managed e
 
 ## Open Tasks
 
+### Core & Architecture Standardized
+- [x] **epic: Final Branding & API Standardization** `[module:all, priority:high]`
+    - [x] Renamed all legacy `aria2` references to `aura` globally (RPC, strings, docs).
+    - [x] Refactored all functions with `too_many_arguments` into clean parameter structs.
+    - [x] Zero Clippy warning policy enforced across all crates.
+    - [x] Updated `aura-dev` skill to mandate zero hardcoded values and struct-based args.
+
 ### High (P1)
 - [x] **epic: Interactive TUI Modernization (Command Center)** `[module:tui, priority:high]`
     - [x] Refactor TUI to stateful Multi-View architecture (Dashboard, Mission Control, File Selector).
@@ -109,11 +116,11 @@ All active development tasks, technical debt, and feature requests are managed e
   - **Key Changes**:
     - Standardized the `Status:` field in frontmatter across all ADR markdown documents.
     - Removed redundant top-level status headers to ensure consistency and parsing capability.
-- [x] **feat: Completed download history log and aria2 RPC compatibility (tellStopped, getVersion)** (Issue #248) `[module:daemon, priority:high]`
+- [x] **feat: Completed download history log and aura RPC compatibility (tellStopped, getVersion)** (Issue #248) `[module:daemon, priority:high]`
   - **Completion Commit**: `ba26d56` (PR #259)
   - **Key Changes**:
     - Implemented JSONL-based download history tracking at `~/.aura/history.jsonl`.
-    - Added 11 missing `aria2` compatibility JSON-RPC API methods.
+    - Added 11 missing `aura` compatibility JSON-RPC API methods.
     - Created `aura history` CLI command to retrieve and query history records.
 - [x] **bug: No URL deduplication — same URI creates unlimited tasks filling disk** (Issue #250) `[module:core, priority:high]`
   - **Completion Commit**: `ba26d56` (PR #259)

@@ -47,42 +47,25 @@ fn build_tls_config() -> Result<std::sync::Arc<ClientConfig>> {
 /// the internal `DataStream` within suppaftp stores either a raw TCP stream or a TLS
 /// stream, allowing the same type alias to cover both cases. TLS is only negotiated
 /// when the scheme is `ftps` or when the server advertises `AUTH TLS` in FEAT.
-pub struct FtpWorker {
-    uri: String,
-    local_addr: Option<std::net::IpAddr>,
-    retry_count: u32,
-    retry_delay_secs: u64,
-    happy_eyeballs_stagger_ms: u64,
-    credential_provider: Option<std::sync::Arc<crate::config::credentials::CredentialProvider>>,
-    pub(crate) resource_governor:
+pub struct FtpWorkerOptions {
+    pub uri: String,
+    pub local_addr: Option<std::net::IpAddr>,
+    pub retry_count: u32,
+    pub http_retry_delay_secs: u64,
+    pub happy_eyeballs_stagger_ms: u64,
+    pub credential_provider: Option<std::sync::Arc<crate::config::credentials::CredentialProvider>>,
+    pub resource_governor:
         Option<std::sync::Arc<crate::orchestrator::resource_governor::ResourceGovernor>>,
-    pub(crate) tenant_id: Option<crate::TenantId>,
+    pub tenant_id: Option<crate::TenantId>,
+}
+
+pub struct FtpWorker {
+    pub(crate) options: FtpWorkerOptions,
 }
 
 impl FtpWorker {
-    #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        uri: String,
-        local_addr: Option<std::net::IpAddr>,
-        retry_count: u32,
-        retry_delay_secs: u64,
-        happy_eyeballs_stagger_ms: u64,
-        credential_provider: Option<std::sync::Arc<crate::config::credentials::CredentialProvider>>,
-        resource_governor: Option<
-            std::sync::Arc<crate::orchestrator::resource_governor::ResourceGovernor>,
-        >,
-        tenant_id: Option<crate::TenantId>,
-    ) -> Self {
-        Self {
-            uri,
-            local_addr,
-            retry_count,
-            retry_delay_secs,
-            happy_eyeballs_stagger_ms,
-            credential_provider,
-            resource_governor,
-            tenant_id,
-        }
+    pub fn new(options: FtpWorkerOptions) -> Self {
+        Self { options }
     }
 
     /// Resolves FTP credentials for `host` by consulting first the URL inline
@@ -98,7 +81,7 @@ impl FtpWorker {
         }
 
         // Fall back to the credential provider (e.g. ~/.netrc).
-        if let Some(ref provider) = self.credential_provider {
+        if let Some(ref provider) = self.options.credential_provider {
             if let Some(creds) = provider.get_credentials(host) {
                 let user = creds.login.as_deref().unwrap_or("anonymous").to_owned();
                 let pass = creds
@@ -120,7 +103,7 @@ impl FtpWorker {
     /// If TLS is required, `into_secure` is called to upgrade the control channel to
     /// `DataStream::Ssl`, backed by the rustls `AsyncRustlsConnector`.
     async fn connect_once(&self) -> Result<AsyncRustlsFtpStream> {
-        let url = Url::parse(&self.uri)
+        let url = Url::parse(&self.options.uri)
             .map_err(|e| Error::Protocol(format!("Invalid FTP URL: {}", e)))?;
 
         let host = url
@@ -133,9 +116,9 @@ impl FtpWorker {
             host,
             port,
             None,
-            self.local_addr,
+            self.options.local_addr,
             None,
-            self.happy_eyeballs_stagger_ms,
+            self.options.happy_eyeballs_stagger_ms,
         )
         .await
         .map_err(|e| Error::Worker(format!("Failed to connect to FTP host {}: {}", host, e)))?;
@@ -199,7 +182,7 @@ impl FtpWorker {
     /// Connects to the FTP server with exponential-backoff retry.
     async fn connect(&self) -> Result<AsyncRustlsFtpStream> {
         let mut attempts: u32 = 0;
-        let max_attempts = self.retry_count;
+        let max_attempts = self.options.retry_count;
 
         loop {
             match self.connect_once().await {
@@ -207,7 +190,10 @@ impl FtpWorker {
                 Err(e) if attempts < max_attempts => {
                     attempts += 1;
                     let exponent = std::cmp::min(attempts - 1, 30);
-                    let delay = self.retry_delay_secs.saturating_mul(2u64.pow(exponent));
+                    let delay = self
+                        .options
+                        .http_retry_delay_secs
+                        .saturating_mul(2u64.pow(exponent));
                     tracing::warn!(
                         error = %e,
                         attempt = attempts,
@@ -226,7 +212,7 @@ impl FtpWorker {
 
     pub async fn resolve_metadata(&self) -> Result<Metadata> {
         let mut ftp = self.connect().await?;
-        let url = Url::parse(&self.uri)
+        let url = Url::parse(&self.options.uri)
             .map_err(|e| Error::Protocol(format!("Invalid FTP URL: {}", e)))?;
         let path = url.path().trim_start_matches('/');
 
@@ -243,7 +229,7 @@ impl FtpWorker {
         let _ = ftp.quit().await;
 
         Ok(Metadata {
-            final_uri: self.uri.clone(),
+            final_uri: self.options.uri.clone(),
             total_length: Some(size as u64),
             name,
             range_supported: true,
@@ -264,18 +250,18 @@ impl ProtocolWorker for FtpWorker {
         storage_tx: Option<mpsc::Sender<crate::storage::StorageRequest>>,
         throttler: std::sync::Arc<crate::throttler::Throttler>,
     ) -> Result<PieceData> {
-        let mut _guard = if let Some(ref gov) = self.resource_governor {
+        let mut _guard = if let Some(ref gov) = self.options.resource_governor {
             let req_size = if segment.length == u64::MAX {
                 65536
             } else {
                 segment.length as usize
             };
-            while !gov.request_allocation(&self.tenant_id, req_size, false) {
+            while !gov.request_allocation(&self.options.tenant_id, req_size, false) {
                 tokio::time::sleep(std::time::Duration::from_millis(100)).await;
             }
             Some(crate::orchestrator::resource_governor::MemoryGuard::new(
                 gov.clone(),
-                self.tenant_id.clone(),
+                self.options.tenant_id.clone(),
                 req_size,
             ))
         } else {
@@ -283,7 +269,7 @@ impl ProtocolWorker for FtpWorker {
         };
 
         let mut ftp = self.connect().await?;
-        let url = Url::parse(&self.uri)
+        let url = Url::parse(&self.options.uri)
             .map_err(|e| Error::Protocol(format!("Invalid FTP URL: {}", e)))?;
         let path = url.path().trim_start_matches('/');
 

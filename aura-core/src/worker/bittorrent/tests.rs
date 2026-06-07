@@ -86,14 +86,16 @@ async fn test_failed_connection_transitions_to_disconnected() {
     let info_hash = crate::InfoHash::V1([0; 20]);
     let governor = Arc::new(crate::orchestrator::resource_governor::ResourceGovernor::new(0, 0));
     let task = Arc::new(BtTask::from_magnet(
-        crate::TaskId(12345),
-        info_hash,
-        dht_tx,
-        lpd_tx,
-        db,
-        governor,
-        None,
-        Arc::new(arc_swap::ArcSwap::new(Arc::new(crate::Config::default()))),
+        crate::worker::bittorrent::task::BtTaskFromMagnetArgs {
+            id: crate::TaskId(12345),
+            info_hash,
+            dht_tx,
+            lpd_tx,
+            db,
+            resource_governor: governor,
+            tenant_id: None,
+            config: Arc::new(arc_swap::ArcSwap::new(Arc::new(crate::Config::default()))),
+        },
     ));
 
     let peer_addr = "127.0.0.1:45454".to_string();

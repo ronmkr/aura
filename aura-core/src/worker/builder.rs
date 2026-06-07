@@ -191,15 +191,15 @@ impl WorkerBuilder {
     }
 
     pub fn build_ftp(self) -> FtpWorker {
-        FtpWorker::new(
-            self.uri,
-            self.local_addr,
-            self.retry_count,
-            self.retry_delay_secs,
-            self.happy_eyeballs_stagger_ms,
-            self.credential_provider,
-            self.resource_governor,
-            self.tenant_id,
-        )
+        FtpWorker::new(crate::worker::ftp::FtpWorkerOptions {
+            uri: self.uri,
+            local_addr: self.local_addr,
+            retry_count: self.retry_count,
+            http_retry_delay_secs: self.retry_delay_secs,
+            happy_eyeballs_stagger_ms: self.happy_eyeballs_stagger_ms,
+            credential_provider: self.credential_provider,
+            resource_governor: self.resource_governor,
+            tenant_id: self.tenant_id,
+        })
     }
 }

@@ -89,7 +89,7 @@ impl App {
             .post(&self.rpc_url)
             .json(&json!({
                 "jsonrpc": "2.0",
-                "method": "aria2.tellActive",
+                "method": "aura.tellActive",
                 "id": "tui"
             }))
             .send()
@@ -130,7 +130,7 @@ impl App {
                     .post(&self.rpc_url)
                     .json(&json!({
                         "jsonrpc": "2.0",
-                        "method": "aria2.pause",
+                        "method": "aura.pause",
                         "params": [dl.gid],
                         "id": "tui"
                     }))
@@ -149,7 +149,7 @@ impl App {
                     .post(&self.rpc_url)
                     .json(&json!({
                         "jsonrpc": "2.0",
-                        "method": "aria2.unpause",
+                        "method": "aura.unpause",
                         "params": [dl.gid],
                         "id": "tui"
                     }))
@@ -202,7 +202,7 @@ impl App {
                 .post(&self.rpc_url)
                 .json(&json!({
                     "jsonrpc": "2.0",
-                    "method": "aria2.addUri",
+                    "method": "aura.addUri",
                     "params": [[input]],
                     "id": "tui-discovery"
                 }))
@@ -235,7 +235,7 @@ impl App {
                     .post(&self.rpc_url)
                     .json(&json!({
                         "jsonrpc": "2.0",
-                        "method": "aria2.addUri",
+                        "method": "aura.addUri",
                         "params": [[uri]],
                         "id": "tui-cmd-add"
                     }))
@@ -253,7 +253,7 @@ impl App {
             .post(&self.rpc_url)
             .json(&json!({
                 "jsonrpc": "2.0",
-                "method": "aria2.pauseAll",
+                "method": "aura.pauseAll",
                 "id": "tui-pause-all"
             }))
             .send()
@@ -267,7 +267,7 @@ impl App {
             .post(&self.rpc_url)
             .json(&json!({
                 "jsonrpc": "2.0",
-                "method": "aria2.unpauseAll",
+                "method": "aura.unpauseAll",
                 "id": "tui-resume-all"
             }))
             .send()

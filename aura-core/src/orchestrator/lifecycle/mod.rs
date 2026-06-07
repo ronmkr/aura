@@ -173,29 +173,33 @@ impl Orchestrator {
                             let init_res = if uri.starts_with("magnet:") {
                                 match crate::magnet::Magnet::parse(&uri) {
                                     Ok(m) => Ok(BtTask::from_magnet(
-                                        id,
-                                        m.info_hash,
-                                        dht_tx,
-                                        lpd_tx,
-                                        db.clone(),
-                                        resource_governor_clone.clone(),
-                                        tenant_id.clone(),
-                                        config_clone.clone(),
+                                        crate::worker::bittorrent::task::BtTaskFromMagnetArgs {
+                                            id,
+                                            info_hash: m.info_hash,
+                                            dht_tx,
+                                            lpd_tx,
+                                            db: db.clone(),
+                                            resource_governor: resource_governor_clone.clone(),
+                                            tenant_id: tenant_id.clone(),
+                                            config: config_clone.clone(),
+                                        },
                                     )),
                                     Err(e) => Err(e),
                                 }
                             } else {
                                 BtTask::from_file(
-                                    id,
-                                    &uri,
-                                    dht_tx,
-                                    lpd_tx,
-                                    db.clone(),
-                                    loaded_bf.clone(),
-                                    resource_governor_clone.clone(),
-                                    tenant_id.clone(),
-                                    config_clone.clone(),
-                                    selected_files.as_deref(),
+                                    crate::worker::bittorrent::task::BtTaskFromFileArgs {
+                                        id,
+                                        path: &uri,
+                                        dht_tx,
+                                        lpd_tx,
+                                        db: db.clone(),
+                                        bitfield: loaded_bf.clone(),
+                                        resource_governor: resource_governor_clone.clone(),
+                                        tenant_id: tenant_id.clone(),
+                                        config: config_clone.clone(),
+                                        selected_files: selected_files.as_deref(),
+                                    },
                                 )
                                 .await
                             };

@@ -18,4 +18,4 @@ Feature: Daemon and RPC Orchestration
     When a client attempts to connect without a token
     Then the daemon should reject the request with "401 Unauthorized"
     When a client provides a valid "X-Aura-Token"
-    Then the daemon should allow "aria2.addUri" commands
+    Then the daemon should allow "aura.addUri" commands

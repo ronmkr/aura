@@ -78,7 +78,7 @@ async fn when_i_wait_for_task_to_complete(world: &mut AuraWorld) {
     assert!(completed, "Task did not complete");
 
     // Clear remaining events from the channel to start fresh for next step
-    while let Ok(_) = rx.try_recv() {}
+    while rx.try_recv().is_ok() {}
 
     world.events_rx = Some(rx);
 }

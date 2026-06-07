@@ -60,18 +60,18 @@ pub async fn handle_tell_stopped(engine: &Engine, params: Option<Value>) -> Resu
     let res: Vec<Value> = records
         .into_iter()
         .map(|rec| {
-            format_task_value(
-                &rec.id,
-                &rec.phase.to_lowercase(),
-                &rec.name,
-                rec.total_bytes,
-                rec.downloaded_bytes,
-                rec.uploaded_bytes,
-                &rec.uris,
-                rec.error.as_deref(),
-                &keys,
-                None,
-            )
+            format_task_value(crate::jsonrpc::utils::TaskValueParams {
+                gid: &rec.id,
+                status: &rec.phase.to_lowercase(),
+                name: &rec.name,
+                total_len: rec.total_bytes,
+                completed_len: rec.downloaded_bytes,
+                uploaded_len: rec.uploaded_bytes,
+                uris: &rec.uris,
+                error_msg: rec.error.as_deref(),
+                keys: &keys,
+                selected_files: None,
+            })
         })
         .collect();
 

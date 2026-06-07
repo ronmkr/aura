@@ -84,7 +84,7 @@ Aura adapts its interface based on the user's current mission.
 ### 3. The Ghost (Headless / Web)
 - **Goal**: Persistent service for Docker, NAS, or Seedboxes.
 - **RPC Server**: Built on Axum/Tokio (JSON-RPC 2.0 and WebSockets).
-- **Compatibility**: Standardized to allow existing `aria2` frontends (like **AriaNg**) to connect with minimal adaptation.
+- **Compatibility**: Standardized to allow existing `aura` frontends (like **AriaNg**) to connect with minimal adaptation.
 
 ##  Core Engine Mandates
 - **Actor Integrity**: Strict decoupling via type-safe channels.

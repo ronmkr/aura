@@ -11,48 +11,49 @@ pub fn parse_gid(params: Option<Value>) -> Result<TaskId, Value> {
     Ok(TaskId(gid))
 }
 
-#[allow(clippy::too_many_arguments)]
-pub fn format_task_value(
-    gid: &str,
-    status: &str,
-    name: &str,
-    total_len: u64,
-    completed_len: u64,
-    uploaded_len: u64,
-    uris: &[String],
-    error_msg: Option<&str>,
-    keys: &Option<Vec<String>>,
-    selected_files: Option<&[bool]>,
-) -> Value {
+pub struct TaskValueParams<'a> {
+    pub gid: &'a str,
+    pub status: &'a str,
+    pub name: &'a str,
+    pub total_len: u64,
+    pub completed_len: u64,
+    pub uploaded_len: u64,
+    pub uris: &'a [String],
+    pub error_msg: Option<&'a str>,
+    pub keys: &'a Option<Vec<String>>,
+    pub selected_files: Option<&'a [bool]>,
+}
+
+pub fn format_task_value(params: TaskValueParams) -> Value {
     let mut map = serde_json::Map::new();
 
     let files_val = json!([{
         "index": "1",
-        "path": name,
-        "length": total_len.to_string(),
-        "completedLength": completed_len.to_string(),
+        "path": params.name,
+        "length": params.total_len.to_string(),
+        "completedLength": params.completed_len.to_string(),
         "selected": "true",
-        "uris": uris.iter().map(|u| json!({ "uri": u, "status": "used" })).collect::<Vec<Value>>(),
+        "uris": params.uris.iter().map(|u| json!({ "uri": u, "status": "used" })).collect::<Vec<Value>>(),
     }]);
 
-    let err_code = if error_msg.is_some() { "1" } else { "0" };
+    let err_code = if params.error_msg.is_some() { "1" } else { "0" };
 
     let all_fields = json!({
-        "gid": gid.to_string(),
-        "status": status.to_string(),
-        "totalLength": total_len.to_string(),
-        "completedLength": completed_len.to_string(),
-        "uploadLength": uploaded_len.to_string(),
+        "gid": params.gid.to_string(),
+        "status": params.status.to_string(),
+        "totalLength": params.total_len.to_string(),
+        "completedLength": params.completed_len.to_string(),
+        "uploadLength": params.uploaded_len.to_string(),
         "downloadSpeed": "0",
         "uploadSpeed": "0",
         "files": files_val,
         "errorCode": err_code.to_string(),
-        "errorMessage": error_msg.unwrap_or("").to_string(),
-        "name": name.to_string(),
-        "selectedFiles": selected_files,
+        "errorMessage": params.error_msg.unwrap_or("").to_string(),
+        "name": params.name.to_string(),
+        "selectedFiles": params.selected_files,
     });
 
-    if let Some(ref k) = keys {
+    if let Some(ref k) = params.keys {
         for key in k {
             if let Some(val) = all_fields.get(key) {
                 map.insert(key.clone(), val.clone());

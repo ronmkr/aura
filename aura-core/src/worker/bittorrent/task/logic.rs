@@ -166,62 +166,64 @@ pub struct BtTask {
     pub lpd_tx: mpsc::Sender<crate::lpd::LpdCommand>,
 }
 
+pub struct BtTaskFromFileArgs<'a> {
+    pub id: TaskId,
+    pub path: &'a str,
+    pub dht_tx: mpsc::Sender<crate::dht::DhtCommand>,
+    pub lpd_tx: mpsc::Sender<crate::lpd::LpdCommand>,
+    pub db: sled::Db,
+    pub bitfield: Option<Bitfield>,
+    pub resource_governor: Arc<crate::orchestrator::resource_governor::ResourceGovernor>,
+    pub tenant_id: Option<TenantId>,
+    pub config: Arc<arc_swap::ArcSwap<crate::Config>>,
+    pub selected_files: Option<&'a [bool]>,
+}
+
+pub struct BtTaskFromMagnetArgs {
+    pub id: TaskId,
+    pub info_hash: InfoHash,
+    pub dht_tx: mpsc::Sender<crate::dht::DhtCommand>,
+    pub lpd_tx: mpsc::Sender<crate::lpd::LpdCommand>,
+    pub db: sled::Db,
+    pub resource_governor: Arc<crate::orchestrator::resource_governor::ResourceGovernor>,
+    pub tenant_id: Option<TenantId>,
+    pub config: Arc<arc_swap::ArcSwap<crate::Config>>,
+}
+
 impl BtTask {
-    #[allow(clippy::too_many_arguments)]
-    pub async fn from_file(
-        id: TaskId,
-        path: &str,
-        dht_tx: mpsc::Sender<crate::dht::DhtCommand>,
-        lpd_tx: mpsc::Sender<crate::lpd::LpdCommand>,
-        db: sled::Db,
-        bitfield: Option<Bitfield>,
-        resource_governor: Arc<crate::orchestrator::resource_governor::ResourceGovernor>,
-        tenant_id: Option<TenantId>,
-        config: Arc<arc_swap::ArcSwap<crate::Config>>,
-        selected_files: Option<&[bool]>,
-    ) -> Result<Self> {
-        let data = tokio::fs::read(path)
+    pub async fn from_file(args: BtTaskFromFileArgs<'_>) -> Result<Self> {
+        let data = tokio::fs::read(args.path)
             .await
             .map_err(|e| Error::Protocol(format!("Failed to read torrent file: {}", e)))?;
         let torrent = Torrent::from_bytes(&data)?;
         Ok(Self {
-            id,
+            id: args.id,
             state: Arc::new(BtTaskState::new(
                 torrent,
-                db,
-                bitfield,
-                resource_governor,
-                tenant_id,
-                config,
-                selected_files,
+                args.db,
+                args.bitfield,
+                args.resource_governor,
+                args.tenant_id,
+                args.config,
+                args.selected_files,
             )),
-            dht_tx,
-            lpd_tx,
+            dht_tx: args.dht_tx,
+            lpd_tx: args.lpd_tx,
         })
     }
 
-    #[allow(clippy::too_many_arguments)]
-    pub fn from_magnet(
-        id: TaskId,
-        info_hash: InfoHash,
-        dht_tx: mpsc::Sender<crate::dht::DhtCommand>,
-        lpd_tx: mpsc::Sender<crate::lpd::LpdCommand>,
-        db: sled::Db,
-        resource_governor: Arc<crate::orchestrator::resource_governor::ResourceGovernor>,
-        tenant_id: Option<TenantId>,
-        config: Arc<arc_swap::ArcSwap<crate::Config>>,
-    ) -> Self {
+    pub fn from_magnet(args: BtTaskFromMagnetArgs) -> Self {
         Self {
-            id,
+            id: args.id,
             state: Arc::new(BtTaskState::new_magnet(
-                info_hash,
-                db,
-                resource_governor,
-                tenant_id,
-                config,
+                args.info_hash,
+                args.db,
+                args.resource_governor,
+                args.tenant_id,
+                args.config,
             )),
-            dht_tx,
-            lpd_tx,
+            dht_tx: args.dht_tx,
+            lpd_tx: args.lpd_tx,
         }
     }
 

@@ -27,15 +27,15 @@ async fn test_client_pool_sharing_and_eviction() {
     };
 
     // 1. Get first client
-    let client1 = pool.get_or_create(key1.clone(), || reqwest::Client::new());
+    let client1 = pool.get_or_create(key1.clone(), reqwest::Client::new);
 
     // 2. Get second client for same key, should be shared
-    let client2 = pool.get_or_create(key2, || reqwest::Client::new());
+    let client2 = pool.get_or_create(key2, reqwest::Client::new);
     assert!(Arc::ptr_eq(&client1, &client2));
     assert_eq!(pool.len(), 1);
 
     // 3. Get third client for different key, should be different
-    let client3 = pool.get_or_create(key3.clone(), || reqwest::Client::new());
+    let client3 = pool.get_or_create(key3.clone(), reqwest::Client::new);
     assert!(!Arc::ptr_eq(&client1, &client3));
     assert_eq!(pool.len(), 2);
 
@@ -52,7 +52,7 @@ async fn test_client_pool_sharing_and_eviction() {
         host: "localhost".to_string(),
         port: 8082,
     };
-    let _client4 = pool.get_or_create(key4, || reqwest::Client::new());
+    let _client4 = pool.get_or_create(key4, reqwest::Client::new);
 
     // key1 client should have been evicted.
     // key3 client should remain.
@@ -69,7 +69,7 @@ async fn test_client_pool_sharing_and_eviction() {
         host: "localhost".to_string(),
         port: 8083,
     };
-    let _client5 = pool.get_or_create(key5, || reqwest::Client::new());
+    let _client5 = pool.get_or_create(key5, reqwest::Client::new);
     assert_eq!(pool.len(), 2); // key4 and key5
 }
 
