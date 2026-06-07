@@ -63,6 +63,7 @@ pub struct Orchestrator {
     pub(crate) alt_svc_cache: crate::security::AltSvcCache,
     pub(crate) policy_manager: crate::orchestrator::policy_manager::PolicyManager,
     pub(crate) client_pool: crate::worker::http::ClientPool,
+    pub(crate) notification_service: Arc<super::notifications::NotificationService>,
 }
 
 impl Orchestrator {
@@ -178,7 +179,7 @@ impl Orchestrator {
                 throttler,
                 vpn_provider,
                 vpn_watch_tx,
-                config,
+                config: config.clone(),
                 resource_governor,
                 power_manager: crate::power::PowerManager::new(),
                 _hook_service: hook_service,
@@ -189,6 +190,9 @@ impl Orchestrator {
                 alt_svc_cache: crate::security::AltSvcCache::new(),
                 policy_manager: crate::orchestrator::policy_manager::PolicyManager::new(),
                 client_pool: crate::worker::http::ClientPool::new(),
+                notification_service: Arc::new(super::notifications::NotificationService::new(
+                    config.clone(),
+                )),
             },
             event_tx,
         )

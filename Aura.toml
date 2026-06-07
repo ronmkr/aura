@@ -66,6 +66,12 @@ memory_safety_margin_mb = 50           # Reserve memory to prevent OOM
 [bulk]
 max_scan_depth = 10                    # Recursion limit for folder scanning
 
+[notifications]
+enabled = true                         # Enable native OS desktop notifications
+notify_on_complete = true              # Alert when a download finishes
+notify_on_error = true                 # Alert on fatal task errors
+app_name = "Aura"                      # Name displayed in the notification
+
 [tui]
 tick_rate_ms = 500                     # Refresh rate for the interactive TUI
 rpc_url = "http://localhost:6800/jsonrpc" # Default daemon RPC endpoint for TUI

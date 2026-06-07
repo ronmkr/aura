@@ -37,6 +37,7 @@ impl Orchestrator {
                     };
                     let config = self.config.load();
                     crate::history::HistoryManager::append_record(&config, record);
+                    self.notification_service.notify_complete(&task.name);
                     let _ = self.event_tx.send(Event::TaskProgress {
                         id,
                         completed_bytes: task.total_length,

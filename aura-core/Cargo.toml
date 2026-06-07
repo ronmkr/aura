@@ -33,6 +33,7 @@ rustls = { workspace = true }
 rustls-native-certs = { workspace = true }
 toml = { workspace = true }
 notify = { workspace = true }
+notify-rust = { workspace = true }
 arc-swap = { workspace = true }
 hex = { workspace = true }
 nosleep = { workspace = true }

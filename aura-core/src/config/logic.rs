@@ -9,6 +9,7 @@ pub use super::general::{CredentialConfig, GeneralConfig, ThemeConfig};
 pub use super::hooks::HookConfig;
 pub use super::limits::LimitsConfig;
 pub use super::network::{NetworkConfig, ResolverConfig, StructuredResolverConfig};
+pub use super::notifications::NotificationConfig;
 pub use super::resource_mapping::{
     ConflictPolicy, MappingCondition, MappingRule, ResourceMappingConfig,
 };
@@ -34,6 +35,7 @@ pub struct Config {
     pub bandwidth: BandwidthConfig,
     pub bittorrent: BitTorrentConfig,
     pub storage: StorageConfig,
+    pub notifications: NotificationConfig,
     pub bulk: BulkConfig,
     pub tui: TuiConfig,
     pub resource_mapping: ResourceMappingConfig,

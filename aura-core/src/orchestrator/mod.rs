@@ -7,6 +7,7 @@ pub mod event_handlers;
 pub mod lifecycle;
 pub mod mapping;
 pub mod monitors;
+pub mod notifications;
 pub mod policy_manager;
 pub mod protocol_detector;
 pub mod refresh;

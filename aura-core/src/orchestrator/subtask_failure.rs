@@ -77,6 +77,7 @@ impl Orchestrator {
                 .all(|s| s.phase == DownloadPhase::Error)
             {
                 task.phase = DownloadPhase::Error;
+                self.notification_service.notify_error(&task.name, &err);
                 let _ = self.event_tx.send(Event::TaskError {
                     id: meta_id,
                     message: err,
