@@ -12,6 +12,7 @@ pub struct LimitsConfig {
     pub history_rotation_mb: f64,
     pub history_rotation_records: usize,
     pub history_retention_records: usize,
+    pub graceful_shutdown_timeout_secs: u64,
 }
 
 impl Default for LimitsConfig {
@@ -26,6 +27,7 @@ impl Default for LimitsConfig {
             history_rotation_mb: 10.0,
             history_rotation_records: 10000,
             history_retention_records: 5000,
+            graceful_shutdown_timeout_secs: 5,
         }
     }
 }

@@ -24,8 +24,6 @@ impl Orchestrator {
             return Ok(());
         }
 
-        let local_addr = self.resolve_local_addr();
-        let config_arc = self.config.clone();
         loop {
             if token.is_cancelled() {
                 break;
@@ -68,7 +66,6 @@ impl Orchestrator {
                         let (tx, _) = tokio::sync::broadcast::channel(capacity);
                         tx
                     });
-                let my_id = self.peer_id;
                 let bt_task = match meta_task
                     .extensions
                     .get("bittorrent")
@@ -87,7 +84,6 @@ impl Orchestrator {
                 if let Some(peer) = peer_opt {
                     let peer_addr = format!("{}:{}", peer.ip, peer.port);
                     let info_hash = bt_task.state.info_hash;
-                    let proxy = config_arc.load().network.proxy.clone();
                     let throttler_clone = self.throttler.clone();
 
                     let storage_tx = self.storage_tx.clone();
@@ -105,25 +101,17 @@ impl Orchestrator {
 
                     tracing::debug!(%meta_id, %sub_id, %peer_addr, "Spawning worker for peer");
 
-                    let config_clone = config_arc.clone();
+                    let orchestrator_handle = self.handle();
                     tokio::spawn(async move {
-                        let bt_config = config_clone.load().bittorrent.clone();
-                        let net_config = config_clone.load().network.clone();
                         let mut worker = crate::worker::bittorrent::BtWorker::new(
-                            crate::worker::bittorrent::BtWorkerOptions {
-                                peer_addr: peer_addr.clone(),
+                            orchestrator_handle.build_bt_worker_options(
+                                peer_addr.clone(),
                                 info_hash,
-                                peer_id: [0; 20],
-                                my_id,
-                                proxy,
-                                throttler: throttler_clone,
-                                pex_enabled: bt_config.pex_enabled,
-                                happy_eyeballs_stagger_ms: net_config.happy_eyeballs_stagger_ms,
-                                pipeline_size: bt_config.request_pipeline_size,
-                                connect_timeout_secs: net_config.connect_timeout_secs,
-                            },
+                                [0; 20], // peer_id will be set during handshake
+                                throttler_clone,
+                            ),
                         );
-                        worker.local_addr = local_addr;
+                        worker.local_addr = orchestrator_handle.resolve_local_addr();
 
                         tokio::select! {
                             _ = token_clone.cancelled() => {}

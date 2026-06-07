@@ -70,6 +70,28 @@ impl OrchestratorHandle {
             .tenant_id(tenant_id)
             .client_pool(self.client_pool.clone())
     }
+
+    pub fn build_bt_worker_options(
+        &self,
+        peer_addr: String,
+        info_hash: InfoHash,
+        peer_id: [u8; 20],
+        throttler: Arc<Throttler>,
+    ) -> crate::worker::bittorrent::BtWorkerOptions {
+        let config = self.config.load();
+        crate::worker::bittorrent::BtWorkerOptions {
+            peer_addr,
+            info_hash,
+            peer_id,
+            my_id: self.peer_id,
+            proxy: config.network.proxy.clone(),
+            throttler,
+            pex_enabled: config.bittorrent.pex_enabled,
+            pipeline_size: config.bittorrent.request_pipeline_size,
+            connect_timeout_secs: config.network.connect_timeout_secs,
+            happy_eyeballs_stagger_ms: config.network.happy_eyeballs_stagger_ms,
+        }
+    }
 }
 
 pub struct Orchestrator {

@@ -16,11 +16,9 @@ pub struct IncomingPeerContext {
         std::collections::HashMap<TaskId, tokio::sync::broadcast::Sender<WorkerCommand>>,
     pub storage_tx: mpsc::Sender<StorageRequest>,
     pub subtask_tx: mpsc::Sender<SubTaskEvent>,
-    pub my_peer_id: [u8; 20],
     pub cancellation_tokens: std::collections::HashMap<TaskId, CancellationToken>,
-    pub local_addr: Option<std::net::IpAddr>,
-    pub config: Arc<crate::Config>,
     pub throttler: Arc<crate::throttler::Throttler>,
+    pub(crate) orchestrator_handle: super::super::state::OrchestratorHandle,
 }
 
 pub async fn handle_incoming_peer(
@@ -55,22 +53,16 @@ pub async fn handle_incoming_peer(
 
             info!(?addr, "Accepted incoming peer for task {}", task.id);
 
-            let my_handshake = Handshake::new(handshake.info_hash, ctx.my_peer_id);
+            let my_handshake = Handshake::new(handshake.info_hash, ctx.orchestrator_handle.peer_id);
             stream.write_all(&my_handshake.serialize()).await?;
 
-            let mut worker = BtWorker::new(crate::worker::bittorrent::BtWorkerOptions {
-                peer_addr: addr.to_string(),
-                info_hash: target_info_hash,
-                peer_id: handshake.peer_id,
-                my_id: ctx.my_peer_id,
-                proxy: ctx.config.network.proxy.clone(),
-                throttler: ctx.throttler,
-                pex_enabled: ctx.config.bittorrent.pex_enabled,
-                pipeline_size: ctx.config.bittorrent.request_pipeline_size,
-                connect_timeout_secs: ctx.config.network.connect_timeout_secs,
-                happy_eyeballs_stagger_ms: ctx.config.network.happy_eyeballs_stagger_ms,
-            });
-            worker.local_addr = ctx.local_addr;
+            let mut worker = BtWorker::new(ctx.orchestrator_handle.build_bt_worker_options(
+                addr.to_string(),
+                target_info_hash,
+                handshake.peer_id,
+                ctx.throttler,
+            ));
+            worker.local_addr = ctx.orchestrator_handle.resolve_local_addr();
 
             let w_cmd_rx = if let Some(tx) = ctx.worker_command_txs.get(&task.id) {
                 tx.subscribe()

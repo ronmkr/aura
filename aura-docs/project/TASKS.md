@@ -3,17 +3,20 @@
 All active development tasks, technical debt, and feature requests are managed exclusively via [GitHub Issues](https://github.com/ronmkr/aura/issues).
 
 ## Open Tasks
-
 ### Core & Architecture Standardized
 - [x] **epic: Final Branding & API Standardization** `[module:all, priority:high]`
     - [x] Renamed all legacy `aria2` references to `aura` globally (RPC, strings, docs).
     - [x] Refactored all functions with `too_many_arguments` into clean parameter structs.
     - [x] Deduplicated path resolution, throttler lookups, and TaskId generation.
+    - [x] Implemented `OrchestratorHandle` to unify thread-safe shared state access.
+    - [x] Centralized worker construction logic in `OrchestratorHandle::build_worker_builder`.
     - [x] Centralized JSON-RPC error handling with `rpc_error` helper.
+    - [x] Eliminated all hardcoded magic numbers and timeouts into `Aura.toml`.
     - [x] Zero Clippy warning policy enforced across all crates.
     - [x] Updated `aura-dev` skill to mandate zero hardcoded values and struct-based args.
 
 ### High (P1)
+...
 - [x] **epic: Interactive TUI Modernization (Command Center)** `[module:tui, priority:high]`
     - [x] Refactor TUI to stateful Multi-View architecture (Dashboard, Mission Control, File Selector).
     - [x] Implement the Main Dashboard with split-layout (Task List + Real-time Detail Panel).

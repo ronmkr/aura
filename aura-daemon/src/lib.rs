@@ -179,7 +179,7 @@ pub async fn run(args: Args) -> Result<(), Box<dyn std::error::Error>> {
     let config_tls_cert = config.network.tls_cert.clone();
     let config_tls_key = config.network.tls_key.clone();
 
-    let (engine, orchestrator, storage) = match Engine::new(config).await {
+    let (engine, orchestrator, storage) = match Engine::new(config.clone()).await {
         Ok(res) => res,
         Err(e) => {
             eprintln!("Failed to initialize Aura Engine: {}", e);
@@ -336,10 +336,12 @@ pub async fn run(args: Args) -> Result<(), Box<dyn std::error::Error>> {
         let handle = axum_server::Handle::new();
         let shutdown_handle = handle.clone();
 
+        let shutdown_timeout = config.limits.graceful_shutdown_timeout_secs;
         tokio::spawn(async move {
             let _ = shutdown_rx.recv().await;
             info!("RPC server stopping (HTTPS)");
-            shutdown_handle.graceful_shutdown(Some(std::time::Duration::from_secs(5)));
+            shutdown_handle
+                .graceful_shutdown(Some(std::time::Duration::from_secs(shutdown_timeout)));
         });
 
         info!("RPC Server listening (HTTPS) on https://{}", addr);

@@ -218,11 +218,9 @@ impl Orchestrator {
                     let worker_command_txs = self.worker_command_txs.clone();
                     let storage_tx = self.storage_tx.clone();
                     let subtask_tx = self.subtask_tx.clone();
-                    let my_peer_id = self.peer_id;
                     let cancellation_tokens = self.cancellation_tokens.clone();
-                    let local_addr = self.resolve_local_addr();
-                    let config = self.config.load().clone();
                     let throttler = self.throttler.clone();
+                    let orchestrator_handle = self.handle();
 
                     let bt_tasks: std::collections::HashMap<TaskId, Arc<BtTask>> = self.iter_bt_tasks().into_iter().collect();
 
@@ -233,11 +231,9 @@ impl Orchestrator {
                             worker_command_txs,
                             storage_tx,
                             subtask_tx,
-                            my_peer_id,
                             cancellation_tokens,
-                            local_addr,
-                            config,
                             throttler,
+                            orchestrator_handle,
                         };
                         if let Err(e) = super::lifecycle::handle_incoming_peer(stream, addr, ctx).await
                         {
