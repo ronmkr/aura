@@ -50,14 +50,23 @@ impl BtTaskState {
         } else {
             InfoHash::V1(torrent.info_hash_v1().unwrap_or(None).unwrap_or([0; 20]))
         };
-
         let bf = bitfield.unwrap_or_else(|| Bitfield::new(num_pieces));
+
+        let bt_config = config.load().bittorrent.clone();
 
         let picker = if let Some(selection) = selected_files {
             let selected_pieces = torrent.compute_selected_pieces(selection);
-            PiecePicker::with_selection(num_pieces, selected_pieces)
+            PiecePicker::with_selection(
+                num_pieces,
+                selected_pieces,
+                bt_config.endgame_threshold_pieces,
+                bt_config.endgame_threshold_percent,
+            )
         } else {
-            PiecePicker::new(num_pieces)
+            let mut p = PiecePicker::new(num_pieces);
+            p.endgame_threshold_pieces = bt_config.endgame_threshold_pieces;
+            p.endgame_threshold_percent = bt_config.endgame_threshold_percent;
+            p
         };
 
         Self {

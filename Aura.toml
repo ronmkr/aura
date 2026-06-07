@@ -40,6 +40,8 @@ max_seeding_time = 0    # Stop after N seconds (0 = no time limit)
 stop_on_either   = true # true = stop on EITHER condition; false = require BOTH
 
 endgame_mode_enabled = true            # Enable parallel fetching for final blocks
+endgame_threshold_pieces = 3           # Pieces left before entering endgame
+endgame_threshold_percent = 0.01       # Percentage left before entering endgame
 min_split_size_mb = 20                 # Minimum piece/segment size for splitting
 
 [storage]
@@ -50,6 +52,13 @@ allocation_mode = "falloc"             # "none", "prealloc" (zeros), "falloc" (s
 save_session_interval_secs = 30        # Interval to sync .aura control files
 read_ahead_kb = 128                    # Size of read-ahead buffer for seeding
 write_buffer_kb = 256                  # Size of sequential write aggregation buffer
+
+[bulk]
+max_scan_depth = 10                    # Recursion limit for folder scanning
+
+[tui]
+tick_rate_ms = 500                     # Refresh rate for the interactive TUI
+rpc_url = "http://localhost:6800/jsonrpc" # Default daemon RPC endpoint for TUI
 
 [resource_mapping]
 # Default policy for file name collisions: "AutoRename", "Overwrite", "Skip"

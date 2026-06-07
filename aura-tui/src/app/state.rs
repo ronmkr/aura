@@ -51,6 +51,8 @@ pub struct App {
     pub discovery_recursive: bool,
     pub search_query: String,
     pub command_input: String,
+    pub rpc_url: String,
+    pub tick_rate: std::time::Duration,
 }
 
 impl App {
@@ -74,6 +76,8 @@ impl App {
             discovery_recursive: false,
             search_query: String::new(),
             command_input: String::new(),
+            rpc_url: "http://localhost:6800/jsonrpc".to_string(),
+            tick_rate: std::time::Duration::from_millis(500),
         }
     }
 }

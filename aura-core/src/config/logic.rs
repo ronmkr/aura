@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 // Import and re-export all sub-configs from their dedicated sibling modules (Facade Pattern)
 pub use super::bandwidth::BandwidthConfig;
 pub use super::bittorrent::{BitTorrentConfig, SeedingConfig};
+pub use super::bulk::BulkConfig;
 pub use super::general::{CredentialConfig, GeneralConfig, ThemeConfig};
 pub use super::hooks::HookConfig;
 pub use super::limits::LimitsConfig;
@@ -12,6 +13,7 @@ pub use super::resource_mapping::{
     ConflictPolicy, MappingCondition, MappingRule, ResourceMappingConfig,
 };
 pub use super::storage::StorageConfig;
+pub use super::tui::TuiConfig;
 pub use super::vpn::VpnConfig;
 
 #[derive(Debug, Clone, Default)]
@@ -32,6 +34,8 @@ pub struct Config {
     pub bandwidth: BandwidthConfig,
     pub bittorrent: BitTorrentConfig,
     pub storage: StorageConfig,
+    pub bulk: BulkConfig,
+    pub tui: TuiConfig,
     pub resource_mapping: ResourceMappingConfig,
     pub vpn: VpnConfig,
     pub hooks: HookConfig,

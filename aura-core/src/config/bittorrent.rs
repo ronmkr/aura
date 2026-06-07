@@ -31,6 +31,8 @@ pub struct BitTorrentConfig {
     pub lpd_enabled: bool,
     pub seeding: SeedingConfig,
     pub endgame_mode_enabled: bool,
+    pub endgame_threshold_pieces: usize,
+    pub endgame_threshold_percent: f32,
     pub min_split_size_mb: u64,
     pub max_connections_per_torrent: usize,
 }
@@ -47,6 +49,8 @@ impl Default for BitTorrentConfig {
             lpd_enabled: false,
             seeding: SeedingConfig::default(),
             endgame_mode_enabled: true,
+            endgame_threshold_pieces: 3,
+            endgame_threshold_percent: 0.01,
             min_split_size_mb: 20,
             max_connections_per_torrent: 200,
         }

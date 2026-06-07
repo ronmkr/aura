@@ -14,7 +14,7 @@ impl Engine {
     ) -> Result<Vec<TaskId>> {
         let mut added_ids = Vec::new();
         let mut dirs_to_scan = vec![(PathBuf::from(dir), 0)];
-        let max_depth = 10; // Architectural safeguard
+        let max_depth = self.config.load().bulk.max_scan_depth; // Architectural safeguard
 
         while let Some((current_dir, depth)) = dirs_to_scan.pop() {
             let mut entries = match fs::read_dir(&current_dir).await {

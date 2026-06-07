@@ -320,7 +320,12 @@ impl Orchestrator {
                                 task.total_length = torrent.selected_total_length(&selection);
                                 let mut picker_guard = bt_task.state.picker.lock().await;
                                 if let Some(ref mut picker) = *picker_guard {
+                                    let bt_config = self.config.load().bittorrent.clone();
                                     picker.selected_pieces = selected_pieces;
+                                    picker.endgame_threshold_pieces =
+                                        bt_config.endgame_threshold_pieces;
+                                    picker.endgame_threshold_percent =
+                                        bt_config.endgame_threshold_percent;
                                 }
                             }
                             let _ = self.save_task(id).await;

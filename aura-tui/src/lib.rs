@@ -27,7 +27,7 @@ pub async fn run() -> Result<()> {
     let mut terminal = Terminal::new(backend)?;
 
     let mut app = App::new();
-    let _ = app.fetch_theme().await; // Initial theme fetch
+    let _ = app.fetch_config().await; // Initial config fetch
 
     let res = run_loop(&mut terminal, &mut app).await;
 
@@ -51,8 +51,8 @@ where
     <B as Backend>::Error: Send + Sync + 'static,
 {
     let mut last_tick = Instant::now();
-    let tick_rate = Duration::from_millis(500);
     loop {
+        let tick_rate = app.tick_rate;
         terminal.draw(|f| draw_ui(f, app))?;
 
         let timeout = tick_rate

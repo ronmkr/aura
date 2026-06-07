@@ -17,6 +17,9 @@ pub struct PiecePicker {
     in_progress: Bitfield,
     /// The pieces that are selected for download.
     pub selected_pieces: Bitfield,
+    /// Configuration for endgame mode
+    pub endgame_threshold_pieces: usize,
+    pub endgame_threshold_percent: f32,
 }
 
 impl PiecePicker {
@@ -32,17 +35,26 @@ impl PiecePicker {
             peer_bitfields: HashMap::new(),
             in_progress: Bitfield::new(num_pieces),
             selected_pieces: selected,
+            endgame_threshold_pieces: 3,
+            endgame_threshold_percent: 0.01,
         }
     }
 
     /// Creates a new PiecePicker with specific piece selection.
-    pub fn with_selection(num_pieces: usize, selected_pieces: Bitfield) -> Self {
+    pub fn with_selection(
+        num_pieces: usize,
+        selected_pieces: Bitfield,
+        endgame_threshold_pieces: usize,
+        endgame_threshold_percent: f32,
+    ) -> Self {
         Self {
             num_pieces,
             piece_counts: vec![0; num_pieces],
             peer_bitfields: HashMap::new(),
             in_progress: Bitfield::new(num_pieces),
             selected_pieces,
+            endgame_threshold_pieces,
+            endgame_threshold_percent,
         }
     }
 

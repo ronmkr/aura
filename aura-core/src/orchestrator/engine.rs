@@ -12,6 +12,7 @@ use tracing::{info, warn};
 pub struct Engine {
     pub(crate) command_tx: mpsc::Sender<Command>,
     pub(crate) event_tx: broadcast::Sender<Event>,
+    pub(crate) config: Arc<ArcSwap<crate::Config>>,
 }
 
 impl std::fmt::Debug for Engine {
@@ -175,6 +176,7 @@ impl Engine {
             Self {
                 command_tx,
                 event_tx,
+                config,
             },
             orchestrator,
             storage,

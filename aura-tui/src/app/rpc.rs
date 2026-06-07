@@ -7,7 +7,7 @@ impl App {
     pub async fn fetch_files(&mut self, gid: &str) -> anyhow::Result<()> {
         let res = self
             .client
-            .post("http://localhost:6800/jsonrpc")
+            .post(&self.rpc_url)
             .json(&json!({
                 "jsonrpc": "2.0",
                 "method": "aura.getFiles",
@@ -43,7 +43,7 @@ impl App {
         let selection: Vec<bool> = self.files.iter().map(|f| f.selected).collect();
         let _ = self
             .client
-            .post("http://localhost:6800/jsonrpc")
+            .post(&self.rpc_url)
             .json(&json!({
                 "jsonrpc": "2.0",
                 "method": "aura.setFileSelection",
@@ -55,14 +55,14 @@ impl App {
         Ok(())
     }
 
-    pub async fn fetch_theme(&mut self) -> anyhow::Result<()> {
+    pub async fn fetch_config(&mut self) -> anyhow::Result<()> {
         let res = self
             .client
-            .post("http://localhost:6800/jsonrpc")
+            .post(&self.rpc_url)
             .json(&json!({
                 "jsonrpc": "2.0",
                 "method": "aura.getConfig",
-                "id": "tui-theme"
+                "id": "tui-config"
             }))
             .send()
             .await;
@@ -71,6 +71,13 @@ impl App {
             let body: serde_json::Value = response.json().await?;
             if let Some(result) = body.get("result") {
                 self.theme = Theme::from_config(result);
+
+                // Update tick rate from config if available
+                if let Some(tui_cfg) = result.get("tui") {
+                    if let Some(rate) = tui_cfg.get("tick_rate_ms").and_then(|v| v.as_u64()) {
+                        self.tick_rate = std::time::Duration::from_millis(rate);
+                    }
+                }
             }
         }
         Ok(())
@@ -79,7 +86,7 @@ impl App {
     pub async fn tick(&mut self) -> anyhow::Result<()> {
         let res = self
             .client
-            .post("http://localhost:6800/jsonrpc")
+            .post(&self.rpc_url)
             .json(&json!({
                 "jsonrpc": "2.0",
                 "method": "aria2.tellActive",
@@ -120,7 +127,7 @@ impl App {
             if let Some(dl) = self.downloads.get(i) {
                 let _ = self
                     .client
-                    .post("http://localhost:6800/jsonrpc")
+                    .post(&self.rpc_url)
                     .json(&json!({
                         "jsonrpc": "2.0",
                         "method": "aria2.pause",
@@ -139,7 +146,7 @@ impl App {
             if let Some(dl) = self.downloads.get(i) {
                 let _ = self
                     .client
-                    .post("http://localhost:6800/jsonrpc")
+                    .post(&self.rpc_url)
                     .json(&json!({
                         "jsonrpc": "2.0",
                         "method": "aria2.unpause",
@@ -169,7 +176,7 @@ impl App {
                 .unwrap_or(false);
             if is_dir {
                 self.client
-                    .post("http://localhost:6800/jsonrpc")
+                    .post(&self.rpc_url)
                     .json(&json!({
                         "jsonrpc": "2.0",
                         "method": "aura.addFromFolder",
@@ -180,7 +187,7 @@ impl App {
                     .await?;
             } else {
                 self.client
-                    .post("http://localhost:6800/jsonrpc")
+                    .post(&self.rpc_url)
                     .json(&json!({
                         "jsonrpc": "2.0",
                         "method": "aura.addFromFile",
@@ -192,7 +199,7 @@ impl App {
             }
         } else {
             self.client
-                .post("http://localhost:6800/jsonrpc")
+                .post(&self.rpc_url)
                 .json(&json!({
                     "jsonrpc": "2.0",
                     "method": "aria2.addUri",
@@ -225,7 +232,7 @@ impl App {
             let uri = stripped.trim().to_string();
             if !uri.is_empty() {
                 self.client
-                    .post("http://localhost:6800/jsonrpc")
+                    .post(&self.rpc_url)
                     .json(&json!({
                         "jsonrpc": "2.0",
                         "method": "aria2.addUri",
@@ -243,7 +250,7 @@ impl App {
     pub async fn pause_all(&mut self) -> anyhow::Result<()> {
         let _ = self
             .client
-            .post("http://localhost:6800/jsonrpc")
+            .post(&self.rpc_url)
             .json(&json!({
                 "jsonrpc": "2.0",
                 "method": "aria2.pauseAll",
@@ -257,7 +264,7 @@ impl App {
     pub async fn resume_all(&mut self) -> anyhow::Result<()> {
         let _ = self
             .client
-            .post("http://localhost:6800/jsonrpc")
+            .post(&self.rpc_url)
             .json(&json!({
                 "jsonrpc": "2.0",
                 "method": "aria2.unpauseAll",
