@@ -80,6 +80,29 @@ impl App {
     }
 
     pub async fn tick(&mut self) -> anyhow::Result<()> {
+        // OS Clipboard monitoring
+        if let Some(cb) = &mut self.clipboard {
+            if let Ok(text) = cb.get_text() {
+                let trimmed = text.trim();
+                // Check if clipboard content changed and looks like a valid URL, Magnet, or file path
+                if trimmed != self.last_clipboard_content && !trimmed.is_empty() {
+                    self.last_clipboard_content = trimmed.to_string();
+                    let is_uri = trimmed.starts_with("http://")
+                        || trimmed.starts_with("https://")
+                        || trimmed.starts_with("ftp://")
+                        || trimmed.starts_with("ftps://")
+                        || trimmed.starts_with("magnet:?");
+
+                    let is_valid = is_uri || std::path::Path::new(trimmed).exists();
+
+                    if is_valid && self.view_state == ViewState::Dashboard {
+                        self.discovery_input = trimmed.to_string();
+                        self.view_state = ViewState::Discovery;
+                    }
+                }
+            }
+        }
+
         let res = self.call_rpc("aura.tellActive", None, "tui").await;
 
         match res {

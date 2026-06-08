@@ -53,6 +53,8 @@ pub struct App {
     pub command_input: String,
     pub rpc_url: String,
     pub tick_rate: std::time::Duration,
+    pub clipboard: Option<arboard::Clipboard>,
+    pub last_clipboard_content: String,
 }
 
 impl App {
@@ -61,6 +63,9 @@ impl App {
         table_state.select(Some(0));
         let mut file_table_state = TableState::default();
         file_table_state.select(Some(0));
+
+        let clipboard = arboard::Clipboard::new().ok();
+
         App {
             client: reqwest::Client::new(),
             downloads: Vec::new(),
@@ -78,6 +83,8 @@ impl App {
             command_input: String::new(),
             rpc_url: "http://localhost:6800/jsonrpc".to_string(),
             tick_rate: std::time::Duration::from_millis(500),
+            clipboard,
+            last_clipboard_content: String::new(),
         }
     }
 }

@@ -13,3 +13,4 @@ serde_json = { workspace = true }
 reqwest = { workspace = true }
 bytesize = { workspace = true }
 aura-core = { workspace = true }
+arboard = { workspace = true }

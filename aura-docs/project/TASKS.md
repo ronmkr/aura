@@ -39,7 +39,7 @@ All active development tasks, technical debt, and feature requests are managed e
     - [x] Implement Vim motions (`j/k`, `h/l`, `gg`, `G`).
     - [x] Actionable Error Recovery prompts in Mission Details.
     - [x] Native OS Desktop Notifications via `notify-rust`.
-    - [ ] Zero-friction ingest: Terminal Drag-and-Drop and OS Clipboard monitoring.
+    - [x] Zero-friction ingest: Terminal Drag-and-Drop and OS Clipboard monitoring.
 - [ ] **infra: Add CI cross-platform matrix and cargo audit workflow** (Issue #148) `[infra, priority:moderate]`
 - [x] **feat: ETag and Last-Modified conditional GET for incremental file refresh** (Issue #255) `[module:core, priority:moderate]`
 - [ ] **perf: Share reqwest HTTP connection pool across segment workers for same-host downloads** (Issue #256) `[module:core, priority:moderate]`
