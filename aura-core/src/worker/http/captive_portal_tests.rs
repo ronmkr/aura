@@ -1,4 +1,5 @@
-use super::{HttpWorker, HttpWorkerOptions};
+use super::HttpWorker;
+use crate::worker::builder::WorkerOptions;
 use crate::Error;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
@@ -31,7 +32,7 @@ async fn test_http_worker_html_landing_page_resolution_success() {
         .mount(&server)
         .await;
 
-    let worker = HttpWorker::new(HttpWorkerOptions {
+    let worker = HttpWorker::new(WorkerOptions {
         uri: format!("{}/landing", server.uri()),
         local_addr: None,
         user_agent: None,
@@ -39,7 +40,7 @@ async fn test_http_worker_html_landing_page_resolution_success() {
         proxy: None,
         referer: None,
         retry_count: 3,
-        http_retry_delay_secs: 1,
+        retry_delay_secs: 1,
         max_redirects: 20,
         happy_eyeballs_stagger_ms: 250,
         http_buffer_capacity: 16384,
@@ -84,7 +85,7 @@ async fn test_http_worker_html_landing_page_resolution_failure() {
         .mount(&server)
         .await;
 
-    let worker = HttpWorker::new(HttpWorkerOptions {
+    let worker = HttpWorker::new(WorkerOptions {
         uri: format!("{}/landing", server.uri()),
         local_addr: None,
         user_agent: None,
@@ -92,7 +93,7 @@ async fn test_http_worker_html_landing_page_resolution_failure() {
         proxy: None,
         referer: None,
         retry_count: 3,
-        http_retry_delay_secs: 1,
+        retry_delay_secs: 1,
         max_redirects: 20,
         happy_eyeballs_stagger_ms: 250,
         http_buffer_capacity: 16384,
@@ -136,7 +137,7 @@ async fn test_http_worker_captive_portal_detection() {
         .await;
 
     // Try downloading an asset (e.g. .zip)
-    let worker = HttpWorker::new(HttpWorkerOptions {
+    let worker = HttpWorker::new(WorkerOptions {
         uri: format!("{}/wifi-login/download.zip", server.uri()),
         local_addr: None,
         user_agent: None,
@@ -144,7 +145,7 @@ async fn test_http_worker_captive_portal_detection() {
         proxy: None,
         referer: None,
         retry_count: 3,
-        http_retry_delay_secs: 1,
+        retry_delay_secs: 1,
         max_redirects: 20,
         happy_eyeballs_stagger_ms: 250,
         http_buffer_capacity: 16384,

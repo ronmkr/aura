@@ -18,7 +18,6 @@ mod tests_conditional_pool;
 #[path = "tests_governor.rs"]
 mod tests_governor;
 
-use crate::TenantId;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
@@ -52,21 +51,22 @@ impl ClientPool {
         }
     }
 
-    pub fn get_or_create(
-        &self,
-        key: ClientKey,
-        creator: impl FnOnce() -> reqwest::Client,
-    ) -> Arc<reqwest::Client> {
+    pub fn get_or_create<F>(&self, key: &ClientKey, factory: F) -> Arc<reqwest::Client>
+    where
+        F: FnOnce() -> reqwest::Client,
+    {
         let mut clients = self.clients.lock().unwrap();
-        clients
-            .entry(key)
-            .or_insert_with(|| Arc::new(creator()))
-            .clone()
+        if let Some(client) = clients.get(key) {
+            client.clone()
+        } else {
+            let client = Arc::new(factory());
+            clients.insert(key.clone(), client.clone());
+            client
+        }
     }
 
     pub fn len(&self) -> usize {
-        let clients = self.clients.lock().unwrap();
-        clients.len()
+        self.clients.lock().unwrap().len()
     }
 
     pub fn is_empty(&self) -> bool {
@@ -80,72 +80,48 @@ impl Default for ClientPool {
     }
 }
 
-#[derive(Clone)]
-pub struct HttpWorkerOptions {
-    pub uri: String,
-    pub local_addr: Option<std::net::IpAddr>,
-    pub user_agent: Option<String>,
-    pub connect_timeout: Option<u64>,
-    pub proxy: Option<String>,
-    pub referer: Option<String>,
-    pub retry_count: u32,
-    pub http_retry_delay_secs: u64,
-    pub max_redirects: usize,
-    pub happy_eyeballs_stagger_ms: u64,
-    pub http_buffer_capacity: usize,
-    pub http_concurrent_requests: usize,
-    pub credential_provider: Option<Arc<crate::config::credentials::CredentialProvider>>,
-    pub dns_resolver: Option<Arc<crate::net_util::TokioResolver>>,
-    pub hsts_cache: Option<crate::security::HstsCache>,
-    pub alt_svc_cache: Option<crate::security::AltSvcCache>,
-    pub resource_governor: Option<Arc<crate::orchestrator::resource_governor::ResourceGovernor>>,
-    pub tenant_id: Option<TenantId>,
-    pub client_pool: Option<ClientPool>,
-    pub if_none_match: Option<String>,
-    pub if_modified_since: Option<String>,
-}
+use crate::worker::builder::WorkerOptions;
 
 /// A specialized worker for the HTTP(S) protocol.
 pub struct HttpWorker {
     pub(crate) client: Arc<reqwest::Client>,
     pub(crate) http3_client: Arc<Mutex<Option<reqwest::Client>>>,
-    pub(crate) options: HttpWorkerOptions,
+    pub(crate) options: WorkerOptions,
 }
 
 impl HttpWorker {
+    pub fn new(options: WorkerOptions) -> Self {
+        let client = if let Some(ref pool) = options.client_pool {
+            if let Some(key) = ClientKey::from_uri(&options.uri) {
+                pool.get_or_create(&key, || {
+                    build_client_from_options(&options, false).build().unwrap()
+                })
+            } else {
+                Arc::new(reqwest::Client::new())
+            }
+        } else {
+            Arc::new(reqwest::Client::new())
+        };
+
+        Self {
+            client,
+            http3_client: Arc::new(Mutex::new(None)),
+            options,
+        }
+    }
+
     pub(crate) async fn check_and_update_hsts(&self, resp: &reqwest::Response) {
         if let Some(ref cache) = self.options.hsts_cache {
             if let Some(hsts_val) = resp.headers().get(reqwest::header::HeaderName::from_static(
                 "strict-transport-security",
             )) {
                 if let Ok(hsts_str) = hsts_val.to_str() {
-                    if let Some((max_age, include_subdomains)) =
-                        crate::security::parse_hsts_header(hsts_str)
-                    {
-                        if let Some(host) = resp.url().host_str() {
-                            cache
-                                .insert_policy(host.to_string(), max_age, include_subdomains)
-                                .await;
-                        }
+                    if let Some(host) = resp.url().host_str() {
+                        cache.insert_header(host.to_string(), hsts_str).await;
                     }
                 }
             }
         }
-    }
-
-    pub(crate) async fn upgrade_url(&self, url: &str) -> String {
-        if let Some(ref cache) = self.options.hsts_cache {
-            if let Ok(u) = url::Url::parse(url) {
-                if u.scheme() == "http" {
-                    if let Some(host) = u.host_str() {
-                        if cache.should_upgrade(host).await {
-                            return url.replacen("http://", "https://", 1);
-                        }
-                    }
-                }
-            }
-        }
-        url.to_string()
     }
 
     pub(crate) async fn check_and_update_alt_svc(&self, resp: &reqwest::Response) {
@@ -167,46 +143,8 @@ impl HttpWorker {
         }
     }
 
-    pub(crate) fn build_client_common(&self, http3: bool) -> reqwest::ClientBuilder {
-        let cookie_jar = if let Some(ref provider) = self.options.credential_provider {
-            provider.cookie_jar()
-        } else {
-            Arc::new(reqwest::cookie::Jar::default())
-        };
-
-        let mut builder = reqwest::Client::builder()
-            .user_agent(self.options.user_agent.as_deref().unwrap_or("Aura/0.1.0"))
-            .cookie_provider(cookie_jar)
-            .redirect(reqwest::redirect::Policy::none())
-            .connect_timeout(std::time::Duration::from_secs(
-                self.options.connect_timeout.unwrap_or(30),
-            ))
-            .tcp_keepalive(std::time::Duration::from_secs(60));
-
-        if http3 {
-            builder = builder.http3_prior_knowledge();
-        }
-
-        if let Some(addr) = self.options.local_addr {
-            builder = builder.local_address(addr);
-        }
-
-        if let Some(ref p) = self.options.proxy {
-            if let Ok(proxy_obj) = reqwest::Proxy::all(p) {
-                builder = builder.proxy(proxy_obj);
-            }
-        }
-
-        if let Some(ref resolver) = self.options.dns_resolver {
-            let wrapped = crate::net_util::ReqwestDnsResolver::from_arc(resolver.clone());
-            builder = builder.dns_resolver(Arc::new(wrapped));
-        }
-
-        builder
-    }
-
     pub(crate) fn build_http3_client(&self) -> reqwest::Client {
-        self.build_client_common(true)
+        build_client_from_options(&self.options, true)
             .build()
             .expect("Failed to build HTTP/3 client")
     }
@@ -275,30 +213,64 @@ impl HttpWorker {
         status.is_server_error() || status == reqwest::StatusCode::TOO_MANY_REQUESTS
     }
 
-    pub fn new(options: HttpWorkerOptions) -> Self {
-        // Create a temporary dummy to use its common builder logic
-        let dummy = HttpWorker {
-            client: Arc::new(reqwest::Client::new()),
-            http3_client: Arc::new(Mutex::new(None)),
-            options: options.clone(),
-        };
+    pub(crate) async fn upgrade_url(&self, uri: &str) -> String {
+        if !uri.starts_with("http://") {
+            return uri.to_string();
+        }
 
-        let builder = dummy.build_client_common(false);
+        if let Some(ref cache) = self.options.hsts_cache {
+            if let Ok(url) = url::Url::parse(uri) {
+                if let Some(host) = url.host_str() {
+                    if cache.should_upgrade(host).await {
+                        let mut upgraded = url.clone();
+                        let _ = upgraded.set_scheme("https");
+                        return upgraded.to_string();
+                    }
+                }
+            }
+        }
 
-        let client = if let (Some(ref pool), Some(key)) =
-            (&options.client_pool, ClientKey::from_uri(&options.uri))
-        {
-            pool.get_or_create(key, || {
-                builder.build().expect("Failed to build HTTP client")
-            })
-        } else {
-            Arc::new(builder.build().expect("Failed to build HTTP client"))
-        };
+        uri.to_string()
+    }
+}
 
-        Self {
-            client,
-            http3_client: Arc::new(Mutex::new(None)),
-            options,
+pub(crate) fn build_client_from_options(
+    options: &WorkerOptions,
+    http3: bool,
+) -> reqwest::ClientBuilder {
+    let cookie_jar = if let Some(ref provider) = options.credential_provider {
+        provider.cookie_jar()
+    } else {
+        Arc::new(reqwest::cookie::Jar::default())
+    };
+
+    let mut builder = reqwest::Client::builder()
+        .user_agent(options.user_agent.as_deref().unwrap_or("Aura/0.1.0"))
+        .cookie_provider(cookie_jar)
+        .redirect(reqwest::redirect::Policy::none())
+        .connect_timeout(std::time::Duration::from_secs(
+            options.connect_timeout.unwrap_or(30),
+        ))
+        .tcp_keepalive(std::time::Duration::from_secs(60));
+
+    if http3 {
+        builder = builder.http3_prior_knowledge();
+    }
+
+    if let Some(addr) = options.local_addr {
+        builder = builder.local_address(addr);
+    }
+
+    if let Some(ref p) = options.proxy {
+        if let Ok(proxy_obj) = reqwest::Proxy::all(p) {
+            builder = builder.proxy(proxy_obj);
         }
     }
+
+    if let Some(ref resolver) = options.dns_resolver {
+        let wrapped = crate::net_util::ReqwestDnsResolver::from_arc(resolver.clone());
+        builder = builder.dns_resolver(Arc::new(wrapped));
+    }
+
+    builder
 }

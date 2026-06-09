@@ -47,25 +47,14 @@ fn build_tls_config() -> Result<std::sync::Arc<ClientConfig>> {
 /// the internal `DataStream` within suppaftp stores either a raw TCP stream or a TLS
 /// stream, allowing the same type alias to cover both cases. TLS is only negotiated
 /// when the scheme is `ftps` or when the server advertises `AUTH TLS` in FEAT.
-pub struct FtpWorkerOptions {
-    pub uri: String,
-    pub local_addr: Option<std::net::IpAddr>,
-    pub retry_count: u32,
-    pub http_retry_delay_secs: u64,
-    pub happy_eyeballs_stagger_ms: u64,
-    pub http_buffer_capacity: usize,
-    pub credential_provider: Option<std::sync::Arc<crate::config::credentials::CredentialProvider>>,
-    pub resource_governor:
-        Option<std::sync::Arc<crate::orchestrator::resource_governor::ResourceGovernor>>,
-    pub tenant_id: Option<crate::TenantId>,
-}
+use crate::worker::builder::WorkerOptions;
 
 pub struct FtpWorker {
-    pub(crate) options: FtpWorkerOptions,
+    pub(crate) options: WorkerOptions,
 }
 
 impl FtpWorker {
-    pub fn new(options: FtpWorkerOptions) -> Self {
+    pub fn new(options: WorkerOptions) -> Self {
         Self { options }
     }
 
@@ -193,7 +182,7 @@ impl FtpWorker {
                     let exponent = std::cmp::min(attempts - 1, 30);
                     let delay = self
                         .options
-                        .http_retry_delay_secs
+                        .retry_delay_secs
                         .saturating_mul(2u64.pow(exponent));
                     tracing::warn!(
                         error = %e,

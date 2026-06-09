@@ -212,7 +212,7 @@ impl Orchestrator {
             let _ = self.event_tx.send(Event::TaskProgress {
                 id,
                 completed_bytes: task.completed_length,
-                uploaded_bytes: task.uploaded_length,
+                uploaded_bytes: task.uploaded_length(),
                 total_bytes: task.total_length,
             });
         }

@@ -12,11 +12,21 @@ impl Orchestrator {
         match event {
             crate::storage::StorageEvent::Completed(id) => {
                 info!(%id, "Storage reported completion");
+
+                let mut uploaded_length = 0;
+                if let Some(bt) = self.get_bt_task(id) {
+                    uploaded_length = bt
+                        .state
+                        .uploaded_length
+                        .load(std::sync::atomic::Ordering::Relaxed);
+                    let mut start_time = bt.state.seeding_start_time.lock().unwrap();
+                    if start_time.is_none() {
+                        *start_time = Some(chrono::Utc::now());
+                    }
+                }
+
                 if let Some(task) = self.tasks.get_mut(&id) {
                     task.phase = DownloadPhase::Complete;
-                    if task.seeding_start_time.is_none() {
-                        task.seeding_start_time = Some(chrono::Utc::now());
-                    }
 
                     let duration_secs = task
                         .created_at
@@ -28,7 +38,7 @@ impl Orchestrator {
                         uris: task.subtasks.iter().map(|s| s.uri.clone()).collect(),
                         total_bytes: task.total_length,
                         downloaded_bytes: task.completed_length,
-                        uploaded_bytes: task.uploaded_length,
+                        uploaded_bytes: uploaded_length,
                         duration_secs,
                         checksum_verified: Some(true),
                         phase: "Complete".to_string(),
@@ -137,6 +147,15 @@ impl Orchestrator {
             crate::storage::StorageEvent::Error(id, err) => {
                 error!(%id, %err, "Storage reported fatal error; pausing task");
                 let mut exists = false;
+
+                let mut uploaded_length = 0;
+                if let Some(bt) = self.get_bt_task(id) {
+                    uploaded_length = bt
+                        .state
+                        .uploaded_length
+                        .load(std::sync::atomic::Ordering::Relaxed);
+                }
+
                 if let Some(task) = self.tasks.get_mut(&id) {
                     task.phase = DownloadPhase::Error;
                     exists = true;
@@ -151,7 +170,7 @@ impl Orchestrator {
                         uris: task.subtasks.iter().map(|s| s.uri.clone()).collect(),
                         total_bytes: task.total_length,
                         downloaded_bytes: task.completed_length,
-                        uploaded_bytes: task.uploaded_length,
+                        uploaded_bytes: uploaded_length,
                         duration_secs,
                         checksum_verified: Some(false),
                         phase: "Error".to_string(),

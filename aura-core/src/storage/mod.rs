@@ -1,3 +1,5 @@
+pub mod aggregator;
+pub mod locker;
 pub mod registry;
 
 pub mod completion;

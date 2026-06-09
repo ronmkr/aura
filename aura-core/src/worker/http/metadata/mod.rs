@@ -66,8 +66,7 @@ impl HttpWorker {
                             break resp;
                         } else if Self::is_retryable(resp.status()) && attempts < max_attempts {
                             attempts += 1;
-                            let delay =
-                                self.options.http_retry_delay_secs * (2u64.pow(attempts - 1));
+                            let delay = self.options.retry_delay_secs * (2u64.pow(attempts - 1));
                             tracing::warn!(
                                 status = %resp.status(),
                                 attempt = attempts,
@@ -85,7 +84,7 @@ impl HttpWorker {
                     }
                     Err(e) if attempts < max_attempts => {
                         attempts += 1;
-                        let delay = self.options.http_retry_delay_secs * (2u64.pow(attempts - 1));
+                        let delay = self.options.retry_delay_secs * (2u64.pow(attempts - 1));
                         tracing::warn!(
                             error = %e,
                             attempt = attempts,

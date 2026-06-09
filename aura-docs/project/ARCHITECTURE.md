@@ -70,16 +70,23 @@ flowchart TD
 ## Component Definitions
 
 ### 1. User Interfaces (Personas)
-- **Aura CLI**: High-speed, one-off download tool. It can operate as a standalone instance (spinning up its own core and RPC server) or act as a client connecting to an existing `aura-daemon`.
-- **Aura TUI**: Interactive dashboard for real-time monitoring and task control via JSON-RPC.
-- **Aura Daemon**: The background service that persists across sessions, running the core engine and exposing the shared RPC interface.
+- **Aura CLI ("The Sprinter")**: High-speed, one-off download tool. It can operate as a standalone instance (spinning up its own core and RPC server) or act as a client connecting to an existing `aura-daemon`. Features bulk URL ingestion via CLI flags and recursive folder scanning.
+- **Aura TUI ("The Pilot")**: Interactive command center built on a stateful Multi-View architecture (Dashboard, Mission Control, File Selector). Features include:
+    - **Zero-Friction Ingest**: Seamless OS clipboard polling and terminal drag-and-drop support via bracketed paste.
+    - **Command Palette**: Fuzzy-searchable interface (`:` or `Ctrl+P`) and real-time task filtering (`/`).
+    - **Interactive File Selection**: Tree-view selection of specific files within BitTorrent and Metalink bundles.
+- **Aura Daemon ("The Ghost")**: The background service that persists across sessions, running the core engine and exposing the shared JSON-RPC / WebSocket interface.
 
 ### 2. The Engine & Orchestrator
 - **Engine**: The top-level coordinator. It manages the global state, configuration, and the lifecycle of the daemon.
+- **Protocol Detector**: A centralized gateway that parses incoming URIs, local files, or directories, identifying the correct protocol (HTTP, FTP, BT, Metalink) for bulk and single task ingestion.
 - **Orchestrator**: Responsible for a specific task's lifecycle. It spawns protocol workers, manages retries, and coordinates between the swarm and storage.
+- **Protocol-Agnostic MetaTask**: The core task metadata struct is decoupled from protocol-specific fields (like BitTorrent seeding ratios). Protocol-specific state is managed via the `TaskExtension` trait and the `extensions` registry.
+- **WorkerBuilder Inversion**: Instead of a monolithic builder that knows about all protocols, Aura uses a generic `WorkerOptions` container. Each protocol worker (e.g., `HttpWorker`, `FtpWorker`) independently accepts these options, allowing new protocols to be added without modifying the central builder logic.
 
 ### 3. Storage & Memory
 - **Storage Engine**: Handles all disk operations. It uses a **Sequential Aggregator** to reorder out-of-order network chunks into contiguous disk writes, minimizing head movement on HDDs and wear on SSDs.
+- **Advisory File Locking**: The storage layer employs an `AdvisoryLocker` to acquire `flock` boundaries over active `.part` files, safely managing concurrent write access across multi-process downloads and network shares.
 - **Locality-based Memory**: Instead of a centralized pool, Aura leverages the `bytes` crate's atomic reference counting. Workers allocate `BytesMut` buffers which are passed to the storage engine, ensuring **zero-copy** transfer from network to disk.
 
 ### 4. Protocol Workers
@@ -229,8 +236,10 @@ This table maps architectural concepts to their primary implementation files in 
 | **Aura Daemon** | Persistent | `aura-daemon/src/lib.rs` |
 | **Engine Core** | Orchestration | `aura-core/src/orchestrator/engine.rs` |
 | **Task Orchestrator** | Orchestration | `aura-core/src/orchestrator/runner.rs` |
-| **Sequential Aggregator** | Storage | `aura-core/src/storage/ops.rs` |
-| **Storage Ops** | Storage | `aura-core/src/storage/engine.rs` |
+| **Sequential Aggregator** | Storage | `aura-core/src/storage/aggregator.rs` |
+| **Advisory Locker** | Storage | `aura-core/src/storage/locker.rs` |
+| **Storage Ops** | Storage | `aura-core/src/storage/engine.rs`, `ops.rs` |
+| **Worker Builder** | Protocol | `aura-core/src/worker/builder.rs` |
 | **Locality Memory** | Memory | `aura-core/src/worker/types.rs` (BytesMut) |
 | **HTTP Worker** | Protocol | `aura-core/src/worker/http/mod.rs` |
 | **FTP Worker** | Protocol | `aura-core/src/worker/ftp.rs` |

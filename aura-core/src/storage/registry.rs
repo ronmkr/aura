@@ -42,10 +42,7 @@ impl StorageEngine {
             self.task_checksums.insert(id, c);
         }
         self.task_padding_ranges.insert(id, padding_ranges);
-        self.next_offsets.entry(id).or_insert(0);
-        self.pending_writes.entry(id).or_default();
-        self.dirty_buffers.entry(id).or_default();
-        self.dirty_sizes.entry(id).or_insert(0);
+        self.aggregator.register_task(id);
     }
 
     pub(crate) async fn preallocate_task(&mut self, id: TaskId, length: u64) -> Result<()> {

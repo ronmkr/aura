@@ -47,7 +47,7 @@ pub async fn handle_tell_waiting(engine: &Engine, params: Option<Value>) -> Resu
                 name: &t.name,
                 total_len: t.total_length,
                 completed_len: t.completed_length,
-                uploaded_len: t.uploaded_length,
+                uploaded_len: t.uploaded_length(),
                 uris: &t.subtasks.iter().map(|s| s.uri.clone()).collect::<Vec<_>>(),
                 error_msg: None,
                 keys: &keys,
@@ -78,7 +78,7 @@ pub async fn handle_get_status(engine: &Engine, params: Option<Value>) -> Result
             name: &t.name,
             total_len: t.total_length,
             completed_len: t.completed_length,
-            uploaded_len: t.uploaded_length,
+            uploaded_len: t.uploaded_length(),
             uris: &t
                 .subtasks
                 .iter()

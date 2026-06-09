@@ -20,9 +20,9 @@ fn test_client_pool_deduplication() {
         interface: None,
     };
 
-    let client1 = pool.get_or_create(key1.clone(), reqwest::Client::new);
-    let client2 = pool.get_or_create(key2, reqwest::Client::new);
-    let client3 = pool.get_or_create(key3, reqwest::Client::new);
+    let client1 = pool.get_or_create(&key1, reqwest::Client::new);
+    let client2 = pool.get_or_create(&key2, reqwest::Client::new);
+    let client3 = pool.get_or_create(&key3, reqwest::Client::new);
 
     assert!(Arc::ptr_eq(&client1, &client2));
     assert!(!Arc::ptr_eq(&client1, &client3));
@@ -39,8 +39,8 @@ fn test_client_pool_caching() {
         interface: None,
     };
 
-    let client1 = pool.get_or_create(key.clone(), reqwest::Client::new);
-    let client2 = pool.get_or_create(key, reqwest::Client::new);
+    let client1 = pool.get_or_create(&key, reqwest::Client::new);
+    let client2 = pool.get_or_create(&key, reqwest::Client::new);
 
     assert!(Arc::ptr_eq(&client1, &client2));
     assert_eq!(pool.len(), 1);
@@ -49,7 +49,7 @@ fn test_client_pool_caching() {
 #[tokio::test]
 async fn test_http_worker_with_client_pool() {
     let pool = ClientPool::new();
-    let options = HttpWorkerOptions {
+    let options = WorkerOptions {
         uri: "http://example.com:8083".to_string(),
         local_addr: None,
         user_agent: None,
@@ -57,7 +57,7 @@ async fn test_http_worker_with_client_pool() {
         proxy: None,
         referer: None,
         retry_count: 1,
-        http_retry_delay_secs: 1,
+        retry_delay_secs: 1,
         max_redirects: 20,
         happy_eyeballs_stagger_ms: 250,
         http_buffer_capacity: 16384,

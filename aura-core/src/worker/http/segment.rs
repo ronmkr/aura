@@ -175,7 +175,7 @@ impl ProtocolWorker for HttpWorker {
                         });
                     } else if Self::is_retryable(status) && attempts < max_attempts {
                         attempts += 1;
-                        let delay = self.options.http_retry_delay_secs * (2u64.pow(attempts - 1));
+                        let delay = self.options.retry_delay_secs * (2u64.pow(attempts - 1));
                         tracing::warn!(
                             %task_id,
                             status = %status,
@@ -191,7 +191,7 @@ impl ProtocolWorker for HttpWorker {
                 }
                 Err(e) if attempts < max_attempts => {
                     attempts += 1;
-                    let delay = self.options.http_retry_delay_secs * (2u64.pow(attempts - 1));
+                    let delay = self.options.retry_delay_secs * (2u64.pow(attempts - 1));
                     tracing::warn!(
                         %task_id,
                         error = %e,

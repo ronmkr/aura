@@ -1,5 +1,6 @@
-use super::{HttpWorker, HttpWorkerOptions};
+use super::HttpWorker;
 use crate::orchestrator::resource_governor::ResourceGovernor;
+use crate::worker::builder::WorkerOptions;
 use crate::worker::{ProtocolWorker, Segment};
 use std::sync::Arc;
 use wiremock::matchers::method;
@@ -16,7 +17,7 @@ async fn test_http_worker_resource_governor() {
     let governor = Arc::new(ResourceGovernor::new(100, 20));
     let tenant = Some(crate::TenantId("tenant1".to_string()));
 
-    let worker = HttpWorker::new(HttpWorkerOptions {
+    let worker = HttpWorker::new(WorkerOptions {
         uri: format!("{}/file", server.uri()),
         local_addr: None,
         user_agent: None,
@@ -24,7 +25,7 @@ async fn test_http_worker_resource_governor() {
         proxy: None,
         referer: None,
         retry_count: 1,
-        http_retry_delay_secs: 1,
+        retry_delay_secs: 1,
         max_redirects: 20,
         happy_eyeballs_stagger_ms: 250,
         http_buffer_capacity: 16384,
@@ -71,7 +72,7 @@ async fn test_http_worker_resource_governor_backpressure() {
     let governor = Arc::new(ResourceGovernor::new(60, 20));
     let tenant = Some(crate::TenantId("tenant1".to_string()));
 
-    let worker = HttpWorker::new(HttpWorkerOptions {
+    let worker = HttpWorker::new(WorkerOptions {
         uri: format!("{}/file", server.uri()),
         local_addr: None,
         user_agent: None,
@@ -79,7 +80,7 @@ async fn test_http_worker_resource_governor_backpressure() {
         proxy: None,
         referer: None,
         retry_count: 1,
-        http_retry_delay_secs: 1,
+        retry_delay_secs: 1,
         max_redirects: 20,
         happy_eyeballs_stagger_ms: 250,
         http_buffer_capacity: 16384,

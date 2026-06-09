@@ -225,8 +225,11 @@ impl Orchestrator {
                 } else {
                     info!(%meta_id, "All ranges complete for MetaTask, entering seeding phase");
                     meta_task.phase = DownloadPhase::Complete;
-                    if meta_task.seeding_start_time.is_none() {
-                        meta_task.seeding_start_time = Some(chrono::Utc::now());
+                    if let Some(bt) = self.get_bt_task(meta_id) {
+                        let mut start_time = bt.state.seeding_start_time.lock().unwrap();
+                        if start_time.is_none() {
+                            *start_time = Some(chrono::Utc::now());
+                        }
                     }
                 }
                 completed = true;

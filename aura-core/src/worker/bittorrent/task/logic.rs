@@ -23,6 +23,10 @@ pub struct BtTaskState {
     pub tenant_id: Option<TenantId>,
     pub generations: Mutex<std::collections::HashMap<usize, u64>>,
     pub config: Arc<arc_swap::ArcSwap<crate::Config>>,
+    pub uploaded_length: std::sync::atomic::AtomicU64,
+    pub seeding_start_time: std::sync::Mutex<Option<chrono::DateTime<chrono::Utc>>>,
+    pub seed_ratio: std::sync::Mutex<Option<f32>>,
+    pub seed_time: std::sync::Mutex<Option<u32>>,
 }
 
 impl std::fmt::Debug for BtTaskState {
@@ -86,6 +90,10 @@ impl BtTaskState {
             tenant_id,
             generations: Mutex::new(std::collections::HashMap::new()),
             config,
+            uploaded_length: std::sync::atomic::AtomicU64::new(0),
+            seeding_start_time: std::sync::Mutex::new(None),
+            seed_ratio: std::sync::Mutex::new(None),
+            seed_time: std::sync::Mutex::new(None),
         }
     }
 
@@ -109,6 +117,10 @@ impl BtTaskState {
             tenant_id,
             generations: Mutex::new(std::collections::HashMap::new()),
             config,
+            uploaded_length: std::sync::atomic::AtomicU64::new(0),
+            seeding_start_time: std::sync::Mutex::new(None),
+            seed_ratio: std::sync::Mutex::new(None),
+            seed_time: std::sync::Mutex::new(None),
         }
     }
 

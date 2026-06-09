@@ -1,4 +1,5 @@
-use super::{HttpWorker, HttpWorkerOptions};
+use super::HttpWorker;
+use crate::worker::builder::WorkerOptions;
 use crate::worker::{ProtocolWorker, Segment};
 use crate::Error;
 use crate::TaskId;
@@ -24,7 +25,7 @@ async fn test_http_worker_referer_propagation() {
         .mount(&server)
         .await;
 
-    let worker = HttpWorker::new(HttpWorkerOptions {
+    let worker = HttpWorker::new(WorkerOptions {
         uri: format!("{}/start", server.uri()),
         local_addr: None,
         user_agent: None,
@@ -32,7 +33,7 @@ async fn test_http_worker_referer_propagation() {
         proxy: None,
         referer: None,
         retry_count: 5,
-        http_retry_delay_secs: 2,
+        retry_delay_secs: 2,
         max_redirects: 20,
         happy_eyeballs_stagger_ms: 250,
         http_buffer_capacity: 16384,
@@ -52,7 +53,7 @@ async fn test_http_worker_referer_propagation() {
         .await
         .expect("Should resolve metadata with redirects");
 
-    let worker_final = HttpWorker::new(HttpWorkerOptions {
+    let worker_final = HttpWorker::new(WorkerOptions {
         uri: metadata.final_uri,
         local_addr: None,
         user_agent: None,
@@ -60,7 +61,7 @@ async fn test_http_worker_referer_propagation() {
         proxy: None,
         referer: Some(format!("{}/start", server.uri())),
         retry_count: 5,
-        http_retry_delay_secs: 2,
+        retry_delay_secs: 2,
         max_redirects: 20,
         happy_eyeballs_stagger_ms: 250,
         http_buffer_capacity: 16384,
@@ -106,7 +107,7 @@ async fn test_http_worker_redirect_loop() {
         .mount(&server)
         .await;
 
-    let worker = HttpWorker::new(HttpWorkerOptions {
+    let worker = HttpWorker::new(WorkerOptions {
         uri: format!("{}/a", server.uri()),
         local_addr: None,
         user_agent: None,
@@ -114,7 +115,7 @@ async fn test_http_worker_redirect_loop() {
         proxy: None,
         referer: None,
         retry_count: 5,
-        http_retry_delay_secs: 2,
+        retry_delay_secs: 2,
         max_redirects: 20,
         happy_eyeballs_stagger_ms: 250,
         http_buffer_capacity: 16384,
@@ -148,7 +149,7 @@ async fn test_http_worker_custom_dns() {
     let resolver = crate::net_util::create_resolver(&dns_config).await.unwrap();
     let resolver_arc = std::sync::Arc::new(resolver);
 
-    let worker = HttpWorker::new(HttpWorkerOptions {
+    let worker = HttpWorker::new(WorkerOptions {
         uri: format!("{}/file", server.uri()),
         local_addr: None,
         user_agent: None,
@@ -156,7 +157,7 @@ async fn test_http_worker_custom_dns() {
         proxy: None,
         referer: None,
         retry_count: 5,
-        http_retry_delay_secs: 2,
+        retry_delay_secs: 2,
         max_redirects: 20,
         happy_eyeballs_stagger_ms: 250,
         http_buffer_capacity: 16384,
@@ -195,15 +196,15 @@ async fn test_http_worker_retry_on_503() {
         .mount(&server)
         .await;
 
-    let worker = HttpWorker::new(HttpWorkerOptions {
+    let worker = HttpWorker::new(WorkerOptions {
         uri: format!("{}/retry", server.uri()),
         local_addr: None,
         user_agent: None,
         connect_timeout: None,
         proxy: None,
         referer: None,
-        retry_count: 3,           // Max retries
-        http_retry_delay_secs: 1, // 1s base delay
+        retry_count: 3,      // Max retries
+        retry_delay_secs: 1, // 1s base delay
         max_redirects: 20,
         happy_eyeballs_stagger_ms: 250,
         http_buffer_capacity: 16384,
@@ -247,7 +248,7 @@ async fn test_http_worker_hsts_upgrade() {
 
     // Create a worker with an insecure http URL
     let http_uri = "http://example.com/file".to_string();
-    let worker = HttpWorker::new(HttpWorkerOptions {
+    let worker = HttpWorker::new(WorkerOptions {
         uri: http_uri,
         local_addr: None,
         user_agent: None,
@@ -255,7 +256,7 @@ async fn test_http_worker_hsts_upgrade() {
         proxy: None,
         referer: None,
         retry_count: 3,
-        http_retry_delay_secs: 1,
+        retry_delay_secs: 1,
         max_redirects: 20,
         happy_eyeballs_stagger_ms: 250,
         http_buffer_capacity: 16384,
@@ -289,7 +290,7 @@ async fn test_http_worker_alt_svc_header_caching() {
         .await;
 
     let alt_svc_cache = crate::security::AltSvcCache::new();
-    let worker = HttpWorker::new(HttpWorkerOptions {
+    let worker = HttpWorker::new(WorkerOptions {
         uri: format!("{}/file", server.uri()),
         local_addr: None,
         user_agent: None,
@@ -297,7 +298,7 @@ async fn test_http_worker_alt_svc_header_caching() {
         proxy: None,
         referer: None,
         retry_count: 1,
-        http_retry_delay_secs: 1,
+        retry_delay_secs: 1,
         max_redirects: 20,
         happy_eyeballs_stagger_ms: 250,
         http_buffer_capacity: 16384,

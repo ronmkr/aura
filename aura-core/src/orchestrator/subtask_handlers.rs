@@ -47,10 +47,6 @@ impl Orchestrator {
                 self.emit_progress(meta_id);
             }
             SubTaskEvent::Uploaded(meta_id, sub_id, bytes, peer_addr) => {
-                if let Some(task) = self.tasks.get_mut(&meta_id) {
-                    task.uploaded_length += bytes;
-                }
-
                 if let Some(bt_task) = self.get_bt_task(sub_id) {
                     let mut registry = bt_task.state.registry.lock().await;
                     registry.add_uploaded(&peer_addr, bytes);

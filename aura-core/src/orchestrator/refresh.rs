@@ -46,7 +46,6 @@ impl Orchestrator {
 
             // Reset lengths
             meta_task.completed_length = 0;
-            meta_task.uploaded_length = 0;
             meta_task.total_length = metadata.total_length.unwrap_or(0);
             meta_task.range_supported = metadata.range_supported;
             meta_task.etag = metadata.etag.clone();
@@ -130,8 +129,11 @@ impl Orchestrator {
         if let Some(task) = self.tasks.get_mut(&meta_id) {
             info!(%meta_id, %sub_id, "Refresh returned 304 Not Modified: file is current");
             task.phase = DownloadPhase::Complete;
-            if task.seeding_start_time.is_none() {
-                task.seeding_start_time = Some(chrono::Utc::now());
+            if let Some(bt) = self.get_bt_task(meta_id) {
+                let mut start_time = bt.state.seeding_start_time.lock().unwrap();
+                if start_time.is_none() {
+                    *start_time = Some(chrono::Utc::now());
+                }
             }
             let _ = self.save_task(meta_id).await;
             let _ = self.event_tx.send(Event::TaskCompleted(meta_id));

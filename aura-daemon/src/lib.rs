@@ -80,7 +80,7 @@ pub async fn run(args: Args) -> Result<(), Box<dyn std::error::Error>> {
 
                 for task in &active_tasks {
                     dl += task.completed_length as f64;
-                    ul += task.uploaded_length as f64;
+                    ul += task.uploaded_length() as f64;
                     st += task.subtasks.iter().filter(|s| s.active).count() as f64;
                 }
 

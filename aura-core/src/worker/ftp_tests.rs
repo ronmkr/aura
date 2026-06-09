@@ -18,17 +18,12 @@ async fn test_ftp_worker_retry_on_connection_failure() {
         }
     });
 
-    let worker = FtpWorker::new(FtpWorkerOptions {
-        uri: format!("ftp://127.0.0.1:{}/test_file.bin", port),
-        local_addr: None,
-        retry_count: 3,
-        http_retry_delay_secs: 0,
-        happy_eyeballs_stagger_ms: 250,
-        http_buffer_capacity: 16384,
-        credential_provider: None,
-        resource_governor: None,
-        tenant_id: None,
-    });
+    let worker = FtpWorker::new(
+        crate::worker::WorkerBuilder::new(format!("ftp://127.0.0.1:{}/test_file.bin", port))
+            .retry_count(3)
+            .retry_delay_secs(0)
+            .options,
+    );
 
     let result = worker.resolve_metadata().await;
     assert!(result.is_err());

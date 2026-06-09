@@ -51,7 +51,7 @@ impl Orchestrator {
                             uris: task.subtasks.iter().map(|s| s.uri.clone()).collect(),
                             total_bytes: task.total_length,
                             downloaded_bytes: task.completed_length,
-                            uploaded_bytes: task.uploaded_length,
+                            uploaded_bytes: task.uploaded_length(),
                             duration_secs,
                             checksum_verified: Some(false),
                             phase: "Removed".to_string(),

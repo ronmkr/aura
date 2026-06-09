@@ -238,20 +238,22 @@ impl Orchestrator {
         }
 
         if let Some(ratio) = seed_ratio {
-            if let Some(task) = self.tasks.get_mut(&id) {
-                if task.seed_ratio != Some(ratio) {
-                    info!(%id, from = ?task.seed_ratio, to = ?Some(ratio), "Updating task seed_ratio override");
-                    task.seed_ratio = Some(ratio);
+            if let Some(bt) = self.get_bt_task(id) {
+                let mut seed_ratio_guard = bt.state.seed_ratio.lock().unwrap();
+                if *seed_ratio_guard != Some(ratio) {
+                    info!(%id, from = ?*seed_ratio_guard, to = ?Some(ratio), "Updating task seed_ratio override");
+                    *seed_ratio_guard = Some(ratio);
                     seeding_changed = true;
                 }
             }
         }
 
         if let Some(time) = seed_time {
-            if let Some(task) = self.tasks.get_mut(&id) {
-                if task.seed_time != Some(time) {
-                    info!(%id, from = ?task.seed_time, to = ?Some(time), "Updating task seed_time override");
-                    task.seed_time = Some(time);
+            if let Some(bt) = self.get_bt_task(id) {
+                let mut seed_time_guard = bt.state.seed_time.lock().unwrap();
+                if *seed_time_guard != Some(time) {
+                    info!(%id, from = ?*seed_time_guard, to = ?Some(time), "Updating task seed_time override");
+                    *seed_time_guard = Some(time);
                     seeding_changed = true;
                 }
             }
