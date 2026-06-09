@@ -22,6 +22,9 @@ pub struct NetworkConfig {
     pub http_buffer_capacity: usize,
     pub http_concurrent_requests: usize,
     pub dns_resolver: ResolverConfig,
+    pub nat_refresh_interval_secs: u64,
+    pub tracker_timeout_secs: u64,
+    pub udp_tracker_timeout_secs: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -73,6 +76,9 @@ impl Default for NetworkConfig {
             http_buffer_capacity: 16384,
             http_concurrent_requests: 32,
             dns_resolver: ResolverConfig::default(),
+            nat_refresh_interval_secs: 1800,
+            tracker_timeout_secs: 10,
+            udp_tracker_timeout_secs: 5,
         }
     }
 }

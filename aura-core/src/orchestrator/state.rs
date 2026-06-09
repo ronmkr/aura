@@ -56,6 +56,7 @@ impl OrchestratorHandle {
             .dns_resolver(self.dns_resolver.clone())
             .user_agent(Some(config.network.user_agent.clone()))
             .connect_timeout(Some(config.network.connect_timeout_secs))
+            .tcp_keepalive_secs(Some(config.network.tcp_keepalive_secs))
             .proxy(config.network.proxy.clone())
             .max_redirects(config.network.max_redirects)
             .retry_count(config.network.http_retry_count)

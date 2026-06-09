@@ -71,6 +71,7 @@ async fn test_http_worker_with_client_pool() {
         client_pool: Some(pool.clone()),
         if_none_match: None,
         if_modified_since: None,
+        tcp_keepalive_secs: None,
     };
 
     let worker1 = HttpWorker::new(options.clone());

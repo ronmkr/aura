@@ -54,6 +54,7 @@ async fn test_http_worker_html_landing_page_resolution_success() {
         client_pool: None,
         if_none_match: None,
         if_modified_since: None,
+        tcp_keepalive_secs: None,
     });
 
     let result = worker.resolve_metadata().await;
@@ -107,6 +108,7 @@ async fn test_http_worker_html_landing_page_resolution_failure() {
         client_pool: None,
         if_none_match: None,
         if_modified_since: None,
+        tcp_keepalive_secs: None,
     });
 
     let result = worker.resolve_metadata().await;
@@ -159,6 +161,7 @@ async fn test_http_worker_captive_portal_detection() {
         client_pool: None,
         if_none_match: None,
         if_modified_since: None,
+        tcp_keepalive_secs: None,
     });
 
     let result = worker.resolve_metadata().await;

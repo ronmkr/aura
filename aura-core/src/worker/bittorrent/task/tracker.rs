@@ -28,7 +28,14 @@ impl BtTask {
             subtask_tx,
         } = args;
 
-        let tracker = TrackerClient::new(my_id, port, local_addr, user_agent, proxy);
+        let tracker = TrackerClient::new(
+            my_id,
+            port,
+            local_addr,
+            user_agent,
+            proxy,
+            Some(self.state.config.clone()),
+        );
         info!(%self.id, "Starting tracker announce");
 
         loop {
@@ -55,9 +62,15 @@ impl BtTask {
                 }
             }
 
+            let tracker_polling_interval_secs = self
+                .state
+                .config
+                .load()
+                .bittorrent
+                .tracker_polling_interval_secs;
             tokio::select! {
                 _ = token.cancelled() => break,
-                _ = tokio::time::sleep(std::time::Duration::from_secs(60)) => {}
+                _ = tokio::time::sleep(std::time::Duration::from_secs(tracker_polling_interval_secs)) => {}
             }
         }
         Ok(())

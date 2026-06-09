@@ -22,6 +22,7 @@ pub struct TrackerClient {
     pub(crate) proxy: Option<String>,
     pub(crate) tracker_tiers:
         std::sync::Mutex<std::collections::HashMap<[u8; 20], Vec<Vec<String>>>>,
+    pub(crate) config: Option<std::sync::Arc<arc_swap::ArcSwap<crate::Config>>>,
 }
 
 impl TrackerClient {
@@ -31,6 +32,7 @@ impl TrackerClient {
         local_addr: Option<std::net::IpAddr>,
         user_agent: Option<String>,
         proxy: Option<String>,
+        config: Option<std::sync::Arc<arc_swap::ArcSwap<crate::Config>>>,
     ) -> Self {
         let mut headers = reqwest::header::HeaderMap::new();
         let ua = user_agent
@@ -42,9 +44,14 @@ impl TrackerClient {
                 .unwrap_or_else(|_| reqwest::header::HeaderValue::from_static("Aura/0.1.0")),
         );
 
+        let timeout_secs = config
+            .as_ref()
+            .map(|c| c.load().network.tracker_timeout_secs)
+            .unwrap_or(10);
+
         let mut builder = reqwest::Client::builder()
             .default_headers(headers)
-            .timeout(std::time::Duration::from_secs(10));
+            .timeout(std::time::Duration::from_secs(timeout_secs));
 
         if let Some(addr) = local_addr {
             builder = builder.local_address(addr);
@@ -64,6 +71,7 @@ impl TrackerClient {
             _user_agent: user_agent,
             proxy,
             tracker_tiers: std::sync::Mutex::new(std::collections::HashMap::new()),
+            config,
         }
     }
 }

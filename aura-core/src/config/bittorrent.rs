@@ -39,6 +39,14 @@ pub struct BitTorrentConfig {
     pub peer_eviction_threshold: usize,
     pub peer_eviction_percent: f32,
     pub peer_idle_penalty_threshold_secs: f64,
+    pub dht_save_interval_secs: u64,
+    pub dht_ping_interval_secs: u64,
+    pub dht_token_rotation_secs: u64,
+    pub dht_query_interval_secs: u64,
+    pub dht_query_timeout_secs: u64,
+    pub tracker_polling_interval_secs: u64,
+    pub lpd_announce_interval_secs: u64,
+    pub choker_interval_secs: u64,
 }
 
 impl Default for BitTorrentConfig {
@@ -61,6 +69,14 @@ impl Default for BitTorrentConfig {
             peer_eviction_threshold: 500,
             peer_eviction_percent: 0.1,
             peer_idle_penalty_threshold_secs: 60.0,
+            dht_save_interval_secs: 300,
+            dht_ping_interval_secs: 600,
+            dht_token_rotation_secs: 600,
+            dht_query_interval_secs: 120,
+            dht_query_timeout_secs: 5,
+            tracker_polling_interval_secs: 60,
+            lpd_announce_interval_secs: 300,
+            choker_interval_secs: 10,
         }
     }
 }

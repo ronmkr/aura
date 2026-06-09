@@ -251,7 +251,9 @@ pub(crate) fn build_client_from_options(
         .connect_timeout(std::time::Duration::from_secs(
             options.connect_timeout.unwrap_or(30),
         ))
-        .tcp_keepalive(std::time::Duration::from_secs(60));
+        .tcp_keepalive(std::time::Duration::from_secs(
+            options.tcp_keepalive_secs.unwrap_or(60),
+        ));
 
     if http3 {
         builder = builder.http3_prior_knowledge();

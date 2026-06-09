@@ -42,9 +42,11 @@ impl BtTask {
                 } => {}
             }
 
+            let dht_query_interval_secs =
+                self.state.config.load().bittorrent.dht_query_interval_secs;
             tokio::select! {
                 _ = token.cancelled() => break,
-                _ = tokio::time::sleep(std::time::Duration::from_secs(120)) => {}
+                _ = tokio::time::sleep(std::time::Duration::from_secs(dht_query_interval_secs)) => {}
             }
         }
         Ok(())

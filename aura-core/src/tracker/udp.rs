@@ -6,6 +6,13 @@ use tracing::{debug, warn};
 
 impl TrackerClient {
     pub(crate) async fn announce_udp(&self, url_str: &str, torrent: &Torrent) -> Result<Vec<Peer>> {
+        let timeout_secs = self
+            .config
+            .as_ref()
+            .map(|c| c.load().network.udp_tracker_timeout_secs)
+            .unwrap_or(5);
+        let timeout_dur = std::time::Duration::from_secs(timeout_secs);
+
         if let Some(ref p) = self.proxy {
             if p.starts_with("socks5://") {
                 warn!("UDP trackers do not yet support SOCKS5 proxying; attempting direct connection for {}", url_str);
@@ -21,7 +28,7 @@ impl TrackerClient {
             .ok_or_else(|| Error::Protocol("Missing port in UDP tracker URL".to_string()))?;
 
         let addrs = tokio::time::timeout(
-            std::time::Duration::from_secs(5),
+            timeout_dur,
             tokio::net::lookup_host(format!("{}:{}", host, port)),
         )
         .await
@@ -197,7 +204,7 @@ impl TrackerClient {
 
             let mut buf = [0u8; 1024];
             let len = match tokio::time::timeout(
-                std::time::Duration::from_secs(2),
+                std::time::Duration::from_secs(2), // Keep stopped notify quick
                 socket.recv(&mut buf),
             )
             .await

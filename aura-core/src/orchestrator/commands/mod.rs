@@ -132,6 +132,7 @@ impl Orchestrator {
                     local_addr,
                     user_agent,
                     proxy,
+                    Some(self.config.clone()),
                 ));
 
                 let mut announce_futures = Vec::new();

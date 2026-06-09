@@ -103,7 +103,12 @@ impl StorageEngine {
     pub async fn run(mut self) -> Result<()> {
         info!("Storage Engine started");
 
-        let mut interval = tokio::time::interval(std::time::Duration::from_secs(3));
+        let flush_secs = self
+            .config
+            .as_ref()
+            .map(|c| c.load().storage.flush_interval_secs)
+            .unwrap_or(3);
+        let mut interval = tokio::time::interval(std::time::Duration::from_secs(flush_secs));
 
         loop {
             let has_tasks = !self.scheduler.is_empty();

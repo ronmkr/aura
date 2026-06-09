@@ -39,6 +39,7 @@ async fn test_http_worker_resource_governor() {
         client_pool: None,
         if_none_match: None,
         if_modified_since: None,
+        tcp_keepalive_secs: None,
     });
 
     let throttler = std::sync::Arc::new(crate::throttler::Throttler::new(0, 0, 100));
@@ -94,6 +95,7 @@ async fn test_http_worker_resource_governor_backpressure() {
         client_pool: None,
         if_none_match: None,
         if_modified_since: None,
+        tcp_keepalive_secs: None,
     });
 
     let throttler = std::sync::Arc::new(crate::throttler::Throttler::new(0, 0, 100));

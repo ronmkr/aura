@@ -47,6 +47,7 @@ async fn test_http_worker_referer_propagation() {
         client_pool: None,
         if_none_match: None,
         if_modified_since: None,
+        tcp_keepalive_secs: None,
     });
     let metadata = worker
         .resolve_metadata()
@@ -75,6 +76,7 @@ async fn test_http_worker_referer_propagation() {
         client_pool: None,
         if_none_match: None,
         if_modified_since: None,
+        tcp_keepalive_secs: None,
     });
     let throttler = std::sync::Arc::new(crate::throttler::Throttler::new(0, 0, 100));
     let result = worker_final
@@ -129,6 +131,7 @@ async fn test_http_worker_redirect_loop() {
         client_pool: None,
         if_none_match: None,
         if_modified_since: None,
+        tcp_keepalive_secs: None,
     });
     let result = worker.resolve_metadata().await;
     match result {
@@ -171,6 +174,7 @@ async fn test_http_worker_custom_dns() {
         client_pool: None,
         if_none_match: None,
         if_modified_since: None,
+        tcp_keepalive_secs: None,
     });
 
     let metadata = worker.resolve_metadata().await.expect("Should resolve");
@@ -218,6 +222,7 @@ async fn test_http_worker_retry_on_503() {
         client_pool: None,
         if_none_match: None,
         if_modified_since: None,
+        tcp_keepalive_secs: None,
     });
 
     let throttler = std::sync::Arc::new(crate::throttler::Throttler::new(0, 0, 100));
@@ -270,6 +275,7 @@ async fn test_http_worker_hsts_upgrade() {
         client_pool: None,
         if_none_match: None,
         if_modified_since: None,
+        tcp_keepalive_secs: None,
     });
 
     let upgraded = worker.upgrade_url(&worker.options.uri).await;
@@ -312,6 +318,7 @@ async fn test_http_worker_alt_svc_header_caching() {
         client_pool: None,
         if_none_match: None,
         if_modified_since: None,
+        tcp_keepalive_secs: None,
     });
 
     let result = worker.resolve_metadata().await;

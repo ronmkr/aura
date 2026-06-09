@@ -71,7 +71,8 @@ impl Engine {
             dht_rx,
             local_addr,
             initial_config.network.dht_port,
-            Some(storage.get_db()),
+            Some(storage.db.clone()),
+            config.clone(),
         )
         .await?;
         tokio::spawn(async move {
@@ -83,8 +84,9 @@ impl Engine {
         use crate::nat::{NatActor, NatCommand};
         let nat_actor = NatActor::new(nat_rx);
         let nat_tx_clone = nat_tx.clone();
+        let nat_config_clone = config.clone();
         tokio::spawn(async move {
-            if let Err(e) = nat_actor.run().await {
+            if let Err(e) = nat_actor.run(nat_config_clone).await {
                 warn!("NAT Actor stopped: {}", e);
             }
         });

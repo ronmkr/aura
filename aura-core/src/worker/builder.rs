@@ -8,6 +8,7 @@ pub struct WorkerOptions {
     pub local_addr: Option<IpAddr>,
     pub user_agent: Option<String>,
     pub connect_timeout: Option<u64>,
+    pub tcp_keepalive_secs: Option<u64>,
     pub proxy: Option<String>,
     pub referer: Option<String>,
     pub retry_count: u32,
@@ -34,6 +35,7 @@ impl Default for WorkerOptions {
             local_addr: None,
             user_agent: None,
             connect_timeout: None,
+            tcp_keepalive_secs: None,
             proxy: None,
             referer: None,
             retry_count: 5,
@@ -65,26 +67,7 @@ impl WorkerBuilder {
         Self {
             options: WorkerOptions {
                 uri,
-                local_addr: None,
-                user_agent: None,
-                connect_timeout: None,
-                proxy: None,
-                referer: None,
-                retry_count: 5,
-                retry_delay_secs: 2,
-                max_redirects: 20,
-                happy_eyeballs_stagger_ms: 250,
-                http_buffer_capacity: 16384,
-                http_concurrent_requests: 32,
-                credential_provider: None,
-                dns_resolver: None,
-                hsts_cache: None,
-                alt_svc_cache: None,
-                resource_governor: None,
-                tenant_id: None,
-                client_pool: None,
-                if_none_match: None,
-                if_modified_since: None,
+                ..Default::default()
             },
         }
     }
@@ -124,6 +107,11 @@ impl WorkerBuilder {
 
     pub fn connect_timeout(mut self, timeout: Option<u64>) -> Self {
         self.options.connect_timeout = timeout;
+        self
+    }
+
+    pub fn tcp_keepalive_secs(mut self, secs: Option<u64>) -> Self {
+        self.options.tcp_keepalive_secs = secs;
         self
     }
 
