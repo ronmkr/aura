@@ -46,6 +46,13 @@ Manages how Aura interacts with the outside world.
 | `max_redirects` | usize | `20` | Maximum number of HTTP 3xx redirects to follow before failing a task. |
 | `http_retry_count` | u32 | `5` | Retries for transient HTTP errors (500, 502, 503, 504). Uses exponential backoff. |
 | `http_retry_delay_secs`| u64 | `2` | Initial delay for the first retry. Subsequent retries double this value. |
+| `happy_eyeballs_stagger_ms`| u64 | `250` | The delay between IPv4 and IPv6 connection attempts during "Happy Eyeballs" racing. |
+| `http_buffer_capacity` | usize | `65536` | Buffer size per HTTP connection. Higher values improve throughput on high-BDP links but increase memory usage. |
+| `http_concurrent_requests`| usize | `32` | Maximum concurrent requests across all HTTP workers. |
+| `nat_refresh_interval_secs`| u64 | `1800` | Frequency for refreshing UPnP/NAT-PMP port mappings. |
+| `tracker_timeout_secs` | u64 | `10` | Timeout for HTTP BitTorrent tracker announcements. |
+| `udp_tracker_timeout_secs`| u64 | `5` | Timeout for UDP BitTorrent tracker announcements. |
+| `roaming_reconnect_delay_ms`| u64 | `500` | Cooldown period when switching network interfaces before resuming workers. |
 | `dns_resolver` | enum | `"system"` | See [DNS Configuration](#dns-configuration). Options: `"system"`, `"cloudflare"`, `"google"`, or specific IP. |
 
 ### DNS Configuration
@@ -114,6 +121,14 @@ Low-level tuning for the BitTorrent protocol (BEP implementation).
 | `dht_enabled` | bool | `true` | Enables Mainline DHT (BEP 5). Finds peers without a tracker. |
 | `pex_enabled` | bool | `true` | Enables Peer Exchange (BEP 11). Learning about new peers from existing ones. |
 | `lpd_enabled` | bool | `false` | Local Peer Discovery. Fast transfers with other Aura users on your LAN. |
+| `dht_save_interval_secs`| u64 | `300` | Frequency for persisting the DHT routing table to disk. |
+| `dht_ping_interval_secs`| u64 | `600` | Frequency for refreshing DHT neighbors. |
+| `dht_token_rotation_secs`| u64 | `600` | Frequency for rotating DHT security tokens. |
+| `dht_query_interval_secs`| u64 | `120` | Interval for proactive DHT node lookups. |
+| `dht_query_timeout_secs`| u64 | `5` | Deadline for individual DHT RPC queries. |
+| `tracker_polling_interval_secs`| u64 | `60` | Frequency for re-announcing to BitTorrent trackers. |
+| `lpd_announce_interval_secs`| u64 | `300` | Frequency for sending Local Peer Discovery multicast packets. |
+| `choker_interval_secs` | u64 | `10` | The tick rate for the BitTorrent choking algorithm (tit-for-tat). |
 | `seed_ratio` | f32 | `1.0` | Target upload ratio. `1.0` means "Share back what you took". |
 | `seed_time_mins` | u32 | `0` | Time-based seeding limit. `0` = Seed forever until ratio is met. |
 | `endgame_mode_enabled` | bool | `true` | When < 1% remains, Aura requests the same block from multiple peers. **Impact**: Prevents "Stuck at 99.9%" due to one slow peer. |
@@ -132,6 +147,8 @@ Governs the asynchronous I/O engine.
 | `preallocate` | bool | `true` | If true, Aura reserves the full file size on disk before downloading byte 1. |
 | `allocation_mode` | enum | `"falloc"` | **none**: No pre-allocation.<br>**prealloc**: Writes zeros to the whole file (Slow, stable).<br>**falloc**: Uses `posix_fallocate` (Instant on XFS/EXT4/NTFS). |
 | `save_session_interval_secs`| u64 | `10` | Frequency for syncing `.aura` control files. Controls how much progress is lost on a power failure. |
+| `flush_interval_secs` | u64 | `3` | Interval for the generational epoch flush of out-of-order buffers. |
+| `io_deadline_ms` | u64 | `500` | The maximum target latency for a single disk write operation. |
 | `read_ahead_kb` | u32 | `128` | Prefetches data into RAM when seeding. Reduces disk head movement. |
 | `write_buffer_kb` | u32 | `256` | The chunk size for sequential flushes to the OS. |
 
@@ -204,6 +221,7 @@ Native VPN integration for high-privacy environments (ADR 0038).
 | `profile_path` | String | `None` | Path to the config file (e.g., `/etc/wireguard/wg0.conf`). |
 | `auto_connect` | bool | `false` | If true, Aura tries to up the interface on boot. |
 | `check_interval_secs` | u64 | `5` | Frequency of health checks. |
+| `connect_timeout_secs` | u64 | `5` | Seconds to wait for a VPN connection attempt to succeed. |
 | `force_tunnel` | bool | `false` | **The Kill-switch**. If the VPN interface drops, Aura pauses all tasks and closes all sockets within milliseconds. |
 
 ---
@@ -217,6 +235,7 @@ Core engine behavior and aesthetic settings.
 | `log_path` | String | `None` | Log file path. If `None`, logs go to `stderr`. |
 | `check_integrity` | bool | `true` | If true, every single block is hash-verified. **Security**: Mandatory for BitTorrent. |
 | `event_poll_interval_ms`| u64 | `500` | UI refresh rate. Lower = smoother progress bars, Higher = lower CPU usage. |
+| `graceful_shutdown_timeout_secs`| u64 | `5` | Maximum time to wait for active workers to finish before forced termination. |
 | `daemon_mode` | bool | `false` | If true, Aura detaches from the terminal and runs as a background service. |
 
 ### [general.theme] (TUI only)

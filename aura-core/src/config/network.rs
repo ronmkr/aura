@@ -25,6 +25,7 @@ pub struct NetworkConfig {
     pub nat_refresh_interval_secs: u64,
     pub tracker_timeout_secs: u64,
     pub udp_tracker_timeout_secs: u64,
+    pub roaming_reconnect_delay_ms: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -79,6 +80,7 @@ impl Default for NetworkConfig {
             nat_refresh_interval_secs: 1800,
             tracker_timeout_secs: 10,
             udp_tracker_timeout_secs: 5,
+            roaming_reconnect_delay_ms: 500,
         }
     }
 }

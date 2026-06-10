@@ -8,11 +8,15 @@ use tokio::time::timeout;
 /// WireGuard controller using `wg` and `wg-quick` CLI.
 pub struct WireGuardProvider {
     interface: String,
+    timeout_secs: u64,
 }
 
 impl WireGuardProvider {
-    pub fn new(interface: String) -> Self {
-        Self { interface }
+    pub fn new(interface: String, timeout_secs: u64) -> Self {
+        Self {
+            interface,
+            timeout_secs,
+        }
     }
 
     async fn run_cmd(&self, program: &str, args: &[&str]) -> Result<std::process::Output> {
@@ -22,7 +26,7 @@ impl WireGuardProvider {
         }
 
         let child_fut = cmd.output();
-        match timeout(Duration::from_secs(5), child_fut).await {
+        match timeout(Duration::from_secs(self.timeout_secs), child_fut).await {
             Ok(Ok(output)) => Ok(output),
             Ok(Err(e)) => {
                 if e.kind() == std::io::ErrorKind::NotFound {

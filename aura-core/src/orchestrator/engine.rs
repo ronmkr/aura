@@ -126,9 +126,10 @@ impl Engine {
         use crate::lpd::LpdActor;
         if initial_config.bittorrent.lpd_enabled {
             let lpd_subtask_tx = orchestrator.subtask_tx.clone();
-            let lpd_actor = LpdActor::new(lpd_rx, lpd_subtask_tx, local_addr).await?;
+            let lpd_actor = LpdActor::new(lpd_rx, lpd_subtask_tx.clone(), local_addr).await?;
+            let lpd_config_clone = config.clone();
             tokio::spawn(async move {
-                if let Err(e) = lpd_actor.run().await {
+                if let Err(e) = lpd_actor.run(lpd_config_clone).await {
                     warn!("LPD Actor stopped: {}", e);
                 }
             });

@@ -61,10 +61,15 @@ impl LpdActor {
         })
     }
 
-    pub async fn run(mut self) -> Result<()> {
+    pub async fn run(
+        mut self,
+        config: std::sync::Arc<arc_swap::ArcSwap<crate::Config>>,
+    ) -> Result<()> {
         info!("LPD Actor started");
 
-        let mut announce_interval = tokio::time::interval(std::time::Duration::from_secs(300));
+        let announce_secs = config.load().bittorrent.lpd_announce_interval_secs;
+        let mut announce_interval =
+            tokio::time::interval(std::time::Duration::from_secs(announce_secs));
         let mut buf = [0u8; 1024];
 
         loop {

@@ -6,12 +6,17 @@
 listen_port = 6881                     # BitTorrent listen port
 user_agent = "Aura/0.1.0"              # Custom User-Agent string
 connect_timeout_secs = 30              # Connection timeout
+tcp_keepalive_secs = 60                # TCP keepalive interval
 max_redirects = 20                     # Maximum HTTP redirects
 http_retry_count = 5                   # Max retries for HTTP errors
 http_retry_delay_secs = 2              # Delay between retries
 happy_eyeballs_stagger_ms = 250        # Happy Eyeballs stagger delay
 http_buffer_capacity = 65536           # Buffer size per connection (64KB)
 http_concurrent_requests = 32          # Max concurrent HTTP requests
+nat_refresh_interval_secs = 1800       # Port mapping refresh interval (30 mins)
+roaming_reconnect_delay_ms = 500       # Delay before reconnecting after interface swap
+tracker_timeout_secs = 10              # HTTP Tracker timeout
+udp_tracker_timeout_secs = 5           # UDP Tracker timeout
 
 [network.dns_resolver]
 # type = "system"                      # Use OS native resolver
@@ -42,12 +47,22 @@ enable_pex = true                      # Enable Peer Exchange
 max_peers_per_task = 50                # Max peer connections
 request_pipeline_size = 16             # Number of in-flight piece requests
 handshake_timeout_secs = 10            # BitTorrent handshake timeout
+dht_save_interval_secs = 300           # Interval to persist DHT nodes
+dht_ping_interval_secs = 600           # Interval to refresh DHT neighbors
+dht_token_rotation_secs = 600          # Interval to rotate DHT tokens
+dht_query_interval_secs = 120          # Interval to query DHT for new peers
+dht_query_timeout_secs = 5             # Timeout for DHT queries
+tracker_polling_interval_secs = 60     # Interval to announce to trackers
+lpd_announce_interval_secs = 300       # Interval for Local Peer Discovery
+choker_interval_secs = 10              # Choking algorithm tick rate
 seeding_ratio_limit = 1.0              # Stop seeding at 1.0 ratio
 seeding_time_limit_mins = 60           # Stop seeding after 1 hour
 
 [storage]
 download_dir = "downloads"             # Destination for files
 allocation_mode = "PreAllocate"        # "PreAllocate" or "Sparse"
+flush_interval_secs = 3                # Aggregated write flush interval
+io_deadline_ms = 500                   # Target latency for disk writes
 memory_limit_mb = 512                  # Max RAM for write aggregation
 memory_safety_margin_mb = 50           # Reserve memory to prevent OOM
 
@@ -75,6 +90,8 @@ target = "videos/{name}"
 [vpn]
 force_tunnel = false                   # Pause all downloads if VPN drops
 auto_connect = false                   # Try to reconnect VPN automatically
+check_interval_secs = 5                # Interval to monitor VPN status
+connect_timeout_secs = 5               # Timeout for VPN connection attempts
 # type_name = "WireGuard"              # VPN protocol type
 # profile_path = "/etc/wireguard/wg0.conf"
 
@@ -95,6 +112,7 @@ command_channel_capacity = 128         # High-priority command capacity
 history_rotation_mb = 10.0             # Max size of history file before rotation
 history_rotation_records = 10000       # Max records in history file before rotation
 history_retention_records = 5000       # Number of records to keep after rotation
+graceful_shutdown_timeout_secs = 5     # Wait time for active workers on exit
 
 [theme]
 primary = "#0000FF"

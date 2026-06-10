@@ -76,6 +76,12 @@ impl StorageEngine {
             self.aggregator
                 .add_write(id, segment.offset, data, &padding_ranges, threshold);
 
+        let deadline_ms = self
+            .config
+            .as_ref()
+            .map(|c| c.load().storage.io_deadline_ms)
+            .unwrap_or(500);
+
         for block in ready_blocks {
             use super::scheduler::{IoPriority, IoTask};
             use tokio::time::{Duration, Instant};
@@ -84,7 +90,7 @@ impl StorageEngine {
                 task_id: id,
                 offset: block.offset,
                 data: block.data,
-                deadline: Instant::now() + Duration::from_millis(500),
+                deadline: Instant::now() + Duration::from_millis(deadline_ms),
                 priority: IoPriority::Normal,
             });
         }
@@ -93,6 +99,12 @@ impl StorageEngine {
     }
 
     pub(crate) async fn flush_dirty_buffer(&mut self, id: TaskId) -> Result<()> {
+        let deadline_ms = self
+            .config
+            .as_ref()
+            .map(|c| c.load().storage.io_deadline_ms)
+            .unwrap_or(500);
+
         if let Some(block) = self.aggregator.take_dirty_block(id) {
             use super::scheduler::{IoPriority, IoTask};
             use tokio::time::{Duration, Instant};
@@ -101,7 +113,7 @@ impl StorageEngine {
                 task_id: id,
                 offset: block.offset,
                 data: block.data,
-                deadline: Instant::now() + Duration::from_millis(500),
+                deadline: Instant::now() + Duration::from_millis(deadline_ms),
                 priority: IoPriority::Normal,
             });
         }
@@ -131,6 +143,12 @@ impl StorageEngine {
     pub(crate) async fn flush_all_pending(&mut self, id: TaskId) -> Result<()> {
         let blocks = self.aggregator.take_all_pending(id);
 
+        let deadline_ms = self
+            .config
+            .as_ref()
+            .map(|c| c.load().storage.io_deadline_ms / 5) // High priority is 5x faster
+            .unwrap_or(100);
+
         use super::scheduler::{IoPriority, IoTask};
         use tokio::time::{Duration, Instant};
 
@@ -139,7 +157,7 @@ impl StorageEngine {
                 task_id: id,
                 offset: block.offset,
                 data: block.data,
-                deadline: Instant::now() + Duration::from_millis(100),
+                deadline: Instant::now() + Duration::from_millis(deadline_ms),
                 priority: IoPriority::High,
             });
         }

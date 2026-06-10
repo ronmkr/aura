@@ -10,13 +10,15 @@ use tokio::time::timeout;
 pub struct OpenVpnProvider {
     mgmt_addr: String,
     password: Option<String>,
+    timeout_secs: u64,
 }
 
 impl OpenVpnProvider {
-    pub fn new(mgmt_addr: String) -> Self {
+    pub fn new(mgmt_addr: String, timeout_secs: u64) -> Self {
         Self {
             mgmt_addr,
             password: None,
+            timeout_secs,
         }
     }
 
@@ -68,8 +70,9 @@ impl OpenVpnProvider {
     }
 
     async fn send_command(&self, cmd: &str) -> Result<String> {
+        let timeout_dur = Duration::from_secs(self.timeout_secs);
         let connect_fut = TcpStream::connect(&self.mgmt_addr);
-        let stream = match timeout(Duration::from_secs(5), connect_fut).await {
+        let stream = match timeout(timeout_dur, connect_fut).await {
             Ok(Ok(stream)) => stream,
             Ok(Err(e)) => {
                 return Err(Error::Engine(format!(
@@ -87,7 +90,7 @@ impl OpenVpnProvider {
         let mut reader = BufReader::new(stream);
 
         let handshake_fut = self.read_until_prompt(&mut reader);
-        timeout(Duration::from_secs(5), handshake_fut)
+        timeout(timeout_dur, handshake_fut)
             .await
             .map_err(|_| Error::Engine("OpenVPN management handshake timed out".to_string()))??;
 
@@ -103,7 +106,7 @@ impl OpenVpnProvider {
         let mut line = String::new();
         loop {
             let read_line_fut = reader.read_line(&mut line);
-            let n = match timeout(Duration::from_secs(5), read_line_fut).await {
+            let n = match timeout(timeout_dur, read_line_fut).await {
                 Ok(Ok(n)) => n,
                 Ok(Err(e)) => {
                     return Err(Error::Engine(format!(

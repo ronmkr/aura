@@ -14,8 +14,10 @@ impl Orchestrator {
                         .interface
                         .clone()
                         .unwrap_or_else(|| "wg0".to_string());
-                    Some(Arc::new(crate::vpn::WireGuardProvider::new(iface))
-                        as Arc<dyn crate::vpn::VpnProvider>)
+                    Some(Arc::new(crate::vpn::WireGuardProvider::new(
+                        iface,
+                        config.vpn.connect_timeout_secs,
+                    )) as Arc<dyn crate::vpn::VpnProvider>)
                 }
                 "openvpn" => {
                     let addr = config
@@ -23,8 +25,10 @@ impl Orchestrator {
                         .profile_path
                         .clone()
                         .unwrap_or_else(|| "127.0.0.1:1337".to_string());
-                    Some(Arc::new(crate::vpn::OpenVpnProvider::new(addr))
-                        as Arc<dyn crate::vpn::VpnProvider>)
+                    Some(Arc::new(crate::vpn::OpenVpnProvider::new(
+                        addr,
+                        config.vpn.connect_timeout_secs,
+                    )) as Arc<dyn crate::vpn::VpnProvider>)
                 }
                 _ => None,
             }

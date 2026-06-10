@@ -206,7 +206,8 @@ impl Orchestrator {
                         let _ = self.handle_pause(*id).await;
                     }
 
-                    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                    let delay_ms = self.config.load().network.roaming_reconnect_delay_ms;
+                    tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
 
                     info!(
                         "Resuming {} tasks on the new default route",
