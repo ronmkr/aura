@@ -26,7 +26,7 @@ pub async fn start_server(
         .allow_headers(tower_http::cors::Any);
 
     let app = create_router(state).layer(cors);
-    let addr = format!("127.0.0.1:{}", rpc_port);
+    let addr = format!("0.0.0.0:{}", rpc_port);
 
     if let Some((cert_path, key_path)) = tls_config {
         let rustls_config =
