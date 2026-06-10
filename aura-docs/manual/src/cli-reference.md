@@ -1,12 +1,12 @@
 # CLI Reference
 
-The `aura` CLI is the primary interface for most users. It is designed to be familiar to standard download manager users while providing modern defaults and advanced automation.
+The `aura` CLI is a unified binary that provides both a standalone downloader and a management tool for the background daemon.
 
 ## General Usage
 
 ```bash
 aura [OPTIONS] [URIS]...
-aura <SUBCOMMAND>
+aura <SUBCOMMAND> [ARGS]...
 ```
 
 ### Direct Download Mode
@@ -21,113 +21,112 @@ aura "https://example.com/file.zip"
 - `[URIS]...`: One or more URIs to download. 
     - **Supported Protocols**: `http`, `https`, `ftp`, `ftps`, `magnet`.
     - **Metadata Files**: Paths to local `.torrent`, `.metalink`, or `.meta4` files.
-    - **Multi-Source**: If multiple URIs are provided, Aura automatically treats them as mirrors for a single task and uses the **Racing Work Stealer** to maximize throughput.
+    - **Multi-Source**: If multiple URIs are provided, Aura automatically treats them as mirrors for a single task.
 
 ### Options
 
-- `-o, --output <FILE>`: (Optional) Override the output filename. By default, Aura infers the filename from the URI or metadata.
+- `-o, --output <FILE>`: Override the output filename.
+- `-p, --priority <0-5>`: Set task priority (0 is highest, default: 3).
+- `-d, --depends-on <GIDS>`: List of Task GIDs (comma-separated) that must complete before this task starts.
+- `--follow-on <URI>`: URI to automatically download after this task completes (Task Chaining).
+- `--config <PATH>`: Use a custom `Aura.toml` configuration file.
+- `--download-dir <PATH>`: Override the download directory for this session.
+- `--limit <BYTES/S>`: Override the global download bandwidth limit.
+- `--proxy <URL>`: Override the global proxy setting.
+- `-v, -vv, -vvv`: Increase logging verbosity.
 - `-h, --help`: Print help information.
-- `-V, --version`: Print version information.
 
 ---
 
 ## Subcommands
 
 ### `daemon`
-Starts the Aura background daemon. This is required for remote control via JSON-RPC or if you want to leave tasks running in the background.
+Starts the Aura background daemon.
 
-**Usage:**
-```bash
-aura daemon [OPTIONS]
-```
-
-**Options:**
-- `--rpc-port <PORT>`: Port to bind the JSON-RPC server (default: `6800`).
+**Usage:** `aura daemon [OPTIONS]`
+- `--bind-address <IP>`: IP to bind the RPC server (default: `127.0.0.1`).
+- `--rpc-port <PORT>`: Port to bind the RPC server (default: `6800`).
 - `--rpc-secret <TOKEN>`: Secret token for RPC authentication.
-- `--tls-cert <PATH>`: Path to the TLS certificate file (enables HTTPS/WSS).
-- `--tls-key <PATH>`: Path to the TLS private key file (enables HTTPS/WSS).
-- `--generate-tls-cert`: Automatically generate a self-signed TLS certificate and key files.
+- `--tls-cert <PATH>`: Path to the TLS certificate file.
+- `--tls-key <PATH>`: Path to the TLS private key file.
+- `--generate-tls-cert`: Automatically generate self-signed TLS certificates.
 
 ### `tui`
-Launches the **Pilot Dashboard**, a full-screen Terminal User Interface for managing all active and completed tasks across the engine.
+Launches the **Pilot Dashboard**, the interactive terminal interface.
 
-**Usage:**
-```bash
-aura tui
-```
+**Usage:** `aura tui`
+
+### `status`
+Displays real-time engine health, active bandwidth limits, and current schedules.
+
+**Usage:** `aura status`
 
 ### `history`
-Displays the download history of completed, stopped, and failed tasks recorded in the history log.
+View the log of completed and failed downloads (ADR 0062).
 
-**Usage:**
-```bash
-aura history [OPTIONS]
-```
+**Usage:** `aura history [OPTIONS]`
+- `--limit <N>`: Number of records to show (default: 10).
+- `--format <json|table>`: Output format.
+- `--filter <completed|failed|removed>`: Filter by status.
 
-**Options:**
-- `--limit <N>`: Limit the number of returned history records.
-- `--format <FORMAT>`: Output format (`json` or `table`).
-- `--filter <FILTER>`: Filter by phase status (`failed` or `completed`).
+### `add-from-folder`
+Bulk ingest all metadata files (`.torrent`, `.metalink`) from a directory.
+
+**Usage:** `aura add-from-folder <DIR> [OPTIONS]`
+- `-r, --recursive`: Scan subdirectories recursively.
+
+### `add-from-file`
+Bulk ingest a list of URIs from a text file (one URI per line).
+
+**Usage:** `aura add-from-file <PATH>`
+
+### `show-files`
+Display the file hierarchy within a BitTorrent or Metalink task.
+
+**Usage:** `aura show-files <GID>`
+
+### `select-files`
+Select specific files to download within a multi-file task (ADR 0065).
+
+**Usage:** `aura select-files <GID> --indices <ID1,ID2,...>`
+- `-i, --indices`: Comma-separated list of file indices (get indices from `show-files`).
+
+### `refresh`
+Check for updates on a completed or active download using ETag or Last-Modified (Conditional GET).
+
+**Usage:** `aura refresh <GID>`
+
+### `probe`
+Run the **Allocation Prober** to identify the best disk allocation strategy for a filesystem.
+
+**Usage:** `aura probe [DIR]`
 
 ---
 
 ## URL Globbing
 
-Aura supports powerful URL expansion (globbing), allowing you to download large batches of files with a single command. Globbing works for all protocols.
+Aura supports powerful URL expansion (globbing).
 
 ### Numeric Ranges
-Download a sequence of files:
-```bash
-aura "https://example.com/part[1-10].zip"
-```
-*Expands to `part1.zip`, `part2.zip`, ..., `part10.zip`.*
+`aura "https://example.com/part[1-10].zip"`
 
 ### Numeric Padding
-Maintain leading zeros in sequences:
-```bash
-aura "https://example.com/image[001-099].jpg"
-```
-*Expands to `image001.jpg`, `image002.jpg`, etc.*
+`aura "https://example.com/image[001-099].jpg"`
 
 ### Set Expansion
-Download from a list of items:
-```bash
-aura "https://mirror{1,2,3}.com/linux.iso"
-```
-*Expands to `mirror1.com`, `mirror2.com`, and `mirror3.com`.*
+`aura "https://mirror{1,2,3}.com/linux.iso"`
 
 ### Step Values
-Download every N-th file:
-```bash
-aura "https://archive.org/data[0-100:10].bin"
-```
-*Expands to `data0.bin`, `data10.bin`, ..., `data100.bin`.*
+`aura "https://archive.org/data[0-100:10].bin"` (Expands to 0, 10, 20...)
 
 ---
 
 ## Multi-Source Downloads (Mirror Aggregation)
 
-Aura excels at aggregating bandwidth from multiple sources. If you provide multiple URIs for the same file, Aura treats them as a single logical task.
+Aura aggregates bandwidth from multiple sources automatically.
 
 ```bash
-# Aggregating a fast mirror and a slow mirror
 aura "https://mirror-a.org/ubuntu.iso" "ftp://mirror-b.net/ubuntu.iso"
 ```
-
-**Key Features:**
-- **Racing Work Stealer**: If one source is lagging, other workers will "steal" its assigned chunks to finish the download faster.
-- **Protocol Mixing**: Mix HTTP, FTP, and BitTorrent sources for the same file seamlessly.
-- **Failover**: If one mirror goes down, the task continues uninterrupted with the remaining sources.
-
----
-
-## Advanced Automation (Environment Variables)
-
-Aura populates specific environment variables when executing [Lifecycle Hooks](configuration.md#hooks):
-
-| Variable | Description |
-|----------|-------------|
-| `$AURA_TASK_ID` | The unique internal ID of the task. |
-| `$AURA_TASK_NAME` | The logical name of the download. |
-| `$AURA_FILE_PATH` | The absolute path to the downloaded file on disk. |
-| `$AURA_TENANT_ID` | The ID of the tenant (if multi-tenancy is active). |
+- **Racing Work Stealer**: Faster mirrors "steal" chunks from slower ones.
+- **Protocol Mixing**: Mix HTTP, FTP, and BitTorrent sources seamlessly.

@@ -73,12 +73,14 @@ enum Commands {
         #[arg(long, short, default_value_t = 10)]
         limit: usize,
         /// Format to display the history (json, table)
-        #[arg(long, short, default_value = "table")]
+        #[arg(long, default_value = "table")]
         format: String,
         /// Filter by task status (completed, failed, removed)
         #[arg(long, short)]
         filter: Option<String>,
     },
+    /// View real-time engine status and bandwidth schedules (ADR-0063)
+    Status,
     /// Refresh the download metadata for a task, checking ETag and Last-Modified (conditional GET)
     Refresh {
         /// The GID of the task to refresh
@@ -190,6 +192,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             filter,
         }) => {
             aura_cli::run_history(&config, limit, &format, filter).await?;
+        }
+        Some(Commands::Status) => {
+            cli_client::run_status(config.network.rpc_port, config.network.rpc_secret).await?;
         }
         Some(Commands::Refresh { gid }) => {
             cli_client::run_refresh(config.network.rpc_port, config.network.rpc_secret, gid)

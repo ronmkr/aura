@@ -9,11 +9,16 @@ Aura is highly tunable. This document provides an exhaustive reference for every
 4. [[bittorrent] - Protocol Tuning](#bittorrent)
 5. [[storage] - I/O Optimization](#storage)
 6. [[resource_mapping] - Path Logic](#resource_mapping)
-7. [[hooks] - Automation](#hooks)
-8. [[credentials] - Authentication](#credentials)
-9. [[vpn] - Privacy Kill-switch](#vpn)
-10. [[limits] - Architectural Boundaries](#limits)
-11. [[general] - Engine & UI](#general)
+7. [[bulk] - Batch Scanning](#bulk)
+8. [[notifications] - OS Alerts](#notifications)
+9. [[tui] - Dashboard Tuning](#tui)
+10. [[hooks] - Automation](#hooks)
+11. [[credentials] - Authentication](#credentials)
+12. [[vpn] - Privacy Kill-switch](#vpn)
+13. [[security] - Interface Hardening](#security)
+14. [[monitoring] - Metrics & Health](#monitoring)
+15. [[limits] - Architectural Boundaries](#limits)
+16. [[general] - Engine & UI](#general)
 
 ---
 
@@ -70,9 +75,76 @@ Controls the flow of data to prevent slowing down your internet.
 | `per_task_download_limit`| Number (Bytes/s)| `0` | Speed cap for a single download. |
 | `per_task_upload_limit` | Number (Bytes/s)| `0` | Upload cap for a single download. |
 | `max_concurrent_downloads`| Number | `10` | How many files to download at once. |
-| `max_active_tasks` | Number | `5` | Total limit of tasks (including paused and finished). |
+| `max_active_tasks` | Number | `500` | Total limit of tasks (including paused and finished). |
 | `min_connections_per_task`| Number | `16` | Minimum number of connections per file. |
 | `max_connections_per_task`| Number | `128` | Maximum number of connections per file. |
+| `adaptive_scaling_low_throughput`| Number (Bytes/s)| `102400` | Threshold to scale up connections. |
+| `adaptive_scaling_high_throughput`| Number (Bytes/s)| `5242880` | Threshold to scale down connections. |
+
+### [[bandwidth.schedule]]
+Aura supports time-based bandwidth limits, allowing you to automatically throttle or unthrottle downloads at specific times (e.g., off-peak unlimited data).
+
+| Setting | Value Type | Default | What it does |
+|:---|:---|:---|:---|
+| `from` | Text (HH:MM) | Mandatory | Start time for the schedule window (24h format). |
+| `to` | Text (HH:MM) | Mandatory | End time for the schedule window (24h format). |
+| `download_limit` | Number (Bytes/s)| `0` | Download speed cap during this window. |
+| `upload_limit` | Number (Bytes/s)| `0` | Upload speed cap during this window. |
+| `days` | List of Texts | `None` | Optional: Days the schedule applies (e.g., `["Mon", "Tue"]`). |
+| `timezone` | Text | `"local"` | Optional: Timezone for the schedule (e.g., `UTC`). |
+
+---
+
+## [bulk]
+Settings for batch operations and folder ingestion.
+
+| Setting | Value Type | Default | What it does |
+|:---|:---|:---|:---|
+| `max_scan_depth` | Number | `10` | Recursion limit for folder scanning (`add-folder`). |
+
+---
+
+## [notifications]
+Native OS desktop notification settings.
+
+| Setting | Value Type | Default | What it does |
+|:---|:---|:---|:---|
+| `enabled` | Yes / No | `true` | Turn desktop notifications on or off. |
+| `notify_on_complete` | Yes / No | `true` | Send alert when a download finishes. |
+| `notify_on_error` | Yes / No | `true` | Send alert on fatal task errors. |
+| `app_name` | Text | `"Aura"` | The name displayed in the notification header. |
+
+---
+
+## [tui]
+Interactive dashboard settings.
+
+| Setting | Value Type | Default | What it does |
+|:---|:---|:---|:---|
+| `tick_rate_ms` | Time (ms) | `500` | Refresh rate for UI animations and charts. |
+| `rpc_url` | Text | `None` | Default daemon RPC endpoint for the TUI to connect to. |
+
+---
+
+## [security]
+Security hardening for the RPC interface and daemon.
+
+| Setting | Value Type | Default | What it does |
+|:---|:---|:---|:---|
+| `rpc_max_requests_per_minute` | Number | `120` | Rate limit for JSON-RPC requests per connection. |
+| `rpc_max_connections` | Number | `32` | Maximum number of simultaneous RPC connections. |
+| `ssrf_mitigation_enabled` | Yes / No | `true` | Prevent downloads from internal/private IP addresses. |
+
+---
+
+## [monitoring]
+Metrics and health monitoring settings.
+
+| Setting | Value Type | Default | What it does |
+|:---|:---|:---|:---|
+| `metrics_enabled` | Yes / No | `false` | Enable the Prometheus metrics exporter. |
+| `metrics_port` | Number | `9100` | Port for the `/metrics` endpoint. |
+| `scrape_token` | Text | `None` | Bearer token required to scrape the `/metrics` endpoint. |
 
 ---
 
@@ -148,6 +220,9 @@ Defines administrative, network, and architectural constraints.
 | `command_channel_capacity` | Number | `128` | Control command queue capacity. |
 | `storage_channel_capacity` | Number | `100` | Disk queue capacity. |
 | `history_record_limit` | Number | `100000` | Hard cap on the number of historical records to keep. |
+| `history_rotation_mb` | Number | `10.0` | Max size of history file before rotation. |
+| `history_rotation_records`| Number | `10000` | Max records in history file before rotation. |
+| `history_retention_records`| Number | `5000` | Number of records to keep after rotation. |
 | `graceful_shutdown_timeout_secs` | Time (Seconds) | `5` | Maximum wait time for tasks on exit. |
 | `pex_interval_secs` | Time (Seconds) | `60` | PEX peer request interval. |
 | `bandwidth_scheduling_interval_secs` | Time (Seconds) | `60` | Scheduling check rate for limits. |

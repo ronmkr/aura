@@ -17,6 +17,8 @@
 - [RPC & Daemon Mode](./advanced/rpc-daemon.md)
 - [Task Chaining & Path Mapping](./advanced/task-chaining-mapping.md)
 - [Multi-Tenancy & Isolation](./advanced/multi-tenancy.md)
+- [Resource Governor & Memory](./advanced/resource-governor.md)
+- [Network Filesystems (NAS)](./advanced/network-filesystems.md)
 - [Real-World Examples](./advanced/examples.md)
 - [Telemetry & Metrics](./advanced/telemetry.md)
 - [Built-in Web UI](./advanced/web-ui.md)
@@ -88,6 +90,13 @@
     - [ADR 0056: Daemon RPC Security Hardening](./adr/0056-rpc-security-hardening.md)
     - [ADR 0057: ResourceGovernor Memory Backpressure](./adr/0057-resource-governor.md)
     - [ADR 0058: Graceful Shutdown Coordination](./adr/0058-graceful-shutdown-coordination.md)
+    - [ADR 0059: URI Validation and SSRF Mitigation](./adr/0059-uri-validation-ssrf-mitigation.md)
+    - [ADR 0060: Pre-Download Disk Space Verification](./adr/0060-pre-download-disk-space-verification.md)
+    - [ADR 0061: Checksum Verification for HTTP/FTP](./adr/0061-http-ftp-checksum-verification.md)
+    - [ADR 0062: Download History Log](./adr/0062-download-history-and-aria2-compatibility.md)
+    - [ADR 0063: Bandwidth Time Scheduling](./adr/0063-bandwidth-time-scheduling.md)
+    - [ADR 0064: Process Resilience & Panic Recovery](./adr/0064-process-resilience-panic-fd-limits.md)
+    - [ADR 0065: Interactive TUI Architecture](./adr/0065-interactive-tui-architecture.md)
 
 ---
 

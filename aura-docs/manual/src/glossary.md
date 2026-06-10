@@ -23,6 +23,9 @@ A unique string or number representing a specific download task in Aura.
 ### Global Potential
 The sum of the estimated capacities of all known sources for a specific file. Aura scales connections until actual throughput matches the global potential.
 
+### History Log
+A persistent, append-only record of every task that has completed, failed, or been removed from the active queue (ADR 0062).
+
 ### InfoHash
 A unique fingerprint for a BitTorrent swarm. BitTorrent v1 uses 20-byte SHA-1 hashes; v2 uses 32-byte SHA-256 hashes.
 
@@ -38,8 +41,14 @@ An XML-based file format that describes a file and its mirrors (HTTP, FTP, P2P).
 ### Piece Picker
 The logic responsible for deciding which piece of a file to request next. Aura uses a "Rarest-First" strategy for BitTorrent and sequential picking for HTTP.
 
+### ProtocolDetector
+A centralized component that automatically infers the download protocol (HTTP, FTP, BitTorrent, Metalink) from a URI or local path, enabling seamless "no-type" ingestion (ADR 0065).
+
 ### Protocol Worker
 A lightweight actor in Aura that handles a specific network protocol (e.g., the `HttpWorker`).
+
+### Selective Downloading
+The ability to choose specific files within a multi-file BitTorrent swarm or Metalink package to download, saving time and disk space (ADR 0065).
 
 ### Sequential Aggregator
 The component in the **Storage Engine** that reorders out-of-order blocks in memory to ensure they are written to disk in a single sequential sweep.
@@ -52,3 +61,6 @@ A high-level logic that allows one download task to automatically trigger anothe
 
 ### Tenant
 An isolated environment within the Aura Daemon (ADR 0032) that provides dedicated bandwidth limits, task quotas, and directory roots for multi-user shared hosting.
+
+### ViewRouter
+The architectural pattern used in the TUI to manage a navigable stack of interactive screens (Dashboard, Mission Control, File Selector) using a stateful enum (ADR 0065).

@@ -1,6 +1,6 @@
-# TUI Guide (Command Center)
+# TUI Guide (Pilot Dashboard)
 
-The **Command Center** is Aura's interactive terminal interface. It provides a real-time view of all tasks managed by the Aura Daemon.
+The **Pilot Dashboard** is Aura's mission control center. It provides a highly interactive, real-time interface for managing complex downloads, visualizing performance, and performing granular task operations.
 
 ## Launching the TUI
 
@@ -10,45 +10,83 @@ aura tui
 ```
 By default, it attempts to connect to `127.0.0.1:6800`.
 
-## Interface Layout
+## Interface Layout (Multi-View)
 
-- **Header**: Shows the engine version and current status.
-- **Task Table**: A detailed list of all downloads (Active, Paused, Error, Complete).
-    - **Name**: The filename being downloaded.
-    - **Status**: The current lifecycle phase.
-    - **Progress**: Percentage completion.
-    - **Size**: Total file size.
-    - **GID**: The internal Task ID.
-- **Footer**: Interactive command bar and error notifications.
+Aura TUI uses a **ViewRouter** architecture (ADR 0065) with three primary screens:
+
+1.  **Dashboard (Main)**: A 60/40 split-layout showing the global task list on the left and real-time details (Sparklines, Gauges) on the right.
+2.  **Mission Control (Task Detail)**: A deep-dive view into a single task, showing throughput history, piece availability maps, and peer distribution.
+3.  **File Selector**: An interactive tree-view for selecting specific files within a BitTorrent swarm or Metalink package.
+
+---
+
+## Power-User Navigation
+
+Aura supports lightning-fast navigation for power users:
+
+- **Vim Motions**: Use `j/k` to move the selection, `h/l` to switch between panes or collapse/expand folders in the File Selector.
+- **Command Palette (`Ctrl+P` or `:`)**: Open a fuzzy-searchable action menu. Start typing "Pause", "Remove", or "Move" to quickly execute commands without hotkeys.
+- **Mouse Support**: Click to select tasks, scroll through lists, and interact with the File Selector.
+- **Drag-and-Drop**: Drag a `.torrent` file or URI directly into the terminal window to ingest it (platform dependent).
+
+---
 
 ## Key Bindings
 
 | Key | Action |
 |---|---|
-| `j` / `Down` | Navigate down the task list |
-| `k` / `Up` | Navigate up the task list |
+| `j` / `k` | Navigate selection up/down |
+| `Enter` | Open detailed **Mission Control** for selected task |
+| `f` | Open **File Selector** for selected task |
 | `p` | **Pause** the selected task |
 | `r` | **Resume** the selected task |
-| `q` | **Quit** the TUI (Daemon remains running) |
+| `d` / `Delete` | **Remove** the task (prompts for confirmation) |
+| `/` | **Search** / Filter the task list |
+| `a` | Open **Discovery Modal** (Bulk add files/folders) |
+| `g` / `G` | Jump to **First / Last** task |
+| `?` | Toggle **Help Overlay** |
+| `Ctrl+P` / `:` | Open **Command Palette** |
+| `Tab` | Switch focus between Dashboard panes |
+| `Esc` | Go back one level or close modal |
+| `q` | **Quit** TUI (Daemon continues in background) |
 
-## Theming
+---
 
-The TUI supports fully customizable themes via `Aura.toml`. Aura also includes several built-in presets:
+## Interactive File Selection
 
-- **Galactic** (Default): A high-contrast space theme with deep blues and nebula cyans.
-- **Matrix**: A classic retro-hacker theme with terminal greens and black backgrounds.
+For BitTorrent swarms or Metalink files, Aura supports selective downloading:
+1. Select a task and press `f`.
+2. Use `j/k` to navigate the file tree.
+3. Press `Space` or `Enter` to toggle a file or folder for download.
+4. Press `s` to **Save and Apply** changes.
+5. Press `Esc` or `h` to cancel/go back.
+*Aura automatically handles shared pieces at file boundaries, ensuring data integrity while minimizing wasted disk space.*
+
+---
+
+## Visualizations
+
+- **Sparklines**: Display the last 60 seconds of throughput (Download/Upload).
+- **Progress Gauges**: High-resolution bars showing piece completion and verification status.
+- **Piece Maps**: (In Mission Control) A 2D grid representing every piece in a torrent, color-coded by availability and download state.
+
+---
+
+## Theming & OS Integration
+
+### Desktop Notifications
+Aura sends native OS notifications for:
+- Task completions
+- Critical disk errors
+- Checksum verification results
+
+### Built-in Themes
+Customize the dashboard in `Aura.toml`:
+- **Galactic** (Default): Space-age blues and cyans.
+- **Matrix**: Retro hacker green.
+- **Nord**: Clean, arctic frost tones.
 
 ```toml
 [general]
-theme = "Matrix" # or "Galactic" (default)
+theme = "Nord"
 ```
-
-For custom colors:
-```toml
-[general.theme]
-primary = "#00FF00" # Emerald
-background = "#0A0A0A" # Deep Space
-...
-```
-
-See the [Configuration](./configuration.md) chapter for all themeable keys.
