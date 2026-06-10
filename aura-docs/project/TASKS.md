@@ -45,7 +45,7 @@ All active development tasks, technical debt, and feature requests are managed e
 - [x] **feat: ETag and Last-Modified conditional GET for incremental file refresh** (Issue #255) `[module:core, priority:moderate]`
 - [x] **perf: Share reqwest HTTP connection pool across segment workers for same-host downloads** (Issue #256) `[module:core, priority:moderate]`
 - [x] **feat: BitTorrent seeding ratio and maximum seeding time limits** (Issue #257) `[module:core, priority:moderate]`
-- [ ] **feat: Prioritized Streaming Mode for Media Playback** (Issue #28) `[module:core, priority:moderate]`
+- [x] **feat: Prioritized Streaming Mode for Media Playback** (Issue #28) `[module:core, priority:moderate]`
 - [ ] **feat: Cloud Storage Support (S3, Google Drive)** (Issue #10) `[module:core, priority:moderate]`
 
 ### Low / Minor (P3)
@@ -56,6 +56,14 @@ All active development tasks, technical debt, and feature requests are managed e
 - [ ] **feat: i18n support for CLI and TUI** (Issue #71) `[module:cli, module:tui, priority:minor]`
 
 ## Completed Tasks
+
+- [x] **feat: Prioritized Streaming Mode for Media Playback** (Issue #28) `[module:core, priority:moderate]`
+  - **Completion Commit**: `3b97c9d`
+  - **Key Changes**:
+    - Added `streaming_metadata_pieces` config parameter (default `4`) to `BitTorrentConfig` to define boundary piece count.
+    - Updated `PiecePicker` to prioritize boundary pieces (first $N$ and last $N$) sequentially when `streaming_mode` is enabled.
+    - Hooked `streaming_mode` flag into BitTorrent task loops, engine command APIs, and JSON-RPC (`streamingMode` / `streaming-mode` options support).
+    - Refactored `BtTaskState` to `state.rs` module to satisfy project 350-line modularity constraints.
 
 - [x] **feat: ResourceGovernor per-tenant fair-share limit and metadata safety margin** (Issue #234) `[module:core, priority:moderate]`
   - **Completion Commit**: `3a17d06`
