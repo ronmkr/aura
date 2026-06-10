@@ -19,13 +19,18 @@ pub struct Throttler {
     task_priorities: Arc<RwLock<HashMap<TaskId, u32>>>,
     task_dl_configured_limits: Arc<RwLock<HashMap<TaskId, u64>>>,
     task_ul_configured_limits: Arc<RwLock<HashMap<TaskId, u64>>>,
+    refill_interval_ms: u64,
 }
 
 impl Throttler {
-    pub fn new(global_download_rate: u64, global_upload_rate: u64) -> Self {
+    pub fn new(
+        global_download_rate: u64,
+        global_upload_rate: u64,
+        refill_interval_ms: u64,
+    ) -> Self {
         Self {
-            global_download: TokenBucket::new(global_download_rate),
-            global_upload: TokenBucket::new(global_upload_rate),
+            global_download: TokenBucket::new(global_download_rate, refill_interval_ms),
+            global_upload: TokenBucket::new(global_upload_rate, refill_interval_ms),
             task_download: Arc::new(RwLock::new(HashMap::new())),
             task_upload: Arc::new(RwLock::new(HashMap::new())),
             global_download_limit: Arc::new(AtomicU64::new(global_download_rate)),
@@ -33,6 +38,7 @@ impl Throttler {
             task_priorities: Arc::new(RwLock::new(HashMap::new())),
             task_dl_configured_limits: Arc::new(RwLock::new(HashMap::new())),
             task_ul_configured_limits: Arc::new(RwLock::new(HashMap::new())),
+            refill_interval_ms,
         }
     }
 
@@ -102,11 +108,17 @@ impl Throttler {
         }
         {
             let mut dl = self.task_download.write().await;
-            dl.insert(id, Arc::new(TokenBucket::new(dl_limit)));
+            dl.insert(
+                id,
+                Arc::new(TokenBucket::new(dl_limit, self.refill_interval_ms)),
+            );
         }
         {
             let mut ul = self.task_upload.write().await;
-            ul.insert(id, Arc::new(TokenBucket::new(ul_limit)));
+            ul.insert(
+                id,
+                Arc::new(TokenBucket::new(ul_limit, self.refill_interval_ms)),
+            );
         }
 
         self.recalculate_limits().await;

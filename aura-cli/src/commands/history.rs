@@ -2,11 +2,12 @@ use aura_core::history::{CompletedTaskRecord, HistoryManager};
 use bytesize::ByteSize;
 
 pub async fn run_history(
+    config: &aura_core::Config,
     limit: usize,
     format: &str,
     filter: Option<String>,
 ) -> aura_core::Result<()> {
-    let mut records = HistoryManager::read_records();
+    let mut records = HistoryManager::read_records(config);
     records.reverse(); // Newest first
 
     if let Some(f) = filter {

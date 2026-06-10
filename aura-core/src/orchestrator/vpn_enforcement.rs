@@ -14,8 +14,10 @@ impl Orchestrator {
                         .interface
                         .clone()
                         .unwrap_or_else(|| "wg0".to_string());
-                    Some(Arc::new(crate::vpn::WireGuardProvider::new(iface))
-                        as Arc<dyn crate::vpn::VpnProvider>)
+                    Some(Arc::new(crate::vpn::WireGuardProvider::new(
+                        iface,
+                        config.vpn.connect_timeout_secs,
+                    )) as Arc<dyn crate::vpn::VpnProvider>)
                 }
                 "openvpn" => {
                     let addr = config
@@ -23,8 +25,10 @@ impl Orchestrator {
                         .profile_path
                         .clone()
                         .unwrap_or_else(|| "127.0.0.1:1337".to_string());
-                    Some(Arc::new(crate::vpn::OpenVpnProvider::new(addr))
-                        as Arc<dyn crate::vpn::VpnProvider>)
+                    Some(Arc::new(crate::vpn::OpenVpnProvider::new(
+                        addr,
+                        config.vpn.connect_timeout_secs,
+                    )) as Arc<dyn crate::vpn::VpnProvider>)
                 }
                 _ => None,
             }
@@ -43,39 +47,7 @@ impl Orchestrator {
     }
 
     pub(crate) fn resolve_local_addr(&self) -> Option<std::net::IpAddr> {
-        let config = self.config.load();
-
-        if config.vpn.force_tunnel {
-            if let Some(ref vpn) = self.vpn_provider {
-                if let Some(iface) = vpn.interface() {
-                    use local_ip_address::list_afinet_netifas;
-                    if let Ok(ifas) = list_afinet_netifas() {
-                        for (name, ip) in ifas {
-                            if name == iface {
-                                return Some(ip);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        if let Some(addr) = config.network.local_addr {
-            return Some(addr);
-        }
-
-        if let Some(ref iface) = config.network.interface {
-            use local_ip_address::list_afinet_netifas;
-            if let Ok(ifas) = list_afinet_netifas() {
-                for (name, ip) in ifas {
-                    if name == *iface {
-                        return Some(ip);
-                    }
-                }
-            }
-        }
-
-        None
+        self.handle().resolve_local_addr()
     }
 
     pub(crate) fn update_power_management(&mut self) {
@@ -125,6 +97,44 @@ impl Orchestrator {
                 ))
             }
         }
+    }
+}
+
+impl super::state::OrchestratorHandle {
+    pub(crate) fn resolve_local_addr(&self) -> Option<std::net::IpAddr> {
+        let config = self.config.load();
+
+        if config.vpn.force_tunnel {
+            if let Some(ref vpn) = self.vpn_provider {
+                if let Some(iface) = vpn.interface() {
+                    use local_ip_address::list_afinet_netifas;
+                    if let Ok(ifas) = list_afinet_netifas() {
+                        for (name, ip) in ifas {
+                            if name == iface {
+                                return Some(ip);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if let Some(addr) = config.network.local_addr {
+            return Some(addr);
+        }
+
+        if let Some(ref iface) = config.network.interface {
+            use local_ip_address::list_afinet_netifas;
+            if let Ok(ifas) = list_afinet_netifas() {
+                for (name, ip) in ifas {
+                    if name == *iface {
+                        return Some(ip);
+                    }
+                }
+            }
+        }
+
+        None
     }
 }
 

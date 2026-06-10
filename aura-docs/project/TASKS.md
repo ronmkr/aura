@@ -3,11 +3,44 @@
 All active development tasks, technical debt, and feature requests are managed exclusively via [GitHub Issues](https://github.com/ronmkr/aura/issues).
 
 ## Open Tasks
+### Core & Architecture Standardized
+- [x] **epic: Final Branding & API Standardization** `[module:all, priority:high]`
+    - [x] Renamed all legacy `aria2` references to `aura` globally (RPC, strings, docs).
+    - [x] Refactored all functions with `too_many_arguments` into clean parameter structs.
+    - [x] Deduplicated path resolution, throttler lookups, and TaskId generation.
+    - [x] Implemented `OrchestratorHandle` to unify thread-safe shared state access.
+    - [x] Centralized worker construction logic in `OrchestratorHandle::build_worker_builder`.
+    - [x] Centralized JSON-RPC error handling with `rpc_error` helper.
+    - [x] Eliminated all hardcoded magic numbers and timeouts into `Aura.toml`.
+    - [x] **Architectural Decoupling (God Nodes)**: Decoupled `StorageEngine`, `Orchestrator`, `WorkerBuilder`, and `MetaTask` based on Graphify AST analysis.
+    - [x] Zero Clippy warning policy enforced across all crates.
+    - [x] Updated `aura-dev` skill to mandate zero hardcoded values and struct-based args.
 
 ### High (P1)
-*(No active tasks)*
-
+...
+- [x] **epic: Interactive TUI Modernization (Command Center)** `[module:tui, priority:high]`
+    - [x] Refactor TUI to stateful Multi-View architecture (Dashboard, Mission Control, File Selector).
+    - [x] Implement the Main Dashboard with split-layout (Task List + Real-time Detail Panel).
+    - [x] Add Sparkline throughput visualization and progress gauges.
+- [x] **feat: Intelligent Protocol Detection and Bulk Task Ingestion** `[module:core, module:daemon, module:cli, priority:high]`
+    - [x] Centralized `ProtocolDetector` for HTTP/FTP/BT/Metalink.
+    - [x] RPC methods for `aura.addFromFolder` (torrents/metalinks) and `aura.addFromFile` (URL lists).
+    - [x] Interactive "Discovery Modal" in TUI for single/bulk mission addition.
+    - [x] CLI parity: Support directory paths and `--from-file` flag for headless bulk addition.
+### High (P1)
+- [x] **feat: Interactive BitTorrent File Selection and Selective Downloading** `[module:core, module:tui, module:cli, priority:high]`
+    - [x] Update `PiecePicker` and `Storage` to support skipping pieces for non-selected files.
+    - [x] Implement `aura.getFiles` and `aura.setFileSelection` RPC methods.
+    - [x] Build interactive tree-view File Selector widget in TUI.
+    - [x] CLI parity: Add `aura show-files <gid>` and `--select-file` flags.
 ### Moderate (P2)
+- [x] **feat: Real-time Search, Command Palette, and World-Class UX** `[module:tui, priority:moderate]`
+    - [x] Real-time task list filtering with `/` search mode.
+    - [x] Interactive help modal (`?`) and fuzzy-searchable Command Palette (`:` or `Ctrl+P`).
+    - [x] Implement Vim motions (`j/k`, `h/l`, `gg`, `G`).
+    - [x] Actionable Error Recovery prompts in Mission Details.
+    - [x] Native OS Desktop Notifications via `notify-rust`.
+    - [x] Zero-friction ingest: Terminal Drag-and-Drop and OS Clipboard monitoring.
 - [ ] **infra: Add CI cross-platform matrix and cargo audit workflow** (Issue #148) `[infra, priority:moderate]`
 - [x] **feat: ETag and Last-Modified conditional GET for incremental file refresh** (Issue #255) `[module:core, priority:moderate]`
 - [ ] **perf: Share reqwest HTTP connection pool across segment workers for same-host downloads** (Issue #256) `[module:core, priority:moderate]`
@@ -89,11 +122,11 @@ All active development tasks, technical debt, and feature requests are managed e
   - **Key Changes**:
     - Standardized the `Status:` field in frontmatter across all ADR markdown documents.
     - Removed redundant top-level status headers to ensure consistency and parsing capability.
-- [x] **feat: Completed download history log and aria2 RPC compatibility (tellStopped, getVersion)** (Issue #248) `[module:daemon, priority:high]`
+- [x] **feat: Completed download history log and aura RPC compatibility (tellStopped, getVersion)** (Issue #248) `[module:daemon, priority:high]`
   - **Completion Commit**: `ba26d56` (PR #259)
   - **Key Changes**:
     - Implemented JSONL-based download history tracking at `~/.aura/history.jsonl`.
-    - Added 11 missing `aria2` compatibility JSON-RPC API methods.
+    - Added 11 missing `aura` compatibility JSON-RPC API methods.
     - Created `aura history` CLI command to retrieve and query history records.
 - [x] **bug: No URL deduplication — same URI creates unlimited tasks filling disk** (Issue #250) `[module:core, priority:high]`
   - **Completion Commit**: `ba26d56` (PR #259)

@@ -3,87 +3,121 @@
 [network]
 # interface = "tun0"                   # Bind to a specific network interface
 # local_addr = "192.168.1.100"         # Bind to a specific local IP address
-listen_port = 6881                     # Port for incoming BitTorrent connections
-dht_port = 6881                        # Port for DHT (UDP)
-rpc_port = 6800                        # Port for JSON-RPC 2.0 server
-# rpc_secret = "your_secret_here"      # Optional secret for RPC authentication
-# tls_cert = "/path/to/cert.pem"        # Optional path to TLS certificate (enables HTTPS/WSS)
-# tls_key = "/path/to/key.pem"          # Optional path to TLS private key (enables HTTPS/WSS)
+listen_port = 6881                     # BitTorrent listen port
 user_agent = "Aura/0.1.0"              # Custom User-Agent string
-connect_timeout_secs = 30              # Connection timeout for all protocols
+connect_timeout_secs = 30              # Connection timeout
 tcp_keepalive_secs = 60                # TCP keepalive interval
-# proxy = "http://127.0.0.1:8080"      # Optional global proxy
-dns_resolver = "system"                # DNS resolver: "system", "cloudflare", "google", or an IP address
+max_redirects = 20                     # Maximum HTTP redirects
+http_retry_count = 5                   # Max retries for HTTP errors
+http_retry_delay_secs = 2              # Delay between retries
+happy_eyeballs_stagger_ms = 250        # Happy Eyeballs stagger delay
+http_buffer_capacity = 65536           # Buffer size per connection (64KB)
+http_concurrent_requests = 32          # Max concurrent HTTP requests
+nat_refresh_interval_secs = 1800       # Port mapping refresh interval (30 mins)
+roaming_reconnect_delay_ms = 500       # Delay before reconnecting after interface swap
+tracker_timeout_secs = 10              # HTTP Tracker timeout
+udp_tracker_timeout_secs = 5           # UDP Tracker timeout
+
+dns_resolver = "system"                # Options: "system", "cloudflare", "google"
+
+# Advanced DNS (uncomment to use):
+# [network.dns_resolver]
+# type = "doh", url = "https://1.1.1.1/dns-query" # DNS-over-HTTPS
+# type = "dot", server = "8.8.8.8", tls_name = "dns.google" # DNS-over-TLS
 
 [bandwidth]
-# All limits are in bytes per second. 0 means unlimited.
-global_download_limit = 0              # Total download speed cap
-global_upload_limit = 0                # Total upload speed cap
-per_task_download_limit = 0            # Per-download speed cap
-per_task_upload_limit = 0              # Per-download upload cap
-max_concurrent_downloads = 5           # Max active downloads (queued tasks stay in 'Waiting')
-max_active_tasks = 100                 # Total tasks allowed in the engine (active + paused)
-min_connections_per_task = 16          # Minimum connections per individual task
-max_connections_per_task = 128         # Maximum connections per individual task
+global_download_limit = 0              # Unlimited
+global_upload_limit = 0                # Unlimited
+per_task_download_limit = 0
+per_task_upload_limit = 0
+refill_interval_ms = 100               # Token bucket refill rate
+max_connections_per_task = 16
+min_connections_per_task = 1
+adaptive_scaling_low_throughput = 102400 # 10 KB/s - threshold to scale up
+adaptive_scaling_high_throughput = 5242880 # 500 KB/s - threshold to scale down
+
+[[bandwidth.schedule]]
+from = "00:00"
+to = "08:00"                           # Nightly speed boost
+download_limit = 10485760              # 10 MB/s
+upload_limit = 5242880                 # 5 MB/s
 
 [bittorrent]
-enabled = true                         # Enable BitTorrent protocol
-max_peers_per_torrent = 50             # Max connections per torrent
-max_overall_peers = 200                # Total global peer limit
-request_pipeline_size = 10             # Number of in-flight requests per peer
-dht_enabled = true                     # Enable Distributed Hash Table
-pex_enabled = true                     # Enable Peer Exchange
-lpd_enabled = false                    # Enable Local Peer Discovery (Multicast)
-[bittorrent.seeding]
-min_ratio        = 1.0  # Stop when uploaded >= downloaded × ratio (0.0 = seed forever)
-max_seeding_time = 0    # Stop after N seconds (0 = no time limit)
-stop_on_either   = true # true = stop on EITHER condition; false = require BOTH
-
-endgame_mode_enabled = true            # Enable parallel fetching for final blocks
-min_split_size_mb = 20                 # Minimum piece/segment size for splitting
+peer_id_prefix = "-AU0001-"            # Unique peer ID prefix
+enable_dht = true                      # Enable Distributed Hash Table
+enable_lpd = true                      # Enable Local Peer Discovery
+enable_pex = true                      # Enable Peer Exchange
+max_peers_per_task = 50                # Max peer connections
+request_pipeline_size = 16             # Number of in-flight piece requests
+handshake_timeout_secs = 10            # BitTorrent handshake timeout
+dht_save_interval_secs = 300           # Interval to persist DHT nodes
+dht_ping_interval_secs = 600           # Interval to refresh DHT neighbors
+dht_token_rotation_secs = 600          # Interval to rotate DHT tokens
+dht_query_interval_secs = 120          # Interval to query DHT for new peers
+dht_query_timeout_secs = 5             # Timeout for DHT queries
+tracker_polling_interval_secs = 60     # Interval to announce to trackers
+lpd_announce_interval_secs = 300       # Interval for Local Peer Discovery
+choker_interval_secs = 10              # Choking algorithm tick rate
+seeding_ratio_limit = 1.0              # Stop seeding at 1.0 ratio
+seeding_time_limit_mins = 60           # Stop seeding after 1 hour
 
 [storage]
-download_dir = "."                     # Default directory for finished files
-cache_size_mb = 16                     # In-memory write-back cache size
-preallocate = true                     # Pre-allocate disk space before starting
-allocation_mode = "falloc"             # "none", "prealloc" (zeros), "falloc" (sparse)
-save_session_interval_secs = 30        # Interval to sync .aura control files
-read_ahead_kb = 128                    # Size of read-ahead buffer for seeding
-write_buffer_kb = 256                  # Size of sequential write aggregation buffer
+download_dir = "downloads"             # Destination for files
+allocation_mode = "PreAllocate"        # "PreAllocate" or "Sparse"
+flush_interval_secs = 3                # Aggregated write flush interval
+io_deadline_ms = 500                   # Target latency for disk writes
+memory_limit_mb = 512                  # Max RAM for write aggregation
+memory_safety_margin_mb = 50           # Reserve memory to prevent OOM
+
+[bulk]
+max_scan_depth = 10                    # Recursion limit for folder scanning
+
+[notifications]
+enabled = true                         # Enable native OS desktop notifications
+notify_on_complete = true              # Alert when a download finishes
+notify_on_error = true                 # Alert on fatal task errors
+app_name = "Aura"                      # Name displayed in the notification
+
+[tui]
+tick_rate_ms = 500                     # Refresh rate for the interactive TUI
+rpc_url = "http://localhost:6800/jsonrpc" # Default daemon RPC endpoint for TUI
 
 [resource_mapping]
 # Default policy for file name collisions: "AutoRename", "Overwrite", "Skip"
 default_conflict_policy = "AutoRename"
 
 [[resource_mapping.rules]]
-# Sort videos by domain and year
-condition = { Extension = "mp4" }
-target = "videos/{domain}/{year}/{name}"
-
-[hooks]
-# Lifecycle hooks (ADR 0018)
-# on_download_start = "sh notify_start.sh {id}"
-# on_download_complete = "sh notify_done.sh {id} {path}"
-
-[credentials]
-# Credential providers (ADR 0014)
-# netrc_path = "~/.netrc"
-# cookie_file = "/path/to/cookies.txt"
+condition = { type = "extension", value = "mp4" }
+target = "videos/{name}"
 
 [vpn]
-# Native VPN integration (ADR 0038)
-# type_name = "wireguard"              # "openvpn" or "wireguard"
+force_tunnel = false                   # Pause all downloads if VPN drops
+auto_connect = false                   # Try to reconnect VPN automatically
+check_interval_secs = 5                # Interval to monitor VPN status
+connect_timeout_secs = 5               # Timeout for VPN connection attempts
+# type_name = "WireGuard"              # VPN protocol type
 # profile_path = "/etc/wireguard/wg0.conf"
-# auto_connect = false                 # Attempt to trigger VPN connection on startup
-# force_tunnel = true                  # Kill-switch: Refuse traffic if VPN tunnel is down
+
+[hooks]
+enabled = false                        # Enable external shell hooks
 
 [general]
 log_level = "info"                     # "trace", "debug", "info", "warn", "error"
-check_integrity = true                 # Verify piece hashes during download
-event_poll_interval_ms = 500           # TUI/CLI UI update frequency
-daemon_mode = false                    # Start in background as a system service
 
-[general.theme]
+[credentials]
+# netrc_path = "~/.netrc"              # Path to netrc file
+# cookie_file = "cookies.txt"          # Path to cookie file (Netscape format)
+
+[limits]
+max_active_tasks = 100                 # Architectural task ceiling
+event_channel_capacity = 1024          # Internal message bus capacity
+command_channel_capacity = 128         # High-priority command capacity
+history_rotation_mb = 10.0             # Max size of history file before rotation
+history_rotation_records = 10000       # Max records in history file before rotation
+history_retention_records = 5000       # Number of records to keep after rotation
+graceful_shutdown_timeout_secs = 5     # Wait time for active workers on exit
+
+[theme]
 primary = "#0000FF"
 accent = "#00FFFF"
 highlight = "#FFFF00"
@@ -92,7 +126,3 @@ foreground = "#FFFFFF"
 success = "#00FF00"
 error = "#FF0000"
 warning = "#FFFF00"
-
-[limits]
-allow_duplicate_uris = false           # Allow adding tasks with duplicate URIs
-max_active_tasks = 500                 # Max active tasks allowed in the engine (for non-tenant path)

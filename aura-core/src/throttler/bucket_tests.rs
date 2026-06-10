@@ -3,7 +3,7 @@ use super::*;
 #[tokio::test]
 async fn test_token_bucket_throttling() {
     let rate = 100; // 100 bytes/sec
-    let bucket = TokenBucket::new(rate);
+    let bucket = TokenBucket::new(rate, 100);
 
     // Wait for initial burst to subside and refill to stabilize
     tokio::time::sleep(Duration::from_millis(500)).await;

@@ -64,7 +64,6 @@ async fn test_adaptive_scaling_min_connections() {
         name: "test".to_string(),
         total_length: 1000,
         completed_length: 0,
-        uploaded_length: 0,
         phase: DownloadPhase::Downloading,
         priority: 3,
         streaming_mode: false,
@@ -74,16 +73,14 @@ async fn test_adaptive_scaling_min_connections() {
         pending_ranges: Vec::new(),
         in_flight_ranges: Vec::new(),
         checksum: None,
-        seeding_start_time: None,
         blacklisted_uris: Vec::new(),
         extensions: HashMap::new(),
         depends_on: Vec::new(),
         stall_ticks: 0,
         created_at: None,
-        seed_ratio: None,
-        seed_time: None,
         etag: None,
         last_modified: None,
+        selected_files: None,
     };
 
     orchestrator.tasks.insert(TaskId(1), task);
@@ -115,13 +112,12 @@ async fn test_check_seed_limits() {
         target_concurrency: 1,
     };
 
-    let task1 = MetaTask {
+    let mut task1 = MetaTask {
         id: TaskId(1),
         tenant_id: None,
         name: "test1".to_string(),
         total_length: 1000,
         completed_length: 1000,
-        uploaded_length: 2000,
         phase: DownloadPhase::Complete,
         priority: 3,
         streaming_mode: false,
@@ -131,17 +127,35 @@ async fn test_check_seed_limits() {
         pending_ranges: Vec::new(),
         in_flight_ranges: Vec::new(),
         checksum: None,
-        seeding_start_time: Some(chrono::Utc::now() - chrono::Duration::seconds(10)),
         blacklisted_uris: Vec::new(),
         extensions: HashMap::new(),
         depends_on: Vec::new(),
         stall_ticks: 0,
         created_at: None,
-        seed_ratio: None,
-        seed_time: None,
         etag: None,
         last_modified: None,
+        selected_files: None,
     };
+
+    let bt1 = crate::worker::bittorrent::task::BtTask::from_magnet(
+        crate::worker::bittorrent::task::BtTaskFromMagnetArgs {
+            id: TaskId(1),
+            info_hash: crate::InfoHash::V1([0; 20]),
+            dht_tx: tokio::sync::mpsc::channel(1).0,
+            lpd_tx: tokio::sync::mpsc::channel(1).0,
+            db: orchestrator.db.clone(),
+            resource_governor: orchestrator.resource_governor.clone(),
+            tenant_id: None,
+            config: orchestrator.config.clone(),
+        },
+    );
+    bt1.state
+        .uploaded_length
+        .store(2000, std::sync::atomic::Ordering::Relaxed);
+    task1.extensions.insert(
+        crate::worker::bittorrent::BT_EXTENSION_KEY.to_string(),
+        Arc::new(bt1),
+    );
 
     let sub_task2 = SubTask {
         id: TaskId(12),
@@ -158,13 +172,12 @@ async fn test_check_seed_limits() {
         target_concurrency: 1,
     };
 
-    let task2 = MetaTask {
+    let mut task2 = MetaTask {
         id: TaskId(2),
         tenant_id: None,
         name: "test2".to_string(),
         total_length: 1000,
         completed_length: 1000,
-        uploaded_length: 500,
         phase: DownloadPhase::Complete,
         priority: 3,
         streaming_mode: false,
@@ -174,17 +187,34 @@ async fn test_check_seed_limits() {
         pending_ranges: Vec::new(),
         in_flight_ranges: Vec::new(),
         checksum: None,
-        seeding_start_time: Some(chrono::Utc::now() - chrono::Duration::seconds(10)),
         blacklisted_uris: Vec::new(),
         extensions: HashMap::new(),
         depends_on: Vec::new(),
         stall_ticks: 0,
         created_at: None,
-        seed_ratio: None,
-        seed_time: None,
         etag: None,
         last_modified: None,
+        selected_files: None,
     };
+
+    let bt2 = crate::worker::bittorrent::task::BtTask::from_magnet(
+        crate::worker::bittorrent::task::BtTaskFromMagnetArgs {
+            id: TaskId(2),
+            info_hash: crate::InfoHash::V1([0; 20]),
+            dht_tx: tokio::sync::mpsc::channel(1).0,
+            lpd_tx: tokio::sync::mpsc::channel(1).0,
+            db: orchestrator.db.clone(),
+            resource_governor: orchestrator.resource_governor.clone(),
+            tenant_id: None,
+            config: orchestrator.config.clone(),
+        },
+    );
+    *bt2.state.seeding_start_time.lock().unwrap() =
+        Some(chrono::Utc::now() - chrono::Duration::seconds(10));
+    task2.extensions.insert(
+        crate::worker::bittorrent::BT_EXTENSION_KEY.to_string(),
+        Arc::new(bt2),
+    );
 
     let sub_task3 = SubTask {
         id: TaskId(13),
@@ -201,13 +231,12 @@ async fn test_check_seed_limits() {
         target_concurrency: 1,
     };
 
-    let task3 = MetaTask {
+    let mut task3 = MetaTask {
         id: TaskId(3),
         tenant_id: None,
         name: "test3".to_string(),
         total_length: 1000,
         completed_length: 1000,
-        uploaded_length: 600,
         phase: DownloadPhase::Complete,
         priority: 3,
         streaming_mode: false,
@@ -217,17 +246,36 @@ async fn test_check_seed_limits() {
         pending_ranges: Vec::new(),
         in_flight_ranges: Vec::new(),
         checksum: None,
-        seeding_start_time: Some(chrono::Utc::now() - chrono::Duration::seconds(2)),
         blacklisted_uris: Vec::new(),
         extensions: HashMap::new(),
         depends_on: Vec::new(),
         stall_ticks: 0,
         created_at: None,
-        seed_ratio: Some(0.5),
-        seed_time: None,
         etag: None,
         last_modified: None,
+        selected_files: None,
     };
+
+    let bt3 = crate::worker::bittorrent::task::BtTask::from_magnet(
+        crate::worker::bittorrent::task::BtTaskFromMagnetArgs {
+            id: TaskId(3),
+            info_hash: crate::InfoHash::V1([0; 20]),
+            dht_tx: tokio::sync::mpsc::channel(1).0,
+            lpd_tx: tokio::sync::mpsc::channel(1).0,
+            db: orchestrator.db.clone(),
+            resource_governor: orchestrator.resource_governor.clone(),
+            tenant_id: None,
+            config: orchestrator.config.clone(),
+        },
+    );
+    bt3.state
+        .uploaded_length
+        .store(600, std::sync::atomic::Ordering::Relaxed);
+    *bt3.state.seed_ratio.lock().unwrap() = Some(0.5);
+    task3.extensions.insert(
+        crate::worker::bittorrent::BT_EXTENSION_KEY.to_string(),
+        Arc::new(bt3),
+    );
 
     orchestrator.tasks.insert(TaskId(1), task1);
     orchestrator.tasks.insert(TaskId(2), task2);

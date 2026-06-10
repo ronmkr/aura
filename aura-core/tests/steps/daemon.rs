@@ -70,5 +70,5 @@ async fn when_client_provides_token(_world: &mut AuraWorld, token: String) {
 
 #[then(expr = "the daemon should allow {string} commands")]
 async fn then_daemon_allows_commands(_world: &mut AuraWorld, cmd: String) {
-    assert_eq!(cmd, "aria2.addUri");
+    assert_eq!(cmd, "aura.addUri");
 }

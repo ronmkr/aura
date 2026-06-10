@@ -1,6 +1,6 @@
-# TUI Guide (The Pilot Dashboard)
+# TUI Guide (Command Center)
 
-The **Galactic Pilot Dashboard** is Aura's interactive terminal interface. It provides a real-time view of all tasks managed by the Aura Daemon.
+The **Command Center** is Aura's interactive terminal interface. It provides a real-time view of all tasks managed by the Aura Daemon.
 
 ## Launching the TUI
 

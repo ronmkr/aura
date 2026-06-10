@@ -8,6 +8,8 @@ pub struct GeneralConfig {
     pub check_integrity: bool,
     pub event_poll_interval_ms: u64,
     pub daemon_mode: bool,
+    pub aura_dir_name: String,
+    pub history_file_name: String,
     pub theme: ThemeConfig,
 }
 
@@ -19,6 +21,8 @@ impl Default for GeneralConfig {
             check_integrity: true,
             event_poll_interval_ms: 500,
             daemon_mode: false,
+            aura_dir_name: ".aura".to_string(),
+            history_file_name: "history.jsonl".to_string(),
             theme: ThemeConfig::galactic(),
         }
     }

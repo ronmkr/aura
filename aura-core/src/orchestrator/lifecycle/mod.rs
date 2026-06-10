@@ -38,20 +38,7 @@ impl Orchestrator {
             // Save full task state to .aura control file for human-readability and basic resumption
             let state = meta_task.to_state(bitfield);
             if let Ok(json) = serde_json::to_vec_pretty(&state) {
-                let config = self.config.load();
-                let base_dir: std::path::PathBuf = if let Some(ref tid) = meta_task.tenant_id {
-                    if let Some(ctx) = self.tenants.get(tid) {
-                        if let Some(ref root) = ctx.disk_path_root {
-                            root.clone()
-                        } else {
-                            std::path::PathBuf::from(&config.storage.download_dir)
-                        }
-                    } else {
-                        std::path::PathBuf::from(&config.storage.download_dir)
-                    }
-                } else {
-                    std::path::PathBuf::from(&config.storage.download_dir)
-                };
+                let base_dir = self.resolve_base_dir(&meta_task.tenant_id);
                 let path = base_dir.join(format!("{}.aura", meta_task.name));
                 if let Err(e) = std::fs::write(&path, json) {
                     warn!(%id, ?path, error = %e, "Failed to write control file");
@@ -72,18 +59,7 @@ impl Orchestrator {
             .get(&id)
             .ok_or_else(|| Error::Config("Task not found".to_string()))?;
         let subtasks = meta_task.subtasks.clone();
-        let my_peer_id = self.peer_id;
-        let local_addr = self.resolve_local_addr();
-        let config_arc = self.config.clone();
-        let throttler_arc = if let Some(ref tid) = meta_task.tenant_id {
-            if let Some(ctx) = self.tenants.get(tid) {
-                ctx.throttler.clone()
-            } else {
-                self.throttler.clone()
-            }
-        } else {
-            self.throttler.clone()
-        };
+        let throttler_arc = self.resolve_throttler(&meta_task.tenant_id);
 
         for sub_task in subtasks {
             let sub_id = sub_task.id;
@@ -95,35 +71,18 @@ impl Orchestrator {
             let lpd_tx = self.lpd_tx.clone();
             let token_clone = token.clone();
             let loaded_bf = bitfield.clone();
-            let config_clone = config_arc.clone();
-            let db = self.db.clone();
             let throttler_clone = throttler_arc.clone();
-            let provider_clone = self.credential_provider.clone();
-            let dns_resolver = self.dns_resolver.clone();
-            let hsts_cache = self.hsts_cache.clone();
-            let alt_svc_cache = self.alt_svc_cache.clone();
-            let resource_governor_clone = self.resource_governor.clone();
             let tenant_id = meta_task.tenant_id.clone();
-            let client_pool = self.client_pool.clone();
+            let selected_files = meta_task.selected_files.clone();
+            let orchestrator_handle = self.handle();
 
             let existing_bt = self.get_bt_task(sub_id);
 
             tokio::spawn(async move {
-                let config = config_clone.load();
                 match ttype {
                     TaskType::Http => {
-                        let worker = crate::worker::WorkerBuilder::new(uri)
-                            .local_addr(local_addr)
-                            .dns_resolver(dns_resolver)
-                            .user_agent(Some(config.network.user_agent.clone()))
-                            .connect_timeout(Some(config.network.connect_timeout_secs))
-                            .proxy(config.network.proxy.clone())
-                            .retry_count(config.network.http_retry_count)
-                            .retry_delay_secs(config.network.http_retry_delay_secs)
-                            .credential_provider(provider_clone.clone())
-                            .hsts_cache(hsts_cache)
-                            .alt_svc_cache(alt_svc_cache)
-                            .client_pool(client_pool)
+                        let worker = orchestrator_handle
+                            .build_worker_builder(uri, tenant_id)
                             .build_http();
                         match worker.resolve_metadata().await {
                             Ok(m) => {
@@ -141,9 +100,8 @@ impl Orchestrator {
                         }
                     }
                     TaskType::Ftp => {
-                        let worker = crate::worker::WorkerBuilder::new(uri)
-                            .local_addr(local_addr)
-                            .credential_provider(provider_clone.clone())
+                        let worker = orchestrator_handle
+                            .build_worker_builder(uri, tenant_id)
                             .build_ftp();
                         match worker.resolve_metadata().await {
                             Ok(m) => {
@@ -167,28 +125,37 @@ impl Orchestrator {
                             let init_res = if uri.starts_with("magnet:") {
                                 match crate::magnet::Magnet::parse(&uri) {
                                     Ok(m) => Ok(BtTask::from_magnet(
-                                        id,
-                                        m.info_hash,
-                                        dht_tx,
-                                        lpd_tx,
-                                        db.clone(),
-                                        resource_governor_clone.clone(),
-                                        tenant_id.clone(),
-                                        config_clone.clone(),
+                                        crate::worker::bittorrent::task::BtTaskFromMagnetArgs {
+                                            id,
+                                            info_hash: m.info_hash,
+                                            dht_tx,
+                                            lpd_tx,
+                                            db: orchestrator_handle.db.clone(),
+                                            resource_governor: orchestrator_handle
+                                                .resource_governor
+                                                .clone(),
+                                            tenant_id: tenant_id.clone(),
+                                            config: orchestrator_handle.config.clone(),
+                                        },
                                     )),
                                     Err(e) => Err(e),
                                 }
                             } else {
                                 BtTask::from_file(
-                                    id,
-                                    &uri,
-                                    dht_tx,
-                                    lpd_tx,
-                                    db.clone(),
-                                    loaded_bf.clone(),
-                                    resource_governor_clone.clone(),
-                                    tenant_id.clone(),
-                                    config_clone.clone(),
+                                    crate::worker::bittorrent::task::BtTaskFromFileArgs {
+                                        id,
+                                        path: &uri,
+                                        dht_tx,
+                                        lpd_tx,
+                                        db: orchestrator_handle.db.clone(),
+                                        bitfield: loaded_bf.clone(),
+                                        resource_governor: orchestrator_handle
+                                            .resource_governor
+                                            .clone(),
+                                        tenant_id: tenant_id.clone(),
+                                        config: orchestrator_handle.config.clone(),
+                                        selected_files: selected_files.as_deref(),
+                                    },
                                 )
                                 .await
                             };
@@ -241,7 +208,8 @@ impl Orchestrator {
                                 total_length: Some(total_length),
                                 name: Some(torrent.info.name.clone()),
                                 range_supported: true,
-                                padding_ranges: torrent.get_padding_ranges(),
+                                padding_ranges: torrent
+                                    .get_padding_ranges(selected_files.as_deref()),
                                 etag: None,
                                 last_modified: None,
                             };
@@ -256,7 +224,7 @@ impl Orchestrator {
                         tokio::spawn(async move {
                             if let Err(e) = bt_task_run
                                 .run(
-                                    my_peer_id,
+                                    orchestrator_handle.peer_id,
                                     storage_tx,
                                     subtask_tx,
                                     token_clone,

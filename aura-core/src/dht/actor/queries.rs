@@ -80,11 +80,12 @@ impl DhtActor {
 
         self.socket.send_to(&msg.encode()?, addr).await?;
 
+        let dht_query_timeout_secs = self.config.load().bittorrent.dht_query_timeout_secs;
         tokio::select! {
             res = rx.recv() => {
                 res.ok_or_else(|| Error::Protocol("Query channel closed".to_string()))
             }
-            _ = tokio::time::sleep(std::time::Duration::from_secs(2)) => {
+            _ = tokio::time::sleep(std::time::Duration::from_secs(dht_query_timeout_secs)) => {
                 self.pending_queries.lock().await.remove(&tid);
                 Err(Error::Protocol("Query timed out".to_string()))
             }

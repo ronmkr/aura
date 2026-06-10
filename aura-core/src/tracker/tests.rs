@@ -2,7 +2,7 @@ use super::*;
 
 #[test]
 fn test_parse_compact_peers() {
-    let client = TrackerClient::new([0; 20], 6881, None, None, None);
+    let client = TrackerClient::new([0; 20], 6881, None, None, None, None);
     let bytes = vec![127, 0, 0, 1, 0x1a, 0xe1]; // 127.0.0.1:6881
     let peers = client.parse_compact_peers_raw(&bytes).unwrap();
     assert_eq!(peers.len(), 1);
@@ -12,7 +12,7 @@ fn test_parse_compact_peers() {
 
 #[test]
 fn test_parse_non_compact_peers() {
-    let client = TrackerClient::new([0; 20], 6881, None, None, None);
+    let client = TrackerClient::new([0; 20], 6881, None, None, None, None);
 
     use std::collections::HashMap;
     let mut peer_dict = HashMap::new();
@@ -57,7 +57,7 @@ async fn test_bep12_tracker_tiers() {
         .mount(&server_c)
         .await;
 
-    let client = TrackerClient::new([0; 20], 6881, None, None, None);
+    let client = TrackerClient::new([0; 20], 6881, None, None, None, None);
 
     // 1. First scenario: Announce list = [[ServerB (fails)], [ServerC (succeeds)]]
     // The client should try Tier 0 (Server B) -> fails.
@@ -120,7 +120,7 @@ async fn test_bep12_tracker_tiers() {
 
 #[tokio::test]
 async fn test_bep12_tracker_tiers_edge_cases() {
-    let client = TrackerClient::new([0; 20], 6881, None, None, None);
+    let client = TrackerClient::new([0; 20], 6881, None, None, None, None);
 
     let torrent = crate::torrent::Torrent {
         announce: "http://example.com/announce".to_string(),

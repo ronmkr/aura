@@ -13,6 +13,7 @@ aura-dev.skill
 # OS-generated files
 .DS_Store
 .DS_Store?
+graphify-out
 ._*
 .Spotlight-V100
 .Trashes
@@ -38,21 +39,18 @@ proptest-regressions/
 aura-docs/project/prompts
 architecture_review.md
 gap_analysis.md
-
 # BitTorrent files
 *.torrent
 !tests/**/*.torrent
 *.magnet
-
 # Local analysis files
 metadata.json
 unused_deps.txt
-
 # Antigravity CLI artifacts
 .antigravitycli/
-
 # mdBook generated ADRs
 aura-docs/manual/src/adr/
 aura-docs/manual/book/
 CLAUDE.md
 audit_report.json
+graphify-out/

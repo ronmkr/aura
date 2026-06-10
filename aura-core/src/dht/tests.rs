@@ -5,14 +5,20 @@ use tokio::sync::mpsc;
 #[tokio::test]
 async fn test_dht_actor_creation() {
     let (_tx, _rx) = mpsc::channel(1);
-    let dht = DhtActor::new("127.0.0.1", [0; 20], _rx, None, 0, None).await;
+    let config = std::sync::Arc::new(arc_swap::ArcSwap::new(std::sync::Arc::new(
+        crate::Config::default(),
+    )));
+    let dht = DhtActor::new("127.0.0.1", [0; 20], _rx, None, 0, None, config).await;
     assert!(dht.is_ok());
 }
 
 #[tokio::test]
 async fn test_dht_rotating_tokens() {
     let (_tx, _rx) = mpsc::channel(1);
-    let dht = DhtActor::new("127.0.0.1", [0; 20], _rx, None, 0, None)
+    let config = std::sync::Arc::new(arc_swap::ArcSwap::new(std::sync::Arc::new(
+        crate::Config::default(),
+    )));
+    let dht = DhtActor::new("127.0.0.1", [0; 20], _rx, None, 0, None, config)
         .await
         .unwrap();
     let addr: SocketAddr = "192.168.1.1:5000".parse().unwrap();
@@ -70,7 +76,10 @@ async fn test_dht_persistent_state_serialization() {
     use tempfile::NamedTempFile;
 
     let (_tx, _rx) = mpsc::channel(1);
-    let dht = DhtActor::new("127.0.0.1", [1; 20], _rx, None, 0, None)
+    let config = std::sync::Arc::new(arc_swap::ArcSwap::new(std::sync::Arc::new(
+        crate::Config::default(),
+    )));
+    let dht = DhtActor::new("127.0.0.1", [1; 20], _rx, None, 0, None, config)
         .await
         .unwrap();
 
@@ -95,7 +104,10 @@ async fn test_dht_persistent_state_serialization() {
 
     // Create a new actor and load state
     let (_tx2, _rx2) = mpsc::channel(1);
-    let mut dht2 = DhtActor::new("127.0.0.1", [1; 20], _rx2, None, 0, None)
+    let config2 = std::sync::Arc::new(arc_swap::ArcSwap::new(std::sync::Arc::new(
+        crate::Config::default(),
+    )));
+    let mut dht2 = DhtActor::new("127.0.0.1", [1; 20], _rx2, None, 0, None, config2)
         .await
         .unwrap();
 
@@ -124,7 +136,10 @@ async fn test_dht_save_now_command() {
     std::env::set_var("HOME", tmp_dir.path());
     std::env::set_var("USERPROFILE", tmp_dir.path());
 
-    let dht = DhtActor::new("127.0.0.1", [1; 20], rx, None, 0, None)
+    let config = std::sync::Arc::new(arc_swap::ArcSwap::new(std::sync::Arc::new(
+        crate::Config::default(),
+    )));
+    let dht = DhtActor::new("127.0.0.1", [1; 20], rx, None, 0, None, config)
         .await
         .unwrap();
 

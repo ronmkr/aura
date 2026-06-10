@@ -18,6 +18,12 @@ impl BtTask {
             .await;
 
         loop {
+            let lpd_announce_interval_secs = self
+                .state
+                .config
+                .load()
+                .bittorrent
+                .lpd_announce_interval_secs;
             tokio::select! {
                 _ = token.cancelled() => {
                     let _ = self
@@ -28,7 +34,7 @@ impl BtTask {
                         .await;
                     break;
                 }
-                _ = tokio::time::sleep(std::time::Duration::from_secs(300)) => {
+                _ = tokio::time::sleep(std::time::Duration::from_secs(lpd_announce_interval_secs)) => {
                 }
             }
         }

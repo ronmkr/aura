@@ -29,6 +29,72 @@ pub struct OrchestratorChannels {
     pub nat_tx: mpsc::Sender<NatCommand>,
 }
 
+#[derive(Clone)]
+pub struct OrchestratorHandle {
+    pub config: Arc<ArcSwap<crate::Config>>,
+    pub dns_resolver: Arc<crate::net_util::TokioResolver>,
+    pub credential_provider: Arc<crate::config::credentials::CredentialProvider>,
+    pub hsts_cache: crate::security::HstsCache,
+    pub alt_svc_cache: crate::security::AltSvcCache,
+    pub resource_governor: Arc<crate::orchestrator::resource_governor::ResourceGovernor>,
+    pub client_pool: crate::worker::http::ClientPool,
+    pub peer_id: [u8; 20],
+    pub db: sled::Db,
+    pub vpn_provider: Option<Arc<dyn crate::vpn::VpnProvider>>,
+}
+
+impl OrchestratorHandle {
+    pub fn build_worker_builder(
+        &self,
+        uri: String,
+        tenant_id: Option<TenantId>,
+    ) -> crate::worker::WorkerBuilder {
+        let config = self.config.load();
+        let local_addr = self.resolve_local_addr();
+        crate::worker::WorkerBuilder::new(uri)
+            .local_addr(local_addr)
+            .dns_resolver(self.dns_resolver.clone())
+            .user_agent(Some(config.network.user_agent.clone()))
+            .connect_timeout(Some(config.network.connect_timeout_secs))
+            .tcp_keepalive_secs(Some(config.network.tcp_keepalive_secs))
+            .proxy(config.network.proxy.clone())
+            .max_redirects(config.network.max_redirects)
+            .retry_count(config.network.http_retry_count)
+            .retry_delay_secs(config.network.http_retry_delay_secs)
+            .happy_eyeballs_stagger_ms(config.network.happy_eyeballs_stagger_ms)
+            .http_buffer_capacity(config.network.http_buffer_capacity)
+            .http_concurrent_requests(config.network.http_concurrent_requests)
+            .credential_provider(self.credential_provider.clone())
+            .hsts_cache(self.hsts_cache.clone())
+            .alt_svc_cache(self.alt_svc_cache.clone())
+            .resource_governor(self.resource_governor.clone())
+            .tenant_id(tenant_id)
+            .client_pool(self.client_pool.clone())
+    }
+
+    pub fn build_bt_worker_options(
+        &self,
+        peer_addr: String,
+        info_hash: InfoHash,
+        peer_id: [u8; 20],
+        throttler: Arc<Throttler>,
+    ) -> crate::worker::bittorrent::BtWorkerOptions {
+        let config = self.config.load();
+        crate::worker::bittorrent::BtWorkerOptions {
+            peer_addr,
+            info_hash,
+            peer_id,
+            my_id: self.peer_id,
+            proxy: config.network.proxy.clone(),
+            throttler,
+            pex_enabled: config.bittorrent.pex_enabled,
+            pipeline_size: config.bittorrent.request_pipeline_size,
+            connect_timeout_secs: config.network.connect_timeout_secs,
+            happy_eyeballs_stagger_ms: config.network.happy_eyeballs_stagger_ms,
+        }
+    }
+}
+
 pub struct Orchestrator {
     pub(crate) tasks: HashMap<TaskId, MetaTask>,
     pub(crate) tenants: HashMap<TenantId, TenantContext>,
@@ -63,20 +129,27 @@ pub struct Orchestrator {
     pub(crate) alt_svc_cache: crate::security::AltSvcCache,
     pub(crate) policy_manager: crate::orchestrator::policy_manager::PolicyManager,
     pub(crate) client_pool: crate::worker::http::ClientPool,
+    pub(crate) notification_service: Arc<super::notifications::NotificationService>,
 }
 
 impl Orchestrator {
     pub(crate) fn get_bt_task(&self, id: TaskId) -> Option<Arc<BtTask>> {
         // Try as meta_id
         if let Some(task) = self.tasks.get(&id) {
-            if let Some(ext) = task.extensions.get("bittorrent") {
+            if let Some(ext) = task
+                .extensions
+                .get(crate::worker::bittorrent::BT_EXTENSION_KEY)
+            {
                 return ext.clone().as_any_arc().downcast::<BtTask>().ok();
             }
         }
         // Try as sub_id
         for task in self.tasks.values() {
             if task.subtasks.iter().any(|s| s.id == id) {
-                if let Some(ext) = task.extensions.get("bittorrent") {
+                if let Some(ext) = task
+                    .extensions
+                    .get(crate::worker::bittorrent::BT_EXTENSION_KEY)
+                {
                     return ext.clone().as_any_arc().downcast::<BtTask>().ok();
                 }
             }
@@ -87,7 +160,10 @@ impl Orchestrator {
     pub(crate) fn iter_bt_tasks(&self) -> Vec<(TaskId, Arc<BtTask>)> {
         let mut results = Vec::new();
         for task in self.tasks.values() {
-            if let Some(ext) = task.extensions.get("bittorrent") {
+            if let Some(ext) = task
+                .extensions
+                .get(crate::worker::bittorrent::BT_EXTENSION_KEY)
+            {
                 if let Ok(bt) = ext.clone().as_any_arc().downcast::<BtTask>() {
                     results.push((task.id, bt));
                 }
@@ -96,24 +172,77 @@ impl Orchestrator {
         results
     }
 
+    pub(crate) fn resolve_base_dir(&self, tenant_id: &Option<TenantId>) -> std::path::PathBuf {
+        let config = self.config.load();
+        if let Some(ref tid) = tenant_id {
+            if let Some(ctx) = self.tenants.get(tid) {
+                if let Some(ref root) = ctx.disk_path_root {
+                    return root.clone();
+                }
+            }
+        }
+        std::path::PathBuf::from(&config.storage.download_dir)
+    }
+
+    pub(crate) fn resolve_throttler(&self, tenant_id: &Option<TenantId>) -> Arc<Throttler> {
+        if let Some(ref tid) = tenant_id {
+            if let Some(ctx) = self.tenants.get(tid) {
+                return ctx.throttler.clone();
+            }
+        }
+        self.throttler.clone()
+    }
+
+    pub(crate) fn handle(&self) -> OrchestratorHandle {
+        OrchestratorHandle {
+            config: self.config.clone(),
+            dns_resolver: self.dns_resolver.clone(),
+            credential_provider: self.credential_provider.clone(),
+            hsts_cache: self.hsts_cache.clone(),
+            alt_svc_cache: self.alt_svc_cache.clone(),
+            resource_governor: self.resource_governor.clone(),
+            client_pool: self.client_pool.clone(),
+            peer_id: self.peer_id,
+            db: self.db.clone(),
+            vpn_provider: self.vpn_provider.clone(),
+        }
+    }
+
+    pub(crate) fn emit_progress(&self, id: TaskId) {
+        if let Some(task) = self.tasks.get(&id) {
+            let _ = self.event_tx.send(Event::TaskProgress {
+                id,
+                completed_bytes: task.completed_length,
+                uploaded_bytes: task.uploaded_length(),
+                total_bytes: task.total_length,
+            });
+        }
+    }
+
     pub fn new(
         channels: OrchestratorChannels,
         config: Arc<ArcSwap<crate::Config>>,
         db: sled::Db,
         dns_resolver: Arc<crate::net_util::TokioResolver>,
     ) -> (Self, broadcast::Sender<Event>) {
-        let (event_tx, _event_rx) = broadcast::channel(1024);
-        let (subtask_tx, subtask_rx) = mpsc::channel(4096);
-        let (scrub_tx, scrub_rx) = mpsc::channel(1024);
+        let initial_config = config.load();
+        let (event_tx, _event_rx) =
+            broadcast::channel(initial_config.limits.event_channel_capacity);
+        let (subtask_tx, subtask_rx) =
+            mpsc::channel(initial_config.limits.event_channel_capacity * 4);
+        let (scrub_tx, scrub_rx) = mpsc::channel(initial_config.limits.command_channel_capacity);
 
         let mut peer_id = [0u8; 20];
-        peer_id[..8].copy_from_slice(b"-AR0001-");
-        rand::rng().fill(&mut peer_id[8..]);
+        let prefix = initial_config.bittorrent.peer_id_prefix.as_bytes();
+        let prefix_len = prefix.len().min(8);
+        peer_id[..prefix_len].copy_from_slice(&prefix[..prefix_len]);
+        rand::rng().fill(&mut peer_id[prefix_len..]);
 
         let initial_config = config.load();
         let throttler = Arc::new(Throttler::new(
             initial_config.bandwidth.global_download_limit,
             initial_config.bandwidth.global_upload_limit,
+            initial_config.bandwidth.refill_interval_ms,
         ));
 
         let vpn_provider = Self::create_vpn_provider(&initial_config);
@@ -172,7 +301,7 @@ impl Orchestrator {
                 throttler,
                 vpn_provider,
                 vpn_watch_tx,
-                config,
+                config: config.clone(),
                 resource_governor,
                 power_manager: crate::power::PowerManager::new(),
                 _hook_service: hook_service,
@@ -183,6 +312,9 @@ impl Orchestrator {
                 alt_svc_cache: crate::security::AltSvcCache::new(),
                 policy_manager: crate::orchestrator::policy_manager::PolicyManager::new(),
                 client_pool: crate::worker::http::ClientPool::new(),
+                notification_service: Arc::new(super::notifications::NotificationService::new(
+                    config.clone(),
+                )),
             },
             event_tx,
         )

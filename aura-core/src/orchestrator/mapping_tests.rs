@@ -79,7 +79,7 @@ fn test_mapping_new_placeholders() {
             condition: MappingCondition::Extension("iso".to_string()),
             target: "{protocol}/{domain}/{year}/{name}".to_string(),
         }],
-        default_conflict_policy: crate::orchestrator::mapping::ConflictPolicy::AutoRename,
+        default_conflict_policy: crate::config::ConflictPolicy::AutoRename,
     };
     let engine = MappingEngine::new(config);
     let mut task = MetaTask::new(TaskId(1), "ubuntu.iso".to_string(), 1000);
@@ -112,7 +112,7 @@ fn test_mapping_conflict_autorename() {
 
     let config = ResourceMappingConfig {
         rules: Vec::new(),
-        default_conflict_policy: crate::orchestrator::mapping::ConflictPolicy::AutoRename,
+        default_conflict_policy: crate::config::ConflictPolicy::AutoRename,
     };
     let engine = MappingEngine::new(config);
     let task = MetaTask::new(TaskId(1), "data.zip".to_string(), 1000);

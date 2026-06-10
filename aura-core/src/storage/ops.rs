@@ -6,7 +6,6 @@ use crate::{Result, TaskId};
 use bytes::{Bytes, BytesMut};
 use std::sync::Arc;
 use tokio::fs::{self, File, OpenOptions};
-use tracing::debug;
 
 impl StorageEngine {
     pub(crate) async fn handle_read(&mut self, id: TaskId, segment: Segment) -> Result<Bytes> {
@@ -55,211 +54,112 @@ impl StorageEngine {
         segment: Segment,
         data: BytesMut,
     ) -> Result<()> {
-        let next_offset = *self.next_offsets.get(&id).unwrap_or(&0);
+        let padding_ranges = self
+            .task_padding_ranges
+            .get(&id)
+            .cloned()
+            .unwrap_or_default();
 
-        if segment.offset == next_offset {
-            let len = data.len() as u64;
+        let mut threshold = self
+            .config
+            .as_ref()
+            .map(|cfg: &Arc<arc_swap::ArcSwap<crate::Config>>| {
+                cfg.load().storage.write_buffer_kb as usize * 1024
+            })
+            .unwrap_or(4_194_304);
 
-            let padding_ranges = self
-                .task_padding_ranges
-                .get(&id)
-                .cloned()
-                .unwrap_or_default();
-
-            // Filter padding before pushing to dirty buffer
-            let subranges =
-                super::engine::get_non_padding_subranges_impl(&padding_ranges, segment.offset, len);
-            for sub in subranges {
-                let sub_offset = sub.start;
-                let sub_len = sub.length();
-
-                // Check for discontinuity in dirty buffer (caused by padding skip)
-                let needs_flush = if let Some(dirty) = self.dirty_buffers.get(&id) {
-                    if let Some(last) = dirty.last() {
-                        sub_offset != (last.0 + last.1.len() as u64)
-                    } else {
-                        false
-                    }
-                } else {
-                    false
-                };
-
-                if needs_flush {
-                    self.flush_dirty_buffer(id).await?;
-                }
-
-                let start_in_data = (sub_offset - segment.offset) as usize;
-                let end_in_data = start_in_data + sub_len as usize;
-                let sub_data = BytesMut::from(&data[start_in_data..end_in_data]);
-
-                if let Some(dirty) = self.dirty_buffers.get_mut(&id) {
-                    dirty.push((sub_offset, sub_data));
-                }
-                if let Some(size) = self.dirty_sizes.get_mut(&id) {
-                    *size += sub_len as usize;
-                }
-            }
-
-            let mut current_offset = next_offset + len;
-
-            let mut to_flush = Vec::new();
-            if let Some(pending) = self.pending_writes.get_mut(&id) {
-                while let Some(p_data) = pending.remove(&current_offset) {
-                    let p_len = p_data.len() as u64;
-
-                    // Filter padding for pending writes as well
-                    let p_subranges = super::engine::get_non_padding_subranges_impl(
-                        &padding_ranges,
-                        current_offset,
-                        p_len,
-                    );
-                    for sub in p_subranges {
-                        let start_in_p = (sub.start - current_offset) as usize;
-                        let end_in_p = start_in_p + sub.length() as usize;
-                        to_flush.push((sub.start, BytesMut::from(&p_data[start_in_p..end_in_p])));
-                    }
-
-                    current_offset += p_len;
-                }
-            }
-
-            for (offset, p_data) in to_flush {
-                let p_len = p_data.len();
-
-                // Check for discontinuity again
-                let needs_flush = if let Some(dirty) = self.dirty_buffers.get(&id) {
-                    if let Some(last) = dirty.last() {
-                        offset != (last.0 + last.1.len() as u64)
-                    } else {
-                        false
-                    }
-                } else {
-                    false
-                };
-
-                if needs_flush {
-                    self.flush_dirty_buffer(id).await?;
-                }
-
-                if let Some(dirty) = self.dirty_buffers.get_mut(&id) {
-                    dirty.push((offset, p_data));
-                }
-                if let Some(size) = self.dirty_sizes.get_mut(&id) {
-                    *size += p_len;
-                }
-            }
-
-            self.next_offsets.insert(id, current_offset);
-
-            // Flush if we hit the write buffer threshold
-            let mut threshold = self
-                .config
-                .as_ref()
-                .map(|cfg: &Arc<arc_swap::ArcSwap<crate::Config>>| {
-                    cfg.load().storage.write_buffer_kb as usize * 1024
-                })
-                .unwrap_or(4_194_304); // Default to 4MB if no config provided
-
-            // ADR 0021: Automatically increase the sequential write buffer size for high-latency network storage
-            if self.network_shares.contains(&id) {
-                threshold *= 4;
-            }
-
-            if let Some(&size) = self.dirty_sizes.get(&id) {
-                if size >= threshold {
-                    self.flush_dirty_buffer(id).await?;
-                }
-            }
-        } else {
-            debug!(%id, offset = %segment.offset, expected = %next_offset, "Buffering out-of-order piece");
-            if let Some(pending) = self.pending_writes.get_mut(&id) {
-                pending.insert(segment.offset, data);
-            }
+        if self.locker.is_network_share(&id) {
+            threshold *= 4;
         }
+
+        let ready_blocks =
+            self.aggregator
+                .add_write(id, segment.offset, data, &padding_ranges, threshold);
+
+        let deadline_ms = self
+            .config
+            .as_ref()
+            .map(|c| c.load().storage.io_deadline_ms)
+            .unwrap_or(500);
+
+        for block in ready_blocks {
+            use super::scheduler::{IoPriority, IoTask};
+            use tokio::time::{Duration, Instant};
+
+            self.scheduler.enqueue(IoTask {
+                task_id: id,
+                offset: block.offset,
+                data: block.data,
+                deadline: Instant::now() + Duration::from_millis(deadline_ms),
+                priority: IoPriority::Normal,
+            });
+        }
+
         Ok(())
     }
 
     pub(crate) async fn flush_dirty_buffer(&mut self, id: TaskId) -> Result<()> {
-        let buffers = if let Some(dirty) = self.dirty_buffers.get_mut(&id) {
-            std::mem::take(dirty)
-        } else {
-            Vec::new()
-        };
+        let deadline_ms = self
+            .config
+            .as_ref()
+            .map(|c| c.load().storage.io_deadline_ms)
+            .unwrap_or(500);
 
-        if buffers.is_empty() {
-            return Ok(());
-        }
+        if let Some(block) = self.aggregator.take_dirty_block(id) {
+            use super::scheduler::{IoPriority, IoTask};
+            use tokio::time::{Duration, Instant};
 
-        let offset = buffers.first().unwrap().0;
-        let data = buffers.into_iter().map(|(_, d)| d).collect::<Vec<_>>();
-
-        use super::scheduler::{IoPriority, IoTask};
-        use tokio::time::{Duration, Instant};
-
-        self.scheduler.enqueue(IoTask {
-            task_id: id,
-            offset,
-            data,
-            deadline: Instant::now() + Duration::from_millis(500),
-            priority: IoPriority::Normal,
-        });
-
-        if let Some(size) = self.dirty_sizes.get_mut(&id) {
-            *size = 0;
+            self.scheduler.enqueue(IoTask {
+                task_id: id,
+                offset: block.offset,
+                data: block.data,
+                deadline: Instant::now() + Duration::from_millis(deadline_ms),
+                priority: IoPriority::Normal,
+            });
         }
 
         Ok(())
     }
 
     pub(crate) async fn flush_dirty_buffer_immediate(&mut self, id: TaskId) -> Result<()> {
-        let buffers = if let Some(dirty) = self.dirty_buffers.get_mut(&id) {
-            std::mem::take(dirty)
-        } else {
-            Vec::new()
-        };
+        if let Some(block) = self.aggregator.take_dirty_block(id) {
+            let file = self.get_or_open_part_file(id).await?;
+            use tokio::io::AsyncSeekExt;
+            use tokio::io::AsyncWriteExt;
 
-        if buffers.is_empty() {
-            return Ok(());
-        }
+            file.seek(std::io::SeekFrom::Start(block.offset)).await?;
+            let mut total_len = 0;
+            for d in &block.data {
+                file.write_all(d).await?;
+                total_len += d.len() as u64;
+            }
 
-        let offset = buffers.first().unwrap().0;
-        let data = buffers.into_iter().map(|(_, d)| d).collect::<Vec<_>>();
-
-        let file = self.get_or_open_part_file(id).await?;
-        use tokio::io::AsyncSeekExt;
-        use tokio::io::AsyncWriteExt;
-
-        file.seek(std::io::SeekFrom::Start(offset)).await?;
-        let mut total_len = 0;
-        for d in &data {
-            file.write_all(d).await?;
-            total_len += d.len() as u64;
-        }
-
-        crate::storage::sys::apply_fadvise_dontneed(file, offset, total_len);
-
-        if let Some(size) = self.dirty_sizes.get_mut(&id) {
-            *size = 0;
+            crate::storage::sys::apply_fadvise_dontneed(file, block.offset, total_len);
         }
 
         Ok(())
     }
 
     pub(crate) async fn flush_all_pending(&mut self, id: TaskId) -> Result<()> {
-        self.flush_dirty_buffer(id).await?;
+        let blocks = self.aggregator.take_all_pending(id);
 
-        if let Some(pending) = self.pending_writes.remove(&id) {
-            use super::scheduler::{IoPriority, IoTask};
-            use tokio::time::{Duration, Instant};
-            for (offset, data) in pending {
-                self.scheduler.enqueue(IoTask {
-                    task_id: id,
-                    offset,
-                    data: vec![data],
-                    deadline: Instant::now() + Duration::from_millis(100),
-                    priority: IoPriority::High,
-                });
-            }
+        let deadline_ms = self
+            .config
+            .as_ref()
+            .map(|c| c.load().storage.io_deadline_ms / 5) // High priority is 5x faster
+            .unwrap_or(100);
+
+        use super::scheduler::{IoPriority, IoTask};
+        use tokio::time::{Duration, Instant};
+
+        for block in blocks {
+            self.scheduler.enqueue(IoTask {
+                task_id: id,
+                offset: block.offset,
+                data: block.data,
+                deadline: Instant::now() + Duration::from_millis(deadline_ms),
+                priority: IoPriority::High,
+            });
         }
         Ok(())
     }
@@ -299,11 +199,7 @@ impl StorageEngine {
                 .open(&part_path)
                 .await?;
 
-            crate::storage::sys::try_lock_file(&file)?;
-
-            if crate::storage::sys::is_network_share(&file) {
-                self.network_shares.insert(id);
-            }
+            self.locker.lock_and_detect_network(id, &file)?;
 
             crate::storage::sys::apply_fadvise_sequential(&file);
 

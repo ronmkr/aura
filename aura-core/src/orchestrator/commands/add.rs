@@ -67,19 +67,7 @@ impl Orchestrator {
 
         info!(%id, %name, "Adding MetaTask with {} sources", sources.len());
 
-        let base_dir = if let Some(ref tid) = tenant_id {
-            if let Some(ctx) = self.tenants.get(tid) {
-                if let Some(ref root) = ctx.disk_path_root {
-                    root.clone()
-                } else {
-                    std::path::PathBuf::from(&config.storage.download_dir)
-                }
-            } else {
-                std::path::PathBuf::from(&config.storage.download_dir)
-            }
-        } else {
-            std::path::PathBuf::from(&config.storage.download_dir)
-        };
+        let base_dir = self.resolve_base_dir(&tenant_id);
         let control_path = base_dir.join(format!("{}.aura", name));
 
         let (mut meta_task, loaded_bitfield) = if let Ok(data) = std::fs::read(&control_path) {
@@ -115,7 +103,9 @@ impl Orchestrator {
                     if let Ok(data) = std::fs::read(&uri) {
                         if let Ok(ml) = crate::metalink::Metalink::parse(&data) {
                             for file in ml.files {
-                                if meta_task.name == "unnamed" || meta_task.name.is_empty() {
+                                if meta_task.name == crate::DEFAULT_TASK_NAME
+                                    || meta_task.name.is_empty()
+                                {
                                     meta_task.name = file.name.clone();
                                 }
                                 if meta_task.total_length == 0 {
@@ -160,15 +150,7 @@ impl Orchestrator {
         let token = tokio_util::sync::CancellationToken::new();
         self.cancellation_tokens.insert(id, token.clone());
 
-        let throttler = if let Some(ref tid) = meta_task.tenant_id {
-            if let Some(ctx) = self.tenants.get(tid) {
-                ctx.throttler.clone()
-            } else {
-                self.throttler.clone()
-            }
-        } else {
-            self.throttler.clone()
-        };
+        let throttler = self.resolve_throttler(&meta_task.tenant_id);
 
         throttler
             .register_task(
@@ -179,19 +161,7 @@ impl Orchestrator {
             )
             .await;
 
-        let base_dir = if let Some(ref tid) = meta_task.tenant_id {
-            if let Some(ctx) = self.tenants.get(tid) {
-                if let Some(ref root) = ctx.disk_path_root {
-                    root.clone()
-                } else {
-                    std::path::PathBuf::from(&config.storage.download_dir)
-                }
-            } else {
-                std::path::PathBuf::from(&config.storage.download_dir)
-            }
-        } else {
-            std::path::PathBuf::from(&config.storage.download_dir)
-        };
+        let base_dir = self.resolve_base_dir(&meta_task.tenant_id);
         let path = base_dir.join(&meta_task.name);
         let _ = self
             .storage_tx

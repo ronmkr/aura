@@ -19,13 +19,10 @@ async fn test_ftp_worker_retry_on_connection_failure() {
     });
 
     let worker = FtpWorker::new(
-        format!("ftp://127.0.0.1:{}/test_file.bin", port),
-        None,
-        3,
-        0,
-        None,
-        None,
-        None,
+        crate::worker::WorkerBuilder::new(format!("ftp://127.0.0.1:{}/test_file.bin", port))
+            .retry_count(3)
+            .retry_delay_secs(0)
+            .options,
     );
 
     let result = worker.resolve_metadata().await;

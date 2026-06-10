@@ -65,13 +65,14 @@ impl Engine {
         sources: Vec<(String, TaskType)>,
         checksum: Option<crate::Checksum>,
     ) -> Result<crate::api::TaskHandle> {
+        let config = self.config.load();
         self.add_task_with_options(crate::orchestrator::command::AddTaskArgs {
             id,
             tenant_id,
             name,
             sources,
             checksum,
-            priority: 3,
+            priority: config.limits.default_task_priority,
             streaming_mode: false,
             depends_on: Vec::new(),
             follow_on: None,
@@ -234,9 +235,30 @@ impl Engine {
         offset: usize,
         num: usize,
     ) -> Result<Vec<crate::history::CompletedTaskRecord>> {
-        let mut records = crate::history::HistoryManager::read_records();
+        let config = self.config.load();
+        let mut records = crate::history::HistoryManager::read_records(&config);
         records.reverse();
         let paginated = records.into_iter().skip(offset).take(num).collect();
         Ok(paginated)
+    }
+
+    pub async fn get_files(&self, id: TaskId) -> Result<Option<Vec<crate::torrent::File>>> {
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        self.command_tx
+            .send(Command::GetFiles(id, tx))
+            .await
+            .map_err(|e| Error::Engine(format!("Failed to send GetFiles command: {}", e)))?;
+        rx.await
+            .map_err(|_| Error::Engine("Engine shut down before replying".to_string()))
+    }
+
+    pub async fn set_file_selection(&self, id: TaskId, selection: Vec<bool>) -> Result<()> {
+        self.command_tx
+            .send(Command::SetFileSelection(id, selection))
+            .await
+            .map_err(|e| {
+                Error::Engine(format!("Failed to send SetFileSelection command: {}", e))
+            })?;
+        Ok(())
     }
 }

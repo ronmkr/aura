@@ -125,7 +125,7 @@ async fn when_add_specific_task(world: &mut AuraWorld, uri_placeholder: String) 
     }
 
     let engine = world.engine.as_ref().unwrap();
-    let id = TaskId(rand::random());
+    let id = TaskId::random();
     world.last_task_id = Some(id);
 
     // Map URI placeholder to actual mock server URI

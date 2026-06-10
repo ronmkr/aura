@@ -27,12 +27,7 @@ impl Orchestrator {
                 task.pending_ranges.push(range);
             }
 
-            let _ = self.event_tx.send(Event::TaskProgress {
-                id,
-                completed_bytes: task.completed_length,
-                uploaded_bytes: task.uploaded_length,
-                total_bytes: task.total_length,
-            });
+            self.emit_progress(id);
         }
         let _ = self.save_task(id).await;
         let _ = self.event_tx.send(Event::TaskPaused(id));
@@ -69,17 +64,23 @@ impl Orchestrator {
         let mut to_stop = Vec::new();
         for (id, task) in &self.tasks {
             if task.phase == crate::task::DownloadPhase::Complete {
-                let is_bittorrent = task
-                    .subtasks
-                    .iter()
-                    .any(|sub| sub.task_type == crate::task::TaskType::BitTorrent);
-                if !is_bittorrent {
-                    continue;
-                }
+                let bt_task = self.get_bt_task(*id);
+                let (uploaded, start_time, ratio_override, time_override) =
+                    if let Some(bt) = bt_task {
+                        let uploaded = bt
+                            .state
+                            .uploaded_length
+                            .load(std::sync::atomic::Ordering::Relaxed);
+                        let start_time = *bt.state.seeding_start_time.lock().unwrap();
+                        let ratio = *bt.state.seed_ratio.lock().unwrap();
+                        let time = *bt.state.seed_time.lock().unwrap();
+                        (uploaded, start_time, ratio, time)
+                    } else {
+                        continue;
+                    };
 
-                let target_ratio = task.seed_ratio.unwrap_or(global_ratio);
-                let target_time_secs = task
-                    .seed_time
+                let target_ratio = ratio_override.unwrap_or(global_ratio);
+                let target_time_secs = time_override
                     .map(|mins| mins as u64 * 60)
                     .unwrap_or(global_time_secs);
 
@@ -92,7 +93,7 @@ impl Orchestrator {
 
                 let ratio_reached = if ratio_limit_active {
                     let current_ratio = if task.total_length > 0 {
-                        task.uploaded_length as f64 / task.total_length as f64
+                        uploaded as f64 / task.total_length as f64
                     } else {
                         0.0
                     };
@@ -102,7 +103,7 @@ impl Orchestrator {
                 };
 
                 let time_reached = if time_limit_active {
-                    if let Some(start_time) = task.seeding_start_time {
+                    if let Some(start_time) = start_time {
                         let elapsed_secs =
                             (chrono::Utc::now() - start_time).num_seconds().max(0) as u64;
                         elapsed_secs >= target_time_secs

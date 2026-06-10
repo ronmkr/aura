@@ -114,7 +114,8 @@ impl ProtocolWorker for HttpWorker {
                             }
                         }
 
-                        let mut buffer = BytesMut::with_capacity(16384);
+                        let buffer_cap = self.options.http_buffer_capacity;
+                        let mut buffer = BytesMut::with_capacity(buffer_cap);
 
                         let mut stream = response.bytes_stream();
                         let mut bytes_downloaded = 0u64;
@@ -132,7 +133,7 @@ impl ProtocolWorker for HttpWorker {
                                 let max_take = (segment.length - bytes_downloaded) as usize;
                                 let take_len = std::cmp::min(
                                     remaining_chunk.len(),
-                                    std::cmp::min(16384, max_take),
+                                    std::cmp::min(buffer_cap, max_take),
                                 );
                                 let sub_chunk = &remaining_chunk[..take_len];
 
@@ -207,6 +208,6 @@ impl ProtocolWorker for HttpWorker {
     }
 
     fn available_capacity(&self) -> usize {
-        32 // Allow 32 concurrent requests per HttpWorker
+        self.options.http_concurrent_requests
     }
 }

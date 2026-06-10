@@ -23,7 +23,7 @@ Aura's token bucket throttler (ADR-0009) enforces static global and per-task ban
 
 ## Alternatives Considered
 - **External cron scheduling**: Let users use system cron to run `aura config set global_download_limit ...`. *Rejected:* Fragile; requires system cron access; doesn't survive daemon restarts; poor UX.
-- **aria2 `changeGlobalOption` method**: Allow RPC clients to update limits dynamically. *Not rejected but complementary:* aria2 compatibility requires this method anyway; scheduling is a higher-level built-in convenience.
+- **aura `changeGlobalOption` method**: Allow RPC clients to update limits dynamically. *Not rejected but complementary:* aura compatibility requires this method anyway; scheduling is a higher-level built-in convenience.
 
 ## Consequences
 - **Pros**: Native time-based bandwidth management; works without external cron; particularly valuable for users on ISP plans with off-peak unlimited tiers.

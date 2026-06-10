@@ -12,11 +12,21 @@ impl Orchestrator {
         match event {
             crate::storage::StorageEvent::Completed(id) => {
                 info!(%id, "Storage reported completion");
+
+                let mut uploaded_length = 0;
+                if let Some(bt) = self.get_bt_task(id) {
+                    uploaded_length = bt
+                        .state
+                        .uploaded_length
+                        .load(std::sync::atomic::Ordering::Relaxed);
+                    let mut start_time = bt.state.seeding_start_time.lock().unwrap();
+                    if start_time.is_none() {
+                        *start_time = Some(chrono::Utc::now());
+                    }
+                }
+
                 if let Some(task) = self.tasks.get_mut(&id) {
                     task.phase = DownloadPhase::Complete;
-                    if task.seeding_start_time.is_none() {
-                        task.seeding_start_time = Some(chrono::Utc::now());
-                    }
 
                     let duration_secs = task
                         .created_at
@@ -28,20 +38,17 @@ impl Orchestrator {
                         uris: task.subtasks.iter().map(|s| s.uri.clone()).collect(),
                         total_bytes: task.total_length,
                         downloaded_bytes: task.completed_length,
-                        uploaded_bytes: task.uploaded_length,
+                        uploaded_bytes: uploaded_length,
                         duration_secs,
                         checksum_verified: Some(true),
                         phase: "Complete".to_string(),
                         error: None,
                         completed_at: chrono::Utc::now(),
                     };
-                    crate::history::HistoryManager::append_record(record);
-                    let _ = self.event_tx.send(Event::TaskProgress {
-                        id,
-                        completed_bytes: task.total_length,
-                        uploaded_bytes: task.uploaded_length,
-                        total_bytes: task.total_length,
-                    });
+                    let config = self.config.load();
+                    crate::history::HistoryManager::append_record(&config, record);
+                    self.notification_service.notify_complete(&task.name);
+                    self.emit_progress(id);
 
                     let (follow_on, tenant_id, priority, streaming_mode, task_name) =
                         if let Some(task) = self.tasks.get(&id) {
@@ -58,18 +65,7 @@ impl Orchestrator {
 
                     // Handle follow-on actions (ADR 0029)
                     if let Some(follow_on) = follow_on {
-                        let config = self.config.load();
-                        let base_dir = if let Some(ref tid) = tenant_id {
-                            if let Some(ctx) = self.tenants.get(tid) {
-                                ctx.disk_path_root.clone().unwrap_or_else(|| {
-                                    std::path::PathBuf::from(&config.storage.download_dir)
-                                })
-                            } else {
-                                std::path::PathBuf::from(&config.storage.download_dir)
-                            }
-                        } else {
-                            std::path::PathBuf::from(&config.storage.download_dir)
-                        };
+                        let base_dir = self.resolve_base_dir(&tenant_id);
                         let file_path = base_dir.join(&task_name);
 
                         match follow_on {
@@ -80,12 +76,12 @@ impl Orchestrator {
                                     .unwrap_or(false)
                                 {
                                     info!(%id, ?file_path, "Auto-starting follow-on Torrent task");
-                                    let new_id = TaskId(rand::random());
+                                    let new_id = TaskId::random();
                                     let _ = self
                                         .handle_add_task(AddTaskArgs {
                                             id: new_id,
                                             tenant_id: tenant_id.clone(),
-                                            name: "unnamed".to_string(),
+                                            name: crate::DEFAULT_TASK_NAME.to_string(),
                                             sources: vec![(
                                                 file_path.to_string_lossy().to_string(),
                                                 crate::task::TaskType::BitTorrent,
@@ -106,12 +102,12 @@ impl Orchestrator {
                                     .unwrap_or(false)
                                 {
                                     info!(%id, ?file_path, "Auto-starting follow-on Metalink task");
-                                    let new_id = TaskId(rand::random());
+                                    let new_id = TaskId::random();
                                     let _ = self
                                         .handle_add_task(AddTaskArgs {
                                             id: new_id,
                                             tenant_id: tenant_id.clone(),
-                                            name: "unnamed".to_string(),
+                                            name: crate::DEFAULT_TASK_NAME.to_string(),
                                             sources: vec![(
                                                 file_path.to_string_lossy().to_string(),
                                                 crate::task::TaskType::Http,
@@ -127,12 +123,12 @@ impl Orchestrator {
                             }
                             crate::task::FollowOnAction::Custom(uri) => {
                                 info!(%id, %uri, "Starting custom follow-on task");
-                                let new_id = TaskId(rand::random());
+                                let new_id = TaskId::random();
                                 let _ = self
                                     .handle_add_task(AddTaskArgs {
                                         id: new_id,
                                         tenant_id: tenant_id.clone(),
-                                        name: "unnamed".to_string(),
+                                        name: crate::DEFAULT_TASK_NAME.to_string(),
                                         sources: vec![(uri, crate::task::TaskType::Http)],
                                         checksum: None,
                                         priority,
@@ -151,6 +147,15 @@ impl Orchestrator {
             crate::storage::StorageEvent::Error(id, err) => {
                 error!(%id, %err, "Storage reported fatal error; pausing task");
                 let mut exists = false;
+
+                let mut uploaded_length = 0;
+                if let Some(bt) = self.get_bt_task(id) {
+                    uploaded_length = bt
+                        .state
+                        .uploaded_length
+                        .load(std::sync::atomic::Ordering::Relaxed);
+                }
+
                 if let Some(task) = self.tasks.get_mut(&id) {
                     task.phase = DownloadPhase::Error;
                     exists = true;
@@ -165,14 +170,15 @@ impl Orchestrator {
                         uris: task.subtasks.iter().map(|s| s.uri.clone()).collect(),
                         total_bytes: task.total_length,
                         downloaded_bytes: task.completed_length,
-                        uploaded_bytes: task.uploaded_length,
+                        uploaded_bytes: uploaded_length,
                         duration_secs,
                         checksum_verified: Some(false),
                         phase: "Error".to_string(),
                         error: Some(err.to_string()),
                         completed_at: chrono::Utc::now(),
                     };
-                    crate::history::HistoryManager::append_record(record);
+                    let config = self.config.load();
+                    crate::history::HistoryManager::append_record(&config, record);
                 }
 
                 if exists {
@@ -189,11 +195,3 @@ impl Orchestrator {
         Ok(())
     }
 }
-
-#[cfg(test)]
-#[path = "event_handlers_tests.rs"]
-mod tests;
-
-#[cfg(test)]
-#[path = "dag_cycle_tests.rs"]
-mod dag_cycle_tests;

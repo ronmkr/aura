@@ -12,6 +12,7 @@ use tracing::{info, warn};
 pub struct Engine {
     pub(crate) command_tx: mpsc::Sender<Command>,
     pub(crate) event_tx: broadcast::Sender<Event>,
+    pub config: Arc<ArcSwap<crate::Config>>,
 }
 
 impl std::fmt::Debug for Engine {
@@ -22,13 +23,15 @@ impl std::fmt::Debug for Engine {
 
 impl Engine {
     pub async fn new(config: crate::Config) -> Result<(Self, Orchestrator, StorageEngine)> {
+        let (command_tx, command_rx) = mpsc::channel(config.limits.command_channel_capacity);
+        let (storage_tx, storage_rx) = mpsc::channel(config.limits.storage_channel_capacity);
+        let (completion_tx, completion_rx) =
+            mpsc::channel::<StorageEvent>(config.limits.storage_channel_capacity);
+        let (dht_tx, dht_rx) = mpsc::channel(config.limits.command_channel_capacity);
+        let (nat_tx, nat_rx) = mpsc::channel(config.limits.command_channel_capacity);
+        let (lpd_tx, lpd_rx) = mpsc::channel(config.limits.command_channel_capacity);
+
         let config = Arc::new(ArcSwap::from_pointee(config));
-        let (command_tx, command_rx) = mpsc::channel(100);
-        let (storage_tx, storage_rx) = mpsc::channel(100);
-        let (completion_tx, completion_rx) = mpsc::channel::<StorageEvent>(100);
-        let (dht_tx, dht_rx) = mpsc::channel(100);
-        let (nat_tx, nat_rx) = mpsc::channel(100);
-        let (lpd_tx, lpd_rx) = mpsc::channel(100);
 
         let initial_config = config.load();
         let local_addr = {
@@ -68,7 +71,8 @@ impl Engine {
             dht_rx,
             local_addr,
             initial_config.network.dht_port,
-            Some(storage.get_db()),
+            Some(storage.db.clone()),
+            config.clone(),
         )
         .await?;
         tokio::spawn(async move {
@@ -80,8 +84,9 @@ impl Engine {
         use crate::nat::{NatActor, NatCommand};
         let nat_actor = NatActor::new(nat_rx);
         let nat_tx_clone = nat_tx.clone();
+        let nat_config_clone = config.clone();
         tokio::spawn(async move {
-            if let Err(e) = nat_actor.run().await {
+            if let Err(e) = nat_actor.run(nat_config_clone).await {
                 warn!("NAT Actor stopped: {}", e);
             }
         });
@@ -121,9 +126,10 @@ impl Engine {
         use crate::lpd::LpdActor;
         if initial_config.bittorrent.lpd_enabled {
             let lpd_subtask_tx = orchestrator.subtask_tx.clone();
-            let lpd_actor = LpdActor::new(lpd_rx, lpd_subtask_tx, local_addr).await?;
+            let lpd_actor = LpdActor::new(lpd_rx, lpd_subtask_tx.clone(), local_addr).await?;
+            let lpd_config_clone = config.clone();
             tokio::spawn(async move {
-                if let Err(e) = lpd_actor.run().await {
+                if let Err(e) = lpd_actor.run(lpd_config_clone).await {
                     warn!("LPD Actor stopped: {}", e);
                 }
             });
@@ -175,6 +181,7 @@ impl Engine {
             Self {
                 command_tx,
                 event_tx,
+                config,
             },
             orchestrator,
             storage,

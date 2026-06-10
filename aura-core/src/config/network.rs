@@ -18,7 +18,14 @@ pub struct NetworkConfig {
     pub max_redirects: usize,
     pub http_retry_count: u32,
     pub http_retry_delay_secs: u64,
+    pub happy_eyeballs_stagger_ms: u64,
+    pub http_buffer_capacity: usize,
+    pub http_concurrent_requests: usize,
     pub dns_resolver: ResolverConfig,
+    pub nat_refresh_interval_secs: u64,
+    pub tracker_timeout_secs: u64,
+    pub udp_tracker_timeout_secs: u64,
+    pub roaming_reconnect_delay_ms: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -66,7 +73,14 @@ impl Default for NetworkConfig {
             max_redirects: 20,
             http_retry_count: 5,
             http_retry_delay_secs: 2,
+            happy_eyeballs_stagger_ms: 250,
+            http_buffer_capacity: 16384,
+            http_concurrent_requests: 32,
             dns_resolver: ResolverConfig::default(),
+            nat_refresh_interval_secs: 1800,
+            tracker_timeout_secs: 10,
+            udp_tracker_timeout_secs: 5,
+            roaming_reconnect_delay_ms: 500,
         }
     }
 }

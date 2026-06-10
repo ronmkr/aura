@@ -64,7 +64,7 @@ impl BtWorker {
                 length: _,
                 proof_layers: _,
             } => {
-                // TODO: Implement serving hashes to peers (Seed Mode)
+                tracing::warn!(addr = %peer_addr, "Merkle hash serving (v2 Seed Mode) not yet implemented");
                 debug!(addr = %peer_addr, ?pieces_root, "Peer requested Merkle hashes (unsupported)");
                 Ok(true)
             }

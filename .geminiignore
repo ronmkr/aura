@@ -1,7 +1,6 @@
 # Folders to ignore for Gemini CLI to optimize context usage
 .git/
 target/
-.gemini/
 *.lock
 *.part
 .aura/

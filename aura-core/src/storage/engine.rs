@@ -1,7 +1,7 @@
 use crate::worker::Segment;
 use crate::{Result, TaskId};
 use bytes::{Bytes, BytesMut};
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::fs::File;
@@ -54,11 +54,8 @@ pub struct StorageEngine {
     pub(crate) task_checksums: HashMap<TaskId, crate::Checksum>,
     pub(crate) task_padding_ranges: HashMap<TaskId, Vec<crate::task::Range>>,
     pub(crate) handles: lru::LruCache<TaskId, File>,
-    pub(crate) pending_writes: HashMap<TaskId, BTreeMap<u64, BytesMut>>,
-    pub(crate) dirty_buffers: HashMap<TaskId, Vec<(u64, BytesMut)>>,
-    pub(crate) dirty_sizes: HashMap<TaskId, usize>,
-    pub(crate) next_offsets: HashMap<TaskId, u64>,
-    pub(crate) network_shares: std::collections::HashSet<TaskId>,
+    pub(crate) aggregator: super::aggregator::SequentialAggregator,
+    pub(crate) locker: super::locker::AdvisoryLocker,
     pub(crate) cached_allocations: HashMap<PathBuf, crate::storage::prober::AllocationMethod>,
     pub(crate) db: sled::Db,
     pub(crate) scheduler: super::scheduler::IoScheduler,
@@ -89,11 +86,8 @@ impl StorageEngine {
             task_checksums: HashMap::new(),
             task_padding_ranges: HashMap::new(),
             handles: lru::LruCache::new(std::num::NonZeroUsize::new(256).unwrap()),
-            pending_writes: HashMap::new(),
-            dirty_buffers: HashMap::new(),
-            dirty_sizes: HashMap::new(),
-            next_offsets: HashMap::new(),
-            network_shares: std::collections::HashSet::new(),
+            aggregator: super::aggregator::SequentialAggregator::new(),
+            locker: super::locker::AdvisoryLocker::new(),
             cached_allocations: HashMap::new(),
             db,
             scheduler: super::scheduler::IoScheduler::new(),
@@ -109,7 +103,12 @@ impl StorageEngine {
     pub async fn run(mut self) -> Result<()> {
         info!("Storage Engine started");
 
-        let mut interval = tokio::time::interval(std::time::Duration::from_secs(3));
+        let flush_secs = self
+            .config
+            .as_ref()
+            .map(|c| c.load().storage.flush_interval_secs)
+            .unwrap_or(3);
+        let mut interval = tokio::time::interval(std::time::Duration::from_secs(flush_secs));
 
         loop {
             let has_tasks = !self.scheduler.is_empty();
@@ -225,9 +224,7 @@ impl StorageEngine {
                 }
                 _ = interval.tick() => {
                     // Generational epoch flush
-                    let tasks: Vec<TaskId> = self.dirty_sizes.iter()
-                        .filter_map(|(&id, &size)| if size > 0 { Some(id) } else { None })
-                        .collect();
+                    let tasks = self.aggregator.get_dirty_task_ids();
 
                     for task_id in tasks {
                         if let Err(e) = self.flush_dirty_buffer(task_id).await {

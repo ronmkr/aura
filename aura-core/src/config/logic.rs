@@ -4,14 +4,17 @@ use serde::{Deserialize, Serialize};
 // Import and re-export all sub-configs from their dedicated sibling modules (Facade Pattern)
 pub use super::bandwidth::BandwidthConfig;
 pub use super::bittorrent::{BitTorrentConfig, SeedingConfig};
+pub use super::bulk::BulkConfig;
 pub use super::general::{CredentialConfig, GeneralConfig, ThemeConfig};
 pub use super::hooks::HookConfig;
 pub use super::limits::LimitsConfig;
 pub use super::network::{NetworkConfig, ResolverConfig, StructuredResolverConfig};
+pub use super::notifications::NotificationConfig;
 pub use super::resource_mapping::{
     ConflictPolicy, MappingCondition, MappingRule, ResourceMappingConfig,
 };
 pub use super::storage::StorageConfig;
+pub use super::tui::TuiConfig;
 pub use super::vpn::VpnConfig;
 
 #[derive(Debug, Clone, Default)]
@@ -32,6 +35,9 @@ pub struct Config {
     pub bandwidth: BandwidthConfig,
     pub bittorrent: BitTorrentConfig,
     pub storage: StorageConfig,
+    pub notifications: NotificationConfig,
+    pub bulk: BulkConfig,
+    pub tui: TuiConfig,
     pub resource_mapping: ResourceMappingConfig,
     pub vpn: VpnConfig,
     pub hooks: HookConfig,
@@ -184,6 +190,36 @@ impl Config {
         }
         if let Some(key) = overrides.tls_key {
             self.network.tls_key = Some(key);
+        }
+    }
+
+    pub fn rpc_secret_path() -> std::path::PathBuf {
+        let home = std::env::var_os("HOME")
+            .or_else(|| std::env::var_os("USERPROFILE"))
+            .map(std::path::PathBuf::from);
+
+        let mut path = match home {
+            Some(h) => h,
+            None => std::path::PathBuf::from("."),
+        };
+        path.push(".aura");
+        path.push("rpc_secret");
+        path
+    }
+
+    pub fn resolve_rpc_secret(provided: Option<String>) -> Option<String> {
+        if let Some(s) = provided {
+            return Some(s);
+        }
+
+        let path = Self::rpc_secret_path();
+        if path.exists() {
+            std::fs::read_to_string(&path)
+                .ok()
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+        } else {
+            None
         }
     }
 }

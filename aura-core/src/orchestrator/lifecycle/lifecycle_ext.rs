@@ -1,6 +1,5 @@
 use crate::orchestrator::Orchestrator;
 use crate::task::DownloadPhase;
-use crate::worker::bittorrent::task::BtTask;
 use crate::{Result, TaskId};
 use tracing::{debug, info};
 
@@ -14,12 +13,22 @@ impl Orchestrator {
         if let Some(bt_task) = self.get_bt_task(sub_id) {
             bt_task.state.mature(torrent.clone()).await;
 
+            let selected_files = self
+                .tasks
+                .get(&meta_id)
+                .and_then(|t| t.selected_files.clone());
+            let total_length = if let Some(ref selection) = selected_files {
+                torrent.selected_total_length(selection)
+            } else {
+                torrent.total_length()
+            };
+
             let metadata = crate::worker::Metadata {
                 final_uri: format!("magnet:?xt={}", bt_task.state.info_hash.to_magnet_urn()),
-                total_length: Some(torrent.total_length()),
+                total_length: Some(total_length),
                 name: Some(torrent.info.name.clone()),
                 range_supported: true,
-                padding_ranges: torrent.get_padding_ranges(),
+                padding_ranges: torrent.get_padding_ranges(selected_files.as_deref()),
                 etag: None,
                 last_modified: None,
             };
@@ -35,22 +44,17 @@ impl Orchestrator {
         sub_id: TaskId,
         metadata: crate::worker::Metadata,
     ) -> Result<()> {
-        if let Some(meta_task) = self.tasks.get_mut(&meta_id) {
-            let mut needs_reregister = false;
+        let mut needs_reregister = false;
+        let mut matured_metadata = None;
 
+        if let Some(meta_task) = self.tasks.get_mut(&meta_id) {
             if meta_task.total_length == 0 {
                 meta_task.range_supported = metadata.range_supported;
                 if let Some(len) = metadata.total_length {
                     info!(%meta_id, %len, "Metadata matured: task initialized");
                     meta_task.total_length = len;
                     if metadata.range_supported {
-                        let bt_bitfield = meta_task
-                            .extensions
-                            .get("bittorrent")
-                            .and_then(|e| e.clone().as_any_arc().downcast::<BtTask>().ok())
-                            .and(None); // Simplified as we can't easily block for bitfield here
-
-                        meta_task.generate_ranges(128, bt_bitfield);
+                        meta_task.generate_ranges(128, None);
                     } else {
                         info!(%meta_id, "Server does not support Range requests. Falling back to single-stream download.");
                         meta_task
@@ -61,7 +65,7 @@ impl Orchestrator {
                 } else {
                     info!(%meta_id, "Metadata matured but total length is unknown. Falling back to single-stream download.");
                     meta_task.total_length = 0;
-                    meta_task.range_supported = false; // Unknown length implies single stream for now
+                    meta_task.range_supported = false;
                     meta_task.pending_ranges.push(crate::task::Range {
                         start: 0,
                         end: u64::MAX,
@@ -70,7 +74,6 @@ impl Orchestrator {
                 }
             }
 
-            // Keep ETag and Last-Modified headers
             if metadata.etag.is_some() {
                 meta_task.etag = metadata.etag.clone();
                 needs_reregister = true;
@@ -80,60 +83,46 @@ impl Orchestrator {
                 needs_reregister = true;
             }
 
-            // Update name if currently unnamed or if server provides a better one (with extension)
             if let Some(new_name) = metadata.name.clone() {
-                let current_path = std::path::Path::new(&meta_task.name);
-                let new_path = std::path::Path::new(&new_name);
-
-                let current_has_ext = current_path.extension().is_some();
-                let new_has_ext = new_path.extension().is_some();
-
-                let is_better_name = {
-                    let new_guess = mime_guess::from_path(new_path).first();
-                    let current_guess = mime_guess::from_path(current_path).first();
-
-                    new_has_ext
-                        && (!current_has_ext || (new_guess.is_some() && new_guess != current_guess))
-                };
-
-                if meta_task.name == "unnamed" || meta_task.name.is_empty() || is_better_name {
-                    info!(%meta_id, %new_name, "Updating task name from metadata");
+                if meta_task.name == crate::DEFAULT_TASK_NAME || meta_task.name.is_empty() {
                     meta_task.name = new_name;
                     needs_reregister = true;
                 }
             }
 
-            if needs_reregister {
-                // Update storage engine
-                let path = {
-                    let config = self.config.load();
-                    let base_dir: std::path::PathBuf = if let Some(ref tid) = meta_task.tenant_id {
-                        if let Some(ctx) = self.tenants.get(tid) {
-                            if let Some(ref root) = ctx.disk_path_root {
-                                root.clone()
-                            } else {
-                                std::path::PathBuf::from(&config.storage.download_dir)
-                            }
-                        } else {
-                            std::path::PathBuf::from(&config.storage.download_dir)
-                        }
-                    } else {
-                        std::path::PathBuf::from(&config.storage.download_dir)
-                    };
+            matured_metadata = Some((
+                meta_task.tenant_id.clone(),
+                meta_task.name.clone(),
+                meta_task.total_length,
+                meta_task.checksum.clone(),
+            ));
+        }
+
+        if needs_reregister {
+            if let Some((tenant_id, _, total_length, checksum)) = matured_metadata.as_ref() {
+                let base_dir = self.resolve_base_dir(tenant_id);
+                // We need meta_task for resolve_path, but we can't borrow it again mutably while matured_metadata exists if we were using references.
+                // But matured_metadata is owned.
+                let path = if let Some(meta_task) = self.tasks.get(&meta_id) {
                     self.mapping_engine.resolve_path(meta_task, &base_dir)
+                } else {
+                    base_dir.join(crate::DEFAULT_TASK_NAME)
                 };
+
                 let _ = self
                     .storage_tx
                     .send(crate::storage::StorageRequest::RegisterTask {
                         task_id: meta_id,
                         path,
-                        total_length: meta_task.total_length,
-                        checksum: meta_task.checksum.clone(),
+                        total_length: *total_length,
+                        checksum: checksum.clone(),
                         padding_ranges: metadata.padding_ranges.clone(),
                     })
                     .await;
             }
+        }
 
+        if let Some(meta_task) = self.tasks.get_mut(&meta_id) {
             if let Some(sub_task) = meta_task.subtasks.iter_mut().find(|s| s.id == sub_id) {
                 sub_task.phase = DownloadPhase::Downloading;
                 if let Some(len) = metadata.total_length {
@@ -176,8 +165,6 @@ impl Orchestrator {
     ) -> Result<()> {
         let mut completed = false;
         if let Some(meta_task) = self.tasks.get_mut(&meta_id) {
-            // Racing coordination: check if other subtasks were also working on this range
-            // CRITICAL: Skip racing logic for BitTorrent dummy ranges (start=0, end=0)
             if range.start != 0 || range.end != 0 {
                 let racing_sub_ids: Vec<TaskId> = meta_task
                     .in_flight_ranges
@@ -203,7 +190,32 @@ impl Orchestrator {
 
             meta_task.mark_range_complete(sub_id, range);
 
-            if meta_task.is_complete()
+            let mut is_bt_complete = false;
+            if let Some(bt_task) = meta_task
+                .extensions
+                .get(crate::worker::bittorrent::BT_EXTENSION_KEY)
+                .and_then(|e| {
+                    e.clone()
+                        .as_any_arc()
+                        .downcast::<crate::worker::bittorrent::task::BtTask>()
+                        .ok()
+                })
+            {
+                let bf_guard = bt_task.state.bitfield.lock().await;
+                let picker_guard = bt_task.state.picker.lock().await;
+                if let (Some(b), Some(picker)) = (bf_guard.as_ref(), picker_guard.as_ref()) {
+                    let mut complete = true;
+                    for i in 0..picker.num_pieces {
+                        if picker.selected_pieces.get(i) && !b.get(i) {
+                            complete = false;
+                            break;
+                        }
+                    }
+                    is_bt_complete = complete;
+                }
+            }
+
+            if (meta_task.is_complete() || is_bt_complete)
                 && meta_task.phase != DownloadPhase::Verifying
                 && meta_task.phase != DownloadPhase::Complete
             {
@@ -213,8 +225,11 @@ impl Orchestrator {
                 } else {
                     info!(%meta_id, "All ranges complete for MetaTask, entering seeding phase");
                     meta_task.phase = DownloadPhase::Complete;
-                    if meta_task.seeding_start_time.is_none() {
-                        meta_task.seeding_start_time = Some(chrono::Utc::now());
+                    if let Some(bt) = self.get_bt_task(meta_id) {
+                        let mut start_time = bt.state.seeding_start_time.lock().unwrap();
+                        if start_time.is_none() {
+                            *start_time = Some(chrono::Utc::now());
+                        }
                     }
                 }
                 completed = true;
@@ -228,7 +243,6 @@ impl Orchestrator {
                 .await;
         }
 
-        // Notify idle workers to check for more work
         if let Some(tx) = self.worker_command_txs.get(&meta_id) {
             let _ = tx.send(crate::orchestrator::WorkerCommand::CheckWork);
         }

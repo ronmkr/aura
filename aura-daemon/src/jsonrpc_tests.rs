@@ -71,7 +71,7 @@ async fn test_jsonrpc_unauthorized_error() {
         .body(Body::from(
             serde_json::to_string(&json!({
                 "jsonrpc": "2.0",
-                "method": "aria2.getVersion",
+                "method": "aura.getVersion",
                 "id": 1
             }))
             .unwrap(),
@@ -94,7 +94,7 @@ async fn test_jsonrpc_get_version_success() {
         .body(Body::from(
             serde_json::to_string(&json!({
                 "jsonrpc": "2.0",
-                "method": "aria2.getVersion",
+                "method": "aura.getVersion",
                 "id": 42
             }))
             .unwrap(),
@@ -123,7 +123,7 @@ async fn test_jsonrpc_get_session_info_success() {
         .body(Body::from(
             serde_json::to_string(&json!({
                 "jsonrpc": "2.0",
-                "method": "aria2.getSessionInfo",
+                "method": "aura.getSessionInfo",
                 "id": "abc"
             }))
             .unwrap(),
@@ -153,7 +153,7 @@ async fn test_add_uri_validation_ssrf() {
         .body(Body::from(
             serde_json::to_string(&json!({
                 "jsonrpc": "2.0",
-                "method": "aria2.addUri",
+                "method": "aura.addUri",
                 "params": [["file:///etc/passwd"]],
                 "id": 1
             }))

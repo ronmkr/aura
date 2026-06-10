@@ -3,7 +3,7 @@
 use crate::bitfield::Bitfield;
 use crate::peer_registry::PeerRegistry;
 use crate::piece_picker::PiecePicker;
-use crate::task::TaskExtension;
+use crate::task::extension::TaskExtension;
 use crate::torrent::Torrent;
 use crate::tracker::Peer;
 use crate::{Error, InfoHash, Result, TaskId, TenantId};
@@ -23,6 +23,10 @@ pub struct BtTaskState {
     pub tenant_id: Option<TenantId>,
     pub generations: Mutex<std::collections::HashMap<usize, u64>>,
     pub config: Arc<arc_swap::ArcSwap<crate::Config>>,
+    pub uploaded_length: std::sync::atomic::AtomicU64,
+    pub seeding_start_time: std::sync::Mutex<Option<chrono::DateTime<chrono::Utc>>>,
+    pub seed_ratio: std::sync::Mutex<Option<f32>>,
+    pub seed_time: std::sync::Mutex<Option<u32>>,
 }
 
 impl std::fmt::Debug for BtTaskState {
@@ -42,6 +46,7 @@ impl BtTaskState {
         resource_governor: Arc<crate::orchestrator::resource_governor::ResourceGovernor>,
         tenant_id: Option<TenantId>,
         config: Arc<arc_swap::ArcSwap<crate::Config>>,
+        selected_files: Option<&[bool]>,
     ) -> Self {
         let num_pieces = torrent.pieces_count();
         let info_hash = if let Some(h2) = torrent.info_hash_v2().unwrap_or(None) {
@@ -49,15 +54,35 @@ impl BtTaskState {
         } else {
             InfoHash::V1(torrent.info_hash_v1().unwrap_or(None).unwrap_or([0; 20]))
         };
-
         let bf = bitfield.unwrap_or_else(|| Bitfield::new(num_pieces));
+
+        let bt_config = config.load().bittorrent.clone();
+
+        let picker = if let Some(selection) = selected_files {
+            let selected_pieces = torrent.compute_selected_pieces(selection);
+            PiecePicker::with_selection(
+                num_pieces,
+                selected_pieces,
+                bt_config.endgame_threshold_pieces,
+                bt_config.endgame_threshold_percent,
+            )
+        } else {
+            let mut p = PiecePicker::new(num_pieces);
+            p.endgame_threshold_pieces = bt_config.endgame_threshold_pieces;
+            p.endgame_threshold_percent = bt_config.endgame_threshold_percent;
+            p
+        };
+
+        let mut registry = PeerRegistry::new();
+        registry.eviction_threshold = bt_config.peer_eviction_threshold;
+        registry.eviction_percent = bt_config.peer_eviction_percent;
 
         Self {
             info_hash,
             torrent: Mutex::new(Some(torrent)),
             bitfield: Mutex::new(Some(bf)),
-            picker: Mutex::new(Some(PiecePicker::new(num_pieces))),
-            registry: Mutex::new(PeerRegistry::new()),
+            picker: Mutex::new(Some(picker)),
+            registry: Mutex::new(registry),
             sequential: std::sync::atomic::AtomicBool::new(false),
             db,
             pieces_count: std::sync::atomic::AtomicUsize::new(num_pieces),
@@ -65,6 +90,10 @@ impl BtTaskState {
             tenant_id,
             generations: Mutex::new(std::collections::HashMap::new()),
             config,
+            uploaded_length: std::sync::atomic::AtomicU64::new(0),
+            seeding_start_time: std::sync::Mutex::new(None),
+            seed_ratio: std::sync::Mutex::new(None),
+            seed_time: std::sync::Mutex::new(None),
         }
     }
 
@@ -88,6 +117,10 @@ impl BtTaskState {
             tenant_id,
             generations: Mutex::new(std::collections::HashMap::new()),
             config,
+            uploaded_length: std::sync::atomic::AtomicU64::new(0),
+            seeding_start_time: std::sync::Mutex::new(None),
+            seed_ratio: std::sync::Mutex::new(None),
+            seed_time: std::sync::Mutex::new(None),
         }
     }
 
@@ -145,60 +178,64 @@ pub struct BtTask {
     pub lpd_tx: mpsc::Sender<crate::lpd::LpdCommand>,
 }
 
+pub struct BtTaskFromFileArgs<'a> {
+    pub id: TaskId,
+    pub path: &'a str,
+    pub dht_tx: mpsc::Sender<crate::dht::DhtCommand>,
+    pub lpd_tx: mpsc::Sender<crate::lpd::LpdCommand>,
+    pub db: sled::Db,
+    pub bitfield: Option<Bitfield>,
+    pub resource_governor: Arc<crate::orchestrator::resource_governor::ResourceGovernor>,
+    pub tenant_id: Option<TenantId>,
+    pub config: Arc<arc_swap::ArcSwap<crate::Config>>,
+    pub selected_files: Option<&'a [bool]>,
+}
+
+pub struct BtTaskFromMagnetArgs {
+    pub id: TaskId,
+    pub info_hash: InfoHash,
+    pub dht_tx: mpsc::Sender<crate::dht::DhtCommand>,
+    pub lpd_tx: mpsc::Sender<crate::lpd::LpdCommand>,
+    pub db: sled::Db,
+    pub resource_governor: Arc<crate::orchestrator::resource_governor::ResourceGovernor>,
+    pub tenant_id: Option<TenantId>,
+    pub config: Arc<arc_swap::ArcSwap<crate::Config>>,
+}
+
 impl BtTask {
-    #[allow(clippy::too_many_arguments)]
-    pub async fn from_file(
-        id: TaskId,
-        path: &str,
-        dht_tx: mpsc::Sender<crate::dht::DhtCommand>,
-        lpd_tx: mpsc::Sender<crate::lpd::LpdCommand>,
-        db: sled::Db,
-        bitfield: Option<Bitfield>,
-        resource_governor: Arc<crate::orchestrator::resource_governor::ResourceGovernor>,
-        tenant_id: Option<TenantId>,
-        config: Arc<arc_swap::ArcSwap<crate::Config>>,
-    ) -> Result<Self> {
-        let data = tokio::fs::read(path)
+    pub async fn from_file(args: BtTaskFromFileArgs<'_>) -> Result<Self> {
+        let data = tokio::fs::read(args.path)
             .await
             .map_err(|e| Error::Protocol(format!("Failed to read torrent file: {}", e)))?;
         let torrent = Torrent::from_bytes(&data)?;
         Ok(Self {
-            id,
+            id: args.id,
             state: Arc::new(BtTaskState::new(
                 torrent,
-                db,
-                bitfield,
-                resource_governor,
-                tenant_id,
-                config,
+                args.db,
+                args.bitfield,
+                args.resource_governor,
+                args.tenant_id,
+                args.config,
+                args.selected_files,
             )),
-            dht_tx,
-            lpd_tx,
+            dht_tx: args.dht_tx,
+            lpd_tx: args.lpd_tx,
         })
     }
 
-    #[allow(clippy::too_many_arguments)]
-    pub fn from_magnet(
-        id: TaskId,
-        info_hash: InfoHash,
-        dht_tx: mpsc::Sender<crate::dht::DhtCommand>,
-        lpd_tx: mpsc::Sender<crate::lpd::LpdCommand>,
-        db: sled::Db,
-        resource_governor: Arc<crate::orchestrator::resource_governor::ResourceGovernor>,
-        tenant_id: Option<TenantId>,
-        config: Arc<arc_swap::ArcSwap<crate::Config>>,
-    ) -> Self {
+    pub fn from_magnet(args: BtTaskFromMagnetArgs) -> Self {
         Self {
-            id,
+            id: args.id,
             state: Arc::new(BtTaskState::new_magnet(
-                info_hash,
-                db,
-                resource_governor,
-                tenant_id,
-                config,
+                args.info_hash,
+                args.db,
+                args.resource_governor,
+                args.tenant_id,
+                args.config,
             )),
-            dht_tx,
-            lpd_tx,
+            dht_tx: args.dht_tx,
+            lpd_tx: args.lpd_tx,
         }
     }
 

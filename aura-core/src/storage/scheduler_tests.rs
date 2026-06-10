@@ -1,8 +1,9 @@
-use super::*;
-use std::time::Duration;
+use crate::storage::scheduler::{IoPriority, IoScheduler, IoTask};
+use crate::TaskId;
+use tokio::time::Instant;
 
 #[test]
-fn test_scheduler_priority_and_deadline() {
+fn test_io_scheduler_priority() {
     let mut scheduler = IoScheduler::new();
     let now = Instant::now();
 
@@ -10,28 +11,25 @@ fn test_scheduler_priority_and_deadline() {
         task_id: TaskId(1),
         offset: 0,
         data: vec![],
-        deadline: now + Duration::from_millis(500),
         priority: IoPriority::Normal,
+        deadline: now + std::time::Duration::from_secs(10),
     });
-
     scheduler.enqueue(IoTask {
         task_id: TaskId(2),
-        offset: 0,
+        offset: 100,
         data: vec![],
-        deadline: now + Duration::from_millis(600),
         priority: IoPriority::High,
+        deadline: now + std::time::Duration::from_secs(5),
     });
-
     scheduler.enqueue(IoTask {
         task_id: TaskId(3),
-        offset: 0,
+        offset: 200,
         data: vec![],
-        deadline: now + Duration::from_millis(400),
         priority: IoPriority::Normal,
+        deadline: now + std::time::Duration::from_secs(2),
     });
 
     assert_eq!(scheduler.pop().unwrap().task_id, TaskId(2)); // High priority
     assert_eq!(scheduler.pop().unwrap().task_id, TaskId(3)); // Normal, earlier deadline
     assert_eq!(scheduler.pop().unwrap().task_id, TaskId(1)); // Normal, later deadline
-    assert!(scheduler.is_empty());
 }

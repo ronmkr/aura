@@ -1,6 +1,6 @@
 # Configuration Reference: Deep Dive
 
-Aura is highly tunable. This document provides an exhaustive, technical reference for every configuration key in `Aura.toml`.
+Aura is highly tunable. This document provides an exhaustive reference for every setting in `Aura.toml` using plain language.
 
 ## Table of Contents
 1. [Configuration File Discovery](#configuration-file-location)
@@ -29,203 +29,117 @@ Aura searches for `Aura.toml` in this order:
 ## [network]
 Manages how Aura interacts with the outside world.
 
-| Key | Type | Default | Detailed Description |
-|-----|------|---------|----------------------|
-| `interface` | String | `None` | Binds all outgoing traffic to a specific network interface. Use `eth0` for wired, `wlan0` for Wi-Fi, or `tun0` for VPNs. **Impact**: Prevents data leakage if multiple paths exist. |
-| `local_addr` | String | `None` | Binds to a specific IP address on the local machine. Useful for servers with multiple IP aliases. |
-| `listen_port` | u16 | `6881` | The port for incoming BitTorrent peer connections. Ensure this is forwarded in your router for "Green" DHT status. |
-| `dht_port` | u16 | `6881` | The UDP port for Distributed Hash Table lookups. Often matched with `listen_port`. |
-| `rpc_port` | u16 | `6800` | The port for the JSON-RPC 2.0 API. Used by the CLI and TUI to talk to the Daemon. |
-| `rpc_secret` | String | `None` | Security token for the API. If set, clients must provide this via the `X-Aura-Token` HTTP header. |
-| `tls_cert` | String | `None` | Path to the TLS certificate file. If set, the daemon runs the RPC server over HTTPS/WSS. |
-| `tls_key` | String | `None` | Path to the TLS private key file. If set, the daemon runs the RPC server over HTTPS/WSS. |
-| `user_agent` | String | `"Aura/0.1.0"` | The identifier sent to trackers and HTTP servers. Some restrictive trackers may require specific strings. |
-| `connect_timeout_secs` | u64 | `30` | Seconds to wait for a TCP handshake. Lower this for faster failover on dead mirrors. |
-| `tcp_keepalive_secs` | u64 | `60` | Interval for TCP keepalive packets to prevent silent connection drops by firewalls. |
-| `proxy` | String | `None` | Global proxy. Supports `http://`, `https://`, and `socks5://`. **Performance**: SOCKS5 is preferred for BitTorrent. |
-| `max_redirects` | usize | `20` | Maximum number of HTTP 3xx redirects to follow before failing a task. |
-| `http_retry_count` | u32 | `5` | Retries for transient HTTP errors (500, 502, 503, 504). Uses exponential backoff. |
-| `http_retry_delay_secs`| u64 | `2` | Initial delay for the first retry. Subsequent retries double this value. |
-| `dns_resolver` | enum | `"system"` | See [DNS Configuration](#dns-configuration). Options: `"system"`, `"cloudflare"`, `"google"`, or specific IP. |
-
-### DNS Configuration
-Aura supports modern DNS protocols for privacy (ADR 0028).
-
-**DNS-over-HTTPS (DoH):**
-```toml
-[network.dns_resolver]
-type = "doh"
-url = "https://cloudflare-dns.com/dns-query"
-ips = ["1.1.1.1", "1.0.0.1"] # Bootstrap IPs to avoid chicken-and-egg resolver issues.
-```
-
-**DNS-over-TLS (DoT):**
-```toml
-[network.dns_resolver]
-type = "dot"
-server = "1.1.1.1"
-tls_name = "cloudflare-dns.com"
-port = 853
-```
+| Setting | Value Type | Default | What it does |
+|:---|:---|:---|:---|
+| `interface` | Text | `None` | Binds all outgoing traffic to a specific network interface (e.g., `eth0`, `wlan0`, or `tun0`). |
+| `local_addr` | IP Address | `None` | Binds to a specific IP address on your machine. |
+| `listen_port` | Number | `6881` | The port for incoming BitTorrent peer connections. |
+| `dht_port` | Number | `6881` | The UDP port for Distributed Hash Table lookups. |
+| `rpc_port` | Number | `6800` | The port for the API (used by CLI and TUI). |
+| `rpc_secret` | Text | `None` | A password for the API. If set, clients must provide it to connect. |
+| `tls_cert` | File Path | `None` | Path to a security certificate for encrypted API connections. |
+| `tls_key` | File Path | `None` | Path to a private key for encrypted API connections. |
+| `user_agent` | Text | `"Aura/0.1.0"` | The name Aura identifies itself as to servers and trackers. |
+| `connect_timeout_secs` | Time (Seconds) | `30` | How long to wait for a server to respond before giving up. |
+| `tcp_keepalive_secs` | Time (Seconds) | `60` | How often to send "I'm still here" packets to keep connections alive. |
+| `proxy` | Text | `None` | A proxy address (supports `http`, `https`, and `socks5`). |
+| `max_redirects` | Number | `20` | Maximum number of times to follow a "moved" link. |
+| `http_retry_count` | Number | `5` | How many times to retry a failed download. |
+| `http_retry_delay_secs`| Time (Seconds) | `2` | Starting wait time between retries (doubles each time). |
+| `happy_eyeballs_stagger_ms`| Time (ms) | `250` | Delay between trying different connection methods (IPv4 vs IPv6). |
+| `http_buffer_capacity` | Number (Bytes) | `65536` | Memory reserved for each connection (64KB). |
+| `http_concurrent_requests`| Number | `32` | Max number of simultaneous requests allowed globally. |
+| `nat_refresh_interval_secs`| Time (Seconds) | `1800` | How often to refresh router port mappings (30 mins). |
+| `tracker_timeout_secs` | Time (Seconds) | `10` | Timeout for standard tracker updates. |
+| `udp_tracker_timeout_secs`| Time (Seconds) | `5` | Timeout for UDP tracker updates. |
+| `roaming_reconnect_delay_ms`| Time (ms) | `500` | Wait time after switching internet (e.g. Wi-Fi to Ethernet). |
+| `dns_resolver` | Option | `"system"` | How to look up website addresses (`system`, `cloudflare`, `google`). |
 
 ---
 
 ## [bandwidth]
-Controls the flow of data to prevent network saturation.
+Controls the flow of data to prevent slowing down your internet.
 
-| Key | Type | Default | Detailed Description |
-|-----|------|---------|----------------------|
-| `global_download_limit`| u64 | `0` | Total bytes per second for all tasks combined. `0` = Unlimited. |
-| `global_upload_limit` | u64 | `0` | Total bytes per second to upload. Crucial for avoiding ISP "bufferbloat". |
-| `per_task_download_limit`| u64 | `0` | Hard cap for a single task, regardless of global capacity. |
-| `per_task_upload_limit` | u64 | `0` | Hard cap for a single task's upload. |
-| `max_concurrent_downloads`| usize | `10` | Tasks in `Downloading` phase. Others stay in `Waiting`. |
-| `max_active_tasks` | usize | `5` | Total tasks allowed in the engine (Active + Seeding + Paused). |
-| `min_connections_per_task`| usize | `16` | The lower bound for adaptive scaling. Aura won't drop below this even if speed is high. |
-| `max_connections_per_task`| usize | `128` | The upper bound. Aura scales up to this if it detects a slow per-connection rate. |
-
-### Bandwidth Scheduling (`[[bandwidth.schedule]]`)
-
-You can define multiple recurring schedule windows to adjust global bandwidth limits dynamically based on the day of the week, time of day, and timezone:
-
-```toml
-[[bandwidth.schedule]]
-from = "02:00"                      # Start time (24h format, HH:MM)
-to = "06:00"                        # End time (24h format, HH:MM)
-download_limit = 0                  # Unlimited download limit (bytes/sec)
-upload_limit = 0                    # Unlimited upload limit (bytes/sec)
-days = ["Mon", "Tue", "Wed", "Thu", "Fri"] # Optional day filters
-timezone = "America/New_York"        # Optional IANA timezone name
-```
-
-If multiple schedules match the current time, they are evaluated by specificity (schedules with day filters take precedence over general ones). If specificity is equal, the last schedule listed in the configuration file wins.
+| Setting | Value Type | Default | What it does |
+|:---|:---|:---|:---|
+| `global_download_limit`| Number (Bytes/s)| `0` | Total download speed for all tasks. `0` = Unlimited. |
+| `global_upload_limit` | Number (Bytes/s)| `0` | Total upload speed for all tasks. `0` = Unlimited. |
+| `per_task_download_limit`| Number (Bytes/s)| `0` | Speed cap for a single download. |
+| `per_task_upload_limit` | Number (Bytes/s)| `0` | Upload cap for a single download. |
+| `max_concurrent_downloads`| Number | `10` | How many files to download at once. |
+| `max_active_tasks` | Number | `5` | Total limit of tasks (including paused and finished). |
+| `min_connections_per_task`| Number | `16` | Minimum number of connections per file. |
+| `max_connections_per_task`| Number | `128` | Maximum number of connections per file. |
 
 ---
 
 ## [bittorrent]
-Low-level tuning for the BitTorrent protocol (BEP implementation).
+Settings for fine-tuning BitTorrent downloads.
 
-| Key | Type | Default | Detailed Description |
-|-----|------|---------|----------------------|
-| `enabled` | bool | `true` | Globally toggle BitTorrent support. |
-| `max_peers_per_torrent`| usize | `200` | Limits CPU usage for massive swarms. |
-| `max_overall_peers` | usize | `500` | Global peer limit to prevent OS file descriptor exhaustion. |
-| `request_pipeline_size`| usize | `50` | Number of concurrent block requests sent to a single peer. **Impact**: Higher values are needed for high-latency (fiber) connections. |
-| `dht_enabled` | bool | `true` | Enables Mainline DHT (BEP 5). Finds peers without a tracker. |
-| `pex_enabled` | bool | `true` | Enables Peer Exchange (BEP 11). Learning about new peers from existing ones. |
-| `lpd_enabled` | bool | `false` | Local Peer Discovery. Fast transfers with other Aura users on your LAN. |
-| `seed_ratio` | f32 | `1.0` | Target upload ratio. `1.0` means "Share back what you took". |
-| `seed_time_mins` | u32 | `0` | Time-based seeding limit. `0` = Seed forever until ratio is met. |
-| `endgame_mode_enabled` | bool | `true` | When < 1% remains, Aura requests the same block from multiple peers. **Impact**: Prevents "Stuck at 99.9%" due to one slow peer. |
-| `min_split_size_mb` | u64 | `20` | Only used for HTTP/FTP. Minimum size to split a file into parallel segments. |
-| `max_connections_per_torrent`| usize| `200` | Hard cap for a single swarm's connection pool. |
+| Setting | Value Type | Default | What it does |
+|:---|:---|:---|:---|
+| `enabled` | Yes / No | `true` | Turn BitTorrent support on or off. |
+| `max_peers_per_torrent`| Number | `200` | Limit the number of people you connect to for one file. |
+| `max_overall_peers` | Number | `500` | Total limit of connections across all torrents. |
+| `request_pipeline_size`| Number | `50` | Number of data pieces to request at once from a peer. |
+| `dht_enabled` | Yes / No | `true` | Find peers without a central server (DHT). |
+| `pex_enabled` | Yes / No | `true` | Ask peers for other peers they know (PEX). |
+| `lpd_enabled` | Yes / No | `false` | Find peers on your local home network (LPD). |
+| `dht_save_interval_secs`| Time (Seconds) | `300` | How often to save the peer list to disk (5 mins). |
+| `dht_ping_interval_secs`| Time (Seconds) | `600` | How often to check if peers are still online. |
+| `dht_token_rotation_secs`| Time (Seconds) | `600` | Security token update frequency. |
+| `dht_query_interval_secs`| Time (Seconds) | `120` | How often to search for new peers. |
+| `dht_query_timeout_secs`| Time (Seconds) | `5` | How long to wait for a peer lookup response. |
+| `tracker_polling_interval_secs`| Time (Seconds) | `60` | How often to ask the tracker for a new peer list. |
+| `lpd_announce_interval_secs`| Time (Seconds) | `300` | How often to broadcast your presence to your home network. |
+| `choker_interval_secs` | Time (Seconds) | `10` | How often to re-evaluate who to send data to. |
+| `seed_ratio` | Decimal Number | `1.0` | Target upload ratio (e.g., 2.0 means upload twice as much as you downloaded). |
+| `seed_time_mins` | Number (Mins) | `0` | How many minutes to keep uploading after finishing. `0` = No limit. |
+| `endgame_mode_enabled` | Yes / No | `true` | Speeds up the final 1% of a download by asking everyone for the last pieces. |
+| `min_split_size_mb` | Number (MB) | `20` | Smallest size allowed for a single download segment. |
+| `max_connections_per_torrent`| Number| `200` | Hard connection limit for one torrent. |
 
 ---
 
 ## [storage]
-Governs the asynchronous I/O engine.
+Controls how files are saved to your hard drive.
 
-| Key | Type | Default | Detailed Description |
-|-----|------|---------|----------------------|
-| `download_dir` | String | `"."` | Absolute or relative path for finished files. |
-| `cache_size_mb` | u32 | `16` | **Write-back Cache**. Aura buffers writes in RAM and flushes them sequentially. **Impact**: Greatly extends SSD/HDD lifespan for random-write protocols like BitTorrent. |
-| `preallocate` | bool | `true` | If true, Aura reserves the full file size on disk before downloading byte 1. |
-| `allocation_mode` | enum | `"falloc"` | **none**: No pre-allocation.<br>**prealloc**: Writes zeros to the whole file (Slow, stable).<br>**falloc**: Uses `posix_fallocate` (Instant on XFS/EXT4/NTFS). |
-| `save_session_interval_secs`| u64 | `10` | Frequency for syncing `.aura` control files. Controls how much progress is lost on a power failure. |
-| `read_ahead_kb` | u32 | `128` | Prefetches data into RAM when seeding. Reduces disk head movement. |
-| `write_buffer_kb` | u32 | `256` | The chunk size for sequential flushes to the OS. |
-
----
-
-## [resource_mapping]
-Automated file management and renaming (ADR 0029).
-
-| Key | Type | Default | Detailed Description |
-|-----|------|---------|----------------------|
-| `default_conflict_policy`| enum | `"AutoRename"`| **AutoRename**: Appends `.1`, `.2` etc.<br>**Overwrite**: Replaces existing files.<br>**Skip**: Aborts the task. |
-
-### Resource Mapping Rules
-Rules are evaluated from top to bottom. The first match wins.
-
-**Structure:**
-```toml
-[[resource_mapping.rules]]
-condition = { type = "VARIANT", value = "CRITERIA" }
-target = "TEMPLATE"
-```
-
-**Condition Variants:**
-- `Extension`: Matches file extension (`"mp4"`, `"iso"`).
-- `Domain`: Matches if the URL domain contains the string (`"google.com"`).
-- `Protocol`: Matches `Http`, `Ftp`, or `BitTorrent`.
-- `Regex`: Full regular expression match against the final filename.
-
-**Target Template Placeholders:**
-- `{name}`: Original filename.
-- `{id}`: Numeric Task ID.
-- `{ext}`: Extension.
-- `{protocol}`: `https`, `ftp`, etc.
-- `{host}`: `server.example.com`.
-- `{domain}`: `example.com`.
-- `{year}`, `{month}`, `{day}`: Current local date.
-
----
-
-## [hooks]
-Allows integration with external automation tools.
-
-| Key | Type | Default | Detailed Description |
-|-----|------|---------|----------------------|
-| `on_download_start` | String | `None` | Command run when the status changes to `Downloading`. |
-| `on_download_complete`| String | `None` | Command run after 100% hash verification. |
-| `on_download_error` | String | `None` | Command run when a task moves to the `Error` phase. |
-| `on_download_pause` | String | `None` | Command run when a task is manually paused. |
-
-**Variables**: Hooks can use environment variables like `$AURA_TASK_ID`, `$AURA_FILE_PATH`, and `$AURA_TASK_NAME`.
-
----
-
-## [credentials]
-Aura's unified vault for authentication.
-
-| Key | Type | Default | Detailed Description |
-|-----|------|---------|----------------------|
-| `netrc_path` | String | `None` | Path to a `.netrc` file. Aura uses this for HTTP Basic Auth and FTP logins. |
-| `cookie_file` | String | `None` | Path to a Netscape-format `cookies.txt`. Crucial for downloading from forums or protected CDN nodes. |
+| Setting | Value Type | Default | What it does |
+|:---|:---|:---|:---|
+| `download_dir` | Text | `"."` | Where finished files are moved. |
+| `cache_size_mb` | Number (MB) | `16` | Amount of RAM used to "buffer" files before writing to disk. |
+| `preallocate` | Yes / No | `true` | Reserve the full file space immediately to prevent "Disk Full" errors later. |
+| `allocation_mode` | Option | `"falloc"` | Method for reserving disk space (`none`, `prealloc`, `falloc`). |
+| `save_session_interval_secs`| Time (Seconds) | `10` | How often to save your progress so you can resume later. |
+| `flush_interval_secs` | Time (Seconds) | `3` | Frequency of writing data from memory to the actual disk. |
+| `io_deadline_ms` | Time (ms) | `500` | Target time for a single disk write to finish. |
+| `read_ahead_kb` | Number (KB) | `128` | Pre-read data from disk into memory when uploading. |
+| `write_buffer_kb` | Number (KB) | `256` | Size of individual data chunks written to disk. |
 
 ---
 
 ## [vpn]
-Native VPN integration for high-privacy environments (ADR 0038).
+Safety settings for using a VPN.
 
-| Key | Type | Default | Detailed Description |
-|-----|------|---------|----------------------|
-| `type_name` | String | `None` | `"wireguard"` or `"openvpn"`. |
-| `profile_path` | String | `None` | Path to the config file (e.g., `/etc/wireguard/wg0.conf`). |
-| `auto_connect` | bool | `false` | If true, Aura tries to up the interface on boot. |
-| `check_interval_secs` | u64 | `5` | Frequency of health checks. |
-| `force_tunnel` | bool | `false` | **The Kill-switch**. If the VPN interface drops, Aura pauses all tasks and closes all sockets within milliseconds. |
+| Setting | Value Type | Default | What it does |
+|:---|:---|:---|:---|
+| `type_name` | Text | `None` | The type of VPN you use (`wireguard` or `openvpn`). |
+| `profile_path` | File Path | `None` | Path to your VPN configuration file. |
+| `auto_connect` | Yes / No | `false` | Automatically try to connect to the VPN on startup. |
+| `check_interval_secs` | Time (Seconds) | `5` | How often to check if your VPN is still connected. |
+| `connect_timeout_secs` | Time (Seconds) | `5` | How long to wait for a VPN connection to start. |
+| `force_tunnel` | Yes / No | `false` | **Kill-switch**: Pause everything if the VPN disconnects. |
 
 ---
 
 ## [general]
-Core engine behavior and aesthetic settings.
+General app settings and visual theme.
 
-| Key | Type | Default | Detailed Description |
-|-----|------|---------|----------------------|
-| `log_level` | enum | `"info"` | `trace`, `debug`, `info`, `warn`, `error`. **Impact**: `trace` is extremely verbose and will slow down the engine. |
-| `log_path` | String | `None` | Log file path. If `None`, logs go to `stderr`. |
-| `check_integrity` | bool | `true` | If true, every single block is hash-verified. **Security**: Mandatory for BitTorrent. |
-| `event_poll_interval_ms`| u64 | `500` | UI refresh rate. Lower = smoother progress bars, Higher = lower CPU usage. |
-| `daemon_mode` | bool | `false` | If true, Aura detaches from the terminal and runs as a background service. |
-
-### [general.theme] (TUI only)
-Customizes the look of the Pilot Dashboard. Supports standard Hex codes (e.g., `"#FF00FF"`).
-- `primary`: Borders and headers.
-- `accent`: Progress bars and speed numbers.
-- `highlight`: Selected row.
-- `background`: Main background.
-- `foreground`: Text color.
-- `success`: Completed task bars.
-- `error`: Failed task indicators.
-- `warning`: Throttling/Warning alerts.
+| Setting | Value Type | Default | What it does |
+|:---|:---|:---|:---|
+| `log_level` | Option | `"info"` | How much detail to record in logs (`trace`, `debug`, `info`, `warn`, `error`). |
+| `log_path` | Text | `None` | Where to save the log file. |
+| `check_integrity` | Yes / No | `true` | Double-check every piece of data for errors. |
+| `event_poll_interval_ms`| Time (ms) | `500` | How often to update the user interface (TUI). |
+| `graceful_shutdown_timeout_secs`| Time (Seconds) | `5` | How long to wait for tasks to stop cleanly when closing. |
+| `daemon_mode` | Yes / No | `false` | Run in the background without a window. |

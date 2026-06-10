@@ -74,7 +74,7 @@ pub async fn run(args: Args) -> Result<()> {
         let (inferred_name, is_metadata) = if is_local_file
             && (uri.ends_with(".torrent") || uri.ends_with(".metalink") || uri.ends_with(".meta4"))
         {
-            ("unnamed".to_string(), true)
+            (aura_core::DEFAULT_TASK_NAME.to_string(), true)
         } else if is_local_file {
             (
                 path_obj

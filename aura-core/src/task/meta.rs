@@ -1,69 +1,12 @@
-//! task: Core representations of download tasks and their lifecycles.
-
+use super::extension::TaskExtension;
+use super::phase::{DownloadPhase, FollowOnAction, TaskType};
+use super::range::Range;
+use super::subtask::SubTask;
+use crate::bitfield::Bitfield;
 use crate::{TaskId, TenantId};
 use serde::{Deserialize, Serialize};
-
-/// Represents the current lifecycle state of a Download Task.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum DownloadPhase {
-    MetadataExchange,
-    Downloading,
-    Verifying,
-    Paused,
-    Complete,
-    Error,
-    Degraded,
-    Waiting,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub enum TaskType {
-    Http,
-    BitTorrent,
-    Ftp,
-}
-
-/// Represents a byte range [start, end)
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
-pub struct Range {
-    pub start: u64,
-    pub end: u64,
-}
-
-impl Range {
-    pub fn length(&self) -> u64 {
-        self.end.saturating_sub(self.start)
-    }
-}
-
-/// A sub-segment of a download, managed by a specific protocol worker.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SubTask {
-    pub id: TaskId, // Unique for each subtask
-    pub task_type: TaskType,
-    pub uri: String,
-    pub assigned_ranges: Vec<Range>,
-    pub total_length: u64,
-    pub completed_length: u64,
-    pub active: bool,
-    pub phase: DownloadPhase,
-    pub target_concurrency: usize,
-    pub recent_bytes_downloaded: u64,
-    pub ewma_throughput: f64,
-    pub retry_count: u32,
-}
-
-use super::extension::TaskExtension;
-use crate::bitfield::Bitfield;
 use std::collections::HashMap;
 use std::sync::Arc;
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub enum FollowOnAction {
-    AutoStartTorrent,
-    AutoStartMetalink,
-    Custom(String),
-}
 
 /// The high-level representation of a logical download operation.
 /// A MetaTask can manage multiple SubTasks (sources).
@@ -74,7 +17,6 @@ pub struct MetaTask {
     pub name: String,
     pub total_length: u64,
     pub completed_length: u64,
-    pub uploaded_length: u64,
     pub phase: DownloadPhase,
     pub priority: u32, // 0 = highest, 5 = lowest, default = 3
     pub streaming_mode: bool,
@@ -84,16 +26,14 @@ pub struct MetaTask {
     pub pending_ranges: Vec<Range>,
     pub in_flight_ranges: Vec<(TaskId, Range)>, // (SubTaskID, Range)
     pub checksum: Option<crate::Checksum>,
-    pub seeding_start_time: Option<chrono::DateTime<chrono::Utc>>,
     pub blacklisted_uris: Vec<String>,
     pub extensions: HashMap<String, Arc<dyn TaskExtension>>,
     pub depends_on: Vec<TaskId>,
     pub stall_ticks: u32,
     pub created_at: Option<chrono::DateTime<chrono::Utc>>,
-    pub seed_ratio: Option<f32>,
-    pub seed_time: Option<u32>,
     pub etag: Option<String>,
     pub last_modified: Option<String>,
+    pub selected_files: Option<Vec<bool>>,
 }
 
 /// Represents the serializable state of a MetaTask for persistence.
@@ -109,23 +49,19 @@ pub struct TaskState {
     pub follow_on: Option<FollowOnAction>,
     pub total_length: u64,
     pub completed_length: u64,
-    pub uploaded_length: u64,
     pub subtasks: Vec<SubTask>,
     pub pending_ranges: Vec<Range>,
     pub bitfield: Option<Bitfield>,
     pub checksum: Option<crate::Checksum>,
-    pub seeding_start_time: Option<chrono::DateTime<chrono::Utc>>,
     pub blacklisted_uris: Option<Vec<String>>,
     pub depends_on: Option<Vec<TaskId>>,
     pub created_at: Option<chrono::DateTime<chrono::Utc>>,
     #[serde(default)]
-    pub seed_ratio: Option<f32>,
-    #[serde(default)]
-    pub seed_time: Option<u32>,
-    #[serde(default)]
     pub etag: Option<String>,
     #[serde(default)]
     pub last_modified: Option<String>,
+    #[serde(default)]
+    pub selected_files: Option<Vec<bool>>,
 }
 
 impl MetaTask {
@@ -141,19 +77,16 @@ impl MetaTask {
             follow_on: self.follow_on.clone(),
             total_length: self.total_length,
             completed_length: self.completed_length,
-            uploaded_length: self.uploaded_length,
             subtasks: self.subtasks.clone(),
             pending_ranges: self.pending_ranges.clone(),
             bitfield,
             checksum: self.checksum.clone(),
-            seeding_start_time: self.seeding_start_time,
             blacklisted_uris: Some(self.blacklisted_uris.clone()),
             depends_on: Some(self.depends_on.clone()),
             created_at: self.created_at,
-            seed_ratio: self.seed_ratio,
-            seed_time: self.seed_time,
             etag: self.etag.clone(),
             last_modified: self.last_modified.clone(),
+            selected_files: self.selected_files.clone(),
         }
     }
 
@@ -169,21 +102,18 @@ impl MetaTask {
             follow_on: state.follow_on,
             total_length: state.total_length,
             completed_length: state.completed_length,
-            uploaded_length: state.uploaded_length,
             subtasks: state.subtasks,
             pending_ranges: state.pending_ranges,
             in_flight_ranges: Vec::new(),
             checksum: state.checksum,
-            seeding_start_time: state.seeding_start_time,
             blacklisted_uris: state.blacklisted_uris.unwrap_or_default(),
             extensions: HashMap::new(),
             depends_on: state.depends_on.unwrap_or_default(),
             stall_ticks: 0,
             created_at: state.created_at,
-            seed_ratio: state.seed_ratio,
-            seed_time: state.seed_time,
             etag: state.etag,
             last_modified: state.last_modified,
+            selected_files: state.selected_files,
         }
     }
 
@@ -194,9 +124,8 @@ impl MetaTask {
             name,
             total_length,
             completed_length: 0,
-            uploaded_length: 0,
             phase: DownloadPhase::Downloading,
-            priority: 3,
+            priority: 3, /* TODO: use config */
             streaming_mode: false,
             range_supported: true, // Assume supported until proven otherwise
             follow_on: None,
@@ -204,16 +133,14 @@ impl MetaTask {
             pending_ranges: Vec::new(),
             in_flight_ranges: Vec::new(),
             checksum: None,
-            seeding_start_time: None,
             blacklisted_uris: Vec::new(),
             extensions: HashMap::new(),
             depends_on: Vec::new(),
             stall_ticks: 0,
             created_at: Some(chrono::Utc::now()),
-            seed_ratio: None,
-            seed_time: None,
             etag: None,
             last_modified: None,
+            selected_files: None,
         }
     }
 
@@ -254,7 +181,7 @@ impl MetaTask {
     }
 
     pub fn add_subtask(&mut self, uri: String, task_type: TaskType) -> TaskId {
-        let sub_id = TaskId(rand::random());
+        let sub_id = TaskId::random();
         self.subtasks.push(SubTask {
             id: sub_id,
             task_type,
@@ -284,8 +211,6 @@ impl MetaTask {
         }
 
         // 2. Work Stealing / Racing (ADR 0005)
-        // If no pending ranges, look for "lagging" in-flight ranges to race against.
-        // A range is lagging if its assigned subtask's throughput is significantly below average.
         if !self.range_supported {
             return None;
         }
@@ -363,5 +288,53 @@ impl MetaTask {
         } else {
             (self.completed_length as f64 / self.total_length as f64) * 100.0
         }
+    }
+
+    pub fn uploaded_length(&self) -> u64 {
+        if let Some(ext) = self
+            .extensions
+            .get(crate::worker::bittorrent::BT_EXTENSION_KEY)
+        {
+            if let Some(bt) = ext
+                .as_any()
+                .downcast_ref::<crate::worker::bittorrent::task::BtTask>()
+            {
+                return bt
+                    .state
+                    .uploaded_length
+                    .load(std::sync::atomic::Ordering::Relaxed);
+            }
+        }
+        0
+    }
+
+    pub fn seed_ratio(&self) -> Option<f32> {
+        if let Some(ext) = self
+            .extensions
+            .get(crate::worker::bittorrent::BT_EXTENSION_KEY)
+        {
+            if let Some(bt) = ext
+                .as_any()
+                .downcast_ref::<crate::worker::bittorrent::task::BtTask>()
+            {
+                return *bt.state.seed_ratio.lock().unwrap();
+            }
+        }
+        None
+    }
+
+    pub fn seed_time(&self) -> Option<u32> {
+        if let Some(ext) = self
+            .extensions
+            .get(crate::worker::bittorrent::BT_EXTENSION_KEY)
+        {
+            if let Some(bt) = ext
+                .as_any()
+                .downcast_ref::<crate::worker::bittorrent::task::BtTask>()
+            {
+                return *bt.state.seed_time.lock().unwrap();
+            }
+        }
+        None
     }
 }

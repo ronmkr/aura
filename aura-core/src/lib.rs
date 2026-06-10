@@ -56,6 +56,16 @@ pub enum SeedingCompleteReason {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct TaskId(pub u64);
 
+pub const DEFAULT_TASK_NAME: &str = "unnamed";
+pub const RPC_AUTH_HEADER: &str = "X-Aura-Token";
+pub const JSONRPC_VERSION: &str = "2.0";
+
+impl TaskId {
+    pub fn random() -> Self {
+        Self(rand::random())
+    }
+}
+
 impl fmt::Display for TaskId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "task-{}", self.0)

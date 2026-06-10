@@ -1,4 +1,5 @@
-use super::{HttpWorker, HttpWorkerOptions};
+use super::HttpWorker;
+use crate::worker::builder::WorkerOptions;
 use crate::Error;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
@@ -31,7 +32,7 @@ async fn test_http_worker_html_landing_page_resolution_success() {
         .mount(&server)
         .await;
 
-    let worker = HttpWorker::new(HttpWorkerOptions {
+    let worker = HttpWorker::new(WorkerOptions {
         uri: format!("{}/landing", server.uri()),
         local_addr: None,
         user_agent: None,
@@ -40,6 +41,10 @@ async fn test_http_worker_html_landing_page_resolution_success() {
         referer: None,
         retry_count: 3,
         retry_delay_secs: 1,
+        max_redirects: 20,
+        happy_eyeballs_stagger_ms: 250,
+        http_buffer_capacity: 16384,
+        http_concurrent_requests: 32,
         credential_provider: None,
         dns_resolver: None,
         hsts_cache: None,
@@ -49,6 +54,7 @@ async fn test_http_worker_html_landing_page_resolution_success() {
         client_pool: None,
         if_none_match: None,
         if_modified_since: None,
+        tcp_keepalive_secs: None,
     });
 
     let result = worker.resolve_metadata().await;
@@ -80,7 +86,7 @@ async fn test_http_worker_html_landing_page_resolution_failure() {
         .mount(&server)
         .await;
 
-    let worker = HttpWorker::new(HttpWorkerOptions {
+    let worker = HttpWorker::new(WorkerOptions {
         uri: format!("{}/landing", server.uri()),
         local_addr: None,
         user_agent: None,
@@ -89,6 +95,10 @@ async fn test_http_worker_html_landing_page_resolution_failure() {
         referer: None,
         retry_count: 3,
         retry_delay_secs: 1,
+        max_redirects: 20,
+        happy_eyeballs_stagger_ms: 250,
+        http_buffer_capacity: 16384,
+        http_concurrent_requests: 32,
         credential_provider: None,
         dns_resolver: None,
         hsts_cache: None,
@@ -98,6 +108,7 @@ async fn test_http_worker_html_landing_page_resolution_failure() {
         client_pool: None,
         if_none_match: None,
         if_modified_since: None,
+        tcp_keepalive_secs: None,
     });
 
     let result = worker.resolve_metadata().await;
@@ -128,7 +139,7 @@ async fn test_http_worker_captive_portal_detection() {
         .await;
 
     // Try downloading an asset (e.g. .zip)
-    let worker = HttpWorker::new(HttpWorkerOptions {
+    let worker = HttpWorker::new(WorkerOptions {
         uri: format!("{}/wifi-login/download.zip", server.uri()),
         local_addr: None,
         user_agent: None,
@@ -137,6 +148,10 @@ async fn test_http_worker_captive_portal_detection() {
         referer: None,
         retry_count: 3,
         retry_delay_secs: 1,
+        max_redirects: 20,
+        happy_eyeballs_stagger_ms: 250,
+        http_buffer_capacity: 16384,
+        http_concurrent_requests: 32,
         credential_provider: None,
         dns_resolver: None,
         hsts_cache: None,
@@ -146,6 +161,7 @@ async fn test_http_worker_captive_portal_detection() {
         client_pool: None,
         if_none_match: None,
         if_modified_since: None,
+        tcp_keepalive_secs: None,
     });
 
     let result = worker.resolve_metadata().await;

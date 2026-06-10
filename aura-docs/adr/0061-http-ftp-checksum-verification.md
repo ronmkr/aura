@@ -8,7 +8,7 @@ Implemented (2026-06-04, PR #259 — Issue #243)
 The `TaskState` and `AddTaskArgs` structs both include a `checksum: Option<Checksum>` field (ADR-0041 covers integrity verification for BitTorrent via piece hashes). However, for HTTP and FTP downloads, the checksum field is silently ignored: `aura-daemon/src/jsonrpc.rs` hardcodes `checksum: None` when creating RPC tasks, and `aura-core/src/orchestrator/event_handlers.rs` also hardcodes `checksum: None` at all HTTP completion events. The `ScrubberActor` in `aura-core/src/scrubber/` handles BitTorrent integrity but has no equivalent invocation for HTTP/FTP task completion. This means users who pass a SHA-256 or MD5 hash for an HTTP download (e.g., downloading an OS ISO with a published hash) receive no verification — a corrupted or tampered download is indistinguishable from a valid one. Related: GitHub Issue #243.
 
 ## Decision
-1. Extend the `aria2.addUri` RPC handler to accept an optional `checksum` parameter in the options object: `{"checksum": "sha-256=abc123..."}` following the aria2 checksum format (`algorithm=hexdigest`).
+1. Extend the `aura.addUri` RPC handler to accept an optional `checksum` parameter in the options object: `{"checksum": "sha-256=abc123..."}` following the aura checksum format (`algorithm=hexdigest`).
 2. Wire the checksum through `AddTaskArgs.checksum` and store it in `TaskState.checksum` (already persisted).
 3. After an HTTP or FTP download completes and the `.part` file is finalized (immediately before the rename to the final filename), invoke the `ScrubberActor` or an equivalent `verify_file_checksum(path, checksum)` function.
 4. Support SHA-256, SHA-1, and MD5 hash algorithms (with a deprecation warning for MD5 and SHA-1 due to collision vulnerabilities).

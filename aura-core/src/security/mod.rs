@@ -115,6 +115,13 @@ impl HstsCache {
 
         self.save().await;
     }
+
+    pub async fn insert_header(&self, domain: String, header_value: &str) {
+        if let Some((max_age, include_subdomains)) = parse_hsts_header(header_value) {
+            self.insert_policy(domain, max_age, include_subdomains)
+                .await;
+        }
+    }
 }
 
 /// Parses the Strict-Transport-Security header value (e.g. "max-age=31536000; includeSubDomains").

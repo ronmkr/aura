@@ -1,4 +1,5 @@
 use super::utils::format_task_value;
+use crate::jsonrpc::utils::rpc_error;
 use aura_core::orchestrator::Engine;
 use serde_json::{json, Value};
 
@@ -6,7 +7,7 @@ pub async fn handle_get_config(engine: &Engine) -> Result<Value, Value> {
     let config = engine
         .tell_config()
         .await
-        .map_err(|e| json!({ "code": -32000, "message": e.to_string() }))?;
+        .map_err(|e| rpc_error(-32000, e.to_string()))?;
 
     let now = chrono::Utc::now();
     let (_, _, active_schedule) =
@@ -14,8 +15,8 @@ pub async fn handle_get_config(engine: &Engine) -> Result<Value, Value> {
     let next_transition =
         aura_core::config::BandwidthScheduler::next_transition(&config.bandwidth, now);
 
-    let mut config_val = serde_json::to_value(&*config)
-        .map_err(|e| json!({ "code": -32000, "message": e.to_string() }))?;
+    let mut config_val =
+        serde_json::to_value(&*config).map_err(|e| rpc_error(-32000, e.to_string()))?;
 
     if let Some(obj) = config_val.as_object_mut() {
         obj.insert(
@@ -55,38 +56,44 @@ pub async fn handle_tell_stopped(engine: &Engine, params: Option<Value>) -> Resu
     let records = engine
         .tell_history(offset, num)
         .await
-        .map_err(|e| json!({ "code": -32000, "message": e.to_string() }))?;
+        .map_err(|e| rpc_error(-32000, e.to_string()))?;
 
     let res: Vec<Value> = records
         .into_iter()
         .map(|rec| {
-            format_task_value(
-                &rec.id,
-                &rec.phase.to_lowercase(),
-                &rec.name,
-                rec.total_bytes,
-                rec.downloaded_bytes,
-                rec.uploaded_bytes,
-                &rec.uris,
-                rec.error.as_deref(),
-                &keys,
-            )
+            format_task_value(crate::jsonrpc::utils::TaskValueParams {
+                gid: &rec.id,
+                status: &rec.phase.to_lowercase(),
+                name: &rec.name,
+                total_len: rec.total_bytes,
+                completed_len: rec.downloaded_bytes,
+                uploaded_len: rec.uploaded_bytes,
+                uris: &rec.uris,
+                error_msg: rec.error.as_deref(),
+                keys: &keys,
+                selected_files: None,
+            })
         })
         .collect();
 
     Ok(json!(res))
 }
 
-pub async fn handle_purge_download_result() -> Result<Value, Value> {
-    aura_core::history::HistoryManager::purge_history();
+pub async fn handle_purge_download_result(engine: &Engine) -> Result<Value, Value> {
+    let config = engine.config.load();
+    aura_core::history::HistoryManager::purge_history(&config);
     Ok(json!("OK"))
 }
 
-pub async fn handle_remove_download_result(params: Option<Value>) -> Result<Value, Value> {
-    let params = params.ok_or_else(|| json!({ "code": -32602, "message": "Invalid params" }))?;
-    let gid_str: String = serde_json::from_value(params[0].clone())
-        .map_err(|_| json!({ "code": -32602, "message": "Invalid GID" }))?;
-    aura_core::history::HistoryManager::remove_record_by_gid(&gid_str);
+pub async fn handle_remove_download_result(
+    engine: &Engine,
+    params: Option<Value>,
+) -> Result<Value, Value> {
+    let params = params.ok_or_else(|| rpc_error(-32602, "Invalid params"))?;
+    let gid_str: String =
+        serde_json::from_value(params[0].clone()).map_err(|_| rpc_error(-32602, "Invalid GID"))?;
+    let config = engine.config.load();
+    aura_core::history::HistoryManager::remove_record_by_gid(&config, &gid_str);
     Ok(json!("OK"))
 }
 
@@ -98,7 +105,7 @@ pub async fn handle_shutdown(engine: &Engine) -> Result<Value, Value> {
     engine
         .shutdown()
         .await
-        .map_err(|e| json!({ "code": -32000, "message": e.to_string() }))?;
+        .map_err(|e| rpc_error(-32000, e.to_string()))?;
     Ok(json!("OK"))
 }
 
@@ -106,15 +113,15 @@ pub async fn handle_change_global_option(
     engine: &Engine,
     params: Option<Value>,
 ) -> Result<Value, Value> {
-    let params = params.ok_or_else(|| json!({ "code": -32602, "message": "Invalid params" }))?;
+    let params = params.ok_or_else(|| rpc_error(-32602, "Invalid params"))?;
     let options = params[0]
         .as_object()
-        .ok_or_else(|| json!({ "code": -32602, "message": "Invalid options" }))?;
+        .ok_or_else(|| rpc_error(-32602, "Invalid options"))?;
 
     let mut current_config = (*engine
         .tell_config()
         .await
-        .map_err(|e| json!({ "code": -32000, "message": e.to_string() }))?)
+        .map_err(|e| rpc_error(-32000, e.to_string()))?)
     .clone();
 
     if let Some(dl_limit_str) = options.get("max-overall-download-limit") {
@@ -136,7 +143,7 @@ pub async fn handle_change_global_option(
     engine
         .reload_config(current_config)
         .await
-        .map_err(|e| json!({ "code": -32000, "message": e.to_string() }))?;
+        .map_err(|e| rpc_error(-32000, e.to_string()))?;
 
     Ok(json!("OK"))
 }
@@ -152,7 +159,10 @@ pub async fn handle_get_global_stat(engine: &Engine) -> Result<Value, Value> {
         .filter(|t| t.phase == aura_core::task::DownloadPhase::Waiting)
         .count();
 
-    let history = engine.tell_history(0, 100000).await.unwrap_or_default();
+    let history = engine
+        .tell_history(0, engine.config.load().limits.history_record_limit)
+        .await
+        .unwrap_or_default();
     let num_stopped = history.len();
 
     Ok(json!({

@@ -28,10 +28,15 @@ impl NatActor {
         }
     }
 
-    pub async fn run(mut self) -> Result<()> {
+    pub async fn run(
+        mut self,
+        config: std::sync::Arc<arc_swap::ArcSwap<crate::Config>>,
+    ) -> Result<()> {
         info!("NAT Traversal Actor started");
 
-        let mut refresh_interval = tokio::time::interval(tokio::time::Duration::from_secs(1800)); // 30 mins
+        let refresh_secs = config.load().network.nat_refresh_interval_secs;
+        let mut refresh_interval =
+            tokio::time::interval(tokio::time::Duration::from_secs(refresh_secs));
 
         loop {
             tokio::select! {

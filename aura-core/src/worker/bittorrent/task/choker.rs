@@ -7,8 +7,10 @@ impl BtTask {
         worker_cmd_tx: tokio::sync::broadcast::Sender<crate::orchestrator::WorkerCommand>,
         token: tokio_util::sync::CancellationToken,
     ) -> Result<()> {
+        let choker_interval_secs = self.state.config.load().bittorrent.choker_interval_secs;
         let mut ticks = 0;
-        let mut interval = tokio::time::interval(std::time::Duration::from_secs(10));
+        let mut interval =
+            tokio::time::interval(std::time::Duration::from_secs(choker_interval_secs));
         loop {
             tokio::select! {
                 _ = token.cancelled() => break,
@@ -27,8 +29,9 @@ impl BtTask {
         optimistic: bool,
         worker_cmd_tx: &tokio::sync::broadcast::Sender<crate::orchestrator::WorkerCommand>,
     ) {
+        let choker_interval_secs = self.state.config.load().bittorrent.choker_interval_secs as f64;
         let mut registry = self.state.registry.lock().await;
-        registry.tick_rates(10.0);
+        registry.tick_rates(choker_interval_secs);
 
         if optimistic {
             registry.reset_optimistic_unchokes();

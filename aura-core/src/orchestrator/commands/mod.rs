@@ -51,26 +51,19 @@ impl Orchestrator {
                             uris: task.subtasks.iter().map(|s| s.uri.clone()).collect(),
                             total_bytes: task.total_length,
                             downloaded_bytes: task.completed_length,
-                            uploaded_bytes: task.uploaded_length,
+                            uploaded_bytes: task.uploaded_length(),
                             duration_secs,
                             checksum_verified: Some(false),
                             phase: "Removed".to_string(),
                             error: Some("Task removed by user".to_string()),
                             completed_at: chrono::Utc::now(),
                         };
-                        crate::history::HistoryManager::append_record(record);
+                        let config = self.config.load();
+                        crate::history::HistoryManager::append_record(&config, record);
                     }
                 }
                 let throttler = if let Some(task) = self.tasks.get(&id) {
-                    if let Some(ref tid) = task.tenant_id {
-                        if let Some(ctx) = self.tenants.get(tid) {
-                            ctx.throttler.clone()
-                        } else {
-                            self.throttler.clone()
-                        }
-                    } else {
-                        self.throttler.clone()
-                    }
+                    self.resolve_throttler(&task.tenant_id)
                 } else {
                     self.throttler.clone()
                 };
@@ -139,11 +132,15 @@ impl Orchestrator {
                     local_addr,
                     user_agent,
                     proxy,
+                    Some(self.config.clone()),
                 ));
 
                 let mut announce_futures = Vec::new();
                 for meta_task in self.tasks.values() {
-                    if let Some(ext) = meta_task.extensions.get("bittorrent") {
+                    if let Some(ext) = meta_task
+                        .extensions
+                        .get(crate::worker::bittorrent::BT_EXTENSION_KEY)
+                    {
                         if let Ok(bt_task) = ext.clone().as_any_arc().downcast::<BtTask>() {
                             if let Some(torrent) = bt_task.state.torrent.lock().await.clone() {
                                 let tracker_clone = std::sync::Arc::clone(&tracker);
@@ -187,25 +184,10 @@ impl Orchestrator {
                         {
                             if let Some(bt_task) = meta_task
                                 .extensions
-                                .get("bittorrent")
+                                .get(crate::worker::bittorrent::BT_EXTENSION_KEY)
                                 .and_then(|e| e.clone().as_any_arc().downcast::<BtTask>().ok())
                             {
-                                let config = self.config.load();
-                                let base_dir: std::path::PathBuf = if let Some(ref tid) =
-                                    meta_task.tenant_id
-                                {
-                                    if let Some(ctx) = self.tenants.get(tid) {
-                                        if let Some(ref root) = ctx.disk_path_root {
-                                            root.clone()
-                                        } else {
-                                            std::path::PathBuf::from(&config.storage.download_dir)
-                                        }
-                                    } else {
-                                        std::path::PathBuf::from(&config.storage.download_dir)
-                                    }
-                                } else {
-                                    std::path::PathBuf::from(&config.storage.download_dir)
-                                };
+                                let base_dir = self.resolve_base_dir(&meta_task.tenant_id);
                                 let path = base_dir.join(&meta_task.name);
                                 let _ = self
                                     .scrub_tx
@@ -218,21 +200,7 @@ impl Orchestrator {
                             }
                         }
                     } else if let Some(checksum) = meta_task.checksum.clone() {
-                        let config = self.config.load();
-                        let base_dir: std::path::PathBuf =
-                            if let Some(ref tid) = meta_task.tenant_id {
-                                if let Some(ctx) = self.tenants.get(tid) {
-                                    if let Some(ref root) = ctx.disk_path_root {
-                                        root.clone()
-                                    } else {
-                                        std::path::PathBuf::from(&config.storage.download_dir)
-                                    }
-                                } else {
-                                    std::path::PathBuf::from(&config.storage.download_dir)
-                                }
-                            } else {
-                                std::path::PathBuf::from(&config.storage.download_dir)
-                            };
+                        let base_dir = self.resolve_base_dir(&meta_task.tenant_id);
                         let path = base_dir.join(&meta_task.name);
                         let _ = self
                             .scrub_tx
@@ -254,25 +222,83 @@ impl Orchestrator {
                     {
                         if let Some(bt_task) = meta_task
                             .extensions
-                            .get("bittorrent")
+                            .get(crate::worker::bittorrent::BT_EXTENSION_KEY)
                             .and_then(|e| e.clone().as_any_arc().downcast::<BtTask>().ok())
                         {
                             let info_hash = bt_task.state.info_hash;
+                            let config = self.config.load();
+                            let port = config.network.listen_port;
                             let _ = self
                                 .dht_tx
-                                .send(crate::dht::DhtCommand::Announce {
-                                    info_hash,
-                                    port: 6881,
-                                })
+                                .send(crate::dht::DhtCommand::Announce { info_hash, port })
                                 .await;
                             let _ = self
                                 .lpd_tx
-                                .send(crate::lpd::LpdCommand::Announce {
-                                    info_hash,
-                                    port: 6881,
-                                })
+                                .send(crate::lpd::LpdCommand::Announce { info_hash, port })
                                 .await;
                             tracing::info!(%id, "Refreshed peer discovery via DHT and LPD");
+                        }
+                    }
+                }
+            }
+            Command::GetFiles(id, reply_tx) => {
+                let mut result = None;
+                if let Some(task) = self.tasks.get(&id) {
+                    if let Some(ext) = task
+                        .extensions
+                        .get(crate::worker::bittorrent::BT_EXTENSION_KEY)
+                    {
+                        if let Ok(bt_task) = ext.clone().as_any_arc().downcast::<BtTask>() {
+                            if let Some(torrent) = bt_task.state.torrent.lock().await.clone() {
+                                if let Some(files) = torrent.info.files {
+                                    result = Some(files);
+                                } else if let Some(v2_files) = torrent.flatten_v2_files() {
+                                    result = Some(
+                                        v2_files
+                                            .into_iter()
+                                            .map(|f| crate::torrent::File {
+                                                length: f.length,
+                                                path: f.path,
+                                                attr: None,
+                                            })
+                                            .collect(),
+                                    );
+                                } else if let Some(len) = torrent.info.length {
+                                    // Single file torrent
+                                    result = Some(vec![crate::torrent::File {
+                                        length: len,
+                                        path: vec![torrent.info.name.clone()],
+                                        attr: None,
+                                    }]);
+                                }
+                            }
+                        }
+                    }
+                }
+                let _ = reply_tx.send(result);
+            }
+            Command::SetFileSelection(id, selection) => {
+                if let Some(task) = self.tasks.get_mut(&id) {
+                    if let Some(ext) = task
+                        .extensions
+                        .get(crate::worker::bittorrent::BT_EXTENSION_KEY)
+                    {
+                        if let Ok(bt_task) = ext.clone().as_any_arc().downcast::<BtTask>() {
+                            task.selected_files = Some(selection.clone());
+                            if let Some(torrent) = bt_task.state.torrent.lock().await.clone() {
+                                let selected_pieces = torrent.compute_selected_pieces(&selection);
+                                task.total_length = torrent.selected_total_length(&selection);
+                                let mut picker_guard = bt_task.state.picker.lock().await;
+                                if let Some(ref mut picker) = *picker_guard {
+                                    let bt_config = self.config.load().bittorrent.clone();
+                                    picker.selected_pieces = selected_pieces;
+                                    picker.endgame_threshold_pieces =
+                                        bt_config.endgame_threshold_pieces;
+                                    picker.endgame_threshold_percent =
+                                        bt_config.endgame_threshold_percent;
+                                }
+                            }
+                            let _ = self.save_task(id).await;
                         }
                     }
                 }

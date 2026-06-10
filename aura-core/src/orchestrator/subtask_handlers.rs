@@ -32,17 +32,11 @@ impl Orchestrator {
                 self.handle_subtask_failed(meta_id, sub_id, err).await?;
             }
             SubTaskEvent::Downloaded(meta_id, sub_id, bytes, peer_addr) => {
-                let mut progress_update = None;
                 if let Some(task) = self.tasks.get_mut(&meta_id) {
                     task.completed_length += bytes;
                     if let Some(sub) = task.subtasks.iter_mut().find(|s| s.id == sub_id) {
                         sub.recent_bytes_downloaded += bytes;
                     }
-                    progress_update = Some((
-                        task.completed_length,
-                        task.uploaded_length,
-                        task.total_length,
-                    ));
                 }
 
                 if let Some(bt_task) = self.get_bt_task(sub_id) {
@@ -50,39 +44,15 @@ impl Orchestrator {
                     registry.add_downloaded(&peer_addr, bytes);
                 }
 
-                if let Some((comp, up, total)) = progress_update {
-                    let _ = self.event_tx.send(Event::TaskProgress {
-                        id: meta_id,
-                        completed_bytes: comp,
-                        uploaded_bytes: up,
-                        total_bytes: total,
-                    });
-                }
+                self.emit_progress(meta_id);
             }
             SubTaskEvent::Uploaded(meta_id, sub_id, bytes, peer_addr) => {
-                let mut progress_update = None;
-                if let Some(task) = self.tasks.get_mut(&meta_id) {
-                    task.uploaded_length += bytes;
-                    progress_update = Some((
-                        task.completed_length,
-                        task.uploaded_length,
-                        task.total_length,
-                    ));
-                }
-
                 if let Some(bt_task) = self.get_bt_task(sub_id) {
                     let mut registry = bt_task.state.registry.lock().await;
                     registry.add_uploaded(&peer_addr, bytes);
                 }
 
-                if let Some((comp, up, total)) = progress_update {
-                    let _ = self.event_tx.send(Event::TaskProgress {
-                        id: meta_id,
-                        completed_bytes: comp,
-                        uploaded_bytes: up,
-                        total_bytes: total,
-                    });
-                }
+                self.emit_progress(meta_id);
             }
             SubTaskEvent::PeerBitfield(meta_id, _peer_id, bf) => {
                 debug!(%meta_id, count = bf.count_set(), "Peer bitfield received");
@@ -134,7 +104,10 @@ impl Orchestrator {
             SubTaskEvent::BtTaskRegistered(meta_id, info_hash, task, worker_cmd_tx) => {
                 self.bt_registry.insert(info_hash, meta_id);
                 if let Some(meta_task) = self.tasks.get_mut(&meta_id) {
-                    meta_task.extensions.insert("bittorrent".to_string(), task);
+                    meta_task.extensions.insert(
+                        crate::worker::bittorrent::BT_EXTENSION_KEY.to_string(),
+                        task,
+                    );
                 }
                 self.worker_command_txs.insert(meta_id, worker_cmd_tx);
             }
@@ -233,7 +206,8 @@ impl Orchestrator {
                         let _ = self.handle_pause(*id).await;
                     }
 
-                    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                    let delay_ms = self.config.load().network.roaming_reconnect_delay_ms;
+                    tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
 
                     info!(
                         "Resuming {} tasks on the new default route",

@@ -1,4 +1,5 @@
 pub mod handlers;
+pub mod persistence;
 pub mod queries;
 
 use crate::dht::protocol::KrpcMessage;
@@ -44,6 +45,7 @@ pub struct DhtActor {
     pub(crate) tokens: Arc<Mutex<BTreeMap<SocketAddr, Vec<u8>>>>,
     pub(crate) db: Option<sled::Db>,
     pub(crate) secrets: Arc<Mutex<DhtSecrets>>,
+    pub(crate) config: Arc<arc_swap::ArcSwap<crate::Config>>,
 }
 
 impl DhtActor {
@@ -54,6 +56,7 @@ impl DhtActor {
         local_addr: Option<std::net::IpAddr>,
         port: u16,
         db: Option<sled::Db>,
+        config: Arc<arc_swap::ArcSwap<crate::Config>>,
     ) -> Result<Self> {
         let socket = crate::net_util::bind_udp_bound(port, None, local_addr)
             .await
@@ -76,12 +79,14 @@ impl DhtActor {
             tokens: Arc::new(Mutex::new(BTreeMap::new())),
             db,
             secrets,
+            config,
         })
     }
 
     pub async fn generate_token(&self, addr: SocketAddr) -> Vec<u8> {
+        let rot_secs = self.config.load().bittorrent.dht_token_rotation_secs;
         let mut secrets = self.secrets.lock().await;
-        if secrets.last_rotation.elapsed() >= std::time::Duration::from_secs(600) {
+        if secrets.last_rotation.elapsed() >= std::time::Duration::from_secs(rot_secs) {
             secrets.previous = secrets.current;
             secrets.current = rand::random::<[u8; 32]>();
             secrets.last_rotation = std::time::Instant::now();
@@ -94,8 +99,9 @@ impl DhtActor {
     }
 
     pub async fn validate_token(&self, addr: SocketAddr, token: &[u8]) -> bool {
+        let rot_secs = self.config.load().bittorrent.dht_token_rotation_secs;
         let mut secrets = self.secrets.lock().await;
-        if secrets.last_rotation.elapsed() >= std::time::Duration::from_secs(600) {
+        if secrets.last_rotation.elapsed() >= std::time::Duration::from_secs(rot_secs) {
             secrets.previous = secrets.current;
             secrets.current = rand::random::<[u8; 32]>();
             secrets.last_rotation = std::time::Instant::now();
@@ -159,8 +165,16 @@ impl DhtActor {
             }
         }
 
-        let mut save_interval = tokio::time::interval(tokio::time::Duration::from_secs(300));
-        let mut ping_interval = tokio::time::interval(tokio::time::Duration::from_secs(600));
+        let (save_secs, ping_secs, _rot_secs) = {
+            let conf = self.config.load();
+            (
+                conf.bittorrent.dht_save_interval_secs,
+                conf.bittorrent.dht_ping_interval_secs,
+                conf.bittorrent.dht_token_rotation_secs,
+            )
+        };
+        let mut save_interval = tokio::time::interval(tokio::time::Duration::from_secs(save_secs));
+        let mut ping_interval = tokio::time::interval(tokio::time::Duration::from_secs(ping_secs));
 
         let mut buf = [0u8; 2048];
         loop {
@@ -277,67 +291,5 @@ impl DhtActor {
         for addr in nodes {
             let _ = self.send_ping(addr).await;
         }
-    }
-}
-
-#[derive(serde::Serialize, serde::Deserialize)]
-struct PersistedNode {
-    id: [u8; 20],
-    addr: SocketAddr,
-}
-
-#[async_trait::async_trait]
-impl crate::dht::PersistentState for DhtActor {
-    async fn save(&self, path: &std::path::Path) -> crate::Result<()> {
-        let rt = self.routing_table.lock().await;
-        let mut nodes = Vec::new();
-        for bucket in &rt.buckets {
-            for node in &bucket.nodes {
-                nodes.push(PersistedNode {
-                    id: node.id,
-                    addr: node.addr,
-                });
-            }
-        }
-        drop(rt);
-
-        if let Some(parent) = path.parent() {
-            tokio::fs::create_dir_all(parent).await?;
-        }
-
-        let json = serde_json::to_string_pretty(&nodes)
-            .map_err(|e| crate::Error::Storage(format!("Failed to serialize DHT nodes: {}", e)))?;
-
-        tokio::fs::write(path, json).await?;
-        debug!(
-            ?path,
-            count = nodes.len(),
-            "Saved DHT routing table to file"
-        );
-        Ok(())
-    }
-
-    async fn load(&mut self, path: &std::path::Path) -> crate::Result<()> {
-        if !path.exists() {
-            return Ok(());
-        }
-
-        let data = tokio::fs::read(path).await?;
-        let nodes: Vec<PersistedNode> = serde_json::from_slice(&data).map_err(|e| {
-            crate::Error::Storage(format!("Failed to deserialize DHT nodes: {}", e))
-        })?;
-
-        let mut rt = self.routing_table.lock().await;
-        let count = nodes.len();
-        for p_node in nodes {
-            rt.insert(crate::dht::routing::Node {
-                id: p_node.id,
-                addr: p_node.addr,
-            });
-            // Try to ping the loaded node to verify/refresh it
-            let _ = self.send_ping(p_node.addr).await;
-        }
-        info!(?path, count, "Loaded DHT routing table from file");
-        Ok(())
     }
 }

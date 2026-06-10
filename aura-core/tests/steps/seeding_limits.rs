@@ -51,8 +51,8 @@ async fn then_task_has_no_overrides(world: &mut AuraWorld, id: u64) {
         .iter()
         .find(|t| t.id == TaskId(id))
         .expect("Task not found");
-    assert_eq!(task.seed_ratio, None);
-    assert_eq!(task.seed_time, None);
+    assert_eq!(task.seed_ratio(), None);
+    assert_eq!(task.seed_time(), None);
 }
 
 #[when(expr = "I change options for task {int} with:")]
@@ -93,6 +93,6 @@ async fn then_assert_task_overrides(world: &mut AuraWorld, id: u64, ratio: f32, 
         .iter()
         .find(|t| t.id == TaskId(id))
         .expect("Task not found");
-    assert_eq!(task.seed_ratio, Some(ratio));
-    assert_eq!(task.seed_time, Some(time));
+    assert_eq!(task.seed_ratio(), Some(ratio));
+    assert_eq!(task.seed_time(), Some(time));
 }

@@ -32,8 +32,12 @@ impl Orchestrator {
         let mut scaling_interval = tokio::time::interval(std::time::Duration::from_millis(
             config_initial.general.event_poll_interval_ms,
         ));
-        let mut pex_interval = tokio::time::interval(std::time::Duration::from_secs(60));
-        let mut bandwidth_interval = tokio::time::interval(std::time::Duration::from_secs(60));
+        let mut pex_interval = tokio::time::interval(std::time::Duration::from_secs(
+            config_initial.limits.pex_interval_secs,
+        ));
+        let mut bandwidth_interval = tokio::time::interval(std::time::Duration::from_secs(
+            config_initial.limits.bandwidth_scheduling_interval_secs,
+        ));
 
         // VPN Kill-switch Monitor
         let vpn_watch_rx = self.vpn_watch_tx.subscribe();
@@ -116,9 +120,11 @@ impl Orchestrator {
 
         // Network Interface Roaming Reconnector Monitor
         let subtask_tx_roaming = self.subtask_tx.clone();
+        let roaming_interval_secs = config_initial.limits.network_roaming_check_interval_secs;
         tokio::spawn(async move {
             let mut last_ip = local_ip_address::local_ip().ok();
-            let mut interval = tokio::time::interval(std::time::Duration::from_secs(5));
+            let mut interval =
+                tokio::time::interval(std::time::Duration::from_secs(roaming_interval_secs));
             loop {
                 interval.tick().await;
 
@@ -146,7 +152,8 @@ impl Orchestrator {
         });
 
         if let Some(scrub_command_rx) = self.scrub_rx.take() {
-            let (scrub_event_tx, mut scrub_event_rx) = tokio::sync::mpsc::channel(1024);
+            let capacity = self.config.load().limits.command_channel_capacity;
+            let (scrub_event_tx, mut scrub_event_rx) = tokio::sync::mpsc::channel(capacity);
             let scrubber =
                 crate::scrubber::IntegrityScrubber::new(scrub_command_rx, scrub_event_tx);
             tokio::spawn(scrubber.run());
@@ -217,11 +224,9 @@ impl Orchestrator {
                     let worker_command_txs = self.worker_command_txs.clone();
                     let storage_tx = self.storage_tx.clone();
                     let subtask_tx = self.subtask_tx.clone();
-                    let my_peer_id = self.peer_id;
                     let cancellation_tokens = self.cancellation_tokens.clone();
-                    let local_addr = self.resolve_local_addr();
-                    let config = self.config.load().clone();
                     let throttler = self.throttler.clone();
+                    let orchestrator_handle = self.handle();
 
                     let bt_tasks: std::collections::HashMap<TaskId, Arc<BtTask>> = self.iter_bt_tasks().into_iter().collect();
 
@@ -232,11 +237,9 @@ impl Orchestrator {
                             worker_command_txs,
                             storage_tx,
                             subtask_tx,
-                            my_peer_id,
                             cancellation_tokens,
-                            local_addr,
-                            config,
                             throttler,
+                            orchestrator_handle,
                         };
                         if let Err(e) = super::lifecycle::handle_incoming_peer(stream, addr, ctx).await
                         {

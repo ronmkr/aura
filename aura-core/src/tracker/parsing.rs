@@ -1,4 +1,4 @@
-use super::logic::{Peer, TrackerClient};
+use super::{Peer, TrackerClient};
 use crate::{Error, Result};
 use std::net::Ipv4Addr;
 

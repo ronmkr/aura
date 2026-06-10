@@ -17,11 +17,13 @@ impl Orchestrator {
                 }
 
                 for sub in &mut task.subtasks {
-                    if sub.ewma_throughput < 1024.0 {
+                    if sub.ewma_throughput < config.bandwidth.adaptive_scaling_low_throughput {
                         // Slow source, scale up
                         sub.target_concurrency =
                             std::cmp::min(sub.target_concurrency + 2, max_concurrency);
-                    } else if sub.ewma_throughput > 1024.0 * 1024.0 {
+                    } else if sub.ewma_throughput
+                        > config.bandwidth.adaptive_scaling_high_throughput
+                    {
                         // Very fast source, scale down to save resources
                         sub.target_concurrency = std::cmp::max(
                             sub.target_concurrency.saturating_sub(1),
