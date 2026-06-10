@@ -90,8 +90,20 @@ pub async fn handle_change_option(engine: &Engine, params: Option<Value>) -> Res
         }
     });
 
+    let streaming_mode = options
+        .get("streaming-mode")
+        .or_else(|| options.get("streamingMode"))
+        .and_then(|v| v.as_bool());
+
     engine
-        .change_option(id, priority, depends_on, seed_ratio, seed_time)
+        .change_option(
+            id,
+            priority,
+            depends_on,
+            seed_ratio,
+            seed_time,
+            streaming_mode,
+        )
         .await
         .rpc_map_err()?;
 

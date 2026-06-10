@@ -27,6 +27,7 @@ pub enum Command {
         depends_on: Option<Vec<TaskId>>,
         seed_ratio: Option<f32>,
         seed_time: Option<u32>,
+        streaming_mode: Option<bool>,
     },
     Pause(TaskId),
     Resume(TaskId),

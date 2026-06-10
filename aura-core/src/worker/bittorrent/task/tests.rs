@@ -27,6 +27,7 @@ async fn test_bt_task_from_magnet() {
         config: std::sync::Arc::new(arc_swap::ArcSwap::new(std::sync::Arc::new(
             crate::Config::default(),
         ))),
+        streaming_mode: false,
     });
 
     assert_eq!(task.id, crate::TaskId(12345));

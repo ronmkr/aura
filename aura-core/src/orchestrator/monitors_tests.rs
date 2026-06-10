@@ -147,6 +147,7 @@ async fn test_check_seed_limits() {
             resource_governor: orchestrator.resource_governor.clone(),
             tenant_id: None,
             config: orchestrator.config.clone(),
+            streaming_mode: false,
         },
     );
     bt1.state
@@ -207,6 +208,7 @@ async fn test_check_seed_limits() {
             resource_governor: orchestrator.resource_governor.clone(),
             tenant_id: None,
             config: orchestrator.config.clone(),
+            streaming_mode: false,
         },
     );
     *bt2.state.seeding_start_time.lock().unwrap() =
@@ -266,6 +268,7 @@ async fn test_check_seed_limits() {
             resource_governor: orchestrator.resource_governor.clone(),
             tenant_id: None,
             config: orchestrator.config.clone(),
+            streaming_mode: false,
         },
     );
     bt3.state

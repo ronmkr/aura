@@ -87,6 +87,7 @@ impl Engine {
         depends_on: Option<Vec<TaskId>>,
         seed_ratio: Option<f32>,
         seed_time: Option<u32>,
+        streaming_mode: Option<bool>,
     ) -> Result<()> {
         self.command_tx
             .send(Command::ChangeOption {
@@ -95,6 +96,7 @@ impl Engine {
                 depends_on,
                 seed_ratio,
                 seed_time,
+                streaming_mode,
             })
             .await
             .map_err(|e| Error::Engine(format!("Failed to send ChangeOption command: {}", e)))?;

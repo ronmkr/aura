@@ -174,6 +174,7 @@ Settings for fine-tuning BitTorrent downloads.
 | `endgame_mode_enabled` | Yes / No | `true` | Speeds up the final 1% of a download by asking everyone for the last pieces. |
 | `min_split_size_mb` | Number (MB) | `20` | Smallest size allowed for a single download segment. |
 | `max_connections_per_torrent`| Number| `200` | Hard connection limit for one torrent. |
+| `streaming_metadata_pieces`| Number | `4` | Number of pieces at the beginning and end of a torrent to prioritize sequentially when streaming mode is enabled (for fast index/metadata loading). |
 
 ---
 

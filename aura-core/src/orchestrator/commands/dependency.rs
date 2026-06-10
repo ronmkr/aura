@@ -191,10 +191,12 @@ impl Orchestrator {
         depends_on: Option<Vec<TaskId>>,
         seed_ratio: Option<f32>,
         seed_time: Option<u32>,
+        streaming_mode: Option<bool>,
     ) -> Result<()> {
         let mut priority_changed = false;
         let mut depends_changed = false;
         let mut seeding_changed = false;
+        let mut streaming_changed = false;
 
         if let Some(p) = priority {
             if let Some(task) = self.tasks.get_mut(&id) {
@@ -259,7 +261,22 @@ impl Orchestrator {
             }
         }
 
-        if priority_changed || depends_changed || seeding_changed {
+        if let Some(mode) = streaming_mode {
+            if let Some(task) = self.tasks.get_mut(&id) {
+                if task.streaming_mode != mode {
+                    info!(%id, from = %task.streaming_mode, to = %mode, "Updating task streaming_mode");
+                    task.streaming_mode = mode;
+                    streaming_changed = true;
+                    if let Some(bt) = self.get_bt_task(id) {
+                        bt.state
+                            .streaming_mode
+                            .store(mode, std::sync::atomic::Ordering::Relaxed);
+                    }
+                }
+            }
+        }
+
+        if priority_changed || depends_changed || seeding_changed || streaming_changed {
             let _ = self.save_task(id).await;
         }
 

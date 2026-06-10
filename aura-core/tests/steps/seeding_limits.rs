@@ -74,7 +74,7 @@ async fn when_change_task_options(world: &mut AuraWorld, id: u64, step: &Step) {
     }
 
     engine
-        .change_option(TaskId(id), None, None, seed_ratio, seed_time)
+        .change_option(TaskId(id), None, None, seed_ratio, seed_time, None)
         .await
         .expect("Failed to change options");
 
