@@ -22,6 +22,7 @@ pub struct CliOverrides {
     pub download_dir: Option<String>,
     pub limit: Option<u64>,
     pub proxy: Option<String>,
+    pub bind_address: Option<String>,
     pub rpc_port: Option<u16>,
     pub rpc_secret: Option<String>,
     pub tls_cert: Option<String>,
@@ -179,6 +180,11 @@ impl Config {
         if let Some(p) = overrides.proxy {
             self.network.proxy = Some(p);
         }
+        if let Some(addr) = overrides.bind_address {
+            if let Ok(ip) = addr.parse() {
+                self.network.bind_address = ip;
+            }
+        }
         if let Some(port) = overrides.rpc_port {
             self.network.rpc_port = port;
         }
@@ -221,6 +227,25 @@ impl Config {
         } else {
             None
         }
+    }
+
+    pub fn resolve_local_addr(&self) -> Option<std::net::IpAddr> {
+        if let Some(addr) = self.network.local_addr {
+            return Some(addr);
+        }
+
+        if let Some(ref iface) = self.network.interface {
+            use local_ip_address::list_afinet_netifas;
+            return list_afinet_netifas()
+                .ok()
+                .and_then(|ifas: Vec<(String, std::net::IpAddr)>| {
+                    ifas.into_iter()
+                        .find(|(name, _)| *name == *iface)
+                        .map(|(_, ip)| ip)
+                });
+        }
+
+        None
     }
 }
 

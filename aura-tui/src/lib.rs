@@ -132,16 +132,12 @@ where
                                 KeyCode::Char('r') => {
                                     let gid_clone = gid.clone();
                                     if let Ok(id) = gid_clone.parse::<u64>() {
-                                        app.client
-                                            .post("http://localhost:6800/jsonrpc")
-                                            .json(&serde_json::json!({
-                                                "jsonrpc": "2.0",
-                                                "method": "aura.refreshUri",
-                                                "params": [id.to_string()],
-                                                "id": "tui-refresh"
-                                            }))
-                                            .send()
-                                            .await?;
+                                        app.call_rpc(
+                                            "aura.refreshUri",
+                                            Some(serde_json::json!([id.to_string()])),
+                                            "tui-refresh",
+                                        )
+                                        .await?;
                                     }
                                 }
                                 _ => {}

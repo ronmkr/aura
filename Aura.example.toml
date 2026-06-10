@@ -3,10 +3,16 @@
 [network]
 # interface = "tun0"                   # Bind to a specific network interface
 # local_addr = "192.168.1.100"         # Bind to a specific local IP address
+bind_address = "127.0.0.1"             # IP address to bind the RPC server (default: 127.0.0.1 for security)
 listen_port = 6881                     # BitTorrent listen port
+dht_port = 6881                        # DHT listen port
+rpc_port = 6800                        # JSON-RPC listen port
+# rpc_secret = "aura_secret_token"     # Authentication secret token (uncomment to hardcode)
+allowed_origins = ["http://localhost", "http://127.0.0.1", "chrome-extension://"] # Allowed CORS origins
 user_agent = "Aura/0.1.0"              # Custom User-Agent string
 connect_timeout_secs = 30              # Connection timeout
 tcp_keepalive_secs = 60                # TCP keepalive interval
+# proxy = "http://127.0.0.1:8080"      # Global HTTP/SOCKS5 proxy URL
 max_redirects = 20                     # Maximum HTTP redirects
 http_retry_count = 5                   # Max retries for HTTP errors
 http_retry_delay_secs = 2              # Delay between retries
@@ -44,10 +50,10 @@ upload_limit = 5242880                 # 5 MB/s
 
 [bittorrent]
 peer_id_prefix = "-AU0001-"            # Unique peer ID prefix
-enable_dht = true                      # Enable Distributed Hash Table
-enable_lpd = true                      # Enable Local Peer Discovery
-enable_pex = true                      # Enable Peer Exchange
-max_peers_per_task = 50                # Max peer connections
+dht_enabled = true                     # Enable Distributed Hash Table
+lpd_enabled = true                     # Enable Local Peer Discovery
+pex_enabled = true                     # Enable Peer Exchange
+max_peers_per_torrent = 50             # Max peer connections
 request_pipeline_size = 16             # Number of in-flight piece requests
 handshake_timeout_secs = 10            # BitTorrent handshake timeout
 dht_save_interval_secs = 300           # Interval to persist DHT nodes
@@ -58,16 +64,27 @@ dht_query_timeout_secs = 5             # Timeout for DHT queries
 tracker_polling_interval_secs = 60     # Interval to announce to trackers
 lpd_announce_interval_secs = 300       # Interval for Local Peer Discovery
 choker_interval_secs = 10              # Choking algorithm tick rate
-seeding_ratio_limit = 1.0              # Stop seeding at 1.0 ratio
-seeding_time_limit_mins = 60           # Stop seeding after 1 hour
+
+[bittorrent.seeding]
+min_ratio = 1.0                        # Stop seeding at 1.0 ratio
+max_seeding_time = 3600                # Stop seeding after 1 hour (3600 seconds)
+stop_on_either = true                  # Stop when either limit is reached
+
 
 [storage]
 download_dir = "downloads"             # Destination for files
+# sandbox_root = "/path/to/sandbox"    # Confines all file ops to this root (uncomment to enable)
 allocation_mode = "PreAllocate"        # "PreAllocate" or "Sparse"
+preallocate = true                     # Enable physical pre-allocation
+cache_size_mb = 16                     # Size of disk cache
+save_session_interval_secs = 10        # Interval to auto-save session state
 flush_interval_secs = 3                # Aggregated write flush interval
 io_deadline_ms = 500                   # Target latency for disk writes
+read_ahead_kb = 128                    # Read-ahead size for sequential reads
+write_buffer_kb = 256                  # Size of thread-local write buffers
 memory_limit_mb = 512                  # Max RAM for write aggregation
 memory_safety_margin_mb = 50           # Reserve memory to prevent OOM
+
 
 [bulk]
 max_scan_depth = 10                    # Recursion limit for folder scanning
@@ -109,13 +126,21 @@ log_level = "info"                     # "trace", "debug", "info", "warn", "erro
 # cookie_file = "cookies.txt"          # Path to cookie file (Netscape format)
 
 [limits]
+allow_duplicate_uris = false           # If false, reject duplicate task URIs
 max_active_tasks = 100                 # Architectural task ceiling
 event_channel_capacity = 1024          # Internal message bus capacity
 command_channel_capacity = 128         # High-priority command capacity
+storage_channel_capacity = 100         # Disk queue command capacity
+history_record_limit = 100000          # Maximum historical records to keep
 history_rotation_mb = 10.0             # Max size of history file before rotation
 history_rotation_records = 10000       # Max records in history file before rotation
 history_retention_records = 5000       # Number of records to keep after rotation
 graceful_shutdown_timeout_secs = 5     # Wait time for active workers on exit
+pex_interval_secs = 60                 # PEX peer request interval
+bandwidth_scheduling_interval_secs = 60 # Scheduling checker check rate
+network_roaming_check_interval_secs = 5 # Interface polling rate for VPN swap
+default_task_priority = 3              # Default download priority (0-5)
+
 
 [theme]
 primary = "#0000FF"

@@ -1,4 +1,5 @@
 //! piece_picker: Implements the rarest-first piece selection strategy.
+//! Also implements BitTorrent Endgame Mode as specified in [ADR-0039](aura-docs/adr/0039-bittorrent-endgame-mode.md).
 
 use crate::bitfield::Bitfield;
 use std::collections::HashMap;

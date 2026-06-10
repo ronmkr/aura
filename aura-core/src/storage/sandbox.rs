@@ -1,3 +1,6 @@
+//! Confinement logic to isolate and restrict storage I/O operations to
+//! a designated sandbox directory, enforcing [ADR-0054](aura-docs/adr/0054-sandbox-root-confinement.md).
+
 use crate::Result;
 use std::path::{Path, PathBuf};
 

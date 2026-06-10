@@ -12,7 +12,8 @@ Aura is highly tunable. This document provides an exhaustive reference for every
 7. [[hooks] - Automation](#hooks)
 8. [[credentials] - Authentication](#credentials)
 9. [[vpn] - Privacy Kill-switch](#vpn)
-10. [[general] - Engine & UI](#general)
+10. [[limits] - Architectural Boundaries](#limits)
+11. [[general] - Engine & UI](#general)
 
 ---
 
@@ -33,6 +34,8 @@ Manages how Aura interacts with the outside world.
 |:---|:---|:---|:---|
 | `interface` | Text | `None` | Binds all outgoing traffic to a specific network interface (e.g., `eth0`, `wlan0`, or `tun0`). |
 | `local_addr` | IP Address | `None` | Binds to a specific IP address on your machine. |
+| `bind_address` | IP Address | `"127.0.0.1"` | IP address to bind the RPC server (default: `127.0.0.1` for security). |
+| `allowed_origins` | List of Texts | `["http://localhost", "http://127.0.0.1", "chrome-extension://"]` | Allowed CORS origins for API requests. |
 | `listen_port` | Number | `6881` | The port for incoming BitTorrent peer connections. |
 | `dht_port` | Number | `6881` | The UDP port for Distributed Hash Table lookups. |
 | `rpc_port` | Number | `6800` | The port for the API (used by CLI and TUI). |
@@ -93,8 +96,9 @@ Settings for fine-tuning BitTorrent downloads.
 | `tracker_polling_interval_secs`| Time (Seconds) | `60` | How often to ask the tracker for a new peer list. |
 | `lpd_announce_interval_secs`| Time (Seconds) | `300` | How often to broadcast your presence to your home network. |
 | `choker_interval_secs` | Time (Seconds) | `10` | How often to re-evaluate who to send data to. |
-| `seed_ratio` | Decimal Number | `1.0` | Target upload ratio (e.g., 2.0 means upload twice as much as you downloaded). |
-| `seed_time_mins` | Number (Mins) | `0` | How many minutes to keep uploading after finishing. `0` = No limit. |
+| `seeding.min_ratio` | Decimal Number | `1.0` | Target upload ratio to stop seeding. |
+| `seeding.max_seeding_time`| Time (Seconds) | `3600` | Maximum time to seed in seconds. |
+| `seeding.stop_on_either` | Yes / No | `true` | Stop seeding if either ratio or time limit is reached. |
 | `endgame_mode_enabled` | Yes / No | `true` | Speeds up the final 1% of a download by asking everyone for the last pieces. |
 | `min_split_size_mb` | Number (MB) | `20` | Smallest size allowed for a single download segment. |
 | `max_connections_per_torrent`| Number| `200` | Hard connection limit for one torrent. |
@@ -125,10 +129,30 @@ Safety settings for using a VPN.
 |:---|:---|:---|:---|
 | `type_name` | Text | `None` | The type of VPN you use (`wireguard` or `openvpn`). |
 | `profile_path` | File Path | `None` | Path to your VPN configuration file. |
+| `management_addr` | Text | `None` | VPN management address or interface control port. |
 | `auto_connect` | Yes / No | `false` | Automatically try to connect to the VPN on startup. |
 | `check_interval_secs` | Time (Seconds) | `5` | How often to check if your VPN is still connected. |
 | `connect_timeout_secs` | Time (Seconds) | `5` | How long to wait for a VPN connection to start. |
 | `force_tunnel` | Yes / No | `false` | **Kill-switch**: Pause everything if the VPN disconnects. |
+
+---
+
+## [limits]
+Defines administrative, network, and architectural constraints.
+
+| Setting | Value Type | Default | What it does |
+|:---|:---|:---|:---|
+| `allow_duplicate_uris` | Yes / No | `false` | Reject adding a task if its URI is already active. |
+| `max_active_tasks` | Number | `100` | Maximum number of active/stored tasks inside the engine. |
+| `event_channel_capacity` | Number | `1024` | Internal message channel capacity. |
+| `command_channel_capacity` | Number | `128` | Control command queue capacity. |
+| `storage_channel_capacity` | Number | `100` | Disk queue capacity. |
+| `history_record_limit` | Number | `100000` | Hard cap on the number of historical records to keep. |
+| `graceful_shutdown_timeout_secs` | Time (Seconds) | `5` | Maximum wait time for tasks on exit. |
+| `pex_interval_secs` | Time (Seconds) | `60` | PEX peer request interval. |
+| `bandwidth_scheduling_interval_secs` | Time (Seconds) | `60` | Scheduling check rate for limits. |
+| `network_roaming_check_interval_secs` | Time (Seconds) | `5` | Interface poll rate for VPN swap. |
+| `default_task_priority` | Number (0-5) | `3` | Default priority class for new tasks. |
 
 ---
 

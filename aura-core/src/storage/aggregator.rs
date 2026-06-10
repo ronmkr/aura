@@ -1,3 +1,6 @@
+//! Sequential Write Aggregator to prevent random I/O fragmentation,
+//! following the design intent of [ADR-0033](aura-docs/adr/0033-generation-writes-and-aggregation.md).
+
 use crate::TaskId;
 use bytes::BytesMut;
 use std::collections::{BTreeMap, HashMap};

@@ -11,10 +11,13 @@ impl Orchestrator {
 
         let local_addr = self.resolve_local_addr();
         let config_initial = self.config.load();
-        let bind_addr = std::net::SocketAddr::new(
-            local_addr.unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
-            config_initial.network.listen_port,
-        );
+        let bind_ip = if config_initial.network.bind_address.is_unspecified() {
+            local_addr.unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED))
+        } else {
+            config_initial.network.bind_address
+        };
+
+        let bind_addr = std::net::SocketAddr::new(bind_ip, config_initial.network.listen_port);
 
         let listener = tokio::net::TcpListener::bind(bind_addr)
             .await

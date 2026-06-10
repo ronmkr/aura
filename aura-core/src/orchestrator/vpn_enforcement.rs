@@ -22,8 +22,9 @@ impl Orchestrator {
                 "openvpn" => {
                     let addr = config
                         .vpn
-                        .profile_path
+                        .management_addr
                         .clone()
+                        .or_else(|| config.vpn.profile_path.clone())
                         .unwrap_or_else(|| "127.0.0.1:1337".to_string());
                     Some(Arc::new(crate::vpn::OpenVpnProvider::new(
                         addr,
@@ -119,22 +120,7 @@ impl super::state::OrchestratorHandle {
             }
         }
 
-        if let Some(addr) = config.network.local_addr {
-            return Some(addr);
-        }
-
-        if let Some(ref iface) = config.network.interface {
-            use local_ip_address::list_afinet_netifas;
-            if let Ok(ifas) = list_afinet_netifas() {
-                for (name, ip) in ifas {
-                    if name == *iface {
-                        return Some(ip);
-                    }
-                }
-            }
-        }
-
-        None
+        config.resolve_local_addr()
     }
 }
 

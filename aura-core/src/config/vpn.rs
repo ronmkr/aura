@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 pub struct VpnConfig {
     pub type_name: Option<String>, // "openvpn", "wireguard"
     pub profile_path: Option<String>,
+    pub management_addr: Option<String>,
     pub auto_connect: bool,
     pub check_interval_secs: u64,
     pub connect_timeout_secs: u64,
@@ -16,6 +17,7 @@ impl Default for VpnConfig {
         Self {
             type_name: None,
             profile_path: None,
+            management_addr: None,
             auto_connect: false,
             check_interval_secs: 5,
             connect_timeout_secs: 5,

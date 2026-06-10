@@ -34,22 +34,7 @@ impl Engine {
         let config = Arc::new(ArcSwap::from_pointee(config));
 
         let initial_config = config.load();
-        let local_addr = {
-            if let Some(addr) = initial_config.network.local_addr {
-                Some(addr)
-            } else if let Some(ref iface) = initial_config.network.interface {
-                use local_ip_address::list_afinet_netifas;
-                list_afinet_netifas()
-                    .ok()
-                    .and_then(|ifas: Vec<(String, std::net::IpAddr)>| {
-                        ifas.into_iter()
-                            .find(|(name, _)| *name == *iface)
-                            .map(|(_, ip)| ip)
-                    })
-            } else {
-                None
-            }
-        };
+        let local_addr = initial_config.resolve_local_addr();
 
         let db_path = std::path::PathBuf::from(&initial_config.storage.download_dir)
             .join(".aura")
@@ -64,7 +49,10 @@ impl Engine {
         let mut dht_id = [0u8; 20];
         rand::rng().fill(&mut dht_id);
 
-        let dht_bind_addr = format!("0.0.0.0:{}", initial_config.network.dht_port);
+        let dht_bind_addr = format!(
+            "{}:{}",
+            initial_config.network.bind_address, initial_config.network.dht_port
+        );
         let dht_actor: DhtActor = DhtActor::new(
             &dht_bind_addr,
             dht_id,

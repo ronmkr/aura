@@ -8,25 +8,28 @@ use tracing::info;
 
 pub async fn start_server(
     state: Arc<AppState>,
+    bind_address: std::net::IpAddr,
     rpc_port: u16,
+    allowed_origins: Vec<String>,
     tls_config: Option<(PathBuf, PathBuf)>,
     shutdown_timeout_secs: u64,
     mut shutdown_rx: tokio::sync::mpsc::Receiver<()>,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    let origins = allowed_origins.clone();
     let cors = CorsLayer::new()
         .allow_origin(tower_http::cors::AllowOrigin::predicate(
-            |origin, _parts| {
+            move |origin, _parts| {
                 let origin_bytes = origin.as_bytes();
-                origin_bytes.starts_with(b"http://localhost")
-                    || origin_bytes.starts_with(b"http://127.0.0.1")
-                    || origin_bytes.starts_with(b"chrome-extension://")
+                origins
+                    .iter()
+                    .any(|allowed| origin_bytes.starts_with(allowed.as_bytes()))
             },
         ))
         .allow_methods([axum::http::Method::GET, axum::http::Method::POST])
         .allow_headers(tower_http::cors::Any);
 
     let app = create_router(state).layer(cors);
-    let addr = format!("0.0.0.0:{}", rpc_port);
+    let addr = format!("{}:{}", bind_address, rpc_port);
 
     if let Some((cert_path, key_path)) = tls_config {
         let rustls_config =
