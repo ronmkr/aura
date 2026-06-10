@@ -19,7 +19,7 @@ use std::{
 };
 use ui::draw_ui;
 
-pub async fn run() -> Result<()> {
+pub async fn run(rpc_url: String, rpc_secret: Option<String>) -> Result<()> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(
@@ -31,7 +31,7 @@ pub async fn run() -> Result<()> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    let mut app = App::new();
+    let mut app = App::new(rpc_url, rpc_secret);
     let _ = app.fetch_config().await; // Initial config fetch
 
     let res = run_loop(&mut terminal, &mut app).await;

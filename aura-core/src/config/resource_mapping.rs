@@ -2,6 +2,7 @@ use crate::task::TaskType;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(tag = "type", content = "value", rename_all = "lowercase")]
 pub enum MappingCondition {
     Extension(String),
     Domain(String),

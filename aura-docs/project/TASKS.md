@@ -12,6 +12,7 @@ All active development tasks, technical debt, and feature requests are managed e
     - [x] Centralized worker construction logic in `OrchestratorHandle::build_worker_builder`.
     - [x] Centralized JSON-RPC error handling with `rpc_error` helper.
     - [x] Eliminated all hardcoded magic numbers and timeouts into `Aura.toml`.
+    - [x] **Architectural Decoupling (God Nodes)**: Decoupled `StorageEngine`, `Orchestrator`, `WorkerBuilder`, and `MetaTask` based on Graphify AST analysis.
     - [x] Zero Clippy warning policy enforced across all crates.
     - [x] Updated `aura-dev` skill to mandate zero hardcoded values and struct-based args.
 

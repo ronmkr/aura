@@ -18,8 +18,10 @@ roaming_reconnect_delay_ms = 500       # Delay before reconnecting after interfa
 tracker_timeout_secs = 10              # HTTP Tracker timeout
 udp_tracker_timeout_secs = 5           # UDP Tracker timeout
 
-[network.dns_resolver]
-# type = "system"                      # Use OS native resolver
+dns_resolver = "system"                # Options: "system", "cloudflare", "google"
+
+# Advanced DNS (uncomment to use):
+# [network.dns_resolver]
 # type = "doh", url = "https://1.1.1.1/dns-query" # DNS-over-HTTPS
 # type = "dot", server = "8.8.8.8", tls_name = "dns.google" # DNS-over-TLS
 
@@ -35,7 +37,8 @@ adaptive_scaling_low_throughput = 102400 # 10 KB/s - threshold to scale up
 adaptive_scaling_high_throughput = 5242880 # 500 KB/s - threshold to scale down
 
 [[bandwidth.schedule]]
-window = "00:00-08:00"                 # Nightly speed boost
+from = "00:00"
+to = "08:00"                           # Nightly speed boost
 download_limit = 10485760              # 10 MB/s
 upload_limit = 5242880                 # 5 MB/s
 

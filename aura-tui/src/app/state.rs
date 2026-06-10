@@ -52,13 +52,14 @@ pub struct App {
     pub search_query: String,
     pub command_input: String,
     pub rpc_url: String,
+    pub rpc_secret: Option<String>,
     pub tick_rate: std::time::Duration,
     pub clipboard: Option<arboard::Clipboard>,
     pub last_clipboard_content: String,
 }
 
 impl App {
-    pub fn new() -> App {
+    pub fn new(rpc_url: String, rpc_secret: Option<String>) -> App {
         let mut table_state = TableState::default();
         table_state.select(Some(0));
         let mut file_table_state = TableState::default();
@@ -81,7 +82,8 @@ impl App {
             discovery_recursive: false,
             search_query: String::new(),
             command_input: String::new(),
-            rpc_url: "http://localhost:6800/jsonrpc".to_string(),
+            rpc_url,
+            rpc_secret,
             tick_rate: std::time::Duration::from_millis(500),
             clipboard,
             last_clipboard_content: String::new(),

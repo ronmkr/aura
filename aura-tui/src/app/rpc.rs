@@ -19,7 +19,12 @@ impl App {
             body["params"] = p;
         }
 
-        let res = self.client.post(&self.rpc_url).json(&body).send().await?;
+        let mut request = self.client.post(&self.rpc_url).json(&body);
+        if let Some(ref secret) = self.rpc_secret {
+            request = request.header(aura_core::RPC_AUTH_HEADER, secret);
+        }
+
+        let res = request.send().await?;
         Ok(res.json().await?)
     }
 
