@@ -74,6 +74,7 @@ impl Orchestrator {
             let throttler_clone = throttler_arc.clone();
             let tenant_id = meta_task.tenant_id.clone();
             let selected_files = meta_task.selected_files.clone();
+            let streaming_mode = meta_task.streaming_mode;
             let orchestrator_handle = self.handle();
 
             let existing_bt = self.get_bt_task(sub_id);
@@ -136,6 +137,7 @@ impl Orchestrator {
                                                 .clone(),
                                             tenant_id: tenant_id.clone(),
                                             config: orchestrator_handle.config.clone(),
+                                            streaming_mode,
                                         },
                                     )),
                                     Err(e) => Err(e),
@@ -155,6 +157,7 @@ impl Orchestrator {
                                         tenant_id: tenant_id.clone(),
                                         config: orchestrator_handle.config.clone(),
                                         selected_files: selected_files.as_deref(),
+                                        streaming_mode,
                                     },
                                 )
                                 .await

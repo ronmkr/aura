@@ -124,8 +124,15 @@ impl super::BtWorker {
                     .state
                     .sequential
                     .load(std::sync::atomic::Ordering::Relaxed);
+                let streaming = ctx
+                    .task
+                    .state
+                    .streaming_mode
+                    .load(std::sync::atomic::Ordering::Relaxed);
 
-                if let Some(piece_idx) = picker.pick_next(bf, &self.peer_addr, sequential) {
+                if let Some(piece_idx) =
+                    picker.pick_next(bf, &self.peer_addr, sequential, streaming)
+                {
                     let piece_total_len = if piece_idx == torrent.pieces_count() - 1 {
                         total_length - (piece_idx as u64 * piece_length)
                     } else {

@@ -66,7 +66,7 @@ fn test_rarest_first_selection() {
     // Pick next piece. Since 1, 2, 3 are equally rare (1 peer),
     // but for Peer A only 1 or 2 are available.
     let picked = picker
-        .pick_next(&my_bf, "1.1.1.1:80", false)
+        .pick_next(&my_bf, "1.1.1.1:80", false, false)
         .expect("Should pick a piece");
     assert!(picked == 1 || picked == 2);
 
@@ -76,7 +76,7 @@ fn test_rarest_first_selection() {
     my_bf_updated.set(picked, true);
 
     let picked2 = picker
-        .pick_next(&my_bf_updated, "1.1.1.1:80", false)
+        .pick_next(&my_bf_updated, "1.1.1.1:80", false, false)
         .expect("Should pick another piece");
     assert_eq!(picked2, expected_next);
 }
@@ -95,10 +95,72 @@ fn test_endgame_mode_trigger() {
     picker.mark_in_progress(1);
 
     // Standard pick SHOULD now return a piece because we are in endgame (2/2 pieces)
-    let picked = picker.pick_next(&my_bf, "peer1", false);
+    let picked = picker.pick_next(&my_bf, "peer1", false, false);
     assert!(picked.is_some());
 
     // Also verify explicitly calling pick_next_endgame
     let picked_explicit = picker.pick_next_endgame(&my_bf, "peer1");
     assert!(picked_explicit.is_some());
+}
+
+#[test]
+fn test_streaming_mode_priority() {
+    let mut picker = PiecePicker::new(10);
+    picker.streaming_metadata_pieces = 3;
+    let my_bf = Bitfield::new(10);
+
+    // Peer has all pieces
+    let mut peer_bf = Bitfield::new(10);
+    for i in 0..10 {
+        peer_bf.set(i, true);
+    }
+    picker.add_peer_bitfield("1.1.1.1:80".to_string(), peer_bf);
+
+    // Pick 1: Should be piece 0 (beginning)
+    let picked1 = picker.pick_next(&my_bf, "1.1.1.1:80", false, true).unwrap();
+    assert_eq!(picked1, 0);
+
+    // Pick 2: Should be piece 1 (beginning)
+    let mut my_bf_updated = my_bf.clone();
+    my_bf_updated.set(0, true);
+    let picked2 = picker
+        .pick_next(&my_bf_updated, "1.1.1.1:80", false, true)
+        .unwrap();
+    assert_eq!(picked2, 1);
+
+    // Pick 3: Should be piece 2 (beginning)
+    my_bf_updated.set(1, true);
+    let picked3 = picker
+        .pick_next(&my_bf_updated, "1.1.1.1:80", false, true)
+        .unwrap();
+    assert_eq!(picked3, 2);
+
+    // Pick 4: Should be piece 7 (end: 10 - 3 = 7)
+    my_bf_updated.set(2, true);
+    let picked4 = picker
+        .pick_next(&my_bf_updated, "1.1.1.1:80", false, true)
+        .unwrap();
+    assert_eq!(picked4, 7);
+
+    // Pick 5: Should be piece 8 (end)
+    my_bf_updated.set(7, true);
+    let picked5 = picker
+        .pick_next(&my_bf_updated, "1.1.1.1:80", false, true)
+        .unwrap();
+    assert_eq!(picked5, 8);
+
+    // Pick 6: Should be piece 9 (end)
+    my_bf_updated.set(8, true);
+    let picked6 = picker
+        .pick_next(&my_bf_updated, "1.1.1.1:80", false, true)
+        .unwrap();
+    assert_eq!(picked6, 9);
+
+    // Pick 7: Should fall back to rarest-first or random/first available (since 0-2 and 7-9 are done)
+    // The remaining pieces are 3, 4, 5, 6
+    my_bf_updated.set(9, true);
+    let picked7 = picker
+        .pick_next(&my_bf_updated, "1.1.1.1:80", false, true)
+        .unwrap();
+    assert!(picked7 >= 3 && picked7 <= 6);
 }

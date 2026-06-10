@@ -21,6 +21,7 @@ pub struct PiecePicker {
     /// Configuration for endgame mode
     pub endgame_threshold_pieces: usize,
     pub endgame_threshold_percent: f32,
+    pub streaming_metadata_pieces: usize,
 }
 
 impl PiecePicker {
@@ -38,6 +39,7 @@ impl PiecePicker {
             selected_pieces: selected,
             endgame_threshold_pieces: 3,
             endgame_threshold_percent: 0.01,
+            streaming_metadata_pieces: 4,
         }
     }
 
@@ -47,6 +49,7 @@ impl PiecePicker {
         selected_pieces: Bitfield,
         endgame_threshold_pieces: usize,
         endgame_threshold_percent: f32,
+        streaming_metadata_pieces: usize,
     ) -> Self {
         Self {
             num_pieces,
@@ -56,6 +59,7 @@ impl PiecePicker {
             selected_pieces,
             endgame_threshold_pieces,
             endgame_threshold_percent,
+            streaming_metadata_pieces,
         }
     }
 
@@ -105,6 +109,7 @@ impl PiecePicker {
     }
 
     /// Picks the next piece to download.
+    /// If `streaming` is true, it prioritizes pieces at the beginning and end of the file.
     /// If `sequential` is true, it picks the first available piece in order.
     /// Otherwise, it uses the rarest-first strategy.
     pub fn pick_next(
@@ -112,6 +117,7 @@ impl PiecePicker {
         my_bitfield: &Bitfield,
         peer_addr: &str,
         sequential: bool,
+        streaming: bool,
     ) -> Option<usize> {
         let peer_bf = match self.peer_bitfields.get(peer_addr) {
             Some(bf) => bf,
@@ -127,6 +133,41 @@ impl PiecePicker {
                 self.in_progress.set(idx, true);
             }
             return res;
+        }
+
+        if streaming {
+            let n = self.streaming_metadata_pieces;
+            let limit = if self.num_pieces < 2 * n {
+                self.num_pieces / 2
+            } else {
+                n
+            };
+
+            // 1. Try to pick sequentially from the beginning (first `limit` pieces)
+            for i in 0..limit {
+                if self.selected_pieces.get(i)
+                    && !my_bitfield.get(i)
+                    && peer_bf.get(i)
+                    && !self.in_progress.get(i)
+                {
+                    self.in_progress.set(i, true);
+                    return Some(i);
+                }
+            }
+
+            // 2. Try to pick sequentially from the end (last `limit` pieces)
+            if self.num_pieces >= limit {
+                for i in (self.num_pieces - limit)..self.num_pieces {
+                    if self.selected_pieces.get(i)
+                        && !my_bitfield.get(i)
+                        && peer_bf.get(i)
+                        && !self.in_progress.get(i)
+                    {
+                        self.in_progress.set(i, true);
+                        return Some(i);
+                    }
+                }
+            }
         }
 
         if sequential {

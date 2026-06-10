@@ -55,6 +55,7 @@ lpd_enabled = true                     # Enable Local Peer Discovery
 pex_enabled = true                     # Enable Peer Exchange
 max_peers_per_torrent = 50             # Max peer connections
 request_pipeline_size = 16             # Number of in-flight piece requests
+streaming_metadata_pieces = 4          # Number of pieces at beginning/end to prioritize in streaming mode
 handshake_timeout_secs = 10            # BitTorrent handshake timeout
 dht_save_interval_secs = 300           # Interval to persist DHT nodes
 dht_ping_interval_secs = 600           # Interval to refresh DHT neighbors

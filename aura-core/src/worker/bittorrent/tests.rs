@@ -95,6 +95,7 @@ async fn test_failed_connection_transitions_to_disconnected() {
             resource_governor: governor,
             tenant_id: None,
             config: Arc::new(arc_swap::ArcSwap::new(Arc::new(crate::Config::default()))),
+            streaming_mode: false,
         },
     ));
 
