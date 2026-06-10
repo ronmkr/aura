@@ -34,6 +34,7 @@ out/
 db.sled/
 # Crate-specific local configuration
 **/local_config.toml
+Aura.toml
 # Proptest regression files (unless you want to track them)
 proptest-regressions/
 aura-docs/project/prompts
