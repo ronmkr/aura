@@ -211,3 +211,72 @@ pub async fn run_add_from_file(
 
     Ok(())
 }
+
+pub async fn run_status(
+    port: u16,
+    secret: Option<String>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let rpc = RpcClient::new(port, secret);
+    let body = rpc.call("aura.getConfig", vec![], "cli-status").await?;
+
+    rpc.check_error(&body, "fetching status");
+
+    if let Some(config) = body.get("result") {
+        println!("--- Aura Engine Status ---");
+
+        let version = config
+            .get("version")
+            .and_then(|v| v.as_str())
+            .unwrap_or("Unknown");
+        println!("{:<20}: {}", "Version", version);
+
+        if let Some(bandwidth) = config.get("bandwidth") {
+            let dl = bandwidth
+                .get("global_download_limit")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(0);
+            let ul = bandwidth
+                .get("global_upload_limit")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(0);
+            println!("{:<20}: {}/s", "Global Download", bytesize::ByteSize::b(dl));
+            println!("{:<20}: {}/s", "Global Upload", bytesize::ByteSize::b(ul));
+        }
+
+        if let Some(sched) = config.get("active_schedule") {
+            if !sched.is_null() {
+                let from = sched
+                    .get("from")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("??:??");
+                let to = sched.get("to").and_then(|v| v.as_str()).unwrap_or("??:??");
+                let dl = sched
+                    .get("download_limit")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(0);
+                println!("{:<20}: Active ({} - {})", "Bandwidth Schedule", from, to);
+                println!(
+                    "{:<20}: {}/s (Scheduled)",
+                    "Effective Limit",
+                    bytesize::ByteSize::b(dl)
+                );
+            } else {
+                println!("{:<20}: None", "Bandwidth Schedule");
+            }
+        }
+
+        if let Some(next) = config.get("next_transition").and_then(|v| v.as_str()) {
+            println!("{:<20}: {}", "Next Transition", next);
+        }
+
+        if let Some(limits) = config.get("limits") {
+            let active = limits
+                .get("max_active_tasks")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(0);
+            println!("{:<20}: {}", "Max Active Tasks", active);
+        }
+    }
+
+    Ok(())
+}

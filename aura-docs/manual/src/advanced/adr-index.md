@@ -9,7 +9,7 @@ Aura's design is driven by a series of formal Architecture Decision Records. The
 | [0003](../adr/0003-atomic-completion-and-pre-allocation.md) | ADR 0003: Atomic Completion and Pre-allocation Strategy | Implemented (2026-05-27, PR #99) |
 | [0004](../adr/0004-telemetry-and-event-bus.md) | ADR 0004: Telemetry and Event Bus Architecture | Implemented (2026-05-06, commit 0777b1ab) |
 | [0005](../adr/0005-racing-work-stealer.md) | ADR 0005: Racing Work Stealer for Slow Stream Mitigation | Implemented (2026-05-06, commit 0777b1ab) |
-| [0006](../adr/0006-error-classification-and-self-healing.md) | ADR 0006: Error Classification and Self-healing Strategy | Partially Implemented (Audit 2026-06-03) |
+| [0006](../adr/0006-error-classification-and-self-healing.md) | ADR 0006: Error Classification and Self-healing Strategy | Implemented (2026-06-04, PR #221) |
 | [0007](../adr/0007-protocol-encapsulation.md) | ADR 0007: Protocol Encapsulation and Black-Box Workers | Implemented (2026-05-06, commit 0777b1ab) |
 | [0008](../adr/0008-lifecycle-based-task-maturation.md) | ADR 0008: Lifecycle-based Task Maturation (Magnet Links) | Implemented (2026-05-06, commit 0777b1ab) |
 | [0009](../adr/0009-global-token-bucket-throttling.md) | ADR 0009: Global Token Bucket Throttling | Implemented (2026-05-06, commit 0777b1ab) |
@@ -19,8 +19,8 @@ Aura's design is driven by a series of formal Architecture Decision Records. The
 | [0013](../adr/0013-cloud-and-metalink.md) | ADR 0013: Cloud Storage and Metalink Integration | Partially Implemented (2026-05-06, commit 0777b1ab) |
 | [0014](../adr/0014-credential-and-security.md) | ADR 0014: Credential and Security Abstraction | Implemented (2026-05-06, commit 0777b1ab) |
 | [0015](../adr/0015-url-globbing.md) | ADR 0015: URL Globbing and Batch Processing | Implemented (2026-05-06, commit 0777b1ab) |
-| [0016](../adr/0016-rpc-and-interface.md) | ADR 0016: RPC Server and Interface Binding | Partially Implemented (Audit 2026-06-03) |
-| [0017](../adr/0017-segmentation-and-persistence.md) | ADR 0017: Segmentation and Discovery Persistence | Partially Implemented (Audit 2026-06-03) |
+| [0016](../adr/0016-rpc-and-interface.md) | ADR 0016: RPC Server and Interface Binding | Implemented (2026-06-04, PR #261) |
+| [0017](../adr/0017-segmentation-and-persistence.md) | ADR 0017: Segmentation and Discovery Persistence | Implemented (2026-06-04, PR #259) |
 | [0018](../adr/0018-hooks-hsts-ftp.md) | ADR 0018: Hooks, HSTS, and Multi-Channel Protocols | Implemented (2026-05-06, commit 0777b1ab) |
 | [0019](../adr/0019-buffer-pool-and-caching.md) | ADR 0019: Buffer Pool and Write-Back Caching | Superceded (by Issue #160, 2026-05-30, PR #164) |
 | [0020](../adr/0020-engine-api.md) | ADR 0020: Engine API and Library Embeddability | Implemented (2026-05-06, commit 0777b1ab) |
@@ -62,6 +62,13 @@ Aura's design is driven by a series of formal Architecture Decision Records. The
 | [0056](../adr/0056-rpc-security-hardening.md) | ADR 0056: Daemon RPC Security Hardening | Implemented (2026-06-03, PR #215) |
 | [0057](../adr/0057-resource-governor.md) | ADR 0057: ResourceGovernor for Global Memory Backpressure | Implemented (2026-06-03, Issue #207) |
 | [0058](../adr/0058-graceful-shutdown-coordination.md) | ADR 0058: Graceful Shutdown Coordination | Implemented (2026-06-03, PR #215) |
-
+| [0059](../adr/0059-uri-validation-ssrf-mitigation.md) | ADR 0059: URI Validation and SSRF Mitigation | Implemented (2026-06-04, PR #258) |
+| [0060](../adr/0060-pre-download-disk-space-verification.md) | ADR 0060: Pre-Download Disk Space Verification | Implemented (2026-06-04, PR #259) |
+| [0061](../adr/0061-http-ftp-checksum-verification.md) | ADR 0061: Checksum Verification for HTTP and FTP Downloads | Implemented (2026-06-04, PR #259) |
+| [0062](../adr/0062-download-history-and-aria2-compatibility.md) | ADR 0062: Download History Log and aura Protocol Compatibility | Implemented (2026-06-04, PR #259) |
+| [0063](../adr/0063-bandwidth-time-scheduling.md) | ADR 0063: Bandwidth Time Scheduling | Implemented (2026-06-04, PR #259) |
+| [0064](../adr/0064-process-resilience-panic-fd-limits.md) | ADR 0064: Process Resilience — Panic Recovery, Crash Reporting, and File Descriptor Management | Implemented (2026-06-04, PRs #258, #259) |
+| [0065](../adr/0065-interactive-tui-architecture.md) | ADR 0065: Interactive TUI Architecture & Selective Downloading | Implemented (2026-06-10, PR #277) |
 
 For a full list of ADRs, see the `aura-docs/adr/` directory in the repository.
+

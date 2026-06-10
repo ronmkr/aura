@@ -13,12 +13,25 @@ Aura is designed to be self-healing, but certain network or system conditions ma
     - **Action**: Complete the login in your browser, then **Resume** the task. Aura intercepts these to prevent your download from being corrupted by HTML login pages.
 
 ###  Storage & I/O
+- **`"Insufficient disk space; needed X, available Y"`**
+    - **Context**: Aura's pre-download verification (ADR 0060) detected that the target drive does not have enough space, including a required 5% or 512MB headroom.
+    - **Action**: Free up space on the drive or change the `download_dir`. If you are using a Copy-on-Write (COW) filesystem (APFS, Btrfs), the OS-reported space may be an estimate; Aura will still enforce the reported limit to be safe.
 - **`"Failed to pre-allocate file: No space left on device"`**
-    - **Context**: The `StorageEngine` failed to reserve contiguous blocks via `fallocate`.
-    - **Action**: Free up space or move the `download_dir`. Aura verifies space *before* starting to prevent mid-download failures.
+    - **Context**: The `StorageEngine` failed to reserve contiguous blocks via `fallocate` (likely a TOCTOU race or quota limit).
+    - **Action**: Check for per-user disk quotas (`EDQUOT`).
 - **`"Integrity verification failed: Checksum mismatch"`**
     - **Context**: The downloaded file does not match the provided SHA-256/MD5 hash.
-    - **Action**: Aura preserves the corrupted file. Check the source mirror. If using BitTorrent, the **Integrity Scrubber** will automatically re-download corrupt pieces.
+    - **Action**: Aura automatically deletes the corrupted `.part` file to prevent accidental use (ADR 0061). Check the source mirror or try a different mirror if available.
+
+###  Process & System
+- **`"Process Resilience: FD limit too low"`**
+    - **Context**: Aura detected that the OS limit for open files is lower than required for the configured number of connections (ADR 0064).
+    - **Action**: 
+        - **Linux/macOS**: Increase the limit using `ulimit -n 4096` before starting the daemon.
+        - **Windows**: The limit is fixed at 2048 handles; reduce `max_connections_per_task` if you see connection drops.
+- **`"Aura has crashed. See crash.log for details."`**
+    - **Context**: An unhandled panic occurred in the engine.
+    - **Action**: Aura automatically saves a backtrace to `~/.aura/crash.log` before exiting. Please include this file when reporting bugs on GitHub.
 
 ###  BitTorrent Swarm
 - **`"All NAT traversal methods failed for port 6881"`**
@@ -31,6 +44,13 @@ Aura is designed to be self-healing, but certain network or system conditions ma
 ---
 
 ## Performance Debugging
+
+### TUI Lags or High Latency
+- **Cause**: Extremely large torrents with tens of thousands of files in the File Selector.
+- **Solution**: Use the **Command Palette (`:`)** to filter or batch-actions rather than scrolling manually. Ensure your terminal supports GPU acceleration (e.g., Alacritty, iTerm2, Kitty).
+
+### Actionable Error Recovery
+In the **Pilot Dashboard (TUI)**, Aura often provides "Actionable Recovery" prompts. For example, if a download fails due to a disk error, the dashboard may offer a "Clear Cache" or "Retry" button that automatically handles the underlying recovery logic for you.
 
 ### High CPU Usage
 - **Cause**: Extremely low `event_poll_interval_ms` (e.g., < 100ms) or high `max_peers_per_torrent`.

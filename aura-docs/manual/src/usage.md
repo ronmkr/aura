@@ -1,6 +1,6 @@
 # Getting Started
 
-The primary way to interact with Aura is through the `aura`. This chapter provides a range of examples to help you get the most out of your download engine.
+The primary way to interact with Aura is through the `aura` CLI. This chapter provides a range of examples to help you get the most out of your download engine.
 
 ## Basic Downloads
 
@@ -9,74 +9,88 @@ To start a standard download, simply pass the URL:
 aura "https://releases.ubuntu.com/24.04/ubuntu-24.04-desktop-amd64.iso"
 ```
 
-Aura will automatically:
-1. Resolve the filename from the URL.
-2. Pre-allocate the full file size on disk.
-3. Show a real-time progress bar with throughput and ETA.
+Aura's **ProtocolDetector** (ADR 0065) automatically identifies the source type (HTTP, FTP, BitTorrent, or Metalink) and starts the appropriate worker.
 
-## BitTorrent
+---
 
-Aura handles BitTorrent seamlessly. You can use Magnet links or local `.torrent` files:
+## BitTorrent & Metalink
+
+Aura handles Magnet links, local `.torrent` files, and `.metalink` files seamlessly:
 
 ```bash
 # Using a Magnet Link
 aura "magnet:?xt=urn:btih:..."
 
-# Using a local torrent file
+# Using a local metadata file
 aura ./linux-distro.torrent
 ```
 
-Aura will automatically connect to DHT and trackers to find peers and verify piece integrity using SHA-1 (v1) or SHA-256 (v2).
+### Selective Downloading (ADR 0065)
+For tasks with multiple files, you can choose exactly what to download:
+
+1.  **List Files**: Find the indices of the files you want.
+    ```bash
+    aura show-files <GID>
+    ```
+2.  **Select Indices**: Start the download for specific files only.
+    ```bash
+    aura select-files <GID> --indices 0,2,5
+    ```
+*You can also perform this interactively in the **Pilot Dashboard (TUI)** by pressing `f` on any task.*
+
+---
+
+## Bulk Ingestion (ADR 0065)
+
+Aura makes it easy to add hundreds of downloads at once:
+
+### Ingest from a Folder
+Scan a directory for all metadata files and add them to the queue:
+```bash
+aura add-from-folder ~/Downloads/torrents/ --recursive
+```
+
+### Ingest from a File
+Add a list of URIs from a text file (one per line):
+```bash
+aura add-from-file ./backlog.txt
+```
+
+---
+
+## Download History (ADR 0062)
+
+Aura maintains a persistent log of every download. To view your history:
+```bash
+aura history --limit 20 --filter completed
+```
+*Use `aura history --format json` for integration with other scripts.*
+
+---
 
 ## Advanced Workflows
 
 ### Multi-Source Aggregation
-If you have multiple mirrors for the same file, you can speed up the download by providing all of them:
-
+Aggregate bandwidth from multiple mirrors for a single task:
 ```bash
 aura "https://mirror1.org/f.zip" "https://mirror2.org/f.zip" "ftp://backup.com/f.zip"
 ```
 
-Aura will split the file into ranges and fetch them simultaneously from all sources, using the **Racing Work Stealer** to bypass slow connections.
-
 ### Batch Downloads (Globbing)
-Download multiple files using numeric ranges or sets:
-
+Download sequences or sets of files:
 ```bash
 # Download 10 parts of a split archive
 aura "https://cdn.org/data/part[1-10].rar"
 
-# Download the same file from multiple mirrors using set expansion
+# Download from multiple mirrors using set expansion
 aura "https://mirror{us,eu,asia}.example.com/bigfile.iso"
-```
-
-### Metalink Support
-For complex downloads with multiple mirrors and checksums, use a Metalink file:
-
-```bash
-aura "https://example.com/release.metalink"
 ```
 
 ## Controlling the Output
 
 By default, Aura downloads to the current directory. Use the `--output` flag to rename the file:
-
 ```bash
 aura "https://server.com/archive.tar.gz" --output backup.tgz
 ```
 
-To change the download directory, use the `Aura.toml` configuration file. See the [Configuration](./configuration.md) chapter for details.
-
-## Automation & Mapping
-
-Aura can automatically organize your downloads based on their metadata (extension, domain, etc.) using the **Mapping Engine**.
-
-### Example: Auto-sorting Videos
-Configure Aura to move all `.mp4` files to a `videos/` folder:
-```toml
-[[resource_mapping.rules]]
-condition = { Extension = "mp4" }
-target = "videos/{name}"
-```
-
-Aura also supports **Task Chaining**, allowing one download to trigger another (e.g., auto-launching a downloaded torrent). See the [Advanced](./advanced/task-chaining-mapping.md) section for more.
+To change the default download directory, use the `Aura.toml` configuration file. See the [Configuration](./configuration.md) chapter for details.

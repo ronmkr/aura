@@ -52,6 +52,18 @@ The binaries will be available in `target/release/`:
 - `aura daemon`: Start in background service mode.
 - `aura tui`: Start the interactive dashboard.
 
+## Configuration & Data Directory
+
+Aura stores its persistent state, history, and logs in a hidden directory:
+- **Linux/macOS**: `~/.aura/`
+- **Windows**: `%AppData%\aura\`
+
+### Key Files:
+- `tasks/`: Directory containing active task state files (`.json`).
+- `history.jsonl`: Append-only download history log.
+- `crash.log`: Emergency backtrace reports from the panic hook.
+- `rpc_secret`: (Auto-generated) The secret token for the RPC API.
+
 ## Verification
 
 After installing, verify the version:

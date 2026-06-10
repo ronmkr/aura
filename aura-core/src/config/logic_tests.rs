@@ -125,6 +125,7 @@ fn test_apply_cli_overrides() {
         download_dir: Some("custom_dir".to_string()),
         limit: Some(12345),
         proxy: Some("http://proxy.com".to_string()),
+        bind_address: Some("127.0.0.1".to_string()),
         rpc_port: Some(9999),
         rpc_secret: Some("token123".to_string()),
         tls_cert: Some("cert_path".to_string()),
@@ -134,6 +135,10 @@ fn test_apply_cli_overrides() {
     assert_eq!(config.storage.download_dir, "custom_dir");
     assert_eq!(config.bandwidth.global_download_limit, 12345);
     assert_eq!(config.network.proxy, Some("http://proxy.com".to_string()));
+    assert_eq!(
+        config.network.bind_address,
+        "127.0.0.1".parse::<std::net::IpAddr>().unwrap()
+    );
     assert_eq!(config.network.rpc_port, 9999);
     assert_eq!(config.network.rpc_secret, Some("token123".to_string()));
     assert_eq!(config.network.tls_cert, Some("cert_path".to_string()));

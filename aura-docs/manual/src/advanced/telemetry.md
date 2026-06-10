@@ -9,10 +9,17 @@ The Aura Daemon can expose a scraping endpoint for Prometheus to collect real-ti
 ### Configuration
 Enable the exporter in `Aura.toml`:
 ```toml
-[general]
+[monitoring]
 metrics_enabled = true
 metrics_port = 9100
+scrape_token = "your-secure-token" # Recommended for security
 ```
+
+### Authentication
+The `/metrics` endpoint is protected by bearer authentication:
+- **X-Aura-Token**: By default, the endpoint accepts the same token used for JSON-RPC.
+- **Dedicated Token**: If `scrape_token` is set in the `[monitoring]` section, that token must be provided in the `Authorization: Bearer <token>` header.
+- **Health Checks**: The `/health` endpoint remains unauthenticated for liveness probes.
 
 ### Key Metrics
 | Metric | Type | Description |

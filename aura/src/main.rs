@@ -1,74 +1,60 @@
 use clap::{Parser, Subcommand};
-
 mod cli_client;
-
 #[derive(Parser, Debug)]
-#[command(author, version, about = "Aura - The Next-Gen Download Manager", long_about = None)]
+#[command(author, version, about = "Aura", long_about = None)]
 struct Cli {
     #[command(subcommand)]
     command: Option<Commands>,
-
     /// URLs to download (as multiple sources for one file) - Standard CLI mode
     #[arg(num_args = 1..)]
     uris: Option<Vec<String>>,
-
     /// Output filename (for CLI mode)
     #[arg(short, long)]
     output: Option<String>,
-
     /// URI to automatically download after current tasks complete (Task Chaining)
     #[arg(long)]
     follow_on: Option<String>,
-
     /// Enable verbose logging (repeat for more detail: -v, -vv)
     #[arg(short, long, action = clap::ArgAction::Count)]
     verbose: u8,
-
     /// Priority level (0-5, where 0 is highest)
     #[arg(short, long, default_value_t = 3, value_parser = clap::value_parser!(u32).range(0..=5))]
     priority: u32,
-
     /// Task GIDs this task depends on (comma-separated list)
     #[arg(short, long, value_delimiter = ',')]
     depends_on: Vec<u64>,
-
     /// Custom configuration file path
     #[arg(long, global = true)]
     config: Option<String>,
-
     /// Override download directory path
     #[arg(long, global = true)]
     download_dir: Option<String>,
-
     /// Override global download bandwidth limit
     #[arg(long, global = true)]
     limit: Option<u64>,
-
     /// Override global proxy URL
     #[arg(long, global = true)]
     proxy: Option<String>,
 }
-
 #[derive(Subcommand, Debug)]
 enum Commands {
     /// Start the Aura background daemon (RPC/WebSocket)
     Daemon {
+        /// IP address to bind the RPC server
+        #[arg(long)]
+        bind_address: Option<String>,
         /// Port to bind the RPC server
         #[arg(long)]
         rpc_port: Option<u16>,
-
         /// Token for authentication. If not provided, a random token is generated and saved to ~/.aura/rpc_secret.
         #[arg(long)]
         rpc_secret: Option<String>,
-
         /// Path to the TLS certificate file
         #[arg(long)]
         tls_cert: Option<String>,
-
         /// Path to the TLS private key file
         #[arg(long)]
         tls_key: Option<String>,
-
         /// Automatically generate self-signed TLS certificate and key files
         #[arg(long)]
         generate_tls_cert: bool,
@@ -86,15 +72,15 @@ enum Commands {
         /// Limit the number of records displayed
         #[arg(long, short, default_value_t = 10)]
         limit: usize,
-
         /// Format to display the history (json, table)
-        #[arg(long, short, default_value = "table")]
+        #[arg(long, default_value = "table")]
         format: String,
-
         /// Filter by task status (completed, failed, removed)
         #[arg(long, short)]
         filter: Option<String>,
     },
+    /// View real-time engine status and bandwidth schedules (ADR-0063)
+    Status,
     /// Refresh the download metadata for a task, checking ETag and Last-Modified (conditional GET)
     Refresh {
         /// The GID of the task to refresh
@@ -127,18 +113,15 @@ enum Commands {
         path: String,
     },
 }
-
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
-
     // Initialize tracing
     let log_level = match cli.verbose {
         0 => tracing::Level::INFO,
         1 => tracing::Level::DEBUG,
         _ => tracing::Level::TRACE,
     };
-
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
         .with_max_level(log_level)
         .with_target(false)
@@ -146,19 +129,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             std::io::stdout,
         ))
         .finish();
-
     tracing::subscriber::set_global_default(subscriber).expect("Failed to set tracing subscriber");
-
     // Load configuration based on hierarchy rules
     let mut config = aura_core::Config::load_resolved(cli.config.as_deref())?;
-
     // Extract daemon-specific overrides
+    let mut daemon_bind_address = None;
     let mut daemon_rpc_port = None;
     let mut daemon_rpc_secret = None;
     let mut daemon_tls_cert = None;
     let mut daemon_tls_key = None;
     let mut daemon_generate_tls_cert = false;
     if let Some(Commands::Daemon {
+        bind_address,
         rpc_port,
         rpc_secret,
         tls_cert,
@@ -166,24 +148,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         generate_tls_cert,
     }) = &cli.command
     {
+        daemon_bind_address = bind_address.clone();
         daemon_rpc_port = *rpc_port;
         daemon_rpc_secret = rpc_secret.clone();
         daemon_tls_cert = tls_cert.clone();
         daemon_tls_key = tls_key.clone();
         daemon_generate_tls_cert = *generate_tls_cert;
     }
-
     // Apply CLI overrides to configuration
     config.apply_cli_overrides(aura_core::config::CliOverrides {
         download_dir: cli.download_dir.clone(),
         limit: cli.limit,
         proxy: cli.proxy.clone(),
+        bind_address: daemon_bind_address,
         rpc_port: daemon_rpc_port,
         rpc_secret: daemon_rpc_secret,
         tls_cert: daemon_tls_cert.clone(),
         tls_key: daemon_tls_key.clone(),
     });
-
     match cli.command {
         Some(Commands::Daemon { .. }) => {
             // Run daemon
@@ -210,6 +192,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             filter,
         }) => {
             aura_cli::run_history(&config, limit, &format, filter).await?;
+        }
+        Some(Commands::Status) => {
+            cli_client::run_status(config.network.rpc_port, config.network.rpc_secret).await?;
         }
         Some(Commands::Refresh { gid }) => {
             cli_client::run_refresh(config.network.rpc_port, config.network.rpc_secret, gid)
@@ -265,6 +250,5 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
     }
-
     Ok(())
 }

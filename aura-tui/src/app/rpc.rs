@@ -4,7 +4,7 @@ use serde_json::{json, Value};
 use std::collections::VecDeque;
 
 impl App {
-    async fn call_rpc(
+    pub(crate) async fn call_rpc(
         &self,
         method: &str,
         params: Option<Value>,

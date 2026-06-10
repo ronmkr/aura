@@ -50,6 +50,8 @@ pub async fn run(args: Args) -> Result<(), Box<dyn std::error::Error>> {
     adjust_file_descriptor_limit(&mut config);
     let rpc_secret = launcher::get_or_create_rpc_secret(config.network.rpc_secret.clone())?;
     let rpc_port = config.network.rpc_port;
+    let bind_address = config.network.bind_address;
+    let allowed_origins = config.network.allowed_origins.clone();
     let config_tls_cert = config.network.tls_cert.clone();
     let config_tls_key = config.network.tls_key.clone();
 
@@ -107,7 +109,9 @@ pub async fn run(args: Args) -> Result<(), Box<dyn std::error::Error>> {
 
     server::start_server(
         state,
+        bind_address,
         rpc_port,
+        allowed_origins,
         tls_config,
         config.limits.graceful_shutdown_timeout_secs,
         shutdown_rx,

@@ -1,3 +1,6 @@
+//! Websocket session handler streaming real-time telemetry events from the
+//! internal event bus as specified by [ADR-0004](aura-docs/adr/0004-telemetry-and-event-bus.md).
+
 use super::types::{AppState, WsQuery};
 use aura_core::orchestrator::Engine;
 use axum::{

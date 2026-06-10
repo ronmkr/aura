@@ -23,6 +23,12 @@ By default, yes (as per the BT spec). However, Aura provides built-in **SOCKS5 P
 ### What does "Captive Portal Protection" do?
 Many public Wi-Fi networks (Hotels, Airports) redirect requests to a login page. If Aura starts downloading what it thinks is an `.iso` but receives an HTML login page, it will pause the task instead of writing the HTML to your file, preventing data corruption.
 
+### Is Aura safe against malicious torrents or SSRF attacks?
+Yes. Aura includes several enterprise-grade security features:
+- **SandboxRoot (ADR 0054)**: Prevents "path traversal" attacks where a malicious file attempts to write outside the download directory (e.g., to your `.ssh/` folder).
+- **SSRF Mitigation (ADR 0059)**: Blocks the engine from making requests to private IP ranges, loopback addresses, or dangerous schemes like `file://`, protecting your local network from being scanned or exfiltrated via the RPC API.
+- **Log Scrubbing (ADR 0055)**: Automatically redacts passwords and tokens from logs to prevent accidental credential leakage.
+
 ---
 
 ##  Compatibility
@@ -32,6 +38,12 @@ Aura is **protocol-compatible** with standard WebUIs. Its JSON-RPC 2.0 API suppo
 
 ### Does it support BitTorrent v2?
 Yes. Aura is built from the ground up for **BitTorrent v2** (BEP 52). It supports SHA-256 Merkle trees for per-file integrity and supports **Hybrid Torrents** to bridge v1 and v2 swarms.
+
+### Can I choose specific files to download in a torrent?
+Yes. Aura supports **Selective Downloading** (ADR 0065). You can use the `aura show-files` and `aura select-files` commands in the CLI, or use the interactive **File Selector** in the TUI (press `f` on a task). Aura correctly handles pieces that are shared between files at boundary points.
+
+### Is there a record of my past downloads?
+Yes. Aura maintains an append-only **History Log** (ADR 0062). You can query it via `aura history`. This log persists across daemon restarts and allows you to audit past activity and verify completion of batch jobs.
 
 ### Which filesystems are optimized for Aura?
 Aura works on all filesystems, but it has specialized optimizations for:

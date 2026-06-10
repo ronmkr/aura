@@ -6,6 +6,9 @@ Aura's core strength is its ability to treat disparate sources (mirrors) as a si
 
 A `MetaTask` in Aura consists of one or more subtasks. Each subtask represents a specific source (e.g., an HTTP mirror, an FTP server, or a BitTorrent swarm).
 
+### Automatic Protocol Detection (ADR 0065)
+Aura features a centralized **ProtocolDetector** that identifies the source type from any given URI or local path. You no longer need to specify if a link is a magnet or an HTTP link; Aura will automatically spawn the correct protocol workers based on the metadata.
+
 ### Supported Combinations
 - **HTTP + HTTP**: Speed up downloads by hitting multiple mirrors simultaneously.
 - **HTTP + BitTorrent**: Use stable mirrors to "seed" a swarm or fill in missing pieces in a stalled torrent.

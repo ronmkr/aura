@@ -54,53 +54,50 @@ tokens:
       duration:
         value: '100ms'
       sequence:
-        value: ['', '', '', '', '', '', '', '', '', '']
+        value: ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
 ---
 
-# Aura  Design System
+# Aura Design System
 
-Aura is designed to feel fast, modern, and atmospheric. It uses a **Token-based Theming Engine** to allow users to customize their cockpit.
+Aura is designed to feel fast, modern, and atmospheric. It uses a **Token-based Theming Engine** to allow users to customize their cockpit and adapts its interface through three distinct personas.
 
-##  The Three Personas
+## The Three Personas
 
 Aura adapts its interface based on the user's current mission.
 
 ### 1. The Sprinter (CLI)
 - **Goal**: High-speed, one-off downloads.
 - **Visuals**: Minimalist. Single progress bar per file, total speed summary.
-- **Workflow**: `Aura-cli <URI>`.
+- **Workflow**: `aura run <URI>` or `aura add <URI>`.
 
 ### 2. The Pilot (TUI)
 - **Goal**: Interactive mission control.
 - **Framework**: Ratatui.
+- **Architecture**: **Stateful Multi-View Pattern**.
 - **Layout**:
-    - **Header**: Global throughput (Up/Down), Active tasks count, NAT status.
-    - **Main Area**: Scrollable list of tasks with interactive selection.
-    - **Sidebar/Panel**: Detailed metadata for selected task (Mirrors, Peer map, Bitfield visualization).
-    - **Footer**: Keybindings (a: add, p: pause, r: resume, d: delete, q: quit).
-- **Theming**: CSS-like theme provider in `Aura.toml`.
-- **Remote Mode**: Can "Attach" to a remote `Aura-daemon`.
+    - **Dashboard**: Global throughput sparklines, active task counters, and NAT/VPN status.
+    - **Task Board**: 60/40 split between the scrollable task list and the **Contextual Detail Panel**.
+    - **Context Panel**: Deep metadata (Mirrors, Peer map, Bitfield visualization, Piece distribution).
+    - **View Stack**: Modal overlays for the **Command Palette** (`:`) and **Fuzzy Filter** (`/`).
+- **Interaction**:
+    - **Vim Motions**: `j/k` for navigation, `h/l` for tab switching.
+    - **Zero-Friction Ingest**: Automatic OS clipboard detection and bracketed paste support.
+    - **Selective Download**: Interactive tree-view for choosing specific files from multi-file packages.
 
 ### 3. The Ghost (Headless / Web)
-- **Goal**: Persistent service for Docker, NAS, or Seedboxes.
+- **Goal**: Persistent background service.
 - **RPC Server**: Built on Axum/Tokio (JSON-RPC 2.0 and WebSockets).
-- **Compatibility**: Standardized to allow existing `aura` frontends (like **AriaNg**) to connect with minimal adaptation.
+- **Web UI**: Integrated dashboard accessible via browser, designed for remote management on NAS/Seedboxes.
 
-##  Core Engine Mandates
-- **Actor Integrity**: Strict decoupling via type-safe channels.
-- **TDD First**: Every component must be developed using Red-Green-Refactor.
-- **Zero-Copy**: Optimize for minimal memory movements via the `Buffer Pool`.
-- **Atomic Completion**: Writing to `.part` files ensures no partial files are exposed.
-
-##  Visual Identity: The Galactic Vibe
+## Visual Identity: The Galactic Vibe
 
 The default visual language is "Galactic". It uses high-contrast ANSI colors to ensure readability across all terminal emulators while maintaining a distinctive "precision" aesthetic.
 
-- **Nebula Cyan**: represents the flow of data.
-- **Star Yellow**: highlights the structure and critical metadata.
-- **Galactic Blue**: provide a deep, stable frame for the Pilot (TUI).
+- **Nebula Cyan**: Represents the flow of data (Progress bars, active throughput).
+- **Star Yellow**: Highlights critical metadata and active selections.
+- **Galactic Blue**: Provides a stable, deep frame for the Pilot's cockpit.
 
-##  Theming Architecture
+## Theming Architecture
 
 Aura supports full palette customization via `Aura.toml`. A theme is a collection of hex color mappings for the UI components.
 
@@ -119,26 +116,17 @@ error = "#FF0000"                      # Failed tasks
 warning = "#FFFF00"                    # Retrying tasks
 ```
 
-### Example Palettes
-1.  **Galactic (Default)**: Deep blues and cyans for a high-tech space feel.
-2.  **Matrix**: Shades of neon green on black for a retro-hacker aesthetic.
-3.  **Classic**: High-contrast grayscale for maximum accessibility.
-
-##  Components
+## UI Components
 
 ### Progress Indicators
-1.  **The Pulse (Spinner)**: A fast, 100ms rhythmic animation.
-2.  **The Stream (Bar)**: A `#>-` character-based bar.
+1.  **The Pulse (Spinner)**: A fast, 100ms rhythmic animation (`⠋`, `⠙`, `⠹`...).
+2.  **The Stream (Bar)**: A `#>-` character-based bar, color-coded by status.
 
 ### The Status Board (Table)
-- **Headers**: Fixed at the top with a high-contrast background.
-- **Selection**: Uses color inversion (Reversed) and the `>> ` glyph.
+- **Sticky Headers**: Fixed at the top with a high-contrast background.
+- **Reactive Selection**: Uses color inversion and the `>> ` glyph to indicate focus.
 
-##  Spacing & Layout
-- **Horizontal Split**: 40/20/20/20 layout for the Task Board.
-- **Vertical Rhythm**: 1-cell margins between panels.
-
-##  Interaction
-- **Hotkeys**: `a` (Add), `p` (Pause), `r` (Resume), `d` (Delete), `q` (Quit).
-- **Update Frequency**: 500ms UI ticks (Configurable via `tui.tick_rate_ms`).
-
+## Layout Principles
+- **Grid Discipline**: 1-cell margins between all UI panels.
+- **Responsive Stacking**: On small terminal windows, the sidebar collapses to prioritize the Task Board.
+- **Atmospheric Depth**: Uses subtle Braille-based sparklines to visualize historical throughput without visual clutter.
