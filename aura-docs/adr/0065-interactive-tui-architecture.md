@@ -1,7 +1,7 @@
 # ADR 0065: Interactive TUI Architecture & Selective Downloading
 
 ## Status
-Proposed (2026-06-05)
+Implemented (2026-06-10, PR #277)
 
 ## Context
 The current Aura Terminal User Interface (TUI) in `aura-tui` is a flat, single-loop application that displays a static table of active downloads. While functional for basic monitoring, it lacks the depth required for advanced task management, specifically failing to provide granular insight into individual tasks (like piece availability or throughput history) and lacking the capability to perform interactive operations such as selective file downloading from complex BitTorrent swarms or Metalink packages.
@@ -48,7 +48,8 @@ We will modernize the `aura-tui` and update the `aura-core` engine to support a 
   - Requires handling large, virtualized UI trees to prevent lag when viewing torrents with tens of thousands of files.
   - The TUI binary will become slightly heavier due to the state machine and caching requirements (e.g., throughput history buffers).
 
-## Implementation Status (Audit 2026-06-05)
-- **Multi-View Architecture**: Pending (Epic created).
-- **Interactive File Selection**: Pending (Epic created).
-- **Bulk Ingestion**: Pending (Epic created).
+## Implementation Status
+- **Multi-View Architecture**: Fully Implemented (TUI stateful multi-view layout, sparkline charts, progress gauges).
+- **Interactive File Selection**: Fully Implemented (tree-view File Selector, piece picker and storage skip logic).
+- **Bulk Ingestion**: Fully Implemented (ProtocolDetector, bulk ingestion RPC methods, discovery modal, CLI flags).
+- **Command Palette & OS Integration**: Fully Implemented (Vim motions, Command Palette, notify-rust desktop alerts, actionable error recovery prompts, drag-and-drop/clipboard ingest).

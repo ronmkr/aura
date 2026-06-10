@@ -1,9 +1,7 @@
 # ADR 0064: Process Resilience — Panic Recovery, Crash Reporting, and File Descriptor Management
 
 ## Status
-Partially Implemented (2026-06-04, PR #258 — Issues #247, #225):
-panic hook + crash.log (Decision 1-2) and double-signal shutdown timeout (Decision part of 4) implemented.
-FD limit management (Decision 3), /metrics auth (Decision 4, done in ADR-0056 update), RPC rate limiting (Decision 5), and task count cap (Decision 6) remain for subsequent PRs.
+Implemented (2026-06-04, PRs #258, #259 — Issues #225, #246, #247, #251, #253)
 
 ## Context
 The Aura daemon is a long-running async process that must remain stable under adversarial conditions. Three systemic resilience gaps exist: (1) **Panic handling**: unhandled panics in Tokio tasks silently terminate the task or crash the process without writing crash reports, flushing download state, or persisting DHT routing tables. The orchestrator task is spawned via `tokio::spawn()` with only `Err` handling — panics propagate undetected. (2) **File descriptor exhaustion**: the default configuration allows up to 128 connections per task × 10 concurrent tasks = 1,280 file descriptors, far exceeding the default OS limits (macOS: 256, many Linux distros: 1024). Silent `EMFILE: too many open files` errors manifest as broken connections rather than actionable errors. (3) **RPC endpoint hardening**: the `/metrics` Prometheus endpoint is unauthenticated, and the JSON-RPC endpoint has no request rate limiter, enabling local denial-of-service via task flooding. Related: GitHub Issues #249, #250 (to be created).
