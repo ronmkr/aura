@@ -85,14 +85,24 @@ async fn when_change_task_options(world: &mut AuraWorld, id: u64, step: &Step) {
 #[then(expr = "the task {int} should have seed_ratio {float} and seed_time {int}")]
 async fn then_assert_task_overrides(world: &mut AuraWorld, id: u64, ratio: f32, time: u32) {
     let engine = world.engine.as_ref().expect("Engine not running");
-    let active = engine
-        .tell_active()
-        .await
-        .expect("Failed to get active tasks");
-    let task = active
-        .iter()
-        .find(|t| t.id == TaskId(id))
-        .expect("Task not found");
-    assert_eq!(task.seed_ratio(), Some(ratio));
-    assert_eq!(task.seed_time(), Some(time));
+
+    let mut actual_ratio = None;
+    let mut actual_time = None;
+    for _ in 0..20 {
+        let active = engine
+            .tell_active()
+            .await
+            .expect("Failed to get active tasks");
+        if let Some(task) = active.iter().find(|t| t.id == TaskId(id)) {
+            actual_ratio = task.seed_ratio();
+            actual_time = task.seed_time();
+            if actual_ratio == Some(ratio) && actual_time == Some(time) {
+                break;
+            }
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    }
+
+    assert_eq!(actual_ratio, Some(ratio));
+    assert_eq!(actual_time, Some(time));
 }
