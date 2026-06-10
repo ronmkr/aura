@@ -36,3 +36,11 @@ To prevent the common "99.9% stall" caused by a single slow peer holding the fin
 - **Trigger**: Aura enters Endgame Mode when fewer than 20 blocks (320KB) remain.
 - **Redundant Requests**: Aura broadcasts requests for the remaining blocks to *every* unchoked peer simultaneously.
 - **Atomic Cancellation**: The moment the first valid block arrives and passes hash verification, Aura sends `CANCEL` messages to all other peers for that specific block.
+
+## Prioritized Streaming Mode (Issue #28)
+
+To support real-time media playback and progressive file previewing, Aura implements a prioritized piece picking strategy when streaming mode is enabled:
+- **Metadata/Header Prioritization**: When `streaming_mode` is active, the first $N$ and last $N$ pieces of the file (configured via `streaming_metadata_pieces`, default `4`) are prioritized. The first pieces typically contain container headers (e.g., MP4/MKV headers), while the last pieces contain structural indexes (e.g., moov atoms/metadata).
+- **Sequential Acquisition**: These boundary pieces are picked sequentially in chronological/index order to allow media players to parse metadata and begin playback with minimal buffering delay.
+- **Middle Swarm Health**: Once the critical header/index boundary pieces are downloaded, Aura falls back to standard piece picking strategies (such as rarest-first) for all middle pieces. This protects swarm health and prevents the degradation of overall download speed.
+- **Dynamic Activation**: Streaming mode can be enabled or disabled dynamically for any active task via the `aura.changeOption` JSON-RPC method or the CLI.
