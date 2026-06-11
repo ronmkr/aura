@@ -26,7 +26,9 @@ impl ProtocolWorker for NntpWorker {
         _storage_tx: Option<mpsc::Sender<crate::storage::StorageRequest>>,
         _throttler: Arc<Throttler>,
     ) -> Result<PieceData> {
-        Err(crate::Error::Protocol("nntp unsupported".to_string()))
+        Err(crate::Error::UnsupportedProtocol(
+            "NNTP not yet implemented. See Issue #22.".to_string(),
+        ))
     }
 
     fn available_capacity(&self) -> usize {
