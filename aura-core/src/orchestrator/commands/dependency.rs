@@ -4,46 +4,6 @@ use crate::{Result, TaskId};
 use tracing::info;
 
 impl Orchestrator {
-    pub(crate) fn has_cycle(&self) -> bool {
-        let mut visited = std::collections::HashSet::new();
-        let mut rec_stack = std::collections::HashSet::new();
-
-        fn dfs(
-            node: TaskId,
-            tasks: &std::collections::HashMap<TaskId, crate::task::MetaTask>,
-            visited: &mut std::collections::HashSet<TaskId>,
-            rec_stack: &mut std::collections::HashSet<TaskId>,
-        ) -> bool {
-            if rec_stack.contains(&node) {
-                return true;
-            }
-            if visited.contains(&node) {
-                return false;
-            }
-
-            visited.insert(node);
-            rec_stack.insert(node);
-
-            if let Some(task) = tasks.get(&node) {
-                for &parent in &task.depends_on {
-                    if dfs(parent, tasks, visited, rec_stack) {
-                        return true;
-                    }
-                }
-            }
-
-            rec_stack.remove(&node);
-            false
-        }
-
-        for &id in self.tasks.keys() {
-            if dfs(id, &self.tasks, &mut visited, &mut rec_stack) {
-                return true;
-            }
-        }
-        false
-    }
-
     pub(crate) async fn preempt_resources_for_high_priority(&mut self, new_task_id: TaskId) {
         let config = self.config.load();
         let max_concurrent = config.bandwidth.max_concurrent_downloads;
@@ -240,6 +200,9 @@ impl Orchestrator {
         }
 
         if let Some(ratio) = seed_ratio {
+            if let Some(task) = self.tasks.get_mut(&id) {
+                task.seed_ratio_override = Some(ratio);
+            }
             if let Some(bt) = self.get_bt_task(id) {
                 let mut seed_ratio_guard = bt.state.seed_ratio.lock().unwrap();
                 if *seed_ratio_guard != Some(ratio) {
@@ -251,6 +214,9 @@ impl Orchestrator {
         }
 
         if let Some(time) = seed_time {
+            if let Some(task) = self.tasks.get_mut(&id) {
+                task.seed_time_override = Some(time);
+            }
             if let Some(bt) = self.get_bt_task(id) {
                 let mut seed_time_guard = bt.state.seed_time.lock().unwrap();
                 if *seed_time_guard != Some(time) {

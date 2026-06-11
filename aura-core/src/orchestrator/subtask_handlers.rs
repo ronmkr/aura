@@ -104,6 +104,14 @@ impl Orchestrator {
             SubTaskEvent::BtTaskRegistered(meta_id, info_hash, task, worker_cmd_tx) => {
                 self.bt_registry.insert(info_hash, meta_id);
                 if let Some(meta_task) = self.tasks.get_mut(&meta_id) {
+                    if let Some(ratio) = meta_task.seed_ratio_override {
+                        let mut seed_ratio_guard = task.state.seed_ratio.lock().unwrap();
+                        *seed_ratio_guard = Some(ratio);
+                    }
+                    if let Some(time) = meta_task.seed_time_override {
+                        let mut seed_time_guard = task.state.seed_time.lock().unwrap();
+                        *seed_time_guard = Some(time);
+                    }
                     meta_task.extensions.insert(
                         crate::worker::bittorrent::BT_EXTENSION_KEY.to_string(),
                         task,
