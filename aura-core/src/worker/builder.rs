@@ -190,4 +190,19 @@ impl WorkerBuilder {
     pub fn build_ftp(self) -> crate::worker::ftp::FtpWorker {
         crate::worker::ftp::FtpWorker::new(self.options)
     }
+
+    #[cfg(feature = "s3")]
+    pub fn build_s3(self) -> crate::worker::s3::S3Worker {
+        crate::worker::s3::S3Worker::new(self.options)
+    }
+
+    #[cfg(feature = "gdrive")]
+    pub fn build_gdrive(self) -> crate::worker::gdrive::GDriveWorker {
+        crate::worker::gdrive::GDriveWorker::new(self.options)
+    }
+
+    #[cfg(feature = "nntp")]
+    pub fn build_nntp(self) -> crate::worker::nntp::NntpWorker {
+        crate::worker::nntp::NntpWorker::new(self.options)
+    }
 }

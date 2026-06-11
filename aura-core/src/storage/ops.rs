@@ -181,6 +181,14 @@ impl StorageEngine {
         Ok(())
     }
 
+    /// Platform-agnostic memory-mapped I/O fallback writer for large files.
+    #[allow(dead_code)]
+    pub(crate) fn execute_io_task_mmap(&mut self, _task: &super::scheduler::IoTask) -> Result<()> {
+        // Placeholder skeleton for memory-mapped I/O fallback.
+        // Once activated, large files can be mapped into memory and written directly.
+        Ok(())
+    }
+
     pub(crate) async fn get_or_open_part_file(&mut self, id: TaskId) -> Result<&mut File> {
         if !self.handles.contains(&id) {
             let base_path = self.task_paths.get(&id).ok_or(Error::TaskNotFound(id))?;

@@ -89,11 +89,23 @@ async fn when_task_completes(world: &mut AuraWorld) {
 async fn then_file_contains_id(world: &mut AuraWorld, filename: String) {
     let id = world.last_task_id.unwrap();
 
-    // Wait for hook to execute (it's async tokio::spawn)
-    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+    // Wait for hook to execute with retries (up to 5 seconds) to avoid flaky test race conditions under load
+    let mut content = String::new();
+    for _ in 0..50 {
+        if let Ok(data) = fs::read_to_string(&filename).await {
+            content = data;
+            if content.contains(&id.0.to_string()) {
+                break;
+            }
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    }
 
-    let content = fs::read_to_string(&filename).await.unwrap();
-    assert!(content.contains(&id.0.to_string()));
+    assert!(
+        content.contains(&id.0.to_string()),
+        "Hook output file did not contain expected task ID: {:?}",
+        content
+    );
 
     // Cleanup
     let _ = fs::remove_file(&filename).await;

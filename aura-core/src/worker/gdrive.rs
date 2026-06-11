@@ -1,0 +1,35 @@
+use crate::throttler::Throttler;
+use crate::worker::{PieceData, ProgressSender, ProtocolWorker, Segment, WorkerOptions};
+use crate::{Result, TaskId};
+use async_trait::async_trait;
+use bytes::BytesMut;
+use std::sync::Arc;
+use tokio::sync::mpsc;
+
+pub struct GDriveWorker {
+    _options: WorkerOptions,
+}
+
+impl GDriveWorker {
+    pub fn new(options: WorkerOptions) -> Self {
+        Self { _options: options }
+    }
+}
+
+#[async_trait]
+impl ProtocolWorker for GDriveWorker {
+    async fn fetch_segment(
+        &self,
+        _task_id: TaskId,
+        _segment: Segment,
+        _progress: Option<ProgressSender>,
+        _storage_tx: Option<mpsc::Sender<crate::storage::StorageRequest>>,
+        _throttler: Arc<Throttler>,
+    ) -> Result<PieceData> {
+        Err(crate::Error::Protocol("gdrive unsupported".to_string()))
+    }
+
+    fn available_capacity(&self) -> usize {
+        1
+    }
+}

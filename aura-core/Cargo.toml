@@ -72,3 +72,10 @@ libc = { workspace = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 rustix = { workspace = true }
+
+[features]
+s3 = []
+gdrive = []
+nntp = []
+io_uring = []
+

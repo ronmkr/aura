@@ -1,7 +1,6 @@
 use super::{Command, Engine, Event};
 use crate::task::{MetaTask, TaskType};
 use crate::{Error, Result, TaskId};
-use rand::RngExt;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 use tracing::info;
@@ -17,7 +16,7 @@ impl Engine {
         uri: String,
         task_type: TaskType,
     ) -> Result<crate::api::TaskHandle> {
-        let id = TaskId(rand::rng().random());
+        let id = TaskId::random();
         self.add_task_with_sources(id, None, name, vec![(uri, task_type)], None)
             .await
     }

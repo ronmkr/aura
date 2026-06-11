@@ -85,6 +85,20 @@ impl IoScheduler {
     }
 }
 
+#[cfg(all(target_os = "linux", feature = "io_uring"))]
+pub struct UringScheduler {}
+
+#[cfg(all(target_os = "linux", feature = "io_uring"))]
+impl UringScheduler {
+    pub fn new() -> Self {
+        Self {}
+    }
+
+    pub fn submit_write(&self, _task: IoTask) -> crate::Result<()> {
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 #[path = "scheduler_tests.rs"]
 mod tests;
