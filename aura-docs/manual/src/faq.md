@@ -39,6 +39,9 @@ Aura is **protocol-compatible** with standard WebUIs. Its JSON-RPC 2.0 API suppo
 ### Does it support BitTorrent v2?
 Yes. Aura is built from the ground up for **BitTorrent v2** (BEP 52). It supports SHA-256 Merkle trees for per-file integrity and supports **Hybrid Torrents** to bridge v1 and v2 swarms.
 
+### Does Aura support Usenet / NNTP?
+Not yet. There is an experimental protocol worker stub in the codebase, but active Usenet (NNTP) downloading is currently deferred (tracked as Issue #22).
+
 ### Can I choose specific files to download in a torrent?
 Yes. Aura supports **Selective Downloading** (ADR 0065). You can use the `aura show-files` and `aura select-files` commands in the CLI, or use the interactive **File Selector** in the TUI (press `f` on a task). Aura correctly handles pieces that are shared between files at boundary points.
 

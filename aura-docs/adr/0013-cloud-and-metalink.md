@@ -1,7 +1,7 @@
 # ADR 0013: Cloud Storage and Metalink Integration
 
 ## Status
-Partially Implemented (2026-05-06, commit 0777b1ab)
+Implemented (2026-06-11, Issue #10)
 
 ## Context
 `Aura` aims to extend standard download protocol support to modern cloud storage services (S3, Google Drive) while maintaining full support for legacy specialties like Metalink.
@@ -13,7 +13,7 @@ Partially Implemented (2026-05-06, commit 0777b1ab)
 
 ## Implementation Status (Audit 2026-06-03)
 - **Metalink Integration**: Implemented in `aura-core/src/metalink/` (2026-05-25, PR #91).
-- **Cloud Adapter**: Pending (Issue #10, S3/Google Drive support).
+- **Cloud Adapter**: Implemented behind `s3` and `gdrive` Cargo feature flags.
 
 ## Alternatives Considered
 - **Direct Cloud SDK usage**: Calling cloud APIs directly from the Orchestrator. *Rejected:* Violates encapsulation and makes the engine dependent on specific cloud libraries.

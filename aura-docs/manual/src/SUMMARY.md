@@ -23,6 +23,8 @@
 - [Telemetry & Metrics](./advanced/telemetry.md)
 - [Built-in Web UI](./advanced/web-ui.md)
 - [Safety & Data Integrity](./advanced/safety-integrity.md)
+- [Download History Log](./advanced/download-history.md)
+- [Process Resilience](./advanced/resilience.md)
 
 ---
 
@@ -97,6 +99,12 @@
     - [ADR 0063: Bandwidth Time Scheduling](./adr/0063-bandwidth-time-scheduling.md)
     - [ADR 0064: Process Resilience & Panic Recovery](./adr/0064-process-resilience-panic-fd-limits.md)
     - [ADR 0065: Interactive TUI Architecture](./adr/0065-interactive-tui-architecture.md)
+    - [ADR 0066: MSE/PE Traffic Encryption](./adr/0066-mse-pe-encryption.md)
+    - [ADR 0067: μTP/LEDBAT Transport Layer](./adr/0067-utp-ledbat.md)
+    - [ADR 0068: Fast Resume and Piece Recheck](./adr/0068-fast-resume.md)
+    - [ADR 0069: Watch Folder Auto-ingestion](./adr/0069-watch-folder.md)
+    - [ADR 0070: RSS/Atom Feed Subscriptions](./adr/0070-rss-subscriptions.md)
+    - [ADR 0071: System Service Integration](./adr/0071-system-service.md)
 
 ---
 

@@ -91,6 +91,15 @@
 - [ ] **i18n Architecture** (Issue #71).
 - [ ] **Cloud Storage Support (S3, Google Drive)** (Issue #10).
 
+## Milestone 8: Daemon Maturity & Production Swarm Capabilities (In Progress)
+- [ ] **feat: Implement MSE/PE (Message Stream Encryption) for BitTorrent traffic obfuscation** (Issue #283, ADR-0066).
+- [ ] **feat: Implement μTP/LEDBAT transport (BEP 29) for ISP-friendly BitTorrent** (Issue #286, ADR-0067).
+- [ ] **feat: Fast resume — verify and reuse existing file data on task re-add** (Issue #284, ADR-0068).
+- [ ] **feat: Watch folder — auto-ingest torrents/metalinks** (Issue #288, ADR-0069).
+- [ ] **feat: RSS/Atom feed subscriptions for automated download ingestion** (Issue #290, ADR-0070).
+- [ ] **feat: System service integration (systemd, launchd, Windows Service)** (Issue #291, ADR-0071).
+- [ ] **feat: Implement BitTorrent tracker scrape for swarm statistics** (Issue #289).
+
 ## Infrastructure & DevSecOps
 - [x] `GEMINI.md` (Engineering Mandates).
 - [x] `design.md` (System Design & Visuals).

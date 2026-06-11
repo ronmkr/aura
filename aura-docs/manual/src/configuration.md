@@ -230,6 +230,9 @@ Authentication credentials for secure HTTP, FTP, and Cloud Storage protocols (AD
 
 ### Cloud Storage Authentication
 
+> [!NOTE]
+> Cloud storage integration is compile-time gated: S3 requires compiling Aura with `--features s3`, and Google Drive/OneDrive require `--features gdrive`.
+
 Aura supports secure credentials for S3, Google Drive, and OneDrive:
 
 - **S3-Compatible Storage**: Handled via standard AWS SDK configuration. Ensure environment variables like `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_REGION` are set, or that a valid credentials file exists at `~/.aws/credentials`.

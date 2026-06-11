@@ -29,7 +29,7 @@ Aura's design is driven by a series of formal Architecture Decision Records. The
 | [0023](../adr/0023-adaptive-scaling-and-aggregation.md) | ADR 0023: Adaptive Connection Scaling and Sourced Aggregation | Partially Implemented (2026-05-25, PR #90) |
 | [0024](../adr/0024-integrity-scrubbing.md) | ADR 0024: Integrity Scrubbing and Torrent Refreshing | Implemented (2026-05-06, commit 0777b1ab) |
 | [0025](../adr/0025-nat-traversal-and-lpd.md) | ADR 0025: NAT Traversal and LAN Discovery | Implemented (2026-05-27, PR #114) |
-| [0026](../adr/0026-modern-networking.md) | ADR 0026: Modern Networking (Happy Eyeballs, Alt-Svc, Streaming) | Partially Implemented (2026-06-03, PR #198) |
+| [0026](../adr/0026-modern-networking.md) | ADR 0026: Modern Networking (Happy Eyeballs, Alt-Svc, Streaming) | Implemented (2026-06-10, PR #277) |
 | [0027](../adr/0027-power-management.md) | ADR 0027: Power Management and Automated Lifecycle Actions | Implemented (2026-05-06, commit 0777b1ab) |
 | [0028](../adr/0028-privacy-dns.md) | ADR 0028: Privacy-Enhanced Resolution and Modern DNS | Implemented (2026-05-27, PR #116) |
 | [0029](../adr/0029-mapping-and-chaining.md) | ADR 0029: Resource Mapping and Task Chaining | Implemented (2026-05-06, commit 0777b1ab) |
@@ -52,7 +52,7 @@ Aura's design is driven by a series of formal Architecture Decision Records. The
 | [0046](../adr/0046-peer-scoring-and-eviction.md) | ADR 0046: Peer Registry Health Scoring & Eviction | Implemented (2026-05-30, PR #165) |
 | [0047](../adr/0047-automated-release-pipeline.md) | ADR 0047: Automated Release Pipeline | Implemented (2026-05-29, PR #144) |
 | [0048](../adr/0048-ftps-tls-support.md) | ADR 0048: FTPS (TLS) Support and Retry Logic | Implemented (2026-05-28, PR #133) |
-| [0049](../adr/0049-browser-bridge.md) | ADR 0049: Browser Bridge (Extension Support) | Implemented (2026-05-27, PR #102) |
+| [0049](../adr/0049-browser-bridge.md) | ADR 0049: Browser Bridge (Extension Support) | Partially Implemented — daemon bridge done (PR #102); Chrome extension pending (Issue #230) |
 | [0050](../adr/0050-integration-tests-suite.md) | ADR 0050: Integration Tests Suite | Implemented (2026-05-25, PR #93) |
 | [0051](../adr/0051-docker-containerization.md) | ADR 0051: Docker Containerization | Implemented (2026-05-29, PR #144) |
 | [0052](../adr/0052-allocation-prober.md) | ADR 0052: Allocation Prober Diagnostic Tool | Implemented (2026-06-02, PR #196) |
@@ -69,6 +69,12 @@ Aura's design is driven by a series of formal Architecture Decision Records. The
 | [0063](../adr/0063-bandwidth-time-scheduling.md) | ADR 0063: Bandwidth Time Scheduling | Implemented (2026-06-04, PR #259) |
 | [0064](../adr/0064-process-resilience-panic-fd-limits.md) | ADR 0064: Process Resilience — Panic Recovery, Crash Reporting, and File Descriptor Management | Implemented (2026-06-04, PRs #258, #259) |
 | [0065](../adr/0065-interactive-tui-architecture.md) | ADR 0065: Interactive TUI Architecture & Selective Downloading | Implemented (2026-06-10, PR #277) |
+| [0066](../adr/0066-mse-pe-encryption.md) | ADR 0066: MSE/PE Traffic Encryption | Proposed (2026-06-11 — Issue #283) |
+| [0067](../adr/0067-utp-ledbat.md) | ADR 0067: μTP/LEDBAT Transport Layer | Proposed (2026-06-11 — Issue #286) |
+| [0068](../adr/0068-fast-resume.md) | ADR 0068: Fast Resume and Piece Recheck | Proposed (2026-06-11 — Issue #284) |
+| [0069](../adr/0069-watch-folder.md) | ADR 0069: Watch Folder Auto-ingestion | Proposed (2026-06-11 — Issue #288) |
+| [0070](../adr/0070-rss-subscriptions.md) | ADR 0070: RSS/Atom Feed Subscriptions | Proposed (2026-06-11 — Issue #290) |
+| [0071](../adr/0071-system-service.md) | ADR 0071: System Service Integration | Proposed (2026-06-11 — Issue #291) |
 
 For a full list of ADRs, see the `aura-docs/adr/` directory in the repository.
 
