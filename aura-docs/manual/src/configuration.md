@@ -210,6 +210,37 @@ Safety settings for using a VPN.
 
 ---
 
+## [hooks]
+Automation and shell hooks on task lifecycle events.
+
+| Setting | Value Type | Default | What it does |
+|:---|:---|:---|:---|
+| `enabled` | Yes / No | `false` | Enable or disable execution of external shell hooks. |
+| `on_download_complete` | Text | `""` | Command/script to execute when a download completes (receives Task ID). |
+
+---
+
+## [credentials]
+Authentication credentials for secure HTTP, FTP, and Cloud Storage protocols (ADR 0013).
+
+| Setting | Value Type | Default | What it does |
+|:---|:---|:---|:---|
+| `netrc_path` | File Path | `"~/.netrc"` | Path to the `.netrc` file containing machine logins and passwords. |
+| `cookie_file` | File Path | `None` | Path to a Netscape-formatted cookie file for authenticated HTTP mirrors. |
+
+### Cloud Storage Authentication
+
+Aura supports secure credentials for S3, Google Drive, and OneDrive:
+
+- **S3-Compatible Storage**: Handled via standard AWS SDK configuration. Ensure environment variables like `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_REGION` are set, or that a valid credentials file exists at `~/.aws/credentials`.
+- **Google Drive**: Resolved from the `.netrc` file under hostnames `drive.google.com` or `googleapis.com`.
+  - **API Key**: Set `login` to `"apikey"` and `password` to your API key.
+  - **OAuth Bearer Token**: Set `password` to your OAuth2 Access Token.
+- **OneDrive / SharePoint**: Resolved from the `.netrc` file under hostnames `graph.microsoft.com` or `onedrive.com`.
+  - **OAuth Bearer Token**: Set `password` to your Microsoft Graph OAuth2 Access Token.
+
+---
+
 ## [limits]
 Defines administrative, network, and architectural constraints.
 

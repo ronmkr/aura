@@ -16,7 +16,7 @@ Aura's design is driven by a series of formal Architecture Decision Records. The
 | [0010](../adr/0010-decoupled-peer-discovery.md) | ADR 0010: Decoupled Peer Discovery and Registry | Implemented (2026-05-06, commit 0777b1ab) |
 | [0011](../adr/0011-dynamic-configuration.md) | ADR 0011: Dynamic Configuration and Hot-reloading | Implemented (2026-05-06, commit 0777b1ab) |
 | [0012](../adr/0012-tui-theming-and-proxy.md) | ADR 0012: Themeable TUI and Proxy Connector | Implemented (2026-05-06, commit 0777b1ab) |
-| [0013](../adr/0013-cloud-and-metalink.md) | ADR 0013: Cloud Storage and Metalink Integration | Partially Implemented (2026-05-06, commit 0777b1ab) |
+| [0013](../adr/0013-cloud-and-metalink.md) | ADR 0013: Cloud Storage and Metalink Integration | Implemented (2026-06-11, Issue #10) |
 | [0014](../adr/0014-credential-and-security.md) | ADR 0014: Credential and Security Abstraction | Implemented (2026-05-06, commit 0777b1ab) |
 | [0015](../adr/0015-url-globbing.md) | ADR 0015: URL Globbing and Batch Processing | Implemented (2026-05-06, commit 0777b1ab) |
 | [0016](../adr/0016-rpc-and-interface.md) | ADR 0016: RPC Server and Interface Binding | Implemented (2026-06-04, PR #261) |
