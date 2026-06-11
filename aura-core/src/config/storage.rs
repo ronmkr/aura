@@ -15,6 +15,7 @@ pub struct StorageConfig {
     pub write_buffer_kb: u32,
     pub memory_limit_mb: u32,
     pub memory_safety_margin_mb: u32,
+    pub io_mode: String, // "auto", "io_uring", "mmap", "standard"
 }
 
 impl Default for StorageConfig {
@@ -32,6 +33,7 @@ impl Default for StorageConfig {
             write_buffer_kb: 256,
             memory_limit_mb: 512,
             memory_safety_margin_mb: 51,
+            io_mode: "auto".to_string(),
         }
     }
 }

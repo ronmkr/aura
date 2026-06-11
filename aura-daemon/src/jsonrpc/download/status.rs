@@ -15,6 +15,8 @@ pub async fn handle_tell_active(engine: &Engine) -> Result<Value, Value> {
                 "completedLength": t.completed_length.to_string(),
                 "name": t.name,
                 "selectedFiles": t.selected_files,
+                "numSeeders": t.swarm_seeders().map(|s| s.to_string()).unwrap_or_else(|| "0".to_string()),
+                "connections": t.swarm_leechers().map(|l| l.to_string()).unwrap_or_else(|| "0".to_string()),
             })
         })
         .collect();
@@ -52,6 +54,8 @@ pub async fn handle_tell_waiting(engine: &Engine, params: Option<Value>) -> Resu
                 error_msg: None,
                 keys: &keys,
                 selected_files: t.selected_files.as_deref(),
+                swarm_seeders: t.swarm_seeders(),
+                swarm_leechers: t.swarm_leechers(),
             })
         })
         .collect();
@@ -87,6 +91,8 @@ pub async fn handle_get_status(engine: &Engine, params: Option<Value>) -> Result
             error_msg: None,
             keys: &keys,
             selected_files: t.selected_files.as_deref(),
+            swarm_seeders: t.swarm_seeders(),
+            swarm_leechers: t.swarm_leechers(),
         }));
     }
 
@@ -107,6 +113,8 @@ pub async fn handle_get_status(engine: &Engine, params: Option<Value>) -> Result
             error_msg: rec.error.as_deref(),
             keys: &keys,
             selected_files: None,
+            swarm_seeders: None,
+            swarm_leechers: None,
         }));
     }
 

@@ -72,6 +72,8 @@ pub async fn handle_tell_stopped(engine: &Engine, params: Option<Value>) -> Resu
                 error_msg: rec.error.as_deref(),
                 keys: &keys,
                 selected_files: None,
+                swarm_seeders: None,
+                swarm_leechers: None,
             })
         })
         .collect();

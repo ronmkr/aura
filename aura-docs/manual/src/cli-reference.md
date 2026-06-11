@@ -19,7 +19,7 @@ aura "https://example.com/file.zip"
 ### Arguments
 
 - `[URIS]...`: One or more URIs to download. 
-    - **Supported Protocols**: `http`, `https`, `ftp`, `ftps`, `magnet`.
+    - **Supported Protocols**: `http`, `https`, `ftp`, `ftps`, `magnet` (Note: `nntp` Usenet is experimental/unsupported).
     - **Metadata Files**: Paths to local `.torrent`, `.metalink`, or `.meta4` files.
     - **Multi-Source**: If multiple URIs are provided, Aura automatically treats them as mirrors for a single task.
 

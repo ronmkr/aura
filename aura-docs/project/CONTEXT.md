@@ -102,7 +102,7 @@ A versioning system that assigns monotonic **Generation IDs** to piece assignmen
 A component within the **Storage Engine** that reorders write requests to facilitate large, sequential disk writes.
 
 #### Rot-Detection Daemon
-A background service that periodically re-verifies completed downloads to detect "Bit Rot" over time.
+A background service that periodically re-verifies completed downloads to detect "Bit Rot" over time (Planned — not yet implemented; active-download integrity is handled by the **Integrity Scrubber**).
 
 ### Security, Safety & Privacy
 #### Sandbox Root
@@ -130,7 +130,7 @@ A system-level service that enforces hard limits on metadata size, recursion dep
 A security mechanism within the **Resource Governor** that blocks outbound connections to sensitive system ports (e.g., SMTP/25, SSH/22).
 
 #### Hash Throttler
-A security component that rate-limits CPU-intensive integrity checks to prevent "Hashing DoS" attacks.
+A security component that rate-limits CPU-intensive integrity checks to prevent "Hashing DoS" attacks (Planned — not yet implemented).
 
 #### Punycode Normalizer
 A utility within the **Privacy-Enhanced Resolver** that converts IDNs to ASCII and flags visually deceptive domains using a **Homograph Detector**.

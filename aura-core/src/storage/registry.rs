@@ -10,7 +10,7 @@ impl StorageEngine {
         &mut self,
         id: TaskId,
         path: PathBuf,
-        _total_length: u64,
+        total_length: u64,
         checksum: Option<crate::Checksum>,
         padding_ranges: Vec<crate::task::Range>,
     ) {
@@ -38,6 +38,7 @@ impl StorageEngine {
         }
 
         self.task_paths.insert(id, path);
+        self.task_lengths.insert(id, total_length);
         if let Some(c) = checksum {
             self.task_checksums.insert(id, c);
         }
