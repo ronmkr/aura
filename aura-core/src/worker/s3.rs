@@ -62,7 +62,7 @@ impl S3Worker {
             Ok(Metadata {
                 final_uri: self.options.uri.clone(),
                 total_length: content_length,
-                name: Some(key.split('/').last().unwrap_or(key).to_string()),
+                name: Some(key.split('/').next_back().unwrap_or(key).to_string()),
                 range_supported: true,
                 padding_ranges: Vec::new(),
                 etag,

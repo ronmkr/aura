@@ -107,13 +107,13 @@ async fn main() {
     tracing_subscriber::fmt::init();
     AuraWorld::cucumber()
         .max_concurrent_scenarios(1)
-        .filter_run_and_exit("tests/features", |_, _, sc| {
+        .filter_run_and_exit("tests/features", |_, _, _sc| {
             #[cfg(not(feature = "s3"))]
-            if sc.tags.iter().any(|t| t == "s3") {
+            if _sc.tags.iter().any(|t| t == "s3") {
                 return false;
             }
             #[cfg(not(feature = "gdrive"))]
-            if sc.tags.iter().any(|t| t == "gdrive") {
+            if _sc.tags.iter().any(|t| t == "gdrive") {
                 return false;
             }
             true
