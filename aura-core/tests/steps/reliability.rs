@@ -2,7 +2,6 @@ use crate::AuraWorld;
 use aura_core::task::TaskType;
 use aura_core::TaskId;
 use cucumber::{given, then, when};
-use rand::RngExt;
 use wiremock::matchers::method;
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
@@ -25,7 +24,7 @@ async fn given_active_download(world: &mut AuraWorld, percent: u32) {
         .await;
 
     let engine = world.engine.as_ref().unwrap();
-    let id = TaskId(rand::rng().random());
+    let id = TaskId::random();
     let handle = engine
         .add_task_with_sources(
             id,

@@ -1,9 +1,7 @@
 use super::Orchestrator;
 use crate::task::{DownloadPhase, MetaTask, SubTask, TaskType};
 use crate::TaskId;
-use arc_swap::ArcSwap;
 use std::collections::HashMap;
-use std::sync::Arc;
 use tempfile::tempdir;
 use tokio::sync::mpsc;
 
@@ -12,36 +10,7 @@ pub(super) fn make_test_orchestrator() -> (
     mpsc::Receiver<crate::storage::StorageRequest>,
     tempfile::TempDir,
 ) {
-    let (_command_tx, command_rx) = mpsc::channel(1024);
-    let (storage_tx, storage_rx) = mpsc::channel(1024);
-    let (_storage_event_tx, storage_event_rx) = mpsc::channel(1024);
-    let (_event_tx, _event_rx) =
-        tokio::sync::broadcast::channel::<crate::orchestrator::Event>(1024);
-    let (dht_tx, _dht_rx) = mpsc::channel(1024);
-    let (lpd_tx, _lpd_rx) = mpsc::channel(1024);
-    let (_scrub_tx, _scrub_rx) = mpsc::channel::<crate::scrubber::ScrubberCommand>(1024);
-
-    let config = Arc::new(ArcSwap::from_pointee(crate::Config::default()));
-
-    let (orch, _tx) = Orchestrator::new(
-        crate::orchestrator::state::OrchestratorChannels {
-            command_rx,
-            storage_tx,
-            storage_completion_rx: storage_event_rx,
-            dht_tx,
-            lpd_tx,
-            nat_tx: mpsc::channel(1).0,
-        },
-        config,
-        sled::Config::new().temporary(true).open().unwrap(),
-        Arc::new(
-            crate::net_util::TokioResolver::builder_tokio()
-                .unwrap()
-                .build()
-                .unwrap(),
-        ),
-    );
-
+    let (orch, storage_rx) = crate::orchestrator::test_helpers::create_test_orchestrator();
     let temp_dir = tempdir().unwrap();
     (orch, storage_rx, temp_dir)
 }

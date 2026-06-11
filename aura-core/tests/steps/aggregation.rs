@@ -2,7 +2,6 @@ use crate::AuraWorld;
 use aura_core::task::TaskType;
 use aura_core::TaskId;
 use cucumber::{given, then, when};
-use rand::RngExt;
 use wiremock::matchers::method;
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
@@ -138,7 +137,7 @@ pub async fn when_download_starts(world: &mut AuraWorld) {
         .iter()
         .map(|u| (u.clone(), TaskType::Http))
         .collect();
-    let id = TaskId(rand::rng().random());
+    let id = TaskId::random();
     let handle = engine
         .add_task_with_sources(id, None, "racing-task".to_string(), sources, None)
         .await

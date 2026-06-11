@@ -11,6 +11,9 @@ pub mod tls;
 pub mod types;
 pub mod websocket;
 
+#[cfg(test)]
+pub mod test_helpers;
+
 pub(crate) use fd_limit::adjust_file_descriptor_limit;
 
 pub use router::create_router;

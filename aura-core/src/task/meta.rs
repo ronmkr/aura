@@ -125,7 +125,7 @@ impl MetaTask {
             total_length,
             completed_length: 0,
             phase: DownloadPhase::Downloading,
-            priority: 3, /* TODO: use config */
+            priority: crate::config::LimitsConfig::default().default_task_priority,
             streaming_mode: false,
             range_supported: true, // Assume supported until proven otherwise
             follow_on: None,
