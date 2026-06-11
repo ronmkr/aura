@@ -1,6 +1,6 @@
-use super::connection::{parse_ybegin, NntpConnection};
+use super::connection::parse_ybegin;
 use super::worker::NntpWorker;
-use tokio::io::AsyncWriteExt;
+use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 
 #[test]
