@@ -290,51 +290,46 @@ impl MetaTask {
         }
     }
 
+    fn bt_task(&self) -> Option<&crate::worker::bittorrent::task::BtTask> {
+        self.extensions
+            .get(crate::worker::bittorrent::BT_EXTENSION_KEY)?
+            .as_any()
+            .downcast_ref::<crate::worker::bittorrent::task::BtTask>()
+    }
+
     pub fn uploaded_length(&self) -> u64 {
-        if let Some(ext) = self
-            .extensions
-            .get(crate::worker::bittorrent::BT_EXTENSION_KEY)
-        {
-            if let Some(bt) = ext
-                .as_any()
-                .downcast_ref::<crate::worker::bittorrent::task::BtTask>()
-            {
-                return bt
-                    .state
+        self.bt_task()
+            .map(|bt| {
+                bt.state
                     .uploaded_length
-                    .load(std::sync::atomic::Ordering::Relaxed);
-            }
-        }
-        0
+                    .load(std::sync::atomic::Ordering::Relaxed)
+            })
+            .unwrap_or(0)
     }
 
     pub fn seed_ratio(&self) -> Option<f32> {
-        if let Some(ext) = self
-            .extensions
-            .get(crate::worker::bittorrent::BT_EXTENSION_KEY)
-        {
-            if let Some(bt) = ext
-                .as_any()
-                .downcast_ref::<crate::worker::bittorrent::task::BtTask>()
-            {
-                return *bt.state.seed_ratio.lock().unwrap();
-            }
-        }
-        None
+        self.bt_task()
+            .and_then(|bt| *bt.state.seed_ratio.lock().unwrap())
     }
 
     pub fn seed_time(&self) -> Option<u32> {
-        if let Some(ext) = self
-            .extensions
-            .get(crate::worker::bittorrent::BT_EXTENSION_KEY)
-        {
-            if let Some(bt) = ext
-                .as_any()
-                .downcast_ref::<crate::worker::bittorrent::task::BtTask>()
-            {
-                return *bt.state.seed_time.lock().unwrap();
-            }
-        }
-        None
+        self.bt_task()
+            .and_then(|bt| *bt.state.seed_time.lock().unwrap())
+    }
+
+    pub fn swarm_seeders(&self) -> Option<u32> {
+        self.bt_task().map(|bt| {
+            bt.state
+                .swarm_seeders
+                .load(std::sync::atomic::Ordering::Relaxed)
+        })
+    }
+
+    pub fn swarm_leechers(&self) -> Option<u32> {
+        self.bt_task().map(|bt| {
+            bt.state
+                .swarm_leechers
+                .load(std::sync::atomic::Ordering::Relaxed)
+        })
     }
 }

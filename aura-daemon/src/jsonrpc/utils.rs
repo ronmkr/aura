@@ -36,6 +36,8 @@ pub struct TaskValueParams<'a> {
     pub error_msg: Option<&'a str>,
     pub keys: &'a Option<Vec<String>>,
     pub selected_files: Option<&'a [bool]>,
+    pub swarm_seeders: Option<u32>,
+    pub swarm_leechers: Option<u32>,
 }
 
 pub fn format_task_value(params: TaskValueParams) -> Value {
@@ -65,6 +67,8 @@ pub fn format_task_value(params: TaskValueParams) -> Value {
         "errorMessage": params.error_msg.unwrap_or("").to_string(),
         "name": params.name.to_string(),
         "selectedFiles": params.selected_files,
+        "numSeeders": params.swarm_seeders.map(|s| s.to_string()).unwrap_or_else(|| "0".to_string()),
+        "connections": params.swarm_leechers.map(|l| l.to_string()).unwrap_or_else(|| "0".to_string()),
     });
 
     if let Some(ref k) = params.keys {

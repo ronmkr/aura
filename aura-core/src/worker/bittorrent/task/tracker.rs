@@ -58,6 +58,18 @@ impl BtTask {
                                 tracing::warn!(%self.id, error = %e, "All tracker announces failed");
                             }
                         }
+
+                        // Scrape swarm stats to display in the TUI/RPC clients
+                        match tracker.scrape(&torrent).await {
+                            Ok((complete, incomplete, _)) => {
+                                self.state.swarm_seeders.store(complete, std::sync::atomic::Ordering::Relaxed);
+                                self.state.swarm_leechers.store(incomplete, std::sync::atomic::Ordering::Relaxed);
+                                info!(%self.id, complete, incomplete, "Scraped swarm statistics");
+                            }
+                            Err(e) => {
+                                tracing::warn!(%self.id, error = %e, "Tracker scrape failed");
+                            }
+                        }
                     }
                 }
             }
