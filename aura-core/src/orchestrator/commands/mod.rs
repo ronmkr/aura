@@ -7,6 +7,7 @@ use tracing::info;
 pub(crate) mod add;
 pub(crate) mod config;
 pub(crate) mod dependency;
+pub(crate) mod dependency_cycle;
 pub(crate) mod lifecycle;
 pub(crate) mod retry;
 

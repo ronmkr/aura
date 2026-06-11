@@ -1,33 +1,42 @@
-use crate::throttler::Throttler;
-use crate::worker::builder::WorkerOptions;
-use crate::worker::{PieceData, ProgressSender, ProtocolWorker, Segment};
-use crate::{Result, TaskId};
-use async_trait::async_trait;
-use std::sync::Arc;
-use tokio::sync::mpsc;
+#[cfg(feature = "nntp")]
+mod connection;
+#[cfg(feature = "nntp")]
+mod worker;
 
+#[cfg(feature = "nntp")]
+pub use worker::NntpWorker;
+
+#[cfg(not(feature = "nntp"))]
 pub struct NntpWorker {
-    _options: WorkerOptions,
+    _options: crate::worker::builder::WorkerOptions,
 }
 
+#[cfg(not(feature = "nntp"))]
 impl NntpWorker {
-    pub fn new(options: WorkerOptions) -> Self {
+    pub fn new(options: crate::worker::builder::WorkerOptions) -> Self {
         Self { _options: options }
+    }
+
+    pub async fn resolve_metadata(&self) -> crate::Result<crate::worker::Metadata> {
+        Err(crate::Error::Protocol(
+            "NNTP feature not enabled".to_string(),
+        ))
     }
 }
 
-#[async_trait]
-impl ProtocolWorker for NntpWorker {
+#[cfg(not(feature = "nntp"))]
+#[async_trait::async_trait]
+impl crate::worker::ProtocolWorker for NntpWorker {
     async fn fetch_segment(
         &self,
-        _task_id: TaskId,
-        _segment: Segment,
-        _progress: Option<ProgressSender>,
-        _storage_tx: Option<mpsc::Sender<crate::storage::StorageRequest>>,
-        _throttler: Arc<Throttler>,
-    ) -> Result<PieceData> {
+        _task_id: crate::TaskId,
+        _segment: crate::worker::Segment,
+        _progress: Option<crate::worker::ProgressSender>,
+        _storage_tx: Option<tokio::sync::mpsc::Sender<crate::storage::StorageRequest>>,
+        _throttler: std::sync::Arc<crate::throttler::Throttler>,
+    ) -> crate::Result<crate::worker::PieceData> {
         Err(crate::Error::UnsupportedProtocol(
-            "NNTP not yet implemented. See Issue #22.".to_string(),
+            "NNTP feature not enabled".to_string(),
         ))
     }
 
@@ -35,3 +44,8 @@ impl ProtocolWorker for NntpWorker {
         1
     }
 }
+
+#[cfg(test)]
+#[cfg(feature = "nntp")]
+#[path = "nntp/tests.rs"]
+mod tests;

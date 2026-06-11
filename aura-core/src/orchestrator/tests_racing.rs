@@ -76,6 +76,8 @@ async fn test_racing_workers_are_cancelled_on_range_finished() {
         etag: None,
         last_modified: None,
         selected_files: None,
+        seed_ratio_override: None,
+        seed_time_override: None,
     };
 
     orch.tasks.insert(meta_id, meta);

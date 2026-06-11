@@ -20,6 +20,7 @@ pub enum TaskType {
     Ftp,
     S3,
     GDrive,
+    Nntp,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

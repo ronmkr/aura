@@ -241,6 +241,7 @@ Aura supports secure credentials for S3, Google Drive, and OneDrive:
   - **OAuth Bearer Token**: Set `password` to your OAuth2 Access Token.
 - **OneDrive / SharePoint**: Resolved from the `.netrc` file under hostnames `graph.microsoft.com` or `onedrive.com`.
   - **OAuth Bearer Token**: Set `password` to your Microsoft Graph OAuth2 Access Token.
+- **Usenet / NNTP**: Resolved from the `.netrc` file under the news server's hostname (e.g., `news.giganews.com`). Set `login` to your Usenet username and `password` to your news server password.
 
 ---
 

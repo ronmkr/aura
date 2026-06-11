@@ -34,6 +34,8 @@ pub struct MetaTask {
     pub etag: Option<String>,
     pub last_modified: Option<String>,
     pub selected_files: Option<Vec<bool>>,
+    pub seed_ratio_override: Option<f32>,
+    pub seed_time_override: Option<u32>,
 }
 
 /// Represents the serializable state of a MetaTask for persistence.
@@ -114,6 +116,8 @@ impl MetaTask {
             etag: state.etag,
             last_modified: state.last_modified,
             selected_files: state.selected_files,
+            seed_ratio_override: None,
+            seed_time_override: None,
         }
     }
 
@@ -141,6 +145,8 @@ impl MetaTask {
             etag: None,
             last_modified: None,
             selected_files: None,
+            seed_ratio_override: None,
+            seed_time_override: None,
         }
     }
 

@@ -14,6 +14,7 @@ Aura features a centralized **ProtocolDetector** that identifies the source type
 - **HTTP + BitTorrent**: Use stable mirrors to "seed" a swarm or fill in missing pieces in a stalled torrent.
 - **FTP + BitTorrent**: Aggregate high-speed FTP sources with P2P swarms for extreme throughput.
 - **Cloud Storage + HTTP + BitTorrent**: Race high-latency cloud objects (from S3, Google Drive, or OneDrive) against fast HTTP mirrors or dynamic P2P swarms, ensuring maximum availability and throughput.
+- **Usenet (NNTP) + HTTP + BitTorrent**: Combine standard HTTP mirrors and P2P swarms with newsgroups via `nntp://` or `nntps://` message-id URIs (ADR 0023).
 
 ## Racing Work Stealer (ADR 0005)
 

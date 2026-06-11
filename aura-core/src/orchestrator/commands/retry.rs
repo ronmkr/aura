@@ -119,6 +119,36 @@ impl Orchestrator {
                             }
                         }
                     }
+                    TaskType::Nntp => {
+                        #[cfg(feature = "nntp")]
+                        let worker = crate::worker::WorkerBuilder::new(uri)
+                            .local_addr(local_addr)
+                            .credential_provider(provider_clone)
+                            .build_nntp();
+                        let res = async {
+                            #[cfg(feature = "nntp")]
+                            {
+                                worker.resolve_metadata().await
+                            }
+                            #[cfg(not(feature = "nntp"))]
+                            {
+                                Err(crate::Error::Protocol(
+                                    "NNTP feature not enabled".to_string(),
+                                ))
+                            }
+                        }
+                        .await;
+                        match res {
+                            Ok(m) => {
+                                let _ = subtask_tx.send(SubTaskEvent::Matured(id, sub_id, m)).await;
+                            }
+                            Err(e) => {
+                                let _ = subtask_tx
+                                    .send(SubTaskEvent::Failed(id, sub_id, e.to_string()))
+                                    .await;
+                            }
+                        }
+                    }
                     TaskType::BitTorrent => {}
                 }
             });

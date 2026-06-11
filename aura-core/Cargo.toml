@@ -52,6 +52,7 @@ hickory-resolver = { workspace = true }
 lol_html = { workspace = true }
 mime_guess = { workspace = true }
 lru = { workspace = true }
+tokio-rustls = { workspace = true, optional = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }
@@ -79,6 +80,6 @@ rustix = { workspace = true }
 [features]
 s3 = ["dep:aws-config", "dep:aws-sdk-s3"]
 gdrive = []
-nntp = []
+nntp = ["dep:tokio-rustls"]
 io_uring = []
 

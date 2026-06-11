@@ -96,6 +96,7 @@ tokio = { version = "1", features = ["full", "tracing"] }
 tokio-socks = "0.5.2"
 tokio-stream = { version = "0.1", features = ["sync"] }
 tokio-tungstenite = "0.29"
+tokio-rustls = "0.26.4"
 tokio-util = { version = "0.7", features = ["codec", "rt"] }
 toml = "1.1.2"
 tower-http = { version = "0.6", features = ["cors"] }

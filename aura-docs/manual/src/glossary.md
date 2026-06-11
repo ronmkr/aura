@@ -38,6 +38,9 @@ The logic core of the Resource Mapper that evaluates rules based on file extensi
 ### Metalink
 An XML-based file format that describes a file and its mirrors (HTTP, FTP, P2P). Aura uses Metalinks to automatically orchestrate multi-source downloads.
 
+### NNTP (Network News Transfer Protocol)
+A protocol used to read and post messages to Usenet newsgroups. Aura supports NNTP (`nntp://`, `news://`, `nntps://`) to download files directly from news servers, which can be aggregated with HTTP/FTP mirrors and BitTorrent swarms.
+
 ### Piece Picker
 The logic responsible for deciding which piece of a file to request next. Aura uses a "Rarest-First" strategy for BitTorrent and sequential picking for HTTP.
 
