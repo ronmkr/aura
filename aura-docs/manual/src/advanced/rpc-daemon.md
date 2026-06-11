@@ -27,6 +27,7 @@ Aura implements a standardized RPC interface. It is largely compatible with stan
 | `aura.pause` | Pauses a running task. | `[gid]` |
 | `aura.unpause` | Resumes a paused task. | `[gid]` |
 | `aura.remove` | Removes a task and its control files. | `[gid]` |
+| `aura.changeOption` | Dynamically change options (priority, streaming mode, seed limits) for an active task. | `[gid], [options]` |
 | `aura.tellStatus`| Returns detailed status of a task. | `[gid], [keys]` |
 | `aura.tellActive`| Returns status of all active tasks. | `[keys]` |
 | `aura.tellStopped`| Returns status of completed/removed tasks. | `[offset], [num], [keys]` |
