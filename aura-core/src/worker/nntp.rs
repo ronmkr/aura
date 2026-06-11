@@ -35,7 +35,7 @@ impl crate::worker::ProtocolWorker for NntpWorker {
         _storage_tx: Option<tokio::sync::mpsc::Sender<crate::storage::StorageRequest>>,
         _throttler: std::sync::Arc<crate::throttler::Throttler>,
     ) -> crate::Result<crate::worker::PieceData> {
-        Err(crate::Error::Protocol(
+        Err(crate::Error::UnsupportedProtocol(
             "NNTP feature not enabled".to_string(),
         ))
     }

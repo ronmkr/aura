@@ -167,3 +167,63 @@ async fn test_bep12_tracker_tiers_edge_cases() {
     assert_eq!(tiers[0], vec!["http://duplicate.com".to_string()]);
     assert_eq!(tiers[1], vec!["http://unique.com".to_string()]);
 }
+
+#[tokio::test]
+async fn test_tracker_scrape_http() {
+    let server = wiremock::MockServer::start().await;
+    let announce_url = format!("{}/announce", server.uri());
+
+    let torrent = crate::torrent::Torrent {
+        announce: announce_url,
+        info: crate::torrent::Info {
+            name: "test_scrape".to_string(),
+            piece_length: 262144,
+            pieces: Some(vec![0; 20]),
+            length: Some(1024),
+            files: None,
+            meta_version: None,
+            file_tree: None,
+        },
+        announce_list: None,
+        comment: None,
+        created_by: None,
+        creation_date: None,
+        piece_layers: None,
+    };
+
+    let info_hash = torrent.info_hash_v1().unwrap().unwrap();
+    let mut stats_dict = std::collections::HashMap::new();
+    stats_dict.insert(b"complete".to_vec(), serde_bencode::value::Value::Int(10));
+    stats_dict.insert(
+        b"downloaded".to_vec(),
+        serde_bencode::value::Value::Int(100),
+    );
+    stats_dict.insert(b"incomplete".to_vec(), serde_bencode::value::Value::Int(5));
+
+    let mut files_dict = std::collections::HashMap::new();
+    files_dict.insert(
+        info_hash.to_vec(),
+        serde_bencode::value::Value::Dict(stats_dict),
+    );
+
+    let mut response_dict = std::collections::HashMap::new();
+    response_dict.insert(
+        b"files".to_vec(),
+        serde_bencode::value::Value::Dict(files_dict),
+    );
+
+    let response_bytes =
+        serde_bencode::to_bytes(&serde_bencode::value::Value::Dict(response_dict)).unwrap();
+
+    wiremock::Mock::given(wiremock::matchers::method("GET"))
+        .respond_with(wiremock::ResponseTemplate::new(200).set_body_bytes(response_bytes))
+        .mount(&server)
+        .await;
+
+    let client = TrackerClient::new([0; 20], 6881, None, None, None, None);
+
+    let (complete, incomplete, downloaded) = client.scrape(&torrent).await.unwrap();
+    assert_eq!(complete, 10);
+    assert_eq!(incomplete, 5);
+    assert_eq!(downloaded, 100);
+}

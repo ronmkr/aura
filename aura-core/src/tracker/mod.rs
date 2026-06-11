@@ -1,10 +1,13 @@
 //! tracker: Implementation of BitTorrent HTTP and UDP trackers.
 
+use crate::torrent::Torrent;
 use serde::{Deserialize, Serialize};
 
 pub mod http;
+pub mod http_scrape;
 pub mod parsing;
 pub mod udp;
+pub mod udp_scrape;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Peer {
@@ -72,6 +75,78 @@ impl TrackerClient {
             proxy,
             tracker_tiers: std::sync::Mutex::new(std::collections::HashMap::new()),
             config,
+        }
+    }
+
+    pub async fn scrape(&self, torrent: &Torrent) -> crate::Result<(u32, u32, u32)> {
+        use futures_util::future::join_all;
+        let mut urls = std::collections::HashSet::new();
+        if let Some(announce_list) = &torrent.announce_list {
+            for tier in announce_list {
+                for url in tier {
+                    if !url.is_empty() {
+                        urls.insert(url.clone());
+                    }
+                }
+            }
+        }
+        if !torrent.announce.is_empty() {
+            urls.insert(torrent.announce.clone());
+        }
+
+        if urls.is_empty() {
+            return Err(crate::Error::Protocol(
+                "No tracker URLs available for scrape".to_string(),
+            ));
+        }
+
+        let mut futures = Vec::new();
+        for url in urls {
+            futures.push(self.scrape_single(url, torrent));
+        }
+
+        let results = join_all(futures).await;
+        let mut max_complete = 0;
+        let mut max_incomplete = 0;
+        let mut max_downloaded = 0;
+        let mut success = false;
+
+        for (complete, incomplete, downloaded) in results.into_iter().flatten() {
+            success = true;
+            if complete > max_complete {
+                max_complete = complete;
+            }
+            if incomplete > max_incomplete {
+                max_incomplete = incomplete;
+            }
+            if downloaded > max_downloaded {
+                max_downloaded = downloaded;
+            }
+        }
+
+        if success {
+            Ok((max_complete, max_incomplete, max_downloaded))
+        } else {
+            Err(crate::Error::Protocol(
+                "All scrape attempts failed".to_string(),
+            ))
+        }
+    }
+
+    async fn scrape_single(
+        &self,
+        url: String,
+        torrent: &Torrent,
+    ) -> crate::Result<(u32, u32, u32)> {
+        if url.starts_with("http") {
+            self.scrape_http(&url, torrent).await
+        } else if url.starts_with("udp") {
+            self.scrape_udp(&url, torrent).await
+        } else {
+            Err(crate::Error::Protocol(format!(
+                "Unsupported tracker protocol for scrape: {}",
+                url
+            )))
         }
     }
 }

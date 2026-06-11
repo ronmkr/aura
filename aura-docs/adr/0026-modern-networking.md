@@ -1,7 +1,7 @@
 # ADR 0026: Modern Networking (Happy Eyeballs, Alt-Svc, Streaming)
 
 ## Status
-Partially Implemented (2026-06-03, PR #198)
+Implemented (2026-06-10, PR #277)
 
 ## Context
 Modern networking requires minimizing latency through parallel connection attempts and utilizing the fastest available protocols (HTTP/3). Additionally, users want to consume media while it is still downloading.
@@ -28,5 +28,5 @@ Modern networking requires minimizing latency through parallel connection attemp
 - **Happy Eyeballs (RFC 8305)**: Implemented in DNS racing (2026-05-29, PR #140).
 - **Alt-Svc Resolution & HTTP/3**: Implemented in HTTP/3 QUIC and Alt-Svc support (2026-06-03, PR #198).
 - **Connection Pool Sharing**: Shared reqwest HTTP connection pool across segment workers implemented in Issue #256.
-- **Prioritized Streaming**: Pending (Issue #28, prioritized streaming mode).
+- **Prioritized Streaming**: Implemented (Issue #28, PR #277).
 

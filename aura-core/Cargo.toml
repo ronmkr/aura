@@ -38,6 +38,7 @@ notify = { workspace = true }
 notify-rust = { workspace = true }
 arc-swap = { workspace = true }
 hex = { workspace = true }
+memmap2 = { workspace = true }
 nosleep = { workspace = true }
 chrono = { workspace = true }
 chrono-tz = { workspace = true }

@@ -26,6 +26,8 @@ pub struct BtTaskState {
     pub seeding_start_time: std::sync::Mutex<Option<chrono::DateTime<chrono::Utc>>>,
     pub seed_ratio: std::sync::Mutex<Option<f32>>,
     pub seed_time: std::sync::Mutex<Option<u32>>,
+    pub swarm_seeders: std::sync::atomic::AtomicU32,
+    pub swarm_leechers: std::sync::atomic::AtomicU32,
 }
 
 impl std::fmt::Debug for BtTaskState {
@@ -98,6 +100,8 @@ impl BtTaskState {
             seeding_start_time: std::sync::Mutex::new(None),
             seed_ratio: std::sync::Mutex::new(None),
             seed_time: std::sync::Mutex::new(None),
+            swarm_seeders: std::sync::atomic::AtomicU32::new(0),
+            swarm_leechers: std::sync::atomic::AtomicU32::new(0),
         }
     }
 
@@ -127,6 +131,8 @@ impl BtTaskState {
             seeding_start_time: std::sync::Mutex::new(None),
             seed_ratio: std::sync::Mutex::new(None),
             seed_time: std::sync::Mutex::new(None),
+            swarm_seeders: std::sync::atomic::AtomicU32::new(0),
+            swarm_leechers: std::sync::atomic::AtomicU32::new(0),
         }
     }
 

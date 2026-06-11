@@ -52,6 +52,19 @@ The binaries will be available in `target/release/`:
 - `aura daemon`: Start in background service mode.
 - `aura tui`: Start the interactive dashboard.
 
+## Feature Flags
+
+When building from source via Cargo, you can toggle optional capabilities using Cargo feature flags:
+
+- **`s3`**: Enables support for S3-compatible cloud storage targets.
+- **`gdrive`**: Enables support for Google Drive and OneDrive storage targets.
+- **`nntp`**: Enables experimental Usenet (NNTP) protocol worker stubbing.
+
+To build Aura with all features enabled:
+```bash
+cargo build --release --features "s3 gdrive"
+```
+
 ## Configuration & Data Directory
 
 Aura stores its persistent state, history, and logs in a hidden directory:

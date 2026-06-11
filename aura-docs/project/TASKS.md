@@ -17,7 +17,12 @@ All active development tasks, technical debt, and feature requests are managed e
     - [x] Updated `aura-dev` skill to mandate zero hardcoded values and struct-based args.
 
 ### High (P1)
-...
+- [ ] **feat: Implement MSE/PE (Message Stream Encryption) for BitTorrent traffic obfuscation** (Issue #283) `[module:core, module:network, priority:high]`
+- [ ] **feat: Implement μTP/LEDBAT transport (BEP 29) for ISP-friendly BitTorrent** (Issue #286) `[module:core, module:network, priority:high]`
+- [ ] **feat: Fast resume — verify and reuse existing file data on task re-add** (Issue #284) `[module:core, module:storage, priority:high]`
+- [ ] **feat: Watch folder — auto-ingest .torrent/.metalink files dropped into a directory** (Issue #288) `[module:core, module:daemon, priority:high]`
+- [ ] **feat: RSS/Atom feed subscriptions for automated download ingestion** (Issue #290) `[module:core, module:daemon, priority:high]`
+- [ ] **feat: System service integration — auto-start daemon on boot (systemd, launchd, Windows Service)** (Issue #291) `[module:daemon, module:cli, priority:high, infra]`
 - [x] **epic: Interactive TUI Modernization (Command Center)** `[module:tui, priority:high]`
     - [x] Refactor TUI to stateful Multi-View architecture (Dashboard, Mission Control, File Selector).
     - [x] Implement the Main Dashboard with split-layout (Task List + Real-time Detail Panel).
@@ -42,6 +47,8 @@ All active development tasks, technical debt, and feature requests are managed e
     - [x] Native OS Desktop Notifications via `notify-rust`.
     - [x] Zero-friction ingest: Terminal Drag-and-Drop and OS Clipboard monitoring.
 - [ ] **infra: Add CI cross-platform matrix and cargo audit workflow** (Issue #148) `[infra, priority:moderate]`
+- [ ] **infra: CI test matrix missing Windows and macOS runners (Issue #148 partially done)** (Issue #287) `[infra, priority:moderate, module:ci]`
+- [ ] **feat: Implement BitTorrent tracker scrape for swarm statistics** (Issue #289) `[module:core, priority:moderate]`
 - [x] **feat: ETag and Last-Modified conditional GET for incremental file refresh** (Issue #255) `[module:core, priority:moderate]`
 - [x] **perf: Share reqwest HTTP connection pool across segment workers for same-host downloads** (Issue #256) `[module:core, priority:moderate]`
 - [x] **feat: BitTorrent seeding ratio and maximum seeding time limits** (Issue #257) `[module:core, priority:moderate]`

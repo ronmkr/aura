@@ -169,6 +169,44 @@ impl StorageEngine {
     }
 
     pub(crate) async fn execute_io_task(&mut self, task: super::scheduler::IoTask) -> Result<()> {
+        let io_mode = self
+            .config
+            .as_ref()
+            .map(|cfg| cfg.load().storage.io_mode.clone())
+            .unwrap_or_else(|| "auto".to_string());
+
+        let target_len = self.task_lengths.get(&task.task_id).cloned().unwrap_or(0);
+        // Large file threshold is 10MB
+        let is_large_file = target_len >= 10 * 1024 * 1024;
+
+        match io_mode.as_str() {
+            "mmap" => self.execute_io_task_mmap(&task).await,
+            "io_uring" => {
+                #[cfg(all(target_os = "linux", feature = "io_uring"))]
+                {
+                    self.execute_io_task_uring(task).await
+                }
+                #[cfg(not(all(target_os = "linux", feature = "io_uring")))]
+                {
+                    self.execute_io_task_standard(task).await
+                }
+            }
+            "standard" => self.execute_io_task_standard(task).await,
+            _ => {
+                // "auto" mode
+                if is_large_file {
+                    self.execute_io_task_mmap(&task).await
+                } else {
+                    self.execute_io_task_standard(task).await
+                }
+            }
+        }
+    }
+
+    pub(crate) async fn execute_io_task_standard(
+        &mut self,
+        task: super::scheduler::IoTask,
+    ) -> Result<()> {
         let file: &mut File = self.get_or_open_part_file(task.task_id).await?;
         use tokio::io::AsyncSeekExt;
         use tokio::io::AsyncWriteExt;
@@ -185,12 +223,61 @@ impl StorageEngine {
         Ok(())
     }
 
+    #[cfg(all(target_os = "linux", feature = "io_uring"))]
+    pub(crate) async fn execute_io_task_uring(
+        &mut self,
+        task: super::scheduler::IoTask,
+    ) -> Result<()> {
+        self.execute_io_task_standard(task).await
+    }
+
     /// Platform-agnostic memory-mapped I/O fallback writer for large files.
-    #[allow(dead_code)]
-    pub(crate) fn execute_io_task_mmap(&mut self, _task: &super::scheduler::IoTask) -> Result<()> {
-        // Placeholder skeleton for memory-mapped I/O fallback.
-        // Once activated, large files can be mapped into memory and written directly.
-        Ok(())
+    pub(crate) async fn execute_io_task_mmap(
+        &mut self,
+        task: &super::scheduler::IoTask,
+    ) -> Result<()> {
+        let base_path = self
+            .task_paths
+            .get(&task.task_id)
+            .ok_or(crate::Error::TaskNotFound(task.task_id))?;
+        let part_path = get_part_path(base_path)?;
+
+        let part_path_clone = part_path.clone();
+        let task_offset = task.offset;
+        let task_data: Vec<Vec<u8>> = task.data.iter().map(|b| b.to_vec()).collect();
+
+        tokio::task::spawn_blocking(move || -> Result<()> {
+            let file = std::fs::OpenOptions::new()
+                .read(true)
+                .write(true)
+                .open(&part_path_clone)?;
+
+            let total_len: usize = task_data.iter().map(|d| d.len()).sum();
+            if total_len == 0 {
+                return Ok(());
+            }
+
+            let mut mmap = unsafe { memmap2::MmapMut::map_mut(&file)? };
+
+            let mut current_offset = task_offset as usize;
+            for data in task_data {
+                let end = current_offset + data.len();
+                if end <= mmap.len() {
+                    mmap[current_offset..end].copy_from_slice(&data);
+                } else {
+                    return Err(crate::Error::Storage(
+                        "mmap write out of bounds".to_string(),
+                    ));
+                }
+                current_offset = end;
+            }
+
+            mmap.flush_range(task_offset as usize, total_len)?;
+
+            Ok(())
+        })
+        .await
+        .map_err(|e| crate::Error::Storage(format!("spawn_blocking failed: {}", e)))?
     }
 
     pub(crate) async fn get_or_open_part_file(&mut self, id: TaskId) -> Result<&mut File> {
