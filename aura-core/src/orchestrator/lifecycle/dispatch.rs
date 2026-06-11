@@ -297,6 +297,41 @@ impl Orchestrator {
                                 }
                             }
                         }
+                        TaskType::Nntp => {
+                            #[cfg(feature = "nntp")]
+                            let worker = orchestrator_handle
+                                .build_worker_builder(uri, tenant_id_clone)
+                                .build_nntp();
+                            let segment = Segment {
+                                offset: range.start,
+                                length: range.length(),
+                            };
+
+                            tokio::select! {
+                                _ = token_clone.cancelled() => {}
+                                res = async {
+                                    #[cfg(feature = "nntp")] {
+                                        worker.fetch_segment(meta_id, segment, Some(progress_tx), Some(storage_tx.clone()), throttler_clone.clone()).await
+                                    }
+                                    #[cfg(not(feature = "nntp"))] {
+                                        let _ = (&meta_id, &progress_tx, &storage_tx, &throttler_clone, &segment);
+                                        Err::<crate::worker::PieceData, crate::Error>(crate::Error::Protocol("NNTP feature not enabled".to_string()))
+                                    }
+                                } => {
+                                    let _ = progress_handle.await;
+                                    match res {
+                                        Ok(piece) => {
+                                            let _ = storage_tx.send(StorageRequest::Write { task_id: meta_id, segment: piece.segment, data: piece.data, guard: None, generation: None }).await;
+                                            let _ = subtask_tx.send(SubTaskEvent::RangeFinished(meta_id, sub_id, range)).await;
+                                        }
+                                        Err(e) => {
+                                            debug!(%meta_id, %sub_id, error = %e, "NNTP range fetch failed");
+                                            let _ = subtask_tx.send(crate::orchestrator::SubTaskEvent::Failed(meta_id, sub_id, e.to_string())).await;
+                                        }
+                                    }
+                                }
+                            }
+                        }
                         TaskType::BitTorrent => {}
                     }
                 });

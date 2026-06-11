@@ -13,6 +13,7 @@ pub enum DetectedType {
     Metalink,
     S3,
     GDrive,
+    Nntp,
 }
 
 impl DetectedType {
@@ -24,6 +25,7 @@ impl DetectedType {
             DetectedType::Metalink => TaskType::Http, // Initially fetched as HTTP or read from file
             DetectedType::S3 => TaskType::S3,
             DetectedType::GDrive => TaskType::GDrive,
+            DetectedType::Nntp => TaskType::Nntp,
         }
     }
 }
@@ -48,6 +50,12 @@ impl ProtocolDetector {
         }
         if input.starts_with("gdrive://") || input.starts_with("onedrive://") {
             return Some(DetectedType::GDrive);
+        }
+        if input.starts_with("nntp://")
+            || input.starts_with("nntps://")
+            || input.starts_with("news://")
+        {
+            return Some(DetectedType::Nntp);
         }
         if input.starts_with("http://") {
             return Some(DetectedType::Http);

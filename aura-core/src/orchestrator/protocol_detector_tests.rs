@@ -24,6 +24,18 @@ async fn test_detect_uri_schemes() {
         ProtocolDetector::detect("magnet:?xt=urn:btih:abc").await,
         Some(DetectedType::BitTorrent)
     );
+    assert_eq!(
+        ProtocolDetector::detect("nntp://news.example.com").await,
+        Some(DetectedType::Nntp)
+    );
+    assert_eq!(
+        ProtocolDetector::detect("nntps://news.example.com").await,
+        Some(DetectedType::Nntp)
+    );
+    assert_eq!(
+        ProtocolDetector::detect("news://news.example.com").await,
+        Some(DetectedType::Nntp)
+    );
 }
 
 #[tokio::test]
