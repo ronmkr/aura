@@ -1,7 +1,7 @@
 # ADR 0023: Adaptive Connection Scaling and Sourced Aggregation
 
 ## Status
-Partially Implemented (2026-05-25, PR #90)
+Implemented (2026-06-11, PR #294)
 
 ## Context
 Many file-hosting servers (Rapidshare, Megashare) and even standard HTTP servers apply per-connection speed limits to free users or as a general throttling measure. Additionally, users often have access to a file via multiple protocols (e.g., a Torrent and an HTTP mirror).
@@ -23,4 +23,4 @@ Many file-hosting servers (Rapidshare, Megashare) and even standard HTTP servers
 - **Adaptive Connection Scaling**: Implemented in `aura-core/src/orchestrator/scheduler.rs` (2026-05-25, PR #90).
 - **Sourced Aggregation**: Implemented for HTTP/BitTorrent/Metalink via PR #91 (2026-05-25).
 - **Connection Pool Sharing**: Shared reqwest HTTP connection pool across same-host workers implemented in Issue #256.
-- **Usenet Integration**: Pending (Issue #22, NNTP support).
+- **Usenet Integration**: Implemented (2026-06-11, PR #294).

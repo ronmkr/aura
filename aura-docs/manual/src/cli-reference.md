@@ -19,7 +19,7 @@ aura "https://example.com/file.zip"
 ### Arguments
 
 - `[URIS]...`: One or more URIs to download. 
-    - **Supported Protocols**: `http`, `https`, `ftp`, `ftps`, `magnet`.
+    - **Supported Protocols**: `http`, `https`, `ftp`, `ftps`, `magnet`, `nntp`, `nntps`, `news`.
     - **Metadata Files**: Paths to local `.torrent`, `.metalink`, or `.meta4` files.
     - **Multi-Source**: If multiple URIs are provided, Aura automatically treats them as mirrors for a single task.
 
@@ -129,4 +129,4 @@ Aura aggregates bandwidth from multiple sources automatically.
 aura "https://mirror-a.org/ubuntu.iso" "ftp://mirror-b.net/ubuntu.iso"
 ```
 - **Racing Work Stealer**: Faster mirrors "steal" chunks from slower ones.
-- **Protocol Mixing**: Mix HTTP, FTP, and BitTorrent sources seamlessly.
+- **Protocol Mixing**: Mix HTTP, FTP, BitTorrent, and Usenet (NNTP) sources seamlessly.
