@@ -1,0 +1,6 @@
+[advisories]
+ignore = [
+    "RUSTSEC-2026-0104", # Reachable panic in certificate revocation list parsing (rustls-webpki)
+    "RUSTSEC-2026-0098", # Name constraints for URI names were incorrectly accepted (rustls-webpki)
+    "RUSTSEC-2026-0099"  # Name constraints were accepted for certificates asserting a wildcard name (rustls-webpki)
+]

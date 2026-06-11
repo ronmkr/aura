@@ -18,6 +18,8 @@ pub enum TaskType {
     Http,
     BitTorrent,
     Ftp,
+    S3,
+    GDrive,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

@@ -119,6 +119,44 @@ impl Orchestrator {
                             }
                         }
                     }
+                    TaskType::S3 => {
+                        let worker = orchestrator_handle
+                            .build_worker_builder(uri, tenant_id)
+                            .build_s3();
+                        match worker.resolve_metadata().await {
+                            Ok(m) => {
+                                let _ = subtask_tx.send(SubTaskEvent::Matured(id, sub_id, m)).await;
+                            }
+                            Err(e) => {
+                                let _ = subtask_tx
+                                    .send(crate::orchestrator::SubTaskEvent::Failed(
+                                        id,
+                                        sub_id,
+                                        e.to_string(),
+                                    ))
+                                    .await;
+                            }
+                        }
+                    }
+                    TaskType::GDrive => {
+                        let worker = orchestrator_handle
+                            .build_worker_builder(uri, tenant_id)
+                            .build_gdrive();
+                        match worker.resolve_metadata().await {
+                            Ok(m) => {
+                                let _ = subtask_tx.send(SubTaskEvent::Matured(id, sub_id, m)).await;
+                            }
+                            Err(e) => {
+                                let _ = subtask_tx
+                                    .send(crate::orchestrator::SubTaskEvent::Failed(
+                                        id,
+                                        sub_id,
+                                        e.to_string(),
+                                    ))
+                                    .await;
+                            }
+                        }
+                    }
                     TaskType::BitTorrent => {
                         let bt_task = if let Some(bt) = existing_bt {
                             bt

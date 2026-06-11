@@ -40,6 +40,25 @@ For tasks with multiple files, you can choose exactly what to download:
 
 ---
 
+## Cloud Storage (ADR 0013)
+
+Aura supports direct, range-based downloads from S3-compatible APIs and personal cloud storage providers (Google Drive and OneDrive):
+
+```bash
+# Download a file from an S3 bucket
+aura "s3://my-bucket/dataset.tar.gz"
+
+# Download a file from Google Drive
+aura "gdrive://file-id-here"
+
+# Download a file from OneDrive
+aura "onedrive://item-id-here"
+```
+
+Aura's **ProtocolDetector** automatically identifies these cloud URIs and initiates the appropriate worker to perform chunked, parallel range-based downloads.
+
+---
+
 ## Bulk Ingestion (ADR 0065)
 
 Aura makes it easy to add hundreds of downloads at once:

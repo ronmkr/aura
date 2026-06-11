@@ -27,6 +27,8 @@ strip = true
 
 [workspace.dependencies]
 arboard = "3.6.1"
+aws-config = "1.8"
+aws-sdk-s3 = "1.135"
 anyhow = "1"
 arc-swap = "1.9.1"
 async-stream = "0.3"
