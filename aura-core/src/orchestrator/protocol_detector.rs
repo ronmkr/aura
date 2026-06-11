@@ -11,6 +11,8 @@ pub enum DetectedType {
     Ftps,
     BitTorrent,
     Metalink,
+    S3,
+    GDrive,
 }
 
 impl DetectedType {
@@ -20,6 +22,8 @@ impl DetectedType {
             DetectedType::Ftp | DetectedType::Ftps => TaskType::Ftp,
             DetectedType::BitTorrent => TaskType::BitTorrent,
             DetectedType::Metalink => TaskType::Http, // Initially fetched as HTTP or read from file
+            DetectedType::S3 => TaskType::S3,
+            DetectedType::GDrive => TaskType::GDrive,
         }
     }
 }
@@ -38,6 +42,12 @@ impl ProtocolDetector {
         // 1. Check for well-known URI schemes
         if input.starts_with("magnet:") {
             return Some(DetectedType::BitTorrent);
+        }
+        if input.starts_with("s3://") {
+            return Some(DetectedType::S3);
+        }
+        if input.starts_with("gdrive://") || input.starts_with("onedrive://") {
+            return Some(DetectedType::GDrive);
         }
         if input.starts_with("http://") {
             return Some(DetectedType::Http);

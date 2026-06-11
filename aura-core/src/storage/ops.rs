@@ -54,6 +54,10 @@ impl StorageEngine {
         segment: Segment,
         data: BytesMut,
     ) -> Result<()> {
+        if data.is_empty() {
+            return Ok(());
+        }
+
         let padding_ranges = self
             .task_padding_ranges
             .get(&id)

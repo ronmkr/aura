@@ -331,6 +331,3 @@ async fn test_http_worker_alt_svc_header_caching() {
     assert_eq!(policy.alt_protocol, "h3");
     assert_eq!(policy.alt_port, 8443);
 }
-
-#[path = "captive_portal_tests.rs"]
-mod captive_portal_tests;

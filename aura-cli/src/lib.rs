@@ -116,6 +116,10 @@ pub async fn run(args: Args) -> Result<()> {
                 TaskType::BitTorrent
             } else if uri.starts_with("ftp://") || uri.starts_with("ftps://") {
                 TaskType::Ftp
+            } else if uri.starts_with("s3://") {
+                TaskType::S3
+            } else if uri.starts_with("gdrive://") || uri.starts_with("onedrive://") {
+                TaskType::GDrive
             } else {
                 TaskType::Http
             };
@@ -152,6 +156,10 @@ pub async fn run(args: Args) -> Result<()> {
                 TaskType::Http
             } else if uri.starts_with("ftp://") || uri.starts_with("ftps://") {
                 TaskType::Ftp
+            } else if uri.starts_with("s3://") {
+                TaskType::S3
+            } else if uri.starts_with("gdrive://") || uri.starts_with("onedrive://") {
+                TaskType::GDrive
             } else {
                 TaskType::Http
             };

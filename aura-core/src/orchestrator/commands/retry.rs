@@ -87,6 +87,38 @@ impl Orchestrator {
                             }
                         }
                     }
+                    TaskType::S3 => {
+                        let worker = crate::worker::WorkerBuilder::new(uri)
+                            .local_addr(local_addr)
+                            .credential_provider(provider_clone)
+                            .build_s3();
+                        match worker.resolve_metadata().await {
+                            Ok(m) => {
+                                let _ = subtask_tx.send(SubTaskEvent::Matured(id, sub_id, m)).await;
+                            }
+                            Err(e) => {
+                                let _ = subtask_tx
+                                    .send(SubTaskEvent::Failed(id, sub_id, e.to_string()))
+                                    .await;
+                            }
+                        }
+                    }
+                    TaskType::GDrive => {
+                        let worker = crate::worker::WorkerBuilder::new(uri)
+                            .local_addr(local_addr)
+                            .credential_provider(provider_clone)
+                            .build_gdrive();
+                        match worker.resolve_metadata().await {
+                            Ok(m) => {
+                                let _ = subtask_tx.send(SubTaskEvent::Matured(id, sub_id, m)).await;
+                            }
+                            Err(e) => {
+                                let _ = subtask_tx
+                                    .send(SubTaskEvent::Failed(id, sub_id, e.to_string()))
+                                    .await;
+                            }
+                        }
+                    }
                     TaskType::BitTorrent => {}
                 }
             });

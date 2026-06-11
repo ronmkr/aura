@@ -162,5 +162,5 @@ fn test_streaming_mode_priority() {
     let picked7 = picker
         .pick_next(&my_bf_updated, "1.1.1.1:80", false, true)
         .unwrap();
-    assert!(picked7 >= 3 && picked7 <= 6);
+    assert!((3..=6).contains(&picked7));
 }

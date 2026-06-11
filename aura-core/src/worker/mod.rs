@@ -5,9 +5,8 @@ pub mod http;
 pub mod types;
 pub use types::*;
 
-#[cfg(feature = "gdrive")]
 pub mod gdrive;
+pub(crate) mod gdrive_utils;
 #[cfg(feature = "nntp")]
 pub mod nntp;
-#[cfg(feature = "s3")]
 pub mod s3;
