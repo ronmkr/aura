@@ -1,8 +1,8 @@
 use crate::throttler::Throttler;
-use crate::worker::{PieceData, ProgressSender, ProtocolWorker, Segment, WorkerOptions};
+use crate::worker::builder::WorkerOptions;
+use crate::worker::{PieceData, ProgressSender, ProtocolWorker, Segment};
 use crate::{Result, TaskId};
 use async_trait::async_trait;
-use bytes::BytesMut;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 
