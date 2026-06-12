@@ -40,7 +40,7 @@ aura-daemon = { path = "aura-daemon" }
 aura-tui = { path = "aura-tui" }
 axum = { version = "0.8", features = ["ws"] }
 axum-server = { version = "0.7", features = ["tls-rustls"] }
-rcgen = "0.13"
+rcgen = "0.14"
 bytes = "1"
 bytesize = "2.3.1"
 chrono = { version = "0.4", features = ["serde"] }
