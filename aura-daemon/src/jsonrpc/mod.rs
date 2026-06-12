@@ -1,5 +1,4 @@
 use super::types::{AppState, JsonRpcRequest, JsonRpcResponse};
-use crate::jsonrpc::utils::rpc_error;
 use axum::{
     extract::State,
     http::{HeaderMap, StatusCode},
@@ -11,10 +10,12 @@ use std::sync::Arc;
 use tracing::info;
 
 mod download;
+pub mod router;
 mod system;
 pub mod utils;
 
 pub use download::*;
+pub use router::RpcRouter;
 pub use system::*;
 
 pub fn authenticate(
@@ -57,47 +58,8 @@ pub async fn handle_jsonrpc(
 
     info!("RPC Method: {}", payload.method);
 
-    let (result, already_exists) = match payload.method.as_str() {
-        "aura.addUri" => match handle_add_uri(&state.engine, payload.params).await {
-            Ok((val, exists)) => (Ok(val), exists),
-            Err(err) => (Err(err), None),
-        },
-        _ => {
-            let res = match payload.method.as_str() {
-                "aura.tellActive" => handle_tell_active(&state.engine).await,
-                "aura.pause" => handle_pause(&state.engine, payload.params).await,
-                "aura.unpause" => handle_unpause(&state.engine, payload.params).await,
-                "aura.remove" => handle_remove(&state.engine, payload.params).await,
-                "aura.changeOption" => handle_change_option(&state.engine, payload.params).await,
-                "aura.refreshUri" => handle_refresh(&state.engine, payload.params).await,
-                "aura.getConfig" => handle_get_config(&state.engine).await,
-                "aura.getVersion" => handle_get_version().await,
-                "aura.getSessionInfo" => handle_get_session_info().await,
-                "aura.tellStopped" => handle_tell_stopped(&state.engine, payload.params).await,
-                "aura.tellWaiting" => handle_tell_waiting(&state.engine, payload.params).await,
-                "aura.getStatus" => handle_get_status(&state.engine, payload.params).await,
-                "aura.purgeDownloadResult" => handle_purge_download_result(&state.engine).await,
-                "aura.removeDownloadResult" => {
-                    handle_remove_download_result(&state.engine, payload.params).await
-                }
-                "aura.saveSession" => handle_save_session().await,
-                "aura.shutdown" => handle_shutdown(&state.engine).await,
-                "aura.forceShutdown" => handle_shutdown(&state.engine).await,
-                "aura.changeGlobalOption" => {
-                    handle_change_global_option(&state.engine, payload.params).await
-                }
-                "aura.getGlobalStat" => handle_get_global_stat(&state.engine).await,
-                "aura.getFiles" => handle_get_files(&state.engine, payload.params).await,
-                "aura.setFileSelection" => {
-                    handle_set_file_selection(&state.engine, payload.params).await
-                }
-                "aura.addFromFolder" => handle_add_from_folder(&state.engine, payload.params).await,
-                "aura.addFromFile" => handle_add_from_file(&state.engine, payload.params).await,
-                _ => Err(rpc_error(-32601, "Method not found")),
-            };
-            (res, None)
-        }
-    };
+    let router = RpcRouter::new(state.engine.clone());
+    let (result, already_exists) = router.route(payload.method.as_str(), payload.params).await;
 
     match result {
         Ok(res) => (

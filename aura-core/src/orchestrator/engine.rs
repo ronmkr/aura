@@ -1,5 +1,5 @@
 use super::{Command, Event, Orchestrator};
-use crate::dht::DhtActor;
+use crate::dht::DhtManager;
 use crate::storage::{StorageEngine, StorageEvent};
 use crate::Result;
 use arc_swap::ArcSwap;
@@ -27,7 +27,6 @@ impl Engine {
         let (storage_tx, storage_rx) = mpsc::channel(config.limits.storage_channel_capacity);
         let (completion_tx, completion_rx) =
             mpsc::channel::<StorageEvent>(config.limits.storage_channel_capacity);
-        let (dht_tx, dht_rx) = mpsc::channel(config.limits.command_channel_capacity);
         let (nat_tx, nat_rx) = mpsc::channel(config.limits.command_channel_capacity);
         let (lpd_tx, lpd_rx) = mpsc::channel(config.limits.command_channel_capacity);
 
@@ -53,21 +52,17 @@ impl Engine {
             "{}:{}",
             initial_config.network.bind_address, initial_config.network.dht_port
         );
-        let dht_actor: DhtActor = DhtActor::new(
+        let dht_manager = DhtManager::new(
             &dht_bind_addr,
             dht_id,
-            dht_rx,
             local_addr,
             initial_config.network.dht_port,
             Some(storage.db.clone()),
             config.clone(),
+            initial_config.limits.command_channel_capacity,
         )
         .await?;
-        tokio::spawn(async move {
-            if let Err(e) = dht_actor.run().await {
-                warn!("DHT Actor stopped: {}", e);
-            }
-        });
+        let dht_tx = dht_manager.tx;
 
         use crate::nat::{NatActor, NatCommand};
         let nat_actor = NatActor::new(nat_rx);
