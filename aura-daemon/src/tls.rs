@@ -34,7 +34,7 @@ pub fn setup_tls(
         let subject_alt_names = vec!["localhost".to_string(), "127.0.0.1".to_string()];
         let cert_key = rcgen::generate_simple_self_signed(subject_alt_names)?;
         let cert_pem = cert_key.cert.pem();
-        let key_pem = cert_key.key_pair.serialize_pem();
+        let key_pem = cert_key.signing_key.serialize_pem();
 
         write_private_file(&cert_path, cert_pem.as_bytes())?;
         write_private_file(&key_path, key_pem.as_bytes())?;
