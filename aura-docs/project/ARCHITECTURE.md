@@ -101,8 +101,10 @@ This table maps architectural concepts to the verified codebase paths as identif
 | **HTTP Worker** | `aura-core/src/worker/http/mod.rs` | Mirror racing & segmenting |
 | **BT Worker** | `aura-core/src/worker/bittorrent/mod.rs` | Swarm management |
 | **BT v2 Merkle** | `aura-core/src/torrent/v2/merkle.rs` | Block-level integrity |
+| **DHT Manager** | `aura-core/src/dht/mod.rs` | Kademlia routing & protocol facade |
+| **NNTP Worker** | `aura-core/src/worker/nntp/worker.rs` | Usenet/Newsgroup segment fetching |
 | **VPN Provider** | `aura-core/src/vpn/wireguard.rs` | Tunnel enforcement |
-| **RPC Server** | `aura-daemon/src/server.rs` | JSON-RPC (binds to 127.0.0.1 by default; configurable via [network] bind_address) |
-| **TUI App** | `aura-tui/src/app.rs` | Stateful view management |
+| **RPC Router** | `aura-daemon/src/jsonrpc/router.rs` | Centralized JSON-RPC dispatch |
+| **TUI App State** | `aura-tui/src/app/state.rs` | Stateful view management |
 | **CLI Client** | `aura/src/cli_client.rs` | Unified binary gateway |
 ---
