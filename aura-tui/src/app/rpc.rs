@@ -36,7 +36,7 @@ impl App {
         if let Some(result) = body.get("result") {
             let mut files: Vec<FileInfo> = serde_json::from_value(result.clone())?;
 
-            if let Some(dl) = self.downloads.iter().find(|d| d.gid == gid) {
+            if let Some(dl) = self.data.downloads.iter().find(|d| d.gid == gid) {
                 if let Some(ref selection) = dl.selected_files {
                     for (i, f) in files.iter_mut().enumerate() {
                         f.selected = selection.get(i).copied().unwrap_or(true);
@@ -48,14 +48,14 @@ impl App {
                 }
             }
 
-            self.files = files;
-            self.file_table_state.select(Some(0));
+            self.data.files = files;
+            self.ui.file_table_state.select(Some(0));
         }
         Ok(())
     }
 
     pub async fn submit_file_selection(&self, gid: &str) -> anyhow::Result<()> {
-        let selection: Vec<bool> = self.files.iter().map(|f| f.selected).collect();
+        let selection: Vec<bool> = self.data.files.iter().map(|f| f.selected).collect();
         let _ = self
             .call_rpc(
                 "aura.setFileSelection",
@@ -71,7 +71,7 @@ impl App {
 
         if let Ok(body) = res {
             if let Some(result) = body.get("result") {
-                self.theme = Theme::from_config(result);
+                self.ui.theme = Theme::from_config(result);
 
                 // Update tick rate from config if available
                 if let Some(tui_cfg) = result.get("tui") {
@@ -100,9 +100,9 @@ impl App {
 
                     let is_valid = is_uri || std::path::Path::new(trimmed).exists();
 
-                    if is_valid && self.view_state == ViewState::Dashboard {
-                        self.discovery_input = trimmed.to_string();
-                        self.view_state = ViewState::Discovery;
+                    if is_valid && self.ui.view_state == ViewState::Dashboard {
+                        self.ui.discovery_input = trimmed.to_string();
+                        self.ui.view_state = ViewState::Discovery;
                     }
                 }
             }
@@ -117,6 +117,7 @@ impl App {
                     for dl in &new_downloads {
                         let speed = dl.download_speed.parse::<u64>().unwrap_or(0);
                         let history = self
+                            .data
                             .speed_history
                             .entry(dl.gid.clone())
                             .or_insert_with(|| VecDeque::with_capacity(100));
@@ -125,20 +126,20 @@ impl App {
                         }
                         history.push_back(speed);
                     }
-                    self.downloads = new_downloads;
-                    self.error_msg = None;
+                    self.data.downloads = new_downloads;
+                    self.ui.error_msg = None;
                 }
             }
             Err(e) => {
-                self.error_msg = Some(format!("Daemon Connection Error: {}", e));
+                self.ui.error_msg = Some(format!("Daemon Connection Error: {}", e));
             }
         }
         Ok(())
     }
 
     pub async fn pause_selected(&mut self) -> anyhow::Result<()> {
-        if let Some(i) = self.table_state.selected() {
-            if let Some(dl) = self.downloads.get(i) {
+        if let Some(i) = self.ui.table_state.selected() {
+            if let Some(dl) = self.data.downloads.get(i) {
                 let _ = self
                     .call_rpc("aura.pause", Some(json!([dl.gid])), "tui")
                     .await;
@@ -148,8 +149,8 @@ impl App {
     }
 
     pub async fn resume_selected(&mut self) -> anyhow::Result<()> {
-        if let Some(i) = self.table_state.selected() {
-            if let Some(dl) = self.downloads.get(i) {
+        if let Some(i) = self.ui.table_state.selected() {
+            if let Some(dl) = self.data.downloads.get(i) {
                 let _ = self
                     .call_rpc("aura.unpause", Some(json!([dl.gid])), "tui")
                     .await;
@@ -159,9 +160,9 @@ impl App {
     }
 
     pub async fn submit_discovery(&mut self) -> anyhow::Result<()> {
-        let input = self.discovery_input.trim().to_string();
+        let input = self.ui.discovery_input.trim().to_string();
         if input.is_empty() {
-            self.view_state = ViewState::Dashboard;
+            self.ui.view_state = ViewState::Dashboard;
             return Ok(());
         }
 
@@ -175,7 +176,7 @@ impl App {
             if is_dir {
                 self.call_rpc(
                     "aura.addFromFolder",
-                    Some(json!([input, self.discovery_recursive])),
+                    Some(json!([input, self.ui.discovery_recursive])),
                     "tui-discovery",
                 )
                 .await?;
@@ -188,15 +189,15 @@ impl App {
                 .await?;
         }
 
-        self.discovery_input.clear();
-        self.view_state = ViewState::Dashboard;
+        self.ui.discovery_input.clear();
+        self.ui.view_state = ViewState::Dashboard;
         Ok(())
     }
 
     pub async fn submit_command(&mut self) -> anyhow::Result<()> {
-        let cmd = self.command_input.trim().to_lowercase();
-        self.command_input.clear();
-        self.view_state = ViewState::Dashboard;
+        let cmd = self.ui.command_input.trim().to_lowercase();
+        self.ui.command_input.clear();
+        self.ui.view_state = ViewState::Dashboard;
 
         if cmd == "quit" || cmd == "q" {
             self.should_quit = true;
@@ -205,7 +206,7 @@ impl App {
         } else if cmd == "resume-all" {
             self.resume_all().await?;
         } else if cmd == "help" {
-            self.view_state = ViewState::Help;
+            self.ui.view_state = ViewState::Help;
         } else if let Some(stripped) = cmd.strip_prefix("add ") {
             let uri = stripped.trim().to_string();
             if !uri.is_empty() {

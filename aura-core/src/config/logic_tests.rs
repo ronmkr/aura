@@ -6,7 +6,7 @@ fn test_deserialize_dns_resolver_simple() {
         [network]
         dns_resolver = "cloudflare"
     "#;
-    let config: Config = toml::from_str(toml_str).unwrap();
+    let config: AuraConfig = toml::from_str(toml_str).unwrap();
     assert_eq!(
         config.network.dns_resolver,
         ResolverConfig::Simple("cloudflare".to_string())
@@ -16,7 +16,7 @@ fn test_deserialize_dns_resolver_simple() {
         [network]
         dns_resolver = "system"
     "#;
-    let config: Config = toml::from_str(toml_str).unwrap();
+    let config: AuraConfig = toml::from_str(toml_str).unwrap();
     assert_eq!(
         config.network.dns_resolver,
         ResolverConfig::Simple("system".to_string())
@@ -31,7 +31,7 @@ fn test_deserialize_dns_resolver_doh() {
         url = "https://cloudflare-dns.com/dns-query"
         ips = ["1.1.1.1", "1.0.0.1"]
     "#;
-    let config: Config = toml::from_str(toml_str).unwrap();
+    let config: AuraConfig = toml::from_str(toml_str).unwrap();
     assert_eq!(
         config.network.dns_resolver,
         ResolverConfig::Structured(StructuredResolverConfig::Doh {
@@ -50,7 +50,7 @@ fn test_deserialize_dns_resolver_dot() {
         port = 853
         tls_name = "cloudflare-dns.com"
     "#;
-    let config: Config = toml::from_str(toml_str).unwrap();
+    let config: AuraConfig = toml::from_str(toml_str).unwrap();
     assert_eq!(
         config.network.dns_resolver,
         ResolverConfig::Structured(StructuredResolverConfig::Dot {
@@ -64,7 +64,7 @@ fn test_deserialize_dns_resolver_dot() {
 #[test]
 fn test_empty_config_deserialization() {
     let toml_str = "";
-    let config: Config = toml::from_str(toml_str).unwrap();
+    let config: AuraConfig = toml::from_str(toml_str).unwrap();
 
     // Check that defaults are fully filled
     assert_eq!(config.network.listen_port, 6881);
@@ -86,7 +86,7 @@ fn test_partial_config_deserialization() {
         [bandwidth]
         global_download_limit = 500000
     "#;
-    let config: Config = toml::from_str(toml_str).unwrap();
+    let config: AuraConfig = toml::from_str(toml_str).unwrap();
 
     // Overridden fields
     assert_eq!(config.network.listen_port, 9000);
@@ -103,7 +103,7 @@ fn test_invalid_toml_syntax() {
         [network
         listen_port = 9000
     "#;
-    let result = toml::from_str::<Config>(toml_str);
+    let result = toml::from_str::<AuraConfig>(toml_str);
     assert!(result.is_err());
 }
 
@@ -114,13 +114,13 @@ fn test_invalid_dns_resolver_type() {
         type = "invalid_type"
         server = "1.1.1.1"
     "#;
-    let result = toml::from_str::<Config>(toml_str);
+    let result = toml::from_str::<AuraConfig>(toml_str);
     assert!(result.is_err());
 }
 
 #[test]
 fn test_apply_cli_overrides() {
-    let mut config = Config::default();
+    let mut config = AuraConfig::default();
     config.apply_cli_overrides(CliOverrides {
         download_dir: Some("custom_dir".to_string()),
         limit: Some(12345),
@@ -156,7 +156,7 @@ fn test_load_resolved_custom_path() {
     temp.write_all(toml_content.as_bytes()).unwrap();
 
     let path_str = temp.path().to_str().unwrap();
-    let config = Config::load_resolved(Some(path_str)).unwrap();
+    let config = AuraConfig::load_resolved(Some(path_str)).unwrap();
     assert_eq!(config.network.listen_port, 7777);
     assert_eq!(config.config_path, Some(temp.path().to_path_buf()));
 }

@@ -1,5 +1,5 @@
 use super::{Command, Event, Orchestrator};
-use crate::dht::DhtActor;
+use crate::dht::DhtManager;
 use crate::storage::{StorageEngine, StorageEvent};
 use crate::Result;
 use arc_swap::ArcSwap;
@@ -12,7 +12,7 @@ use tracing::{info, warn};
 pub struct Engine {
     pub(crate) command_tx: mpsc::Sender<Command>,
     pub(crate) event_tx: broadcast::Sender<Event>,
-    pub config: Arc<ArcSwap<crate::Config>>,
+    pub config: Arc<ArcSwap<crate::AuraConfig>>,
 }
 
 impl std::fmt::Debug for Engine {
@@ -22,12 +22,11 @@ impl std::fmt::Debug for Engine {
 }
 
 impl Engine {
-    pub async fn new(config: crate::Config) -> Result<(Self, Orchestrator, StorageEngine)> {
+    pub async fn new(config: crate::AuraConfig) -> Result<(Self, Orchestrator, StorageEngine)> {
         let (command_tx, command_rx) = mpsc::channel(config.limits.command_channel_capacity);
         let (storage_tx, storage_rx) = mpsc::channel(config.limits.storage_channel_capacity);
         let (completion_tx, completion_rx) =
             mpsc::channel::<StorageEvent>(config.limits.storage_channel_capacity);
-        let (dht_tx, dht_rx) = mpsc::channel(config.limits.command_channel_capacity);
         let (nat_tx, nat_rx) = mpsc::channel(config.limits.command_channel_capacity);
         let (lpd_tx, lpd_rx) = mpsc::channel(config.limits.command_channel_capacity);
 
@@ -53,21 +52,17 @@ impl Engine {
             "{}:{}",
             initial_config.network.bind_address, initial_config.network.dht_port
         );
-        let dht_actor: DhtActor = DhtActor::new(
+        let dht_manager = DhtManager::new(
             &dht_bind_addr,
             dht_id,
-            dht_rx,
             local_addr,
             initial_config.network.dht_port,
             Some(storage.db.clone()),
             config.clone(),
+            initial_config.limits.command_channel_capacity,
         )
         .await?;
-        tokio::spawn(async move {
-            if let Err(e) = dht_actor.run().await {
-                warn!("DHT Actor stopped: {}", e);
-            }
-        });
+        let dht_tx = dht_manager.tx;
 
         use crate::nat::{NatActor, NatCommand};
         let nat_actor = NatActor::new(nat_rx);
@@ -149,7 +144,7 @@ impl Engine {
 
                     while rx.recv().await.is_some() {
                         info!("Config file modified, reloading...");
-                        if let Ok(new_config) = crate::Config::from_file(&config_path_watcher) {
+                        if let Ok(new_config) = crate::AuraConfig::from_file(&config_path_watcher) {
                             let (tx, _rx) = tokio::sync::oneshot::channel();
                             let _ = command_tx_watcher
                                 .send(Command::ReloadConfig(Arc::new(new_config), tx))

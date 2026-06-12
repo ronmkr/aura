@@ -15,7 +15,7 @@ pub struct Args {
     pub follow_on: Option<String>,
     pub priority: u32,
     pub depends_on: Vec<TaskId>,
-    pub config: aura_core::Config,
+    pub config: aura_core::AuraConfig,
 }
 
 pub async fn run(args: Args) -> Result<()> {

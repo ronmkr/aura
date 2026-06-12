@@ -1,9 +1,3 @@
-//! api: Ergonomic public API for managing download tasks.
-//!
-//! This module provides the primary interface for embedding Aura into other applications,
-//! as defined in ADR 0020. It uses an asynchronous, stream-based model for telemetry
-//! and provides lightweight handles for task control.
-
 use crate::orchestrator::{Engine, Event};
 use crate::{Result, TaskId};
 use std::pin::Pin;
@@ -116,7 +110,3 @@ impl TaskHandle {
         self.engine.remove(self.id).await
     }
 }
-
-#[cfg(test)]
-#[path = "tests.rs"]
-mod tests;

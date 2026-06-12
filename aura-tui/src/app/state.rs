@@ -36,21 +36,29 @@ pub struct FileInfo {
     pub selected: bool,
 }
 
-pub struct App {
-    pub client: reqwest::Client,
+pub struct AppData {
     pub downloads: Vec<DownloadInfo>,
-    pub table_state: TableState,
-    pub view_state: ViewState,
-    pub should_quit: bool,
-    pub error_msg: Option<String>,
-    pub theme: Theme,
-    pub speed_history: HashMap<String, VecDeque<u64>>,
     pub files: Vec<FileInfo>,
+    pub speed_history: HashMap<String, VecDeque<u64>>,
+}
+
+pub struct UiState {
+    pub table_state: TableState,
     pub file_table_state: TableState,
+    pub view_state: ViewState,
+    pub error_msg: Option<String>,
     pub discovery_input: String,
     pub discovery_recursive: bool,
     pub search_query: String,
     pub command_input: String,
+    pub theme: Theme,
+}
+
+pub struct App {
+    pub client: reqwest::Client,
+    pub data: AppData,
+    pub ui: UiState,
+    pub should_quit: bool,
     pub rpc_url: String,
     pub rpc_secret: Option<String>,
     pub tick_rate: std::time::Duration,
@@ -69,19 +77,23 @@ impl App {
 
         App {
             client: reqwest::Client::new(),
-            downloads: Vec::new(),
-            table_state,
-            view_state: ViewState::Dashboard,
+            data: AppData {
+                downloads: Vec::new(),
+                files: Vec::new(),
+                speed_history: HashMap::new(),
+            },
+            ui: UiState {
+                table_state,
+                file_table_state,
+                view_state: ViewState::Dashboard,
+                error_msg: None,
+                discovery_input: String::new(),
+                discovery_recursive: false,
+                search_query: String::new(),
+                command_input: String::new(),
+                theme: Theme::default(),
+            },
             should_quit: false,
-            error_msg: None,
-            theme: Theme::default(),
-            speed_history: HashMap::new(),
-            files: Vec::new(),
-            file_table_state,
-            discovery_input: String::new(),
-            discovery_recursive: false,
-            search_query: String::new(),
-            command_input: String::new(),
             rpc_url,
             rpc_secret,
             tick_rate: std::time::Duration::from_millis(500),

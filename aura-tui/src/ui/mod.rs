@@ -34,7 +34,7 @@ pub fn draw_ui(f: &mut Frame, app: &mut App) {
 
     draw_header(f, app, chunks[0]);
 
-    let view_state = app.view_state.clone();
+    let view_state = app.ui.view_state.clone();
     match view_state {
         ViewState::Dashboard | ViewState::Search | ViewState::CommandPalette => {
             draw_dashboard(f, app, chunks[1])
@@ -49,7 +49,7 @@ pub fn draw_ui(f: &mut Frame, app: &mut App) {
         }
     }
 
-    if app.view_state == ViewState::CommandPalette {
+    if app.ui.view_state == ViewState::CommandPalette {
         draw_command_palette(f, app, chunks[2]); // Overwrite footer with palette
     } else {
         draw_footer(f, app, chunks[2]);
@@ -57,18 +57,18 @@ pub fn draw_ui(f: &mut Frame, app: &mut App) {
 }
 
 fn draw_command_palette(f: &mut Frame, app: &App, area: Rect) {
-    let input = Paragraph::new(format!(":{}", app.command_input))
+    let input = Paragraph::new(format!(":{}", app.ui.command_input))
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .border_style(Style::default().fg(app.theme.accent)),
+                .border_style(Style::default().fg(app.ui.theme.accent)),
         )
-        .style(Style::default().fg(app.theme.accent));
+        .style(Style::default().fg(app.ui.theme.accent));
     f.render_widget(input, area);
 }
 
 fn draw_header(f: &mut Frame, app: &App, area: Rect) {
-    let header_text = match &app.view_state {
+    let header_text = match &app.ui.view_state {
         ViewState::Dashboard => "COMMAND CENTER",
         ViewState::MissionControl(_) => "MISSION CONTROL",
         ViewState::FileSelector(_) => "FILE SELECTOR",
@@ -82,41 +82,41 @@ fn draw_header(f: &mut Frame, app: &App, area: Rect) {
         Span::styled(
             " AURA ",
             Style::default()
-                .bg(app.theme.primary)
-                .fg(app.theme.background)
+                .bg(app.ui.theme.primary)
+                .fg(app.ui.theme.background)
                 .add_modifier(Modifier::BOLD),
         ),
         Span::raw(" | "),
-        Span::styled(header_text, Style::default().fg(app.theme.accent)),
+        Span::styled(header_text, Style::default().fg(app.ui.theme.accent)),
     ]))
     .block(
         Block::default()
             .borders(Borders::ALL)
-            .border_style(Style::default().fg(app.theme.primary)),
+            .border_style(Style::default().fg(app.ui.theme.primary)),
     );
     f.render_widget(header, area);
 }
 
 fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
-    let footer_text = if let Some(err) = &app.error_msg {
+    let footer_text = if let Some(err) = &app.ui.error_msg {
         Line::from(vec![
             Span::styled(
                 " ERROR ",
                 Style::default()
-                    .bg(app.theme.error)
-                    .fg(app.theme.background),
+                    .bg(app.ui.theme.error)
+                    .fg(app.ui.theme.background),
             ),
             Span::raw(" "),
-            Span::styled(err, Style::default().fg(app.theme.error)),
+            Span::styled(err, Style::default().fg(app.ui.theme.error)),
         ])
     } else {
-        match &app.view_state {
+        match &app.ui.view_state {
             ViewState::Dashboard => Line::from(vec![
                 Span::styled(
                     " COMMANDS ",
                     Style::default()
-                        .bg(app.theme.accent)
-                        .fg(app.theme.background),
+                        .bg(app.ui.theme.accent)
+                        .fg(app.ui.theme.background),
                 ),
                 Span::raw(
                     " [q] Quit | [p] Pause | [r] Resume | [j/k/g/G] Navigate | [Enter] Select ",
@@ -126,8 +126,8 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
                 Span::styled(
                     " COMMANDS ",
                     Style::default()
-                        .bg(app.theme.accent)
-                        .fg(app.theme.background),
+                        .bg(app.ui.theme.accent)
+                        .fg(app.ui.theme.background),
                 ),
                 Span::raw(" [q] Quit | [f] File Selector | [Esc] Back to Dashboard "),
             ]),
@@ -135,8 +135,8 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
                 Span::styled(
                     " COMMANDS ",
                     Style::default()
-                        .bg(app.theme.accent)
-                        .fg(app.theme.background),
+                        .bg(app.ui.theme.accent)
+                        .fg(app.ui.theme.background),
                 ),
                 Span::raw(" [q] Quit | [Space] Toggle | [s] Save | [Esc] Back to Mission Control "),
             ]),
@@ -144,8 +144,8 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
                 Span::styled(
                     " COMMANDS ",
                     Style::default()
-                        .bg(app.theme.accent)
-                        .fg(app.theme.background),
+                        .bg(app.ui.theme.accent)
+                        .fg(app.ui.theme.background),
                 ),
                 Span::raw(" [q] Quit | [Enter] Add | [Tab] Toggle Recursive | [Esc] Cancel "),
             ]),
@@ -153,8 +153,8 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
                 Span::styled(
                     " COMMANDS ",
                     Style::default()
-                        .bg(app.theme.accent)
-                        .fg(app.theme.background),
+                        .bg(app.ui.theme.accent)
+                        .fg(app.ui.theme.background),
                 ),
                 Span::raw(" [q] Quit | [Any] Type to filter | [Enter/Esc] Done "),
             ]),
@@ -162,8 +162,8 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
                 Span::styled(
                     " COMMANDS ",
                     Style::default()
-                        .bg(app.theme.accent)
-                        .fg(app.theme.background),
+                        .bg(app.ui.theme.accent)
+                        .fg(app.ui.theme.background),
                 ),
                 Span::raw(" [q] Quit | [Esc/?] Close Help "),
             ]),
@@ -171,8 +171,8 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
                 Span::styled(
                     " COMMANDS ",
                     Style::default()
-                        .bg(app.theme.accent)
-                        .fg(app.theme.background),
+                        .bg(app.ui.theme.accent)
+                        .fg(app.ui.theme.background),
                 ),
                 Span::raw(" [q] Quit | [Any] Type command | [Enter] Execute | [Esc] Cancel "),
             ]),
@@ -182,7 +182,7 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
     let footer = Paragraph::new(footer_text).block(
         Block::default()
             .borders(Borders::ALL)
-            .border_style(Style::default().fg(app.theme.accent)),
+            .border_style(Style::default().fg(app.ui.theme.accent)),
     );
     f.render_widget(footer, area);
 }

@@ -15,12 +15,12 @@ pub fn draw_help(f: &mut Frame, app: &App) {
     let header_cells = ["Context", "Command", "Action"].iter().map(|h| {
         Cell::from(*h).style(
             Style::default()
-                .fg(app.theme.highlight)
+                .fg(app.ui.theme.highlight)
                 .add_modifier(Modifier::BOLD),
         )
     });
     let header_row = Row::new(header_cells)
-        .style(Style::default().bg(app.theme.background))
+        .style(Style::default().bg(app.ui.theme.background))
         .height(1);
 
     let rows = vec![

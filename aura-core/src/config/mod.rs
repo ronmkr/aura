@@ -14,5 +14,6 @@ pub mod storage;
 pub mod tui;
 pub mod vpn;
 
+pub use logic::AuraConfig;
 pub use logic::*;
 pub use scheduler::BandwidthScheduler;

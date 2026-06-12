@@ -17,6 +17,7 @@ pub mod state;
 pub mod subtask_event;
 pub mod subtask_failure;
 pub mod subtask_handlers;
+pub mod task_handle;
 pub mod telemetry;
 pub mod vpn_enforcement;
 pub mod worker_command;
@@ -27,6 +28,7 @@ pub use mapping::MappingEngine;
 pub use policy_manager::ErrorSeverity;
 pub use state::{Orchestrator, OrchestratorHandle};
 pub use subtask_event::SubTaskEvent;
+pub use task_handle::{TaskEvent, TaskHandle};
 pub use telemetry::Event;
 pub use worker_command::WorkerCommand;
 

@@ -11,16 +11,16 @@ pub fn draw_file_selector(f: &mut Frame, app: &mut App, area: Rect, _gid: &str) 
     let header_cells = ["S", "Path", "Size"].iter().map(|h| {
         Cell::from(*h).style(
             Style::default()
-                .fg(app.theme.highlight)
+                .fg(app.ui.theme.highlight)
                 .add_modifier(Modifier::BOLD),
         )
     });
     let header_row = Row::new(header_cells)
-        .style(Style::default().bg(app.theme.background))
+        .style(Style::default().bg(app.ui.theme.background))
         .height(1)
         .bottom_margin(1);
 
-    let rows = app.files.iter().map(|item| {
+    let rows = app.data.files.iter().map(|item| {
         let selected_marker = if item.selected { "[x]" } else { "[ ]" };
         let path = item.path.join("/");
 
@@ -50,9 +50,9 @@ pub fn draw_file_selector(f: &mut Frame, app: &mut App, area: Rect, _gid: &str) 
     .row_highlight_style(
         Style::default()
             .add_modifier(Modifier::REVERSED)
-            .fg(app.theme.accent),
+            .fg(app.ui.theme.accent),
     )
     .highlight_symbol(">> ");
 
-    f.render_stateful_widget(t, area, &mut app.file_table_state);
+    f.render_stateful_widget(t, area, &mut app.ui.file_table_state);
 }
