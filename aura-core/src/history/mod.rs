@@ -26,7 +26,7 @@ thread_local! {
 pub struct HistoryManager;
 
 impl HistoryManager {
-    pub fn get_history_path(config: &crate::Config) -> std::path::PathBuf {
+    pub fn get_history_path(config: &crate::AuraConfig) -> std::path::PathBuf {
         #[cfg(test)]
         if let Some(path) = HISTORY_PATH_OVERRIDE.with(|p| p.borrow().clone()) {
             return path;
@@ -40,7 +40,7 @@ impl HistoryManager {
             .join(&config.general.history_file_name)
     }
 
-    pub fn get_old_history_path(config: &crate::Config) -> std::path::PathBuf {
+    pub fn get_old_history_path(config: &crate::AuraConfig) -> std::path::PathBuf {
         #[cfg(test)]
         if let Some(path) = HISTORY_PATH_OVERRIDE.with(|p| p.borrow().clone()) {
             return path.with_extension("old.jsonl");
@@ -54,7 +54,7 @@ impl HistoryManager {
         home.join(&config.general.aura_dir_name).join(old_name)
     }
 
-    pub fn append_record(config: &crate::Config, record: CompletedTaskRecord) {
+    pub fn append_record(config: &crate::AuraConfig, record: CompletedTaskRecord) {
         let path = Self::get_history_path(config);
         if let Some(parent) = path.parent() {
             let _ = std::fs::create_dir_all(parent);
@@ -94,7 +94,7 @@ impl HistoryManager {
         }
     }
 
-    pub fn read_records(config: &crate::Config) -> Vec<CompletedTaskRecord> {
+    pub fn read_records(config: &crate::AuraConfig) -> Vec<CompletedTaskRecord> {
         let path = Self::get_history_path(config);
         if !path.exists() {
             return Vec::new();
@@ -135,14 +135,14 @@ impl HistoryManager {
         }
     }
 
-    pub fn purge_history(config: &crate::Config) {
+    pub fn purge_history(config: &crate::AuraConfig) {
         let path = Self::get_history_path(config);
         let old_path = Self::get_old_history_path(config);
         let _ = std::fs::remove_file(path);
         let _ = std::fs::remove_file(old_path);
     }
 
-    pub fn remove_record_by_gid(config: &crate::Config, gid_str: &str) {
+    pub fn remove_record_by_gid(config: &crate::AuraConfig, gid_str: &str) {
         let path = Self::get_history_path(config);
         if !path.exists() {
             return;
@@ -185,7 +185,7 @@ impl HistoryManager {
         }
     }
 
-    fn check_rotation(config: &crate::Config) {
+    fn check_rotation(config: &crate::AuraConfig) {
         let path = Self::get_history_path(config);
         let metadata = match std::fs::metadata(&path) {
             Ok(m) => m,

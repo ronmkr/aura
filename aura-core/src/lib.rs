@@ -5,7 +5,6 @@
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-pub mod api;
 pub mod bitfield;
 pub mod dht;
 pub mod glob;
@@ -32,10 +31,9 @@ pub mod config;
 pub mod history;
 pub mod security;
 
-pub use api::{TaskEvent, TaskHandle};
-pub use config::{CliOverrides, Config};
+pub use config::{AuraConfig, AuraConfig as Config, CliOverrides};
 pub use history::{CompletedTaskRecord, HistoryManager};
-pub use orchestrator::Engine;
+pub use orchestrator::{Engine, TaskEvent, TaskHandle};
 
 /// Supported checksum algorithms for non-swarm integrity verification.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

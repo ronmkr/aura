@@ -1,14 +1,14 @@
-use crate::config::Config;
+use crate::config::AuraConfig;
 use arc_swap::ArcSwap;
 use notify_rust::Notification;
 use std::sync::Arc;
 
 pub struct NotificationService {
-    config: Arc<ArcSwap<Config>>,
+    config: Arc<ArcSwap<AuraConfig>>,
 }
 
 impl NotificationService {
-    pub fn new(config: Arc<ArcSwap<Config>>) -> Self {
+    pub fn new(config: Arc<ArcSwap<AuraConfig>>) -> Self {
         Self { config }
     }
 

@@ -12,7 +12,7 @@ use tracing::{info, warn};
 pub struct Engine {
     pub(crate) command_tx: mpsc::Sender<Command>,
     pub(crate) event_tx: broadcast::Sender<Event>,
-    pub config: Arc<ArcSwap<crate::Config>>,
+    pub config: Arc<ArcSwap<crate::AuraConfig>>,
 }
 
 impl std::fmt::Debug for Engine {
@@ -22,7 +22,7 @@ impl std::fmt::Debug for Engine {
 }
 
 impl Engine {
-    pub async fn new(config: crate::Config) -> Result<(Self, Orchestrator, StorageEngine)> {
+    pub async fn new(config: crate::AuraConfig) -> Result<(Self, Orchestrator, StorageEngine)> {
         let (command_tx, command_rx) = mpsc::channel(config.limits.command_channel_capacity);
         let (storage_tx, storage_rx) = mpsc::channel(config.limits.storage_channel_capacity);
         let (completion_tx, completion_rx) =
@@ -149,7 +149,7 @@ impl Engine {
 
                     while rx.recv().await.is_some() {
                         info!("Config file modified, reloading...");
-                        if let Ok(new_config) = crate::Config::from_file(&config_path_watcher) {
+                        if let Ok(new_config) = crate::AuraConfig::from_file(&config_path_watcher) {
                             let (tx, _rx) = tokio::sync::oneshot::channel();
                             let _ = command_tx_watcher
                                 .send(Command::ReloadConfig(Arc::new(new_config), tx))

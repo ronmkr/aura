@@ -31,7 +31,7 @@ pub struct CliOverrides {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(default)]
-pub struct Config {
+pub struct AuraConfig {
     pub network: NetworkConfig,
     pub bandwidth: BandwidthConfig,
     pub bittorrent: BitTorrentConfig,
@@ -49,7 +49,7 @@ pub struct Config {
     pub config_path: Option<std::path::PathBuf>,
 }
 
-impl Config {
+impl AuraConfig {
     pub fn from_file<P: AsRef<std::path::Path>>(path: P) -> Result<Self> {
         let content = std::fs::read_to_string(&path)
             .map_err(|e| Error::Config(format!("Failed to read config file: {}", e)))?;

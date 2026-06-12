@@ -26,7 +26,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 pub struct Args {
     pub daemonize: bool,
-    pub config: aura_core::Config,
+    pub config: aura_core::AuraConfig,
     pub tls_cert: Option<String>,
     pub tls_key: Option<String>,
     pub generate_tls_cert: bool,

@@ -14,7 +14,7 @@ pub fn draw_mission_control(f: &mut Frame, app: &mut App, area: Rect, gid: &str)
     let mut speed = 0;
     let mut total = 0;
     let mut completed = 0;
-    if let Some(dl) = app.downloads.iter().find(|d| d.gid == gid) {
+    if let Some(dl) = app.data.downloads.iter().find(|d| d.gid == gid) {
         name = dl.name.clone();
         status = dl.status.clone();
         speed = dl.download_speed.parse().unwrap_or(0);
@@ -35,10 +35,10 @@ pub fn draw_mission_control(f: &mut Frame, app: &mut App, area: Rect, gid: &str)
         .split(area);
 
     let mut error_hint = None;
-    if status == "error" && app.downloads.iter().any(|d| d.gid == gid) {
+    if status == "error" && app.data.downloads.iter().any(|d| d.gid == gid) {
         // Ideally we'd have a specific error code, but for now we'll string match
         // as a "World-Class" heuristic
-        let err_msg = app.error_msg.clone().unwrap_or_default().to_lowercase();
+        let err_msg = app.ui.error_msg.clone().unwrap_or_default().to_lowercase();
         if err_msg.contains("disk full") || err_msg.contains("no space") {
             error_hint = Some("[Action: Clear cache or free space, then hit 'r']");
         } else if err_msg.contains("connection") || err_msg.contains("timeout") {
@@ -62,7 +62,7 @@ pub fn draw_mission_control(f: &mut Frame, app: &mut App, area: Rect, gid: &str)
         text.push(Line::from(vec![Span::styled(
             hint,
             Style::default()
-                .fg(app.theme.error)
+                .fg(app.ui.theme.error)
                 .add_modifier(Modifier::BOLD),
         )]));
         text.push(Line::from(""));
@@ -71,15 +71,15 @@ pub fn draw_mission_control(f: &mut Frame, app: &mut App, area: Rect, gid: &str)
     text.extend(vec![
         Line::from(vec![Span::styled(
             "[Press 'f' to open File Selector]",
-            Style::default().fg(app.theme.highlight),
+            Style::default().fg(app.ui.theme.highlight),
         )]),
         Line::from(vec![Span::styled(
             "[Press 'r' to Refresh/Retry Mission]",
-            Style::default().fg(app.theme.highlight),
+            Style::default().fg(app.ui.theme.highlight),
         )]),
         Line::from(vec![Span::styled(
             "[Press Esc to return to Dashboard]",
-            Style::default().fg(app.theme.highlight),
+            Style::default().fg(app.ui.theme.highlight),
         )]),
     ]);
     let mc_panel = Paragraph::new(text)
@@ -96,8 +96,8 @@ pub fn draw_mission_control(f: &mut Frame, app: &mut App, area: Rect, gid: &str)
         .block(Block::default().title(" Progress ").borders(Borders::ALL))
         .gauge_style(
             Style::default()
-                .fg(app.theme.success)
-                .bg(app.theme.background),
+                .fg(app.ui.theme.success)
+                .bg(app.ui.theme.background),
         )
         .ratio(if total > 0 {
             completed as f64 / total as f64
@@ -112,20 +112,21 @@ pub fn draw_mission_control(f: &mut Frame, app: &mut App, area: Rect, gid: &str)
         ));
     f.render_widget(progress_gauge, mc_chunks[1]);
 
-    let history = app
+    let history_data: Vec<u64> = app
+        .data
         .speed_history
         .get(gid)
-        .map(|h| h.iter().copied().collect::<Vec<_>>())
+        .map(|h| h.iter().copied().collect::<Vec<u64>>())
         .unwrap_or_default();
-    let max_speed = history.iter().copied().max().unwrap_or(1).max(1);
+    let max_speed = history_data.iter().copied().max().unwrap_or(1).max(1);
     let sparkline = Sparkline::default()
         .block(
             Block::default()
                 .title(format!(" Throughput ({}/s) ", ByteSize::b(speed)))
                 .borders(Borders::ALL),
         )
-        .data(&history)
+        .data(&history_data)
         .max(max_speed)
-        .style(Style::default().fg(app.theme.accent));
+        .style(Style::default().fg(app.ui.theme.accent));
     f.render_widget(sparkline, mc_chunks[2]);
 }

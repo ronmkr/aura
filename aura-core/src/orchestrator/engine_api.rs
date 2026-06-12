@@ -1,4 +1,5 @@
 use super::{Command, Engine, Event};
+use crate::orchestrator::TaskHandle;
 use crate::task::{MetaTask, TaskType};
 use crate::{Error, Result, TaskId};
 use std::sync::Arc;
@@ -15,7 +16,7 @@ impl Engine {
         name: String,
         uri: String,
         task_type: TaskType,
-    ) -> Result<crate::api::TaskHandle> {
+    ) -> Result<TaskHandle> {
         let id = TaskId::random();
         self.add_task_with_sources(id, None, name, vec![(uri, task_type)], None)
             .await
@@ -27,7 +28,7 @@ impl Engine {
         name: String,
         uri: String,
         task_type: TaskType,
-    ) -> Result<crate::api::TaskHandle> {
+    ) -> Result<TaskHandle> {
         self.add_task_with_sources(id, None, name, vec![(uri, task_type)], None)
             .await
     }
@@ -39,7 +40,7 @@ impl Engine {
         uri: String,
         task_type: TaskType,
         checksum: Option<crate::Checksum>,
-    ) -> Result<crate::api::TaskHandle> {
+    ) -> Result<TaskHandle> {
         self.add_task_with_sources(id, None, name, vec![(uri, task_type)], checksum)
             .await
     }
@@ -47,13 +48,13 @@ impl Engine {
     pub async fn add_task_with_options(
         &self,
         args: crate::orchestrator::command::AddTaskArgs,
-    ) -> Result<crate::api::TaskHandle> {
+    ) -> Result<TaskHandle> {
         let id = args.id;
         self.command_tx
             .send(Command::AddTask(args))
             .await
             .map_err(|e| Error::Engine(format!("Failed to send AddTask command: {}", e)))?;
-        Ok(crate::api::TaskHandle::new(id, self.clone()))
+        Ok(TaskHandle::new(id, self.clone()))
     }
 
     pub async fn add_task_with_sources(
@@ -63,7 +64,7 @@ impl Engine {
         name: String,
         sources: Vec<(String, TaskType)>,
         checksum: Option<crate::Checksum>,
-    ) -> Result<crate::api::TaskHandle> {
+    ) -> Result<TaskHandle> {
         let config = self.config.load();
         self.add_task_with_options(crate::orchestrator::command::AddTaskArgs {
             id,
@@ -209,7 +210,7 @@ impl Engine {
         Ok(())
     }
 
-    pub async fn reload_config(&self, config: crate::Config) -> Result<()> {
+    pub async fn reload_config(&self, config: crate::AuraConfig) -> Result<()> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.command_tx
             .send(Command::ReloadConfig(Arc::new(config), tx))
@@ -220,7 +221,7 @@ impl Engine {
         Ok(())
     }
 
-    pub async fn tell_config(&self) -> Result<Arc<crate::Config>> {
+    pub async fn tell_config(&self) -> Result<Arc<crate::AuraConfig>> {
         let (tx, mut rx) = mpsc::channel(1);
         self.command_tx
             .send(Command::GetConfig(tx))

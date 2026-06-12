@@ -73,27 +73,27 @@ where
                         .contains(crossterm::event::KeyModifiers::CONTROL)
                         && key.code == KeyCode::Char('p')
                     {
-                        app.command_input.clear();
-                        app.view_state = app::ViewState::CommandPalette;
+                        app.ui.command_input.clear();
+                        app.ui.view_state = app::ViewState::CommandPalette;
                     } else if key.code == KeyCode::Char('q') {
                         app.should_quit = true;
                     } else if key.code == KeyCode::Char('?') {
-                        if app.view_state == app::ViewState::Help {
-                            app.view_state = app::ViewState::Dashboard;
+                        if app.ui.view_state == app::ViewState::Help {
+                            app.ui.view_state = app::ViewState::Dashboard;
                         } else {
-                            app.view_state = app::ViewState::Help;
+                            app.ui.view_state = app::ViewState::Help;
                         }
                     } else {
-                        let view_state = app.view_state.clone();
+                        let view_state = app.ui.view_state.clone();
                         match view_state {
                             app::ViewState::Dashboard => match key.code {
                                 KeyCode::Down | KeyCode::Char('j') => app.next(),
                                 KeyCode::Up | KeyCode::Char('k') => app.previous(),
                                 KeyCode::Right | KeyCode::Char('l') | KeyCode::Enter => {
                                     let filtered = app.filtered_downloads();
-                                    if let Some(i) = app.table_state.selected() {
+                                    if let Some(i) = app.ui.table_state.selected() {
                                         if let Some(dl) = filtered.get(i) {
-                                            app.view_state =
+                                            app.ui.view_state =
                                                 app::ViewState::MissionControl(dl.gid.clone());
                                         }
                                     }
@@ -101,8 +101,8 @@ where
                                 KeyCode::Home | KeyCode::Char('g') => app.first(),
                                 KeyCode::End | KeyCode::Char('G') => app.last(),
                                 KeyCode::Char('/') => {
-                                    app.search_query.clear();
-                                    app.view_state = app::ViewState::Search;
+                                    app.ui.search_query.clear();
+                                    app.ui.view_state = app::ViewState::Search;
                                 }
                                 KeyCode::Char('p') => {
                                     app.pause_selected().await?;
@@ -111,23 +111,23 @@ where
                                     app.resume_selected().await?;
                                 }
                                 KeyCode::Char('a') => {
-                                    app.discovery_input.clear();
-                                    app.view_state = app::ViewState::Discovery;
+                                    app.ui.discovery_input.clear();
+                                    app.ui.view_state = app::ViewState::Discovery;
                                 }
                                 KeyCode::Char(':') => {
-                                    app.command_input.clear();
-                                    app.view_state = app::ViewState::CommandPalette;
+                                    app.ui.command_input.clear();
+                                    app.ui.view_state = app::ViewState::CommandPalette;
                                 }
                                 _ => {}
                             },
                             app::ViewState::MissionControl(gid) => match key.code {
                                 KeyCode::Esc | KeyCode::Left | KeyCode::Char('h') => {
-                                    app.view_state = app::ViewState::Dashboard
+                                    app.ui.view_state = app::ViewState::Dashboard
                                 }
                                 KeyCode::Right | KeyCode::Char('l') | KeyCode::Char('f') => {
                                     let gid_clone = gid.clone();
                                     app.fetch_files(&gid_clone).await?;
-                                    app.view_state = app::ViewState::FileSelector(gid.clone())
+                                    app.ui.view_state = app::ViewState::FileSelector(gid.clone())
                                 }
                                 KeyCode::Char('r') => {
                                     let gid_clone = gid.clone();
@@ -144,7 +144,7 @@ where
                             },
                             app::ViewState::FileSelector(gid) => match key.code {
                                 KeyCode::Esc | KeyCode::Left | KeyCode::Char('h') => {
-                                    app.view_state = app::ViewState::MissionControl(gid.clone());
+                                    app.ui.view_state = app::ViewState::MissionControl(gid.clone());
                                 }
                                 KeyCode::Down | KeyCode::Char('j') => app.file_next(),
                                 KeyCode::Up | KeyCode::Char('k') => app.file_previous(),
@@ -153,70 +153,70 @@ where
                                 }
                                 KeyCode::Char('s') => {
                                     app.submit_file_selection(&gid).await?;
-                                    app.view_state = app::ViewState::MissionControl(gid.clone());
+                                    app.ui.view_state = app::ViewState::MissionControl(gid.clone());
                                 }
                                 _ => {}
                             },
                             app::ViewState::Discovery => match key.code {
                                 KeyCode::Esc => {
-                                    app.discovery_input.clear();
-                                    app.view_state = app::ViewState::Dashboard;
+                                    app.ui.discovery_input.clear();
+                                    app.ui.view_state = app::ViewState::Dashboard;
                                 }
                                 KeyCode::Enter => {
                                     app.submit_discovery().await?;
                                 }
                                 KeyCode::Char(c) => {
-                                    app.discovery_input.push(c);
+                                    app.ui.discovery_input.push(c);
                                 }
                                 KeyCode::Backspace => {
-                                    app.discovery_input.pop();
+                                    app.ui.discovery_input.pop();
                                 }
                                 KeyCode::Tab => {
-                                    app.discovery_recursive = !app.discovery_recursive;
+                                    app.ui.discovery_recursive = !app.ui.discovery_recursive;
                                 }
                                 _ => {}
                             },
                             app::ViewState::Search => match key.code {
                                 KeyCode::Esc | KeyCode::Enter => {
-                                    app.view_state = app::ViewState::Dashboard;
+                                    app.ui.view_state = app::ViewState::Dashboard;
                                 }
                                 KeyCode::Char(c) => {
-                                    app.search_query.push(c);
+                                    app.ui.search_query.push(c);
                                     app.clamp_selection();
                                 }
                                 KeyCode::Backspace => {
-                                    app.search_query.pop();
+                                    app.ui.search_query.pop();
                                     app.clamp_selection();
                                 }
                                 _ => {}
                             },
                             app::ViewState::CommandPalette => match key.code {
                                 KeyCode::Esc => {
-                                    app.command_input.clear();
-                                    app.view_state = app::ViewState::Dashboard;
+                                    app.ui.command_input.clear();
+                                    app.ui.view_state = app::ViewState::Dashboard;
                                 }
                                 KeyCode::Enter => {
                                     app.submit_command().await?;
                                 }
                                 KeyCode::Char(c) => {
-                                    app.command_input.push(c);
+                                    app.ui.command_input.push(c);
                                 }
                                 KeyCode::Backspace => {
-                                    app.command_input.pop();
+                                    app.ui.command_input.pop();
                                 }
                                 _ => {}
                             },
                             app::ViewState::Help => {
                                 if key.code == KeyCode::Esc || key.code == KeyCode::Char('?') {
-                                    app.view_state = app::ViewState::Dashboard;
+                                    app.ui.view_state = app::ViewState::Dashboard;
                                 }
                             }
                         }
                     }
                 }
                 Event::Paste(text) => {
-                    app.discovery_input = text.trim().to_string();
-                    app.view_state = app::ViewState::Discovery;
+                    app.ui.discovery_input = text.trim().to_string();
+                    app.ui.view_state = app::ViewState::Discovery;
                 }
                 _ => {}
             }

@@ -12,7 +12,7 @@ pub fn draw_dashboard(f: &mut Frame, app: &mut App, area: Rect) {
     let dashboard_chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints(
-            if app.view_state == ViewState::Search {
+            if app.ui.view_state == ViewState::Search {
                 [Constraint::Length(3), Constraint::Min(0)]
             } else {
                 [Constraint::Length(0), Constraint::Min(0)]
@@ -21,14 +21,14 @@ pub fn draw_dashboard(f: &mut Frame, app: &mut App, area: Rect) {
         )
         .split(area);
 
-    if app.view_state == ViewState::Search {
-        let search_block = Paragraph::new(app.search_query.as_str())
+    if app.ui.view_state == ViewState::Search {
+        let search_block = Paragraph::new(app.ui.search_query.as_str())
             .block(
                 Block::default()
                     .borders(Borders::ALL)
                     .title(" Search Tasks "),
             )
-            .style(Style::default().fg(app.theme.accent));
+            .style(Style::default().fg(app.ui.theme.accent));
         f.render_widget(search_block, dashboard_chunks[0]);
     }
 
@@ -44,12 +44,12 @@ pub fn draw_dashboard(f: &mut Frame, app: &mut App, area: Rect) {
         .map(|h| {
             Cell::from(*h).style(
                 Style::default()
-                    .fg(app.theme.highlight)
+                    .fg(app.ui.theme.highlight)
                     .add_modifier(Modifier::BOLD),
             )
         });
     let header_row = Row::new(header_cells)
-        .style(Style::default().bg(app.theme.background))
+        .style(Style::default().bg(app.ui.theme.background))
         .height(1)
         .bottom_margin(1);
 
@@ -59,12 +59,14 @@ pub fn draw_dashboard(f: &mut Frame, app: &mut App, area: Rect) {
         .cloned()
         .collect::<Vec<_>>();
     let rows: Vec<Row> = if filtered.is_empty() {
-        vec![Row::new(vec![Cell::from(if app.search_query.is_empty() {
-            "No active missions."
-        } else {
-            "No missions match your search."
-        })
-        .style(Style::default().fg(app.theme.highlight))])]
+        vec![Row::new(vec![Cell::from(
+            if app.ui.search_query.is_empty() {
+                "No active missions."
+            } else {
+                "No missions match your search."
+            },
+        )
+        .style(Style::default().fg(app.ui.theme.highlight))])]
     } else {
         filtered
             .iter()
@@ -79,10 +81,10 @@ pub fn draw_dashboard(f: &mut Frame, app: &mut App, area: Rect) {
                 };
 
                 let status_style = match item.status.as_str() {
-                    "active" => Style::default().fg(app.theme.success),
-                    "paused" => Style::default().fg(app.theme.warning),
-                    "error" => Style::default().fg(app.theme.error),
-                    _ => Style::default().fg(app.theme.foreground),
+                    "active" => Style::default().fg(app.ui.theme.success),
+                    "paused" => Style::default().fg(app.ui.theme.warning),
+                    "error" => Style::default().fg(app.ui.theme.error),
+                    _ => Style::default().fg(app.ui.theme.foreground),
                 };
 
                 Row::new(vec![
@@ -117,14 +119,14 @@ pub fn draw_dashboard(f: &mut Frame, app: &mut App, area: Rect) {
     .row_highlight_style(
         Style::default()
             .add_modifier(Modifier::REVERSED)
-            .fg(app.theme.accent),
+            .fg(app.ui.theme.accent),
     )
     .highlight_symbol(">> ");
 
-    f.render_stateful_widget(t, main_chunks[0], &mut app.table_state);
+    f.render_stateful_widget(t, main_chunks[0], &mut app.ui.table_state);
 
     // Right side: Detail Panel
-    if let Some(i) = app.table_state.selected() {
+    if let Some(i) = app.ui.table_state.selected() {
         if let Some(dl) = filtered.get(i) {
             let total = dl.total_length.parse::<u64>().unwrap_or(0);
             let completed = dl.completed_length.parse::<u64>().unwrap_or(0);
@@ -168,8 +170,8 @@ pub fn draw_dashboard(f: &mut Frame, app: &mut App, area: Rect) {
                 .block(Block::default().title(" Progress ").borders(Borders::ALL))
                 .gauge_style(
                     Style::default()
-                        .fg(app.theme.success)
-                        .bg(app.theme.background),
+                        .fg(app.ui.theme.success)
+                        .bg(app.ui.theme.background),
                 )
                 .ratio(if total > 0 {
                     completed as f64 / total as f64
@@ -179,21 +181,22 @@ pub fn draw_dashboard(f: &mut Frame, app: &mut App, area: Rect) {
                 .label(format!("{:.1}%", progress));
             f.render_widget(progress_gauge, detail_chunks[1]);
 
-            let history = app
+            let history_data: Vec<u64> = app
+                .data
                 .speed_history
                 .get(&dl.gid)
-                .map(|h| h.iter().copied().collect::<Vec<_>>())
+                .map(|h| h.iter().copied().collect::<Vec<u64>>())
                 .unwrap_or_default();
-            let max_speed = history.iter().copied().max().unwrap_or(1).max(1);
+            let max_speed = history_data.iter().copied().max().unwrap_or(1).max(1);
             let sparkline = Sparkline::default()
                 .block(
                     Block::default()
                         .title(format!(" Throughput ({}/s) ", ByteSize::b(speed)))
                         .borders(Borders::ALL),
                 )
-                .data(&history)
+                .data(&history_data)
                 .max(max_speed)
-                .style(Style::default().fg(app.theme.accent));
+                .style(Style::default().fg(app.ui.theme.accent));
             f.render_widget(sparkline, detail_chunks[2]);
         }
     } else {
