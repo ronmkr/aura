@@ -39,7 +39,7 @@ aura-core = { path = "aura-core" }
 aura-daemon = { path = "aura-daemon" }
 aura-tui = { path = "aura-tui" }
 axum = { version = "0.8", features = ["ws"] }
-axum-server = { version = "0.7", features = ["tls-rustls"] }
+axum-server = { version = "0.8", features = ["tls-rustls"] }
 rcgen = "0.13"
 bytes = "1"
 bytesize = "2.3.1"
