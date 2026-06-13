@@ -3,9 +3,7 @@ use crate::worker::builder::WorkerOptions;
 use crate::worker::{Metadata, PieceData, ProgressSender, ProtocolWorker, Segment};
 use crate::{Error, Result, TaskId};
 use async_trait::async_trait;
-use bytes::BytesMut;
 use std::sync::Arc;
-use tokio::sync::mpsc;
 use url::Url;
 
 use super::connection::{parse_ybegin, NntpConnection};

@@ -266,7 +266,11 @@ impl ProtocolWorker for GDriveWorker {
                 while !gov.request_allocation(&self.options.tenant_id, req_size, false) {
                     tokio::time::sleep(std::time::Duration::from_millis(100)).await;
                 }
-                Some(gov.clone().lock(&self.options.tenant_id, req_size).await)
+                Some(crate::orchestrator::resource_governor::MemoryGuard::new(
+                    gov.clone(),
+                    self.options.tenant_id.clone(),
+                    req_size,
+                ))
             } else {
                 None
             };
