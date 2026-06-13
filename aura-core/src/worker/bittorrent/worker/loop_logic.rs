@@ -61,7 +61,7 @@ impl BtWorker {
             meta_id,
             sub_id,
             task,
-            storage_tx,
+            storage_client,
             subtask_tx,
             mut command_rx,
             token,
@@ -116,7 +116,7 @@ impl BtWorker {
                         task: &task,
                         meta_id,
                         sub_id,
-                        storage_tx: storage_tx.clone(),
+                        storage_client: storage_client.clone(),
                         subtask_tx: subtask_tx.clone(),
                         peer_choking: &mut peer_choking,
                     };
@@ -129,7 +129,7 @@ impl BtWorker {
                         task: &task,
                         meta_id,
                         sub_id,
-                        storage_tx: storage_tx.clone(),
+                        storage_client: storage_client.clone(),
                         subtask_tx: subtask_tx.clone(),
                         peer_choking: &mut peer_choking,
                     };

@@ -62,7 +62,7 @@ async fn test_vpn_killswitch_enforcement() {
     let (mut orchestrator, _event_tx) = Orchestrator::new(
         OrchestratorChannels {
             command_rx,
-            storage_tx,
+            storage_client: Arc::new(crate::storage::StorageClient::new(storage_tx)),
             storage_completion_rx: completion_rx,
             dht_tx,
             lpd_tx,

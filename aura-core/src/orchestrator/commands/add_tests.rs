@@ -27,7 +27,7 @@ fn setup_orchestrator(config: crate::Config) -> (Orchestrator, tempfile::TempDir
     let (orchestrator, _event_tx) = Orchestrator::new(
         OrchestratorChannels {
             command_rx,
-            storage_tx,
+            storage_client: Arc::new(crate::storage::StorageClient::new(storage_tx)),
             storage_completion_rx: completion_rx,
             dht_tx,
             lpd_tx,

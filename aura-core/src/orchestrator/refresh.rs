@@ -79,14 +79,8 @@ impl Orchestrator {
 
         // 5. Re-register task with storage
         let _ = self
-            .storage_tx
-            .send(crate::storage::StorageRequest::RegisterTask {
-                task_id: meta_id,
-                path: final_path,
-                total_length,
-                checksum,
-                padding_ranges: Vec::new(),
-            })
+            .storage_client
+            .register_task(meta_id, final_path, total_length, checksum, Vec::new())
             .await;
 
         // 6. Re-register task with throttler

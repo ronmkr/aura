@@ -75,6 +75,7 @@ Aura's design is driven by a series of formal Architecture Decision Records. The
 | [0069](../adr/0069-watch-folder.md) | ADR 0069: Watch Folder Auto-ingestion | Proposed (2026-06-11 — Issue #288) |
 | [0070](../adr/0070-rss-subscriptions.md) | ADR 0070: RSS/Atom Feed Subscriptions | Proposed (2026-06-11 — Issue #290) |
 | [0071](../adr/0071-system-service.md) | ADR 0071: System Service Integration | Proposed (2026-06-11 — Issue #291) |
+| [0072](../adr/0072-god-node-decoupling.md) | ADR 0072: God Node Decoupling | Implemented (2026-06-13) |
 
 For a full list of ADRs, see the `aura-docs/adr/` directory in the repository.
 

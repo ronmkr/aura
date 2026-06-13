@@ -168,10 +168,7 @@ impl Orchestrator {
                 }
 
                 if completed {
-                    let _ = self
-                        .storage_tx
-                        .send(crate::storage::StorageRequest::Complete(meta_id))
-                        .await;
+                    let _ = self.storage_client.complete(meta_id).await;
                 }
 
                 self.emit_progress(meta_id);

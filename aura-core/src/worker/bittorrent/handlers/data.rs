@@ -2,7 +2,6 @@ use super::super::protocol::PeerMessage;
 use super::super::BtWorker;
 use super::PeerHandlerContext;
 use crate::orchestrator::SubTaskEvent;
-use crate::storage::StorageRequest;
 use crate::Result;
 use bytes::Bytes;
 use futures_util::SinkExt;
@@ -48,12 +47,8 @@ impl BtWorker {
             } => {
                 debug!(addr = %peer_addr, ?pieces_root, index, "Received Merkle hashes from peer");
                 let _ = ctx
-                    .storage_tx
-                    .send(StorageRequest::StoreMerkleLayer {
-                        pieces_root,
-                        index,
-                        hashes,
-                    })
+                    .storage_client
+                    .store_merkle_layer(pieces_root, index, hashes)
                     .await;
                 Ok(true)
             }
@@ -91,27 +86,27 @@ impl BtWorker {
         };
 
         if has_piece {
-            let (reply_tx, reply_rx) = tokio::sync::oneshot::channel();
-            let _ = ctx
-                .storage_tx
-                .send(StorageRequest::Read {
-                    task_id: ctx.meta_id,
-                    segment: crate::worker::Segment {
-                        offset: {
-                            let torrent_guard = ctx.task.state.torrent.lock().await;
-                            let torrent = torrent_guard.as_ref().unwrap();
-                            let base_offset = torrent
-                                .piece_align_offset(index as usize)
-                                .unwrap_or(index as u64 * torrent.info.piece_length);
-                            base_offset + begin as u64
-                        },
+            let offset = {
+                let torrent_guard = ctx.task.state.torrent.lock().await;
+                let torrent = torrent_guard.as_ref().unwrap();
+                let base_offset = torrent
+                    .piece_align_offset(index as usize)
+                    .unwrap_or(index as u64 * torrent.info.piece_length);
+                base_offset + begin as u64
+            };
+
+            let res = ctx
+                .storage_client
+                .submit_read(
+                    ctx.meta_id,
+                    crate::worker::Segment {
+                        offset,
                         length: length as u64,
                     },
-                    reply_tx,
-                })
+                )
                 .await;
 
-            if let Ok(Ok(data)) = reply_rx.await {
+            if let Ok(data) = res {
                 ctx.framed
                     .send(PeerMessage::Piece {
                         index,
@@ -230,17 +225,17 @@ impl BtWorker {
                 let finished_len = finished_data.len() as u64;
 
                 let _ = ctx
-                    .storage_tx
-                    .send(StorageRequest::Write {
-                        task_id: ctx.meta_id,
-                        segment: crate::worker::Segment {
+                    .storage_client
+                    .submit_write(
+                        ctx.meta_id,
+                        crate::worker::Segment {
                             offset,
-                            length: finished_len,
+                            length: finished_data.len() as u64,
                         },
-                        data: finished_data,
-                        guard: self.memory_guard.take(),
-                        generation: Some(self.current_generation),
-                    })
+                        finished_data,
+                        self.memory_guard.clone(),
+                        Some(self.current_generation),
+                    )
                     .await;
 
                 // Mark in local bitfield

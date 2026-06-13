@@ -1,5 +1,5 @@
 use crate::jsonrpc::utils::{parse_gid, rpc_error, RpcResultExt};
-use aura_core::orchestrator::Engine;
+use aura_core::orchestrator::{Engine, TaskController};
 use aura_core::TaskId;
 use serde_json::{json, Value};
 

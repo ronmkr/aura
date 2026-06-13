@@ -1,6 +1,6 @@
 use super::utils::format_task_value;
 use crate::jsonrpc::utils::rpc_error;
-use aura_core::orchestrator::Engine;
+use aura_core::orchestrator::{Engine, TaskQuerier};
 use serde_json::{json, Value};
 
 pub async fn handle_get_config(engine: &Engine) -> Result<Value, Value> {

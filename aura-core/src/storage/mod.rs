@@ -10,9 +10,11 @@ pub mod prober;
 pub mod sandbox;
 pub mod scheduler;
 pub mod sys;
+pub mod traits;
 pub mod utils;
 
 pub use engine::{StorageEngine, StorageEvent, StorageRequest};
+pub use traits::{StorageClient, StorageDispatch};
 
 #[cfg(test)]
 #[path = "tests_core.rs"]

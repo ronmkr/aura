@@ -79,6 +79,7 @@
 - [x] **Advanced Disk I/O Scheduling** (Deadline-based writes) (Issue #13).
 - [x] **Advanced Networking (kTLS, Captive Portals, Roaming)** (Issue #8).
 - [x] **Multi-tenancy & Structured Audit Tracing** (Issue #15).
+- [x] **Architectural Decoupling (God Nodes)** (ADR-0072).
 
 ### Remaining - Priority
 

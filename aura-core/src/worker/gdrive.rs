@@ -8,7 +8,6 @@ use async_trait::async_trait;
 #[cfg(feature = "gdrive")]
 use futures_util::StreamExt;
 use std::sync::Arc;
-use tokio::sync::mpsc;
 
 pub struct GDriveWorker {
     #[allow(dead_code)]
@@ -157,7 +156,7 @@ impl ProtocolWorker for GDriveWorker {
         task_id: TaskId,
         segment: Segment,
         progress: Option<ProgressSender>,
-        storage_tx: Option<mpsc::Sender<crate::storage::StorageRequest>>,
+        storage_client: Option<Arc<dyn crate::storage::StorageDispatch>>,
         throttler: Arc<Throttler>,
     ) -> Result<PieceData> {
         #[cfg(feature = "gdrive")]
@@ -275,18 +274,18 @@ impl ProtocolWorker for GDriveWorker {
                         std::cmp::min(remaining_chunk.len(), std::cmp::min(buffer_cap, max_take));
                     let sub_chunk = &remaining_chunk[..take_len];
                     throttler.acquire_download(task_id, take_len as u64).await;
-                    if let Some(ref s_tx) = storage_tx {
-                        let _ = s_tx
-                            .send(crate::storage::StorageRequest::Write {
+                    if let Some(ref s_client) = storage_client {
+                        let _ = s_client
+                            .submit_write(
                                 task_id,
-                                segment: Segment {
+                                Segment {
                                     offset: segment.offset + bytes_downloaded,
                                     length: take_len as u64,
                                 },
-                                data: bytes::BytesMut::from(sub_chunk),
-                                guard: None,
-                                generation: None,
-                            })
+                                sub_chunk.into(),
+                                _guard.clone(),
+                                None,
+                            )
                             .await;
                     } else {
                         buffer.extend_from_slice(sub_chunk);
@@ -311,7 +310,7 @@ impl ProtocolWorker for GDriveWorker {
             let _ = task_id;
             let _ = segment;
             let _ = progress;
-            let _ = storage_tx;
+            let _ = storage_client;
             let _ = throttler;
             Err(Error::Protocol(
                 "Google Drive feature not enabled".to_string(),

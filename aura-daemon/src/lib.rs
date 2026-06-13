@@ -19,7 +19,7 @@ pub(crate) use fd_limit::adjust_file_descriptor_limit;
 pub use router::create_router;
 pub use types::AppState;
 
-use aura_core::orchestrator::Engine;
+use aura_core::orchestrator::{Engine, TaskQuerier};
 use std::sync::Arc;
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};

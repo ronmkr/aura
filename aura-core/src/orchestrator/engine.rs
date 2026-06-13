@@ -21,6 +21,12 @@ impl std::fmt::Debug for Engine {
     }
 }
 
+impl super::traits::EventSubscriber for Engine {
+    fn subscribe(&self) -> broadcast::Receiver<Event> {
+        self.event_tx.subscribe()
+    }
+}
+
 impl Engine {
     pub async fn new(config: crate::AuraConfig) -> Result<(Self, Orchestrator, StorageEngine)> {
         let (command_tx, command_rx) = mpsc::channel(config.limits.command_channel_capacity);
@@ -95,7 +101,7 @@ impl Engine {
         let (orchestrator, event_tx) = Orchestrator::new(
             crate::orchestrator::state::OrchestratorChannels {
                 command_rx,
-                storage_tx,
+                storage_client: Arc::new(crate::storage::StorageClient::new(storage_tx)),
                 storage_completion_rx: completion_rx,
                 dht_tx,
                 lpd_tx,

@@ -4,7 +4,7 @@ use crate::{Error, Result, TaskId};
 use async_trait::async_trait;
 use bytes::BytesMut;
 use futures_util::StreamExt;
-use tokio::sync::mpsc;
+use std::sync::Arc;
 
 #[async_trait]
 impl ProtocolWorker for HttpWorker {
@@ -13,7 +13,7 @@ impl ProtocolWorker for HttpWorker {
         task_id: TaskId,
         segment: Segment,
         progress: Option<ProgressSender>,
-        storage_tx: Option<mpsc::Sender<crate::storage::StorageRequest>>,
+        storage_client: Option<Arc<dyn crate::storage::StorageDispatch>>,
         throttler: std::sync::Arc<crate::throttler::Throttler>,
     ) -> Result<PieceData> {
         let mut _guard = if let Some(ref gov) = self.options.resource_governor {
@@ -139,18 +139,18 @@ impl ProtocolWorker for HttpWorker {
 
                                 throttler.acquire_download(task_id, take_len as u64).await;
 
-                                if let Some(ref s_tx) = storage_tx {
-                                    let _ = s_tx
-                                        .send(crate::storage::StorageRequest::Write {
+                                if let Some(ref s_client) = storage_client {
+                                    let _ = s_client
+                                        .submit_write(
                                             task_id,
-                                            segment: Segment {
+                                            Segment {
                                                 offset: segment.offset + bytes_downloaded,
                                                 length: take_len as u64,
                                             },
-                                            data: BytesMut::from(sub_chunk),
-                                            guard: None,
-                                            generation: None,
-                                        })
+                                            sub_chunk.into(),
+                                            _guard.clone(),
+                                            None,
+                                        )
                                         .await;
                                 } else {
                                     buffer.extend_from_slice(sub_chunk);

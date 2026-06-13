@@ -2,7 +2,7 @@
 //! internal event bus as specified by [ADR-0004](aura-docs/adr/0004-telemetry-and-event-bus.md).
 
 use super::types::{AppState, WsQuery};
-use aura_core::orchestrator::Engine;
+use aura_core::orchestrator::{Engine, EventSubscriber};
 use axum::{
     extract::ws::{Message, WebSocket, WebSocketUpgrade},
     extract::{Query, State},

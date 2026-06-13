@@ -110,14 +110,14 @@ impl Orchestrator {
                 };
 
                 let _ = self
-                    .storage_tx
-                    .send(crate::storage::StorageRequest::RegisterTask {
-                        task_id: meta_id,
+                    .storage_client
+                    .register_task(
+                        meta_id,
                         path,
-                        total_length: *total_length,
-                        checksum: checksum.clone(),
-                        padding_ranges: metadata.padding_ranges.clone(),
-                    })
+                        *total_length,
+                        checksum.clone(),
+                        metadata.padding_ranges.clone(),
+                    )
                     .await;
             }
         }
@@ -249,10 +249,7 @@ impl Orchestrator {
         }
 
         if completed {
-            let _ = self
-                .storage_tx
-                .send(crate::storage::StorageRequest::Complete(meta_id))
-                .await;
+            let _ = self.storage_client.complete(meta_id).await;
         }
 
         if let Some(tx) = self.worker_command_txs.get(&meta_id) {

@@ -164,14 +164,14 @@ impl Orchestrator {
         let base_dir = self.resolve_base_dir(&meta_task.tenant_id);
         let path = base_dir.join(&meta_task.name);
         let _ = self
-            .storage_tx
-            .send(crate::storage::StorageRequest::RegisterTask {
-                task_id: id,
+            .storage_client
+            .register_task(
+                id,
                 path,
-                total_length: meta_task.total_length,
-                checksum: meta_task.checksum.clone(),
-                padding_ranges: Vec::new(),
-            })
+                meta_task.total_length,
+                meta_task.checksum.clone(),
+                Vec::new(),
+            )
             .await;
 
         let is_blocked = {

@@ -49,7 +49,7 @@ pub trait ProtocolWorker: Send + Sync {
         task_id: TaskId,
         segment: Segment,
         progress: Option<ProgressSender>,
-        storage_tx: Option<mpsc::Sender<crate::storage::StorageRequest>>,
+        storage_client: Option<Arc<dyn crate::storage::StorageDispatch>>,
         throttler: Arc<Throttler>,
     ) -> Result<PieceData>;
 

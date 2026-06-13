@@ -32,7 +32,7 @@ impl crate::worker::ProtocolWorker for NntpWorker {
         _task_id: crate::TaskId,
         _segment: crate::worker::Segment,
         _progress: Option<crate::worker::ProgressSender>,
-        _storage_tx: Option<tokio::sync::mpsc::Sender<crate::storage::StorageRequest>>,
+        _storage_client: Option<std::sync::Arc<dyn crate::storage::StorageDispatch>>,
         _throttler: std::sync::Arc<crate::throttler::Throttler>,
     ) -> crate::Result<crate::worker::PieceData> {
         Err(crate::Error::UnsupportedProtocol(

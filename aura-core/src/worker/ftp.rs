@@ -4,10 +4,10 @@ use async_trait::async_trait;
 use bytes::BytesMut;
 use rustls::ClientConfig;
 use rustls::RootCertStore;
+use std::sync::Arc;
 use suppaftp::tokio::{AsyncDataStream, AsyncRustlsConnector, AsyncRustlsFtpStream};
 use suppaftp::types::FileType;
 use tokio::io::AsyncReadExt;
-use tokio::sync::mpsc;
 use url::Url;
 
 /// Builds a `rustls` `ClientConfig` seeded from the OS native certificate store.
@@ -237,7 +237,7 @@ impl ProtocolWorker for FtpWorker {
         task_id: TaskId,
         segment: Segment,
         progress: Option<ProgressSender>,
-        storage_tx: Option<mpsc::Sender<crate::storage::StorageRequest>>,
+        storage_client: Option<Arc<dyn crate::storage::StorageDispatch>>,
         throttler: std::sync::Arc<crate::throttler::Throttler>,
     ) -> Result<PieceData> {
         let mut _guard = if let Some(ref gov) = self.options.resource_governor {
@@ -293,21 +293,22 @@ impl ProtocolWorker for FtpWorker {
                 break;
             }
 
-            if let Some(ref s_tx) = storage_tx {
-                let _ = s_tx
-                    .send(crate::storage::StorageRequest::Write {
+            let chunk_data = &chunk[..n];
+            if let Some(ref s_client) = storage_client {
+                let _ = s_client
+                    .submit_write(
                         task_id,
-                        segment: Segment {
+                        Segment {
                             offset: segment.offset + total_read,
                             length: n as u64,
                         },
-                        data: BytesMut::from(&chunk[..n]),
-                        guard: None,
-                        generation: None,
-                    })
+                        chunk_data.into(),
+                        _guard.clone(),
+                        None,
+                    )
                     .await;
             } else {
-                buffer.extend_from_slice(&chunk[..n]);
+                buffer.extend_from_slice(chunk_data);
             }
 
             total_read += n as u64;

@@ -1,5 +1,4 @@
 use crate::orchestrator::{SubTaskEvent, WorkerCommand};
-use crate::storage::StorageRequest;
 use crate::worker::bittorrent::task::BtTask;
 use crate::{InfoHash, TaskId};
 use bytes::BytesMut;
@@ -26,7 +25,7 @@ pub struct BtWorkerArgs {
     pub meta_id: TaskId,
     pub sub_id: TaskId,
     pub task: Arc<BtTask>,
-    pub storage_tx: tokio::sync::mpsc::Sender<StorageRequest>,
+    pub storage_client: Arc<dyn crate::storage::StorageDispatch>,
     pub subtask_tx: tokio::sync::mpsc::Sender<SubTaskEvent>,
     pub command_rx: tokio::sync::broadcast::Receiver<WorkerCommand>,
     pub token: CancellationToken,

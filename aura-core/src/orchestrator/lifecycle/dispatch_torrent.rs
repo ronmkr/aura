@@ -45,7 +45,7 @@ impl Orchestrator {
             let info_hash = bt_task.state.info_hash;
             let throttler_clone = self.throttler.clone();
 
-            let storage_tx = self.storage_tx.clone();
+            let storage_client = self.storage_client.clone();
             let subtask_tx = self.subtask_tx.clone();
             let child_token = token.child_token();
             self.worker_cancellation_tokens
@@ -78,7 +78,7 @@ impl Orchestrator {
                         meta_id,
                         sub_id,
                         task: bt_task,
-                        storage_tx,
+                        storage_client,
                         subtask_tx: subtask_tx.clone(),
                         command_rx: worker_tx.subscribe(),
                         token: token_clone.clone(),

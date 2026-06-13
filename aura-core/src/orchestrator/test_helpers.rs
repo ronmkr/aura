@@ -21,7 +21,7 @@ pub fn create_test_orchestrator() -> (Orchestrator, mpsc::Receiver<crate::storag
     let (orch, _tx) = Orchestrator::new(
         crate::orchestrator::state::OrchestratorChannels {
             command_rx,
-            storage_tx,
+            storage_client: Arc::new(crate::storage::StorageClient::new(storage_tx)),
             storage_completion_rx: storage_event_rx,
             dht_tx,
             lpd_tx,

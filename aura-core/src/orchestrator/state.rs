@@ -22,7 +22,7 @@ pub struct TenantContext {
 /// Channels required for Orchestrator initialization.
 pub struct OrchestratorChannels {
     pub command_rx: mpsc::Receiver<Command>,
-    pub storage_tx: mpsc::Sender<crate::storage::StorageRequest>,
+    pub storage_client: Arc<dyn crate::storage::StorageDispatch>,
     pub storage_completion_rx: mpsc::Receiver<crate::storage::StorageEvent>,
     pub dht_tx: mpsc::Sender<DhtCommand>,
     pub lpd_tx: mpsc::Sender<crate::lpd::LpdCommand>,
@@ -106,7 +106,7 @@ pub struct Orchestrator {
     pub(crate) worker_cancellation_tokens: HashMap<TaskId, CancellationToken>,
     pub(crate) command_rx: mpsc::Receiver<Command>,
     pub(crate) event_tx: broadcast::Sender<Event>,
-    pub(crate) storage_tx: mpsc::Sender<crate::storage::StorageRequest>,
+    pub(crate) storage_client: Arc<dyn crate::storage::StorageDispatch>,
     pub(crate) storage_completion_rx: mpsc::Receiver<crate::storage::StorageEvent>,
     pub(crate) subtask_tx: mpsc::Sender<SubTaskEvent>,
     pub(crate) subtask_rx: mpsc::Receiver<SubTaskEvent>,
@@ -289,7 +289,7 @@ impl Orchestrator {
                 worker_cancellation_tokens: HashMap::new(),
                 command_rx: channels.command_rx,
                 event_tx: event_tx.clone(),
-                storage_tx: channels.storage_tx,
+                storage_client: channels.storage_client,
                 storage_completion_rx: channels.storage_completion_rx,
                 subtask_tx,
                 subtask_rx,

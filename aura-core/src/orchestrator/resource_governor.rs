@@ -117,7 +117,7 @@ impl ResourceGovernor {
 }
 
 /// An RAII guard that automatically releases memory when dropped.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MemoryGuard {
     governor: Arc<ResourceGovernor>,
     tenant_id: Option<TenantId>,

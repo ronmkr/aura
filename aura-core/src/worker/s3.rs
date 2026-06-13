@@ -4,7 +4,6 @@ use crate::worker::{Metadata, PieceData, ProgressSender, ProtocolWorker, Segment
 use crate::{Error, Result, TaskId};
 use async_trait::async_trait;
 use std::sync::Arc;
-use tokio::sync::mpsc;
 #[cfg(feature = "s3")]
 use tokio::sync::OnceCell;
 
@@ -83,7 +82,7 @@ impl ProtocolWorker for S3Worker {
         task_id: TaskId,
         segment: Segment,
         progress: Option<ProgressSender>,
-        storage_tx: Option<mpsc::Sender<crate::storage::StorageRequest>>,
+        storage_client: Option<Arc<dyn crate::storage::StorageDispatch>>,
         throttler: Arc<Throttler>,
     ) -> Result<PieceData> {
         #[cfg(feature = "s3")]
@@ -145,18 +144,18 @@ impl ProtocolWorker for S3Worker {
 
                     throttler.acquire_download(task_id, take_len as u64).await;
 
-                    if let Some(ref s_tx) = storage_tx {
-                        let _ = s_tx
-                            .send(crate::storage::StorageRequest::Write {
+                    if let Some(ref s_client) = storage_client {
+                        let _ = s_client
+                            .submit_write(
                                 task_id,
-                                segment: Segment {
+                                Segment {
                                     offset: segment.offset + bytes_downloaded,
                                     length: take_len as u64,
                                 },
-                                data: bytes::BytesMut::from(sub_chunk),
-                                guard: None,
-                                generation: None,
-                            })
+                                sub_chunk.into(),
+                                _guard.clone(),
+                                None,
+                            )
                             .await;
                     } else {
                         buffer.extend_from_slice(sub_chunk);
@@ -185,7 +184,7 @@ impl ProtocolWorker for S3Worker {
             let _ = task_id;
             let _ = segment;
             let _ = progress;
-            let _ = storage_tx;
+            let _ = storage_client;
             let _ = throttler;
             Err(Error::Protocol("S3 feature not enabled".to_string()))
         }
