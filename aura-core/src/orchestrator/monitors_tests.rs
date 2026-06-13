@@ -50,6 +50,7 @@ async fn test_adaptive_scaling_min_connections() {
         selected_files: None,
         seed_ratio_override: None,
         seed_time_override: None,
+        recheck_progress: 0.0,
     };
 
     orchestrator.tasks.insert(TaskId(1), task);
@@ -106,6 +107,7 @@ async fn test_check_seed_limits() {
         selected_files: None,
         seed_ratio_override: None,
         seed_time_override: None,
+        recheck_progress: 0.0,
     };
 
     let bt1 = crate::worker::bittorrent::task::BtTask::from_magnet(
@@ -169,6 +171,7 @@ async fn test_check_seed_limits() {
         selected_files: None,
         seed_ratio_override: None,
         seed_time_override: None,
+        recheck_progress: 0.0,
     };
 
     let bt2 = crate::worker::bittorrent::task::BtTask::from_magnet(
@@ -231,6 +234,7 @@ async fn test_check_seed_limits() {
         selected_files: None,
         seed_ratio_override: None,
         seed_time_override: None,
+        recheck_progress: 0.0,
     };
 
     let bt3 = crate::worker::bittorrent::task::BtTask::from_magnet(

@@ -56,6 +56,7 @@ pub async fn handle_tell_waiting(engine: &Engine, params: Option<Value>) -> Resu
                 selected_files: t.selected_files.as_deref(),
                 swarm_seeders: t.swarm_seeders(),
                 swarm_leechers: t.swarm_leechers(),
+                recheck_progress: t.recheck_progress,
             })
         })
         .collect();
@@ -93,6 +94,7 @@ pub async fn handle_get_status(engine: &Engine, params: Option<Value>) -> Result
             selected_files: t.selected_files.as_deref(),
             swarm_seeders: t.swarm_seeders(),
             swarm_leechers: t.swarm_leechers(),
+            recheck_progress: t.recheck_progress,
         }));
     }
 
@@ -115,6 +117,7 @@ pub async fn handle_get_status(engine: &Engine, params: Option<Value>) -> Result
             selected_files: None,
             swarm_seeders: None,
             swarm_leechers: None,
+            recheck_progress: 0.0,
         }));
     }
 

@@ -62,47 +62,133 @@ impl Orchestrator {
             }
             SubTaskEvent::PieceVerified(meta_id, sub_id, piece_idx) => {
                 debug!(%meta_id, %sub_id, piece_idx, "Broadcasting cancellation for verified piece");
-                if let Some(bt_task) = self.get_bt_task(sub_id) {
-                    if let Some(tx) = self.worker_command_txs.get(&meta_id) {
-                        let _ = tx.send(WorkerCommand::CancelPiece(piece_idx));
-                    }
+                let bt_task = self.get_bt_task(sub_id);
+                if let Some(task) = self.tasks.get_mut(&meta_id) {
+                    if let Some(bt_task) = bt_task {
+                        if let Some(tx) = self.worker_command_txs.get(&meta_id) {
+                            let _ = tx.send(WorkerCommand::CancelPiece(piece_idx));
+                        }
 
-                    // Endgame coordination: if we are in endgame, we might want to assign
-                    // this newly available worker capacity to other pending pieces.
-                    let bf_guard = bt_task.state.bitfield.lock().await;
-                    let picker_guard = bt_task.state.picker.lock().await;
-                    if let (Some(bf), Some(picker)) = (bf_guard.as_ref(), picker_guard.as_ref()) {
-                        if picker.is_endgame(bf) {
-                            let mut pending_pieces = Vec::new();
-                            for i in 0..bf.len() {
-                                if !bf.get(i) {
-                                    pending_pieces.push(i);
+                        let mut bf_guard = bt_task.state.bitfield.lock().await;
+                        if let Some(ref mut bf) = *bf_guard {
+                            if !bf.get(piece_idx) {
+                                bf.set(piece_idx, true);
+                                if let Some(ref torrent) = *bt_task.state.torrent.lock().await {
+                                    let piece_len = torrent.info.piece_length;
+                                    let start = piece_idx as u64 * piece_len;
+                                    let end = std::cmp::min(start + piece_len, task.total_length);
+                                    task.completed_length += end.saturating_sub(start);
                                 }
                             }
+                        }
 
-                            if !pending_pieces.is_empty() {
-                                debug!(%meta_id, pending = %pending_pieces.len(), "Endgame: broadcasting redundant requests");
-                                if let Some(tx) = self.worker_command_txs.get(&meta_id) {
-                                    let mut dropped_count = 0;
-                                    for &piece_idx in &pending_pieces {
-                                        if let Err(e) =
-                                            tx.send(WorkerCommand::EndgameFetch(piece_idx))
-                                        {
-                                            dropped_count += 1;
-                                            tracing::error!(%meta_id, %piece_idx, err = %e, "Failed to broadcast EndgameFetch; message dropped");
-                                        }
-                                    }
-                                    if dropped_count > 0 {
-                                        tracing::warn!(%meta_id, count = dropped_count, "Endgame: Some redundant requests were dropped due to full broadcast buffer");
-                                    }
-                                }
-                            }
+                        let mut picker_guard = bt_task.state.picker.lock().await;
+                        if let Some(ref mut picker) = *picker_guard {
+                            picker.mark_completed(piece_idx);
                         }
                     }
                 }
             }
+            SubTaskEvent::RecheckProgress(meta_id, progress) => {
+                if let Some(task) = self.tasks.get_mut(&meta_id) {
+                    task.recheck_progress = progress;
+                }
+                self.emit_progress(meta_id);
+            }
+            SubTaskEvent::RecheckComplete(meta_id, bitfield) => {
+                let mut completed = false;
+                let mut bt_sub_id = None;
+                if let Some(task) = self.tasks.get(&meta_id) {
+                    for sub in &task.subtasks {
+                        if sub.task_type == crate::task::TaskType::BitTorrent {
+                            bt_sub_id = Some(sub.id);
+                            break;
+                        }
+                    }
+                }
+
+                let bt_task = if let Some(sub_id) = bt_sub_id {
+                    self.get_bt_task(sub_id)
+                } else {
+                    None
+                };
+
+                if let Some(task) = self.tasks.get_mut(&meta_id) {
+                    task.recheck_progress = 1.0;
+
+                    if let Some(bt_task) = bt_task {
+                        let mut bf_guard = bt_task.state.bitfield.lock().await;
+                        *bf_guard = Some(bitfield.clone());
+                        let mut picker_guard = bt_task.state.picker.lock().await;
+                        if let Some(ref mut picker) = *picker_guard {
+                            for i in 0..bitfield.len() {
+                                if bitfield.get(i) {
+                                    picker.mark_completed(i);
+                                }
+                            }
+                        }
+                        if let Some(ref torrent) = *bt_task.state.torrent.lock().await {
+                            let piece_len = torrent.info.piece_length;
+                            let mut len = 0;
+                            for i in 0..bitfield.len() {
+                                if bitfield.get(i) {
+                                    let start = i as u64 * piece_len;
+                                    let end = std::cmp::min(start + piece_len, task.total_length);
+                                    len += end.saturating_sub(start);
+                                }
+                            }
+                            task.completed_length = len;
+                        }
+                    } else {
+                        let completed_pieces = bitfield.count_set();
+                        let total_pieces = bitfield.len();
+                        if total_pieces > 0 {
+                            let piece_len = task.total_length.div_ceil(total_pieces as u64);
+                            task.completed_length = std::cmp::min(
+                                completed_pieces as u64 * piece_len,
+                                task.total_length,
+                            );
+                        }
+
+                        if bitfield.is_complete() {
+                            task.completed_length = task.total_length;
+                        } else {
+                            task.generate_ranges(128, Some(&bitfield));
+                        }
+                    }
+
+                    if task.completed_length >= task.total_length && task.total_length > 0 {
+                        task.phase = DownloadPhase::Complete;
+                        completed = true;
+                    } else {
+                        task.phase = DownloadPhase::Downloading;
+                    }
+
+                    let _ = self.save_task(meta_id).await;
+                }
+
+                if completed {
+                    let _ = self
+                        .storage_tx
+                        .send(crate::storage::StorageRequest::Complete(meta_id))
+                        .await;
+                }
+
+                self.emit_progress(meta_id);
+
+                let sub_ids: Vec<TaskId> = if let Some(t) = self.tasks.get(&meta_id) {
+                    t.subtasks.iter().map(|s| s.id).collect()
+                } else {
+                    Vec::new()
+                };
+
+                for sub_id in sub_ids {
+                    let _ = self.dispatch_next_ranges(meta_id, sub_id).await;
+                }
+            }
             SubTaskEvent::BtTaskRegistered(meta_id, info_hash, task, worker_cmd_tx) => {
                 self.bt_registry.insert(info_hash, meta_id);
+                let mut bt_sub_id = None;
                 if let Some(meta_task) = self.tasks.get_mut(&meta_id) {
                     if let Some(ratio) = meta_task.seed_ratio_override {
                         let mut seed_ratio_guard = task.state.seed_ratio.lock().unwrap();
@@ -114,10 +200,19 @@ impl Orchestrator {
                     }
                     meta_task.extensions.insert(
                         crate::worker::bittorrent::BT_EXTENSION_KEY.to_string(),
-                        task,
+                        task.clone(),
                     );
+                    bt_sub_id = meta_task
+                        .subtasks
+                        .iter()
+                        .find(|s| s.task_type == crate::task::TaskType::BitTorrent)
+                        .map(|s| s.id);
                 }
                 self.worker_command_txs.insert(meta_id, worker_cmd_tx);
+
+                if let Some(sub_id) = bt_sub_id {
+                    let _ = self.maybe_spawn_recheck(meta_id, sub_id).await;
+                }
             }
             SubTaskEvent::LpdPeerDiscovered(info_hash, peer) => {
                 if let Some(meta_id) = self.bt_registry.get(&info_hash) {

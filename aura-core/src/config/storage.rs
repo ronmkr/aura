@@ -16,6 +16,7 @@ pub struct StorageConfig {
     pub memory_limit_mb: u32,
     pub memory_safety_margin_mb: u32,
     pub io_mode: String, // "auto", "io_uring", "mmap", "standard"
+    pub recheck_throttle_ms: u64,
 }
 
 impl Default for StorageConfig {
@@ -34,6 +35,7 @@ impl Default for StorageConfig {
             memory_limit_mb: 512,
             memory_safety_margin_mb: 51,
             io_mode: "auto".to_string(),
+            recheck_throttle_ms: 10,
         }
     }
 }

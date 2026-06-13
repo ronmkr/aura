@@ -29,6 +29,7 @@ impl RpcRouter {
             "aura.tellActive" => handle_tell_active(&self.engine).await,
             "aura.pause" => handle_pause(&self.engine, params).await,
             "aura.unpause" => handle_unpause(&self.engine, params).await,
+            "aura.forceRecheck" => handle_force_recheck(&self.engine, params).await,
             "aura.remove" => handle_remove(&self.engine, params).await,
             "aura.changeOption" => handle_change_option(&self.engine, params).await,
             "aura.refreshUri" => handle_refresh(&self.engine, params).await,

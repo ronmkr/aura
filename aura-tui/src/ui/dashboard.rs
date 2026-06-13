@@ -74,7 +74,14 @@ pub fn draw_dashboard(f: &mut Frame, app: &mut App, area: Rect) {
                 let total = item.total_length.parse::<u64>().unwrap_or(0);
                 let completed = item.completed_length.parse::<u64>().unwrap_or(0);
                 let speed = item.download_speed.parse::<u64>().unwrap_or(0);
-                let progress = if total > 0 {
+                let is_verifying = item.status.as_str() == "verifying";
+                let progress = if is_verifying {
+                    item.recheck_progress
+                        .as_ref()
+                        .and_then(|p| p.parse::<f64>().ok())
+                        .unwrap_or(0.0)
+                        * 100.0
+                } else if total > 0 {
                     (completed as f64 / total as f64) * 100.0
                 } else {
                     0.0
@@ -82,6 +89,7 @@ pub fn draw_dashboard(f: &mut Frame, app: &mut App, area: Rect) {
 
                 let status_style = match item.status.as_str() {
                     "active" => Style::default().fg(app.ui.theme.success),
+                    "verifying" => Style::default().fg(app.ui.theme.accent),
                     "paused" => Style::default().fg(app.ui.theme.warning),
                     "error" => Style::default().fg(app.ui.theme.error),
                     _ => Style::default().fg(app.ui.theme.foreground),
@@ -131,7 +139,14 @@ pub fn draw_dashboard(f: &mut Frame, app: &mut App, area: Rect) {
             let total = dl.total_length.parse::<u64>().unwrap_or(0);
             let completed = dl.completed_length.parse::<u64>().unwrap_or(0);
             let speed = dl.download_speed.parse::<u64>().unwrap_or(0);
-            let progress = if total > 0 {
+            let is_verifying = dl.status.as_str() == "verifying";
+            let progress = if is_verifying {
+                dl.recheck_progress
+                    .as_ref()
+                    .and_then(|p| p.parse::<f64>().ok())
+                    .unwrap_or(0.0)
+                    * 100.0
+            } else if total > 0 {
                 (completed as f64 / total as f64) * 100.0
             } else {
                 0.0
@@ -149,6 +164,18 @@ pub fn draw_dashboard(f: &mut Frame, app: &mut App, area: Rect) {
                 )
                 .split(main_chunks[1]);
 
+            let status_text = if is_verifying {
+                let p = dl
+                    .recheck_progress
+                    .as_ref()
+                    .and_then(|p| p.parse::<f64>().ok())
+                    .unwrap_or(0.0)
+                    * 100.0;
+                format!("verifying ({:.1}%)", p)
+            } else {
+                dl.status.clone()
+            };
+
             let text = vec![
                 Line::from(vec![Span::styled(
                     "Mission Details",
@@ -157,7 +184,7 @@ pub fn draw_dashboard(f: &mut Frame, app: &mut App, area: Rect) {
                 Line::from(""),
                 Line::from(format!("Name: {}", dl.name)),
                 Line::from(format!("GID:  {}", dl.gid)),
-                Line::from(format!("Status: {}", dl.status)),
+                Line::from(format!("Status: {}", status_text)),
                 Line::from(format!("Size: {}", ByteSize::b(total))),
             ];
 
@@ -166,18 +193,20 @@ pub fn draw_dashboard(f: &mut Frame, app: &mut App, area: Rect) {
                 .wrap(Wrap { trim: true });
             f.render_widget(detail_panel, detail_chunks[0]);
 
+            let gauge_title = if is_verifying {
+                " Rechecking "
+            } else {
+                " Progress "
+            };
+
             let progress_gauge = Gauge::default()
-                .block(Block::default().title(" Progress ").borders(Borders::ALL))
+                .block(Block::default().title(gauge_title).borders(Borders::ALL))
                 .gauge_style(
                     Style::default()
                         .fg(app.ui.theme.success)
                         .bg(app.ui.theme.background),
                 )
-                .ratio(if total > 0 {
-                    completed as f64 / total as f64
-                } else {
-                    0.0
-                })
+                .ratio(progress / 100.0)
                 .label(format!("{:.1}%", progress));
             f.render_widget(progress_gauge, detail_chunks[1]);
 

@@ -15,6 +15,12 @@ pub async fn handle_unpause(engine: &Engine, params: Option<Value>) -> Result<Va
     Ok(json!("OK"))
 }
 
+pub async fn handle_force_recheck(engine: &Engine, params: Option<Value>) -> Result<Value, Value> {
+    let gid = parse_gid(params)?;
+    engine.force_recheck(gid).await.rpc_map_err()?;
+    Ok(json!("OK"))
+}
+
 pub async fn handle_refresh(engine: &Engine, params: Option<Value>) -> Result<Value, Value> {
     let gid = parse_gid(params)?;
     engine.refresh(gid).await.rpc_map_err()?;

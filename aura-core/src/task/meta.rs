@@ -35,6 +35,7 @@ pub struct MetaTask {
     pub selected_files: Option<Vec<bool>>,
     pub seed_ratio_override: Option<f32>,
     pub seed_time_override: Option<u32>,
+    pub recheck_progress: f64,
 }
 
 impl MetaTask {
@@ -64,6 +65,7 @@ impl MetaTask {
             selected_files: None,
             seed_ratio_override: None,
             seed_time_override: None,
+            recheck_progress: 0.0,
         }
     }
 

@@ -263,4 +263,14 @@ impl Engine {
             })?;
         Ok(())
     }
+
+    pub async fn force_recheck(&self, id: TaskId) -> Result<()> {
+        let (tx, rx) = tokio::sync::oneshot::channel::<Result<()>>();
+        self.command_tx
+            .send(Command::ForceRecheck(id, tx))
+            .await
+            .map_err(|e| Error::Engine(format!("Failed to send ForceRecheck command: {}", e)))?;
+        rx.await
+            .map_err(|_| Error::Engine("Engine shut down before replying".to_string()))?
+    }
 }

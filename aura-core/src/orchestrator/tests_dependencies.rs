@@ -34,6 +34,7 @@ async fn test_dependency_cycle_detection() {
         selected_files: None,
         seed_ratio_override: None,
         seed_time_override: None,
+        recheck_progress: 0.0,
     };
     orch.tasks.insert(TaskId(1), meta_a);
 
@@ -63,6 +64,7 @@ async fn test_dependency_cycle_detection() {
         selected_files: None,
         seed_ratio_override: None,
         seed_time_override: None,
+        recheck_progress: 0.0,
     };
     orch.tasks.insert(TaskId(2), meta_b);
 
@@ -92,6 +94,7 @@ async fn test_dependency_cycle_detection() {
         selected_files: None,
         seed_ratio_override: None,
         seed_time_override: None,
+        recheck_progress: 0.0,
     };
     orch.tasks.insert(TaskId(3), meta_c);
 
@@ -135,6 +138,7 @@ async fn test_dependency_waiting_state_and_unblocking() {
         selected_files: None,
         seed_ratio_override: None,
         seed_time_override: None,
+        recheck_progress: 0.0,
     };
     orch.tasks.insert(TaskId(1), meta_a);
 
@@ -199,6 +203,7 @@ async fn test_follow_on_custom_trigger() {
         selected_files: None,
         seed_ratio_override: None,
         seed_time_override: None,
+        recheck_progress: 0.0,
     };
     orch.tasks.insert(meta_id, meta);
 
