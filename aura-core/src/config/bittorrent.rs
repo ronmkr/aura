@@ -19,6 +19,15 @@ impl Default for SeedingConfig {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum EncryptionPolicy {
+    #[default]
+    Prefer,
+    Require,
+    Disable,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct BitTorrentConfig {
@@ -48,6 +57,7 @@ pub struct BitTorrentConfig {
     pub tracker_polling_interval_secs: u64,
     pub lpd_announce_interval_secs: u64,
     pub choker_interval_secs: u64,
+    pub encryption: EncryptionPolicy,
 }
 
 impl Default for BitTorrentConfig {
@@ -79,6 +89,7 @@ impl Default for BitTorrentConfig {
             tracker_polling_interval_secs: 60,
             lpd_announce_interval_secs: 300,
             choker_interval_secs: 10,
+            encryption: EncryptionPolicy::Prefer,
         }
     }
 }

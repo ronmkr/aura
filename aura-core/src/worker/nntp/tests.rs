@@ -34,7 +34,7 @@ async fn test_nntp_resolve_metadata_mock() {
 
             let mut reader = tokio::io::BufReader::new(&mut stream);
             let mut line = String::new();
-            if let Ok(_) = reader.read_line(&mut line).await {
+            if reader.read_line(&mut line).await.is_ok() {
                 if line.starts_with("BODY") {
                     let _ = stream.write_all(b"222 Body follows\r\n").await;
                     let _ = stream

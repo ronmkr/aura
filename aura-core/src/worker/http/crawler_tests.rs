@@ -54,7 +54,7 @@ fn test_crawler_glob_expansion() {
     let url1 = crawler.next_url().unwrap().0;
     let url2 = crawler.next_url().unwrap().0;
     let url3 = crawler.next_url().unwrap().0;
-    let mut urls = vec![url1, url2, url3];
+    let mut urls = [url1, url2, url3];
     urls.sort();
     assert_eq!(urls[0], "http://example.com/page-1.html");
     assert_eq!(urls[1], "http://example.com/page-2.html");

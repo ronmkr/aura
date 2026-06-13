@@ -1,8 +1,9 @@
 use crate::orchestrator::{SubTaskEvent, WorkerCommand};
 use crate::storage::StorageRequest;
+use crate::worker::bittorrent::protocol::mse::MseStream;
 use crate::worker::bittorrent::task::BtTask;
 use crate::worker::bittorrent::BtWorker;
-use crate::{InfoHash, Result, TaskId};
+use crate::{Error, InfoHash, Result, TaskId};
 use std::sync::Arc;
 use tokio::net::TcpStream;
 use tokio::sync::mpsc;
@@ -30,9 +31,80 @@ pub async fn handle_incoming_peer(
     use crate::worker::bittorrent::HANDSHAKE_LEN;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
-    let mut buf = [0u8; HANDSHAKE_LEN];
-    stream.read_exact(&mut buf).await?;
-    let handshake = Handshake::deserialize(&buf)?;
+    let policy = ctx.orchestrator_handle.config.load().bittorrent.encryption;
+    let connect_timeout_secs = ctx
+        .orchestrator_handle
+        .config
+        .load()
+        .network
+        .connect_timeout_secs;
+
+    let (mut mse_stream, handshake) = tokio::time::timeout(
+        std::time::Duration::from_secs(connect_timeout_secs),
+        async {
+            let mut first_byte = [0u8; 1];
+            stream
+                .read_exact(&mut first_byte)
+                .await
+                .map_err(|e| Error::Protocol(e.to_string()))?;
+
+            if first_byte[0] == 0x13 {
+                // Plaintext handshake
+                if policy == crate::config::EncryptionPolicy::Require {
+                    return Err(Error::Protocol(
+                        "Encryption required but incoming connection is plaintext".to_string(),
+                    ));
+                }
+                let mut remaining = [0u8; HANDSHAKE_LEN - 1];
+                stream
+                    .read_exact(&mut remaining)
+                    .await
+                    .map_err(|e| Error::Protocol(e.to_string()))?;
+                let mut buf = [0u8; HANDSHAKE_LEN];
+                buf[0] = 0x13;
+                buf[1..].copy_from_slice(&remaining);
+                let handshake = Handshake::deserialize(&buf)?;
+                Ok((MseStream::new(stream), handshake))
+            } else {
+                // MSE handshake
+                if policy == crate::config::EncryptionPolicy::Disable {
+                    return Err(Error::Protocol(
+                        "Encryption disabled but incoming connection uses MSE".to_string(),
+                    ));
+                }
+                let mut remaining = [0u8; 95];
+                stream
+                    .read_exact(&mut remaining)
+                    .await
+                    .map_err(|e| Error::Protocol(e.to_string()))?;
+                let mut ya = [0u8; 96];
+                ya[0] = first_byte[0];
+                ya[1..].copy_from_slice(&remaining);
+
+                let mut mse_stream = MseStream::new(stream);
+                let active_torrents: Vec<crate::InfoHash> =
+                    ctx.bt_registry.keys().cloned().collect();
+                let (_target_info_hash, ia) = mse_stream
+                    .handshake_incoming(ya, policy, &active_torrents)
+                    .await?;
+
+                let handshake = if ia.len() >= HANDSHAKE_LEN {
+                    Handshake::deserialize(&ia[..HANDSHAKE_LEN])?
+                } else {
+                    let mut buf = [0u8; HANDSHAKE_LEN];
+                    buf[..ia.len()].copy_from_slice(&ia);
+                    mse_stream
+                        .read_exact(&mut buf[ia.len()..])
+                        .await
+                        .map_err(|e| Error::Protocol(e.to_string()))?;
+                    Handshake::deserialize(&buf)?
+                };
+                Ok((mse_stream, handshake))
+            }
+        },
+    )
+    .await
+    .map_err(|_| Error::Protocol("Incoming peer handshake timeout".to_string()))??;
 
     // Find the task by matching the 20-byte hash from handshake
     let mut task_found = None;
@@ -54,7 +126,10 @@ pub async fn handle_incoming_peer(
             info!(?addr, "Accepted incoming peer for task {}", task.id);
 
             let my_handshake = Handshake::new(handshake.info_hash, ctx.orchestrator_handle.peer_id);
-            stream.write_all(&my_handshake.serialize()).await?;
+            mse_stream
+                .write_all(&my_handshake.serialize())
+                .await
+                .map_err(|e| Error::Protocol(e.to_string()))?;
 
             let mut worker = BtWorker::new(ctx.orchestrator_handle.build_bt_worker_options(
                 addr.to_string(),
@@ -73,7 +148,7 @@ pub async fn handle_incoming_peer(
 
             worker
                 .run_loop_with_stream(
-                    stream,
+                    mse_stream,
                     crate::worker::bittorrent::BtWorkerArgs {
                         meta_id: task.id,
                         sub_id: task.id,

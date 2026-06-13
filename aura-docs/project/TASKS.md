@@ -17,7 +17,7 @@ All active development tasks, technical debt, and feature requests are managed e
     - [x] Updated `aura-dev` skill to mandate zero hardcoded values and struct-based args.
 
 ### High (P1)
-- [ ] **feat: Implement MSE/PE (Message Stream Encryption) for BitTorrent traffic obfuscation** (Issue #283) `[module:core, module:network, priority:high]`
+- [x] **feat: Implement MSE/PE (Message Stream Encryption) for BitTorrent traffic obfuscation** (Issue #283) `[module:core, module:network, priority:high]`
 - [ ] **feat: Implement μTP/LEDBAT transport (BEP 29) for ISP-friendly BitTorrent** (Issue #286) `[module:core, module:network, priority:high]`
 - [x] **feat: Fast resume — verify and reuse existing file data on task re-add** (Issue #284) `[module:core, module:storage, priority:high]`
 - [ ] **feat: Watch folder — auto-ingest .torrent/.metalink files dropped into a directory** (Issue #288) `[module:core, module:daemon, priority:high]`

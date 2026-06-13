@@ -58,6 +58,7 @@ memmap2 = "0.9.5"
 hickory-resolver = { version = "0.26.1", features = ["tokio", "serde", "webpki-roots", "https-aws-lc-rs", "tls-aws-lc-rs", "system-config"] }
 igd-next = { version = "0.17.1", features = ["aio_tokio", "tokio"] }
 libc = "0.2.186"
+num-bigint = "0.4"
 indicatif = "0.18"
 local-ip-address = "0.6.12"
 lru = "0.18.0"
