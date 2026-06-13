@@ -11,6 +11,7 @@ Users often need to download a sequential series of files (e.g., `image001.jpg` 
 2. **Expansion**: When a URI containing brackets `[]` or braces `{}` is received, the Globber expands it into a list of URIs.
 3. **Batch Tasks**: Each expanded URI is treated as a separate **Download Task**.
 4. **Shared Options**: All tasks in a batch share the same initial configuration but can be controlled individually once created.
+5. **Crawler Integration**: Seed URLs passed to the recursive crawler (defined under [ADR-0030](0030-recursive-mirroring.md)) are also expanded using the glob expansion logic during crawler initialization.
 
 ## Alternatives Considered
 - **Worker-level Globbing**: Have the worker handle the glob. *Rejected:* Violates the principle that a worker handles exactly one URI at a time and would break progress tracking.

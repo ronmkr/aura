@@ -119,6 +119,10 @@ Aura supports powerful URL expansion (globbing).
 ### Step Values
 `aura "https://archive.org/data[0-100:10].bin"` (Expands to 0, 10, 20...)
 
+### Crawler Seed Expansion
+Aura's recursive crawler (used during HTML page asset discovery) expands globbing patterns in the start URL, running crawls across all target variations:
+`aura "https://example.com/gallery-[1-5].html"`
+
 ---
 
 ## Multi-Source Downloads (Mirror Aggregation)
