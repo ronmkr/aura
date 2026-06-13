@@ -1,4 +1,5 @@
 pub mod dispatch;
+pub mod dispatch_torrent;
 pub mod lifecycle_ext;
 pub mod peer_handler;
 

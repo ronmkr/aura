@@ -4,6 +4,8 @@
 use crate::Result;
 use std::path::{Path, PathBuf};
 
+/// Enforces sandbox path confinement rules to prevent directory traversal and isolate
+/// file system operations, complying with the security design in [ADR-0054](aura-docs/adr/0054-sandbox-root-confinement.md).
 pub(crate) fn check_path_sandbox_impl(
     path: &Path,
     config: &Option<std::sync::Arc<arc_swap::ArcSwap<crate::Config>>>,

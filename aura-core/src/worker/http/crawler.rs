@@ -12,13 +12,18 @@ pub struct RecursiveCrawler {
 
 impl RecursiveCrawler {
     pub fn new(start_url: &str, max_depth: usize, stay_on_host: bool) -> Result<Self> {
-        let parsed = Url::parse(start_url).map_err(|e| Error::Protocol(e.to_string()))?;
-        let base_host = parsed.host_str().map(|s| s.to_string());
-
-        let normalized_url = parsed.to_string();
+        let expanded_urls = crate::glob::expand_url(start_url)?;
 
         let mut queue = VecDeque::new();
-        queue.push_back((normalized_url, 0));
+        let mut base_host = None;
+
+        for url_str in expanded_urls {
+            let parsed = Url::parse(&url_str).map_err(|e| Error::Protocol(e.to_string()))?;
+            if base_host.is_none() {
+                base_host = parsed.host_str().map(|s| s.to_string());
+            }
+            queue.push_back((parsed.to_string(), 0));
+        }
 
         Ok(Self {
             visited: HashSet::new(),

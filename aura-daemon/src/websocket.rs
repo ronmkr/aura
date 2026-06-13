@@ -50,6 +50,8 @@ pub async fn handle_ws(
     ws.on_upgrade(move |socket| ws_session(socket, state.engine.clone()))
 }
 
+/// Handles the WebSocket session lifecycle, upgrading the connection to stream
+/// real-time telemetry events from the core event bus as specified in [ADR-0004](aura-docs/adr/0004-telemetry-and-event-bus.md).
 pub async fn ws_session(socket: WebSocket, engine: Arc<Engine>) {
     let (mut sender, mut receiver) = socket.split();
     let mut event_rx = engine.subscribe();

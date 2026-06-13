@@ -10,6 +10,8 @@ pub struct ContiguousBlock {
     pub data: Vec<BytesMut>,
 }
 
+/// Aggregates and sequences disk write requests to minimize random disk I/O,
+/// implementing the strategy defined in [ADR-0033](aura-docs/adr/0033-generation-writes-and-aggregation.md).
 pub struct SequentialAggregator {
     pending_writes: HashMap<TaskId, BTreeMap<u64, BytesMut>>,
     dirty_buffers: HashMap<TaskId, Vec<(u64, BytesMut)>>,

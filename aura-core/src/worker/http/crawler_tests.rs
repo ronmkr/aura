@@ -47,3 +47,17 @@ fn test_crawler_stay_on_host() {
     assert_eq!(url2, "http://example.com/local");
     assert!(crawler.next_url().is_none()); // External was skipped
 }
+
+#[test]
+fn test_crawler_glob_expansion() {
+    let mut crawler = RecursiveCrawler::new("http://example.com/page-[1-3].html", 2, true).unwrap();
+    let url1 = crawler.next_url().unwrap().0;
+    let url2 = crawler.next_url().unwrap().0;
+    let url3 = crawler.next_url().unwrap().0;
+    let mut urls = vec![url1, url2, url3];
+    urls.sort();
+    assert_eq!(urls[0], "http://example.com/page-1.html");
+    assert_eq!(urls[1], "http://example.com/page-2.html");
+    assert_eq!(urls[2], "http://example.com/page-3.html");
+    assert!(crawler.next_url().is_none());
+}
