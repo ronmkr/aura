@@ -257,6 +257,19 @@ impl ProtocolWorker for GDriveWorker {
             }
 
             let mut stream = response.bytes_stream();
+            let mut _guard = if let Some(ref gov) = self.options.resource_governor {
+                let req_size = if segment.length == u64::MAX {
+                    65536
+                } else {
+                    segment.length as usize
+                };
+                while !gov.request_allocation(&self.options.tenant_id, req_size, false) {
+                    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+                }
+                Some(gov.clone().lock(&self.options.tenant_id, req_size).await)
+            } else {
+                None
+            };
             let buffer_cap = self.options.http_buffer_capacity;
             let mut buffer = bytes::BytesMut::with_capacity(buffer_cap);
             let mut bytes_downloaded = 0u64;

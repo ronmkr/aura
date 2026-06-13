@@ -4,6 +4,9 @@ use arc_swap::ArcSwap;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 
+pub mod mock_storage;
+pub use mock_storage::MockStorage;
+
 pub fn create_test_orchestrator() -> (Orchestrator, mpsc::Receiver<crate::storage::StorageRequest>)
 {
     let (_command_tx, command_rx) = mpsc::channel(1024);

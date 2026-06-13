@@ -212,7 +212,7 @@ impl ProtocolWorker for NntpWorker {
                         offset: segment.offset,
                         length: decoded_data.len() as u64,
                     },
-                    decoded_data.into(),
+                    bytes::BytesMut::from(decoded_data.as_slice()),
                     None,
                     None,
                 )
@@ -220,9 +220,9 @@ impl ProtocolWorker for NntpWorker {
         }
 
         let buffer = if storage_client.is_some() {
-            BytesMut::new()
+            bytes::BytesMut::new()
         } else {
-            BytesMut::from(sliced_data)
+            bytes::BytesMut::from(sliced_data)
         };
 
         Ok(PieceData {
