@@ -1,7 +1,7 @@
 # ADR 0066: MSE/PE Traffic Encryption
 
 ## Status
-Proposed (2026-06-11 — Issue #283)
+Accepted (2026-06-13 — Issue #283)
 
 ## Context
 BitTorrent protocol traffic is easily identified and throttled by Internet Service Providers (ISPs) using Deep Packet Inspection (DPI). Without protocol encryption, all wire traffic from Aura (including protocol handshakes and block transfers) is in plaintext. Furthermore, many private trackers enforce encryption and refuse connections from clients without Message Stream Encryption (MSE/PE) support. While `CONTEXT.md` references a "Traffic Obfuscator" component implementing MSE/PE, no code currently exists for it in the codebase.
