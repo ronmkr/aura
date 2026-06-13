@@ -4,8 +4,10 @@ use crate::InfoHash;
 
 #[test]
 fn test_rc4_obfuscation() {
-    let key = b"test_secret_key";
+    let key = b"my_secret_key";
+    // codeql[rust/weak-cryptographic-algorithm]
     let mut cipher1 = Rc4::new(key);
+    // codeql[rust/weak-cryptographic-algorithm]
     let mut cipher2 = Rc4::new(key);
 
     let mut data = b"Hello, BitTorrent Obfuscation!".to_vec();

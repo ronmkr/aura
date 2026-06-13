@@ -104,6 +104,7 @@ fn get_dh_prime() -> BigUint {
 }
 
 pub fn hash_sha1(key: &[u8], s: &[u8], info_hash: Option<&[u8; 20]>) -> [u8; 20] {
+    // codeql[rust/weak-cryptographic-algorithm]
     let mut hasher = Sha1::new();
     hasher.update(key);
     hasher.update(s);

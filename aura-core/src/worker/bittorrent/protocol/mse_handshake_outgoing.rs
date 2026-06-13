@@ -62,7 +62,9 @@ where
         let key_b = hash_sha1(b"keyB", &s, Some(info_hash));
 
         // Initialize RC4 encryptor and decryptor
+        // codeql[rust/weak-cryptographic-algorithm]
         let mut enc = Rc4::new(&key_a);
+        // codeql[rust/weak-cryptographic-algorithm]
         let mut dec = Rc4::new(&key_b);
 
         // Discard first 1024 bytes of keystream for both ciphers

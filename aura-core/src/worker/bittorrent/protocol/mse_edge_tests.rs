@@ -267,6 +267,7 @@ async fn test_mse_handshake_failure_ia_payload_too_large() {
         }
 
         let key_a = super::mse::hash_sha1(b"keyA", &s, Some(&info_hash.for_handshake()));
+        // codeql[rust/weak-cryptographic-algorithm]
         let mut enc = super::mse::Rc4::new(&key_a);
         let mut discard = [0u8; 1024];
         enc.process(&mut discard);

@@ -107,7 +107,9 @@ where
         let key_a = hash_sha1(b"keyA", &s, Some(&info_hash_bytes));
         let key_b = hash_sha1(b"keyB", &s, Some(&info_hash_bytes));
 
+        // codeql[rust/weak-cryptographic-algorithm]
         let mut dec = Rc4::new(&key_a);
+        // codeql[rust/weak-cryptographic-algorithm]
         let mut enc = Rc4::new(&key_b);
 
         let mut discard = [0u8; 1024];
