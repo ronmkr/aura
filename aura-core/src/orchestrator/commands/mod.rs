@@ -312,6 +312,33 @@ impl Orchestrator {
                     }
                 }
             }
+            Command::ForceRecheck(id, reply_tx) => {
+                let res = async {
+                    let sub_id = {
+                        let task = self.tasks.get(&id).ok_or(crate::Error::TaskNotFound(id))?;
+                        task.subtasks.first().map(|s| s.id).ok_or_else(|| {
+                            crate::Error::Engine("Task has no subtasks".to_string())
+                        })?
+                    };
+
+                    if let Some(token) = self.cancellation_tokens.get(&id) {
+                        token.cancel();
+                    }
+
+                    let token = tokio_util::sync::CancellationToken::new();
+                    self.cancellation_tokens.insert(id, token);
+
+                    let spawned = self.maybe_spawn_recheck(id, sub_id).await?;
+                    if !spawned {
+                        return Err(crate::Error::Engine(
+                            "No existing file data found to recheck".to_string(),
+                        ));
+                    }
+                    Ok(())
+                }
+                .await;
+                let _ = reply_tx.send(res);
+            }
         }
         Ok(())
     }

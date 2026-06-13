@@ -33,6 +33,7 @@ Aura implements a standardized RPC interface. It is largely compatible with stan
 | `aura.tellStopped`| Returns status of completed/removed tasks. | `[offset], [num], [keys]` |
 | `aura.getFiles` | Returns the file tree/list for a task. | `[gid]` |
 | `aura.setFileSelection`| Selects files for download in a swarm. | `[gid], [indices]` |
+| `aura.forceRecheck`| Forces full integrity/hash validation for a task's files (ADR 0068). | `[gid]` |
 | `aura.purgeDownloadResult`| Clears the entire history log. | None |
 | `aura.removeDownloadResult`| Removes a single history record. | `[gid]` |
 | `aura.getVersion`| Returns engine version and features. | None |

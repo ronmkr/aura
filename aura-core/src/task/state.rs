@@ -88,6 +88,7 @@ impl MetaTask {
             selected_files: state.selected_files,
             seed_ratio_override: None,
             seed_time_override: None,
+            recheck_progress: 0.0,
         }
     }
 }

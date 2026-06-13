@@ -280,3 +280,22 @@ pub async fn run_status(
 
     Ok(())
 }
+
+pub async fn run_recheck(
+    port: u16,
+    secret: Option<String>,
+    gid: u64,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let rpc = RpcClient::new(port, secret);
+    let body = rpc
+        .call(
+            "aura.forceRecheck",
+            vec![json!(gid.to_string())],
+            "cli-recheck",
+        )
+        .await?;
+
+    rpc.check_error(&body, "forcing recheck");
+    println!("Recheck request sent successfully for GID {}", gid);
+    Ok(())
+}

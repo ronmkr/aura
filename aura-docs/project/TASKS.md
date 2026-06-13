@@ -19,7 +19,7 @@ All active development tasks, technical debt, and feature requests are managed e
 ### High (P1)
 - [ ] **feat: Implement MSE/PE (Message Stream Encryption) for BitTorrent traffic obfuscation** (Issue #283) `[module:core, module:network, priority:high]`
 - [ ] **feat: Implement μTP/LEDBAT transport (BEP 29) for ISP-friendly BitTorrent** (Issue #286) `[module:core, module:network, priority:high]`
-- [ ] **feat: Fast resume — verify and reuse existing file data on task re-add** (Issue #284) `[module:core, module:storage, priority:high]`
+- [x] **feat: Fast resume — verify and reuse existing file data on task re-add** (Issue #284) `[module:core, module:storage, priority:high]`
 - [ ] **feat: Watch folder — auto-ingest .torrent/.metalink files dropped into a directory** (Issue #288) `[module:core, module:daemon, priority:high]`
 - [ ] **feat: RSS/Atom feed subscriptions for automated download ingestion** (Issue #290) `[module:core, module:daemon, priority:high]`
 - [ ] **feat: System service integration — auto-start daemon on boot (systemd, launchd, Windows Service)** (Issue #291) `[module:daemon, module:cli, priority:high, infra]`

@@ -154,7 +154,19 @@ impl Orchestrator {
                 });
         }
 
-        self.dispatch_next_ranges(meta_id, sub_id).await
+        let recheck_spawned = self.maybe_spawn_recheck(meta_id, sub_id).await?;
+        let is_bt = if let Some(t) = self.tasks.get(&meta_id) {
+            t.subtasks
+                .iter()
+                .any(|s| s.id == sub_id && s.task_type == crate::task::TaskType::BitTorrent)
+        } else {
+            false
+        };
+
+        if !recheck_spawned || is_bt {
+            self.dispatch_next_ranges(meta_id, sub_id).await?;
+        }
+        Ok(())
     }
 
     pub(crate) async fn handle_range_finished(

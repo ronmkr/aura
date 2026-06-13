@@ -1,5 +1,6 @@
 pub mod aggregator;
 pub mod locker;
+pub mod recheck;
 pub mod registry;
 
 pub mod completion;
@@ -24,3 +25,7 @@ mod tests_advanced;
 #[cfg(test)]
 #[path = "tests_locking.rs"]
 mod tests_locking;
+
+#[cfg(test)]
+#[path = "recheck_tests.rs"]
+mod recheck_tests;

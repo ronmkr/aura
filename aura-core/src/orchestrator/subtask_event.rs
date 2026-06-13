@@ -17,6 +17,8 @@ pub enum SubTaskEvent {
     PeerBitfield(TaskId, PeerId, Bitfield),
     PeerHave(TaskId, PeerId, u32),
     PieceVerified(TaskId, TaskId, usize),
+    RecheckProgress(TaskId, f64),
+    RecheckComplete(TaskId, Bitfield),
     BtTaskRegistered(
         TaskId,
         InfoHash,

@@ -86,6 +86,11 @@ enum Commands {
         /// The GID of the task to refresh
         gid: u64,
     },
+    /// Force a recheck on the target/part file for a task
+    Recheck {
+        /// The GID of the task to recheck
+        gid: u64,
+    },
     /// Show files for a BitTorrent task
     ShowFiles {
         /// The GID of the task
@@ -198,6 +203,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Some(Commands::Refresh { gid }) => {
             cli_client::run_refresh(config.network.rpc_port, config.network.rpc_secret, gid)
+                .await?;
+        }
+        Some(Commands::Recheck { gid }) => {
+            cli_client::run_recheck(config.network.rpc_port, config.network.rpc_secret, gid)
                 .await?;
         }
         Some(Commands::ShowFiles { gid }) => {

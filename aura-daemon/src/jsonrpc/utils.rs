@@ -38,6 +38,7 @@ pub struct TaskValueParams<'a> {
     pub selected_files: Option<&'a [bool]>,
     pub swarm_seeders: Option<u32>,
     pub swarm_leechers: Option<u32>,
+    pub recheck_progress: f64,
 }
 
 pub fn format_task_value(params: TaskValueParams) -> Value {
@@ -69,6 +70,7 @@ pub fn format_task_value(params: TaskValueParams) -> Value {
         "selectedFiles": params.selected_files,
         "numSeeders": params.swarm_seeders.map(|s| s.to_string()).unwrap_or_else(|| "0".to_string()),
         "connections": params.swarm_leechers.map(|l| l.to_string()).unwrap_or_else(|| "0".to_string()),
+        "recheckProgress": params.recheck_progress.to_string(),
     });
 
     if let Some(ref k) = params.keys {

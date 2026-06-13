@@ -26,6 +26,8 @@ pub struct DownloadInfo {
     pub name: String,
     #[serde(rename = "selectedFiles", default)]
     pub selected_files: Option<Vec<bool>>,
+    #[serde(rename = "recheckProgress", default)]
+    pub recheck_progress: Option<String>,
 }
 
 #[derive(Debug, serde::Deserialize, Clone)]

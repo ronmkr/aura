@@ -43,6 +43,7 @@ async fn test_tenant_isolation_in_orchestrator() {
         selected_files: None,
         seed_ratio_override: None,
         seed_time_override: None,
+        recheck_progress: 0.0,
     };
 
     orch.tasks.insert(TaskId(1), meta);
@@ -97,6 +98,7 @@ async fn test_adaptive_concurrency_scaling() {
         selected_files: None,
         seed_ratio_override: None,
         seed_time_override: None,
+        recheck_progress: 0.0,
     };
 
     orch.tasks.insert(meta_id, meta);

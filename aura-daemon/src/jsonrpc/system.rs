@@ -74,6 +74,7 @@ pub async fn handle_tell_stopped(engine: &Engine, params: Option<Value>) -> Resu
                 selected_files: None,
                 swarm_seeders: None,
                 swarm_leechers: None,
+                recheck_progress: 0.0,
             })
         })
         .collect();

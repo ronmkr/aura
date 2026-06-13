@@ -46,4 +46,5 @@ pub enum Command {
         tokio::sync::oneshot::Sender<Option<Vec<crate::torrent::File>>>,
     ),
     SetFileSelection(TaskId, Vec<bool>),
+    ForceRecheck(TaskId, tokio::sync::oneshot::Sender<crate::Result<()>>),
 }

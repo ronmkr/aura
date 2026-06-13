@@ -96,6 +96,11 @@ Check for updates on a completed or active download using ETag or Last-Modified 
 
 **Usage:** `aura refresh <GID>`
 
+### `recheck`
+Force a full file integrity/hash validation scan of the target or `.part` files for a task (ADR 0068).
+
+**Usage:** `aura recheck <GID>`
+
 ### `probe`
 Run the **Allocation Prober** to identify the best disk allocation strategy for a filesystem.
 
