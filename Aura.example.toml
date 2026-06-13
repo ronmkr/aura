@@ -49,6 +49,7 @@ download_limit = 10485760              # 10 MB/s
 upload_limit = 5242880                 # 5 MB/s
 
 [bittorrent]
+encryption = "prefer"                  # Traffic encryption policy: "prefer", "require", or "disable"
 peer_id_prefix = "-AU0001-"            # Unique peer ID prefix
 dht_enabled = true                     # Enable Distributed Hash Table
 lpd_enabled = true                     # Enable Local Peer Discovery
