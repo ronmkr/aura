@@ -122,6 +122,7 @@ async fn test_failed_connection_transitions_to_disconnected() {
         pipeline_size: 10,
         connect_timeout_secs: 5,
         happy_eyeballs_stagger_ms: 250,
+        encryption: Default::default(),
     });
 
     let (storage_tx, _) = mpsc::channel(1);

@@ -18,6 +18,7 @@ pub struct BtWorkerOptions {
     pub pipeline_size: usize,
     pub connect_timeout_secs: u64,
     pub happy_eyeballs_stagger_ms: u64,
+    pub encryption: crate::config::EncryptionPolicy,
 }
 
 /// Arguments for the BitTorrent worker main loop.
@@ -56,6 +57,7 @@ pub struct BtWorker {
     pub requested_hashes: std::collections::HashSet<[u8; 32]>,
     pub connect_timeout_secs: u64,
     pub happy_eyeballs_stagger_ms: u64,
+    pub encryption: crate::config::EncryptionPolicy,
 }
 
 impl BtWorker {
@@ -85,6 +87,7 @@ impl BtWorker {
             requested_hashes: std::collections::HashSet::new(),
             connect_timeout_secs: options.connect_timeout_secs,
             happy_eyeballs_stagger_ms: options.happy_eyeballs_stagger_ms,
+            encryption: options.encryption,
         }
     }
 }

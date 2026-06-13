@@ -91,6 +91,7 @@ impl OrchestratorHandle {
             pipeline_size: config.bittorrent.request_pipeline_size,
             connect_timeout_secs: config.network.connect_timeout_secs,
             happy_eyeballs_stagger_ms: config.network.happy_eyeballs_stagger_ms,
+            encryption: config.bittorrent.encryption,
         }
     }
 }

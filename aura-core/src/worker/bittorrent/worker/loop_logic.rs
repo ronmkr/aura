@@ -1,6 +1,7 @@
 use super::types::{BtWorker, BtWorkerArgs};
 use crate::orchestrator::WorkerCommand;
 use crate::worker::bittorrent::handlers::PeerHandlerContext;
+use crate::worker::bittorrent::protocol::mse::MseStream;
 use crate::worker::bittorrent::protocol::{ExtendedHandshake, PeerCodec, PeerMessage};
 use crate::{Error, Result};
 use futures_util::{SinkExt, StreamExt};
@@ -42,7 +43,7 @@ impl BtWorker {
 
     pub async fn run_loop_with_stream(
         &mut self,
-        stream: TcpStream,
+        stream: MseStream<TcpStream>,
         args: BtWorkerArgs,
         ext_support: bool,
     ) -> Result<()> {
@@ -52,7 +53,7 @@ impl BtWorker {
 
     async fn run_loop_with_stream_and_ext(
         &mut self,
-        stream: TcpStream,
+        stream: MseStream<TcpStream>,
         args: BtWorkerArgs,
         ext_support: bool,
     ) -> Result<()> {
@@ -149,7 +150,7 @@ impl BtWorker {
     async fn handle_worker_command(
         &mut self,
         cmd: WorkerCommand,
-        ctx: &mut PeerHandlerContext<'_, TcpStream>,
+        ctx: &mut PeerHandlerContext<'_, MseStream<TcpStream>>,
     ) -> Result<()> {
         let peer_addr = self.peer_addr.clone();
         match cmd {
