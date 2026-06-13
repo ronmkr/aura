@@ -192,6 +192,7 @@ Controls how files are saved to your hard drive.
 | `io_deadline_ms` | Time (ms) | `500` | Target time for a single disk write to finish. |
 | `read_ahead_kb` | Number (KB) | `128` | Pre-read data from disk into memory when uploading. |
 | `write_buffer_kb` | Number (KB) | `256` | Size of individual data chunks written to disk. |
+| `recheck_throttle_ms`| Time (ms) | `10` | Throttling delay in milliseconds between read chunks during hash rechecks (ADR 0068). |
 
 ---
 
