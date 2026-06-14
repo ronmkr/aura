@@ -1,4 +1,4 @@
-# ADR 0028: Privacy-Enhanced Resolution and Modern DNS
+# Decision 0028: Privacy-Enhanced Resolution and Modern DNS
 
 ## Status
 Implemented (2026-05-27, PR #116)

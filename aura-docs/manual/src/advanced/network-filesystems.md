@@ -2,7 +2,7 @@
 
 Aura includes specialized optimizations for downloading to network-attached storage (NAS) and shared drives. Downloading to these environments presents challenges like high latency and limited support for standard filesystem features like `fallocate`.
 
-## 1. Automatic NAS Detection (ADR 0021)
+## 1. Automatic NAS Detection (Decision 0021)
 
 The **Storage Engine** automatically identifies when a download path resides on a network share (NFS or SMB). 
 

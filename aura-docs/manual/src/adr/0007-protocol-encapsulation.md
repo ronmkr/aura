@@ -1,4 +1,4 @@
-# ADR 0007: Protocol Encapsulation and Black-Box Workers
+# Decision 0007: Protocol Encapsulation and Black-Box Workers
 
 ## Status
 Implemented (2026-05-06, commit 0777b1ab)

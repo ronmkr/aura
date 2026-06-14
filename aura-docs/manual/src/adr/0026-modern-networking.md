@@ -1,4 +1,4 @@
-# ADR 0026: Modern Networking (Happy Eyeballs, Alt-Svc, Streaming)
+# Decision 0026: Modern Networking (Happy Eyeballs, Alt-Svc, Streaming)
 
 ## Status
 Implemented (2026-06-10, PR #277)

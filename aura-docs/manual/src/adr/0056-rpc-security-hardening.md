@@ -1,4 +1,4 @@
-# ADR 0056: Daemon RPC Security Hardening
+# Decision 0056: Daemon RPC Security Hardening
 
 ## Status
 Implemented (2026-06-03, PR #215)

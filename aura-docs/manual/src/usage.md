@@ -9,7 +9,7 @@ To start a standard download, simply pass the URL:
 aura "https://releases.ubuntu.com/24.04/ubuntu-24.04-desktop-amd64.iso"
 ```
 
-Aura's **ProtocolDetector** (ADR 0065) automatically identifies the source type (HTTP, FTP, BitTorrent, or Metalink) and starts the appropriate worker.
+Aura's **ProtocolDetector** (Decision 0065) automatically identifies the source type (HTTP, FTP, BitTorrent, or Metalink) and starts the appropriate worker.
 
 ---
 
@@ -25,7 +25,7 @@ aura "magnet:?xt=urn:btih:..."
 aura ./linux-distro.torrent
 ```
 
-### Selective Downloading (ADR 0065)
+### Selective Downloading (Decision 0065)
 For tasks with multiple files, you can choose exactly what to download:
 
 1.  **List Files**: Find the indices of the files you want.
@@ -40,7 +40,7 @@ For tasks with multiple files, you can choose exactly what to download:
 
 ---
 
-## Cloud Storage (ADR 0013)
+## Cloud Storage (Decision 0013)
 
 Aura supports direct, range-based downloads from S3-compatible APIs and personal cloud storage providers (Google Drive and OneDrive):
 
@@ -59,7 +59,7 @@ Aura's **ProtocolDetector** automatically identifies these cloud URIs and initia
 
 ---
 
-## Bulk Ingestion (ADR 0065)
+## Bulk Ingestion (Decision 0065)
 
 Aura makes it easy to add hundreds of downloads at once:
 
@@ -77,7 +77,73 @@ aura add-from-file ./backlog.txt
 
 ---
 
-## Download History (ADR 0062)
+## Watch Folder (Decision 0069)
+
+Aura can monitor a directory for new `.torrent`, `.metalink`, or `.nzb` files and automatically start downloading them.
+
+1.  **Configure**: Set the `watch_dir` in the `[storage]` section of your `Aura.toml`.
+2.  **Drop Files**: Move or copy a metadata file into the watched folder.
+3.  **Automatic Ingestion**: Aura detects the file, stabilizes it (ensuring it's fully written), and adds it to the queue. Successfully ingested files are moved to a `processed/` subfolder.
+
+---
+
+## RSS Subscriptions (Decision 0070)
+
+Automate your downloads by subscribing to RSS or Atom feeds.
+
+### Manage Feeds via CLI
+- **Add a Feed**:
+  ```bash
+  aura feed add "Linux Distros" "https://example.com/rss.xml" --filter "ubuntu.*iso"
+  ```
+- **List Feeds**:
+  ```bash
+  aura feed list
+  ```
+- **Remove a Feed**:
+  ```bash
+  aura feed remove "Linux Distros"
+  ```
+
+### Advanced Filtering
+You can filter feed items by title (regex), category, or file size to ensure you only download what you need.
+
+---
+
+## System Service (Decision 0071)
+
+For permanent installations (Seedboxes, NAS), you can run the Aura daemon as a system service.
+
+- **Install Service**:
+  ```bash
+  aura service install
+  ```
+- **Start Service**:
+  ```bash
+  aura service start
+  ```
+- **Check Status**:
+  ```bash
+  aura service status
+  ```
+*Supports `systemd` (Linux), `launchd` (macOS), and Windows Service Control Manager.*
+
+---
+
+## Integrity & Fast Resume (Decision 0068)
+
+Aura automatically performs a **Fast Resume** when the daemon restarts or a task is re-added, verifying existing data on disk before resuming network activity.
+
+### Manual Recheck
+If you suspect data corruption, you can manually trigger a full hash verification:
+```bash
+aura recheck <GID>
+```
+*The progress of the recheck is displayed in both the CLI status and the Pilot Dashboard (TUI).*
+
+---
+
+## Download History (Decision 0062)
 
 Aura maintains a persistent log of every download. To view your history:
 ```bash

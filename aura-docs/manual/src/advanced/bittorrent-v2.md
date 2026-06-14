@@ -17,6 +17,28 @@ Aura fully supports **Hybrid Torrents** (BEP 52), which contain both v1 (SHA-1) 
 - **Swarm Bridging**: Aura can connect to both v1 and v2 peers for the same task, effectively acting as a bridge between the two swarms.
 - **Unified Storage**: Data retrieved from a v1 peer is automatically verified against the v2 Merkle tree (and vice versa) before being committed to disk by the central Storage Engine.
 
+## Traffic Encryption (MSE/PE) (Decision 0066)
+
+Aura supports **Message Stream Encryption (MSE)** and **Protocol Encryption (PE)** to obfuscate BitTorrent traffic. This prevents Deep Packet Inspection (DPI) by ISPs from throttling or blocking BitTorrent connections.
+
+### Encryption Policies
+You can configure the encryption policy in `Aura.toml`:
+- **`prefer`** (Default): Attempt to use encryption but fall back to plain text if the peer doesn't support it.
+- **`require`**: Only connect to peers that support encryption. This maximizes privacy but may reduce the number of available peers.
+- **`disable`**: Never use encryption.
+
+---
+
+## Tracker Scrape & Swarm Statistics (Issue #289)
+
+Standard BitTorrent "Announces" only provide a list of active peers. To provide a complete picture of swarm health, Aura implements **Tracker Scraping**:
+
+- **Real-time Statistics**: Aura periodically queries trackers for total **Seeders**, **Leechers**, and **Completed** counts for every active task.
+- **TUI Visualization**: These statistics are displayed in the TUI Mission Details panel (e.g., `Seeds: 4 (of 180)`), giving you a better understanding of the swarm's overall health beyond your direct connections.
+- **Efficiency**: Scrape requests are compact and efficient, allowing Aura to track thousands of tasks without significant network overhead.
+
+---
+
 ## Peer Exchange (PEX) & DHT
 
 Aura implements high-performance discovery protocols:
@@ -30,7 +52,7 @@ To ensure swarm health, Aura implements a standard **Choking Algorithm**:
 - **Optimistic Unchoke**: Every 30 seconds, Aura randomly unchokes a peer to discover new high-speed sources.
 - **Anti-Snubbing**: If a peer hasn't sent data for 60 seconds, it is marked as "Snubbed," and its priority is lowered in the piece picker.
 
-## Endgame Mode (ADR 0039)
+## Endgame Mode (Decision 0039)
 
 To prevent the common "99.9% stall" caused by a single slow peer holding the final blocks:
 - **Trigger**: Aura enters Endgame Mode when fewer than 20 blocks (320KB) remain.

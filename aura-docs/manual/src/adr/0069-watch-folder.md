@@ -1,4 +1,4 @@
-# ADR 0069: Watch Folder Auto-ingestion
+# Decision 0069: Watch Folder Auto-ingestion
 
 ## Status
 Implemented (2026-06-14 — PR #303)

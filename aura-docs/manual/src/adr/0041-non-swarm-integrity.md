@@ -1,4 +1,4 @@
-# ADR 0041: Integrity Verification for Non-Swarm Protocols
+# Decision 0041: Integrity Verification for Non-Swarm Protocols
 
 ## Status
 Implemented (2026-05-27, PR #112)
@@ -9,7 +9,7 @@ While BitTorrent has built-in hash verification, HTTP and FTP protocols rely on 
 ## Decision
 1. **Checksum Strategy**: Aura will support MD5, SHA-1, SHA-256, and SHA-512 verification for any task.
 2. **Verification Phase**: A new phase, `Verifying`, will be added to the **Task Lifecycle**. This phase occurs after 100% data retrieval but before moving to `Completed`.
-3. **Streaming Hashing**: To optimize I/O, the **Storage Engine** will perform streaming hashing during the final data flush if a checksum is provided upfront. If provided after completion, a dedicated **Integrity Scrubber** (see ADR 0024) will be used.
+3. **Streaming Hashing**: To optimize I/O, the **Storage Engine** will perform streaming hashing during the final data flush if a checksum is provided upfront. If provided after completion, a dedicated **Integrity Scrubber** (see Decision 0024) will be used.
 4. **Mismatch Policy**: If a checksum mismatch is detected, the task will move to `Failed` and keep the `.part` file, allowing users to manually inspect or force a re-download.
 
 ## Alternatives Considered

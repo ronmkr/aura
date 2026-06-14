@@ -1,4 +1,4 @@
-# ADR 0072: Architectural Decoupling of Engine God Nodes
+# Decision 0072: Architectural Decoupling of Engine God Nodes
 
 ## Status
 Implemented (2026-06-13, refactor/engine-storage-decoupling)

@@ -1,4 +1,4 @@
-# ADR 0032: Multi-Tenancy and Observability
+# Decision 0032: Multi-Tenancy and Observability
 
 ## Status
 Implemented (2026-05-31, PR #179)

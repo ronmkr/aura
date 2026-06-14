@@ -1,5 +1,5 @@
 //! Sequential Write Aggregator to prevent random I/O fragmentation,
-//! following the design intent of [ADR-0033](aura-docs/manual/src/adr/0033-generation-writes-and-aggregation.md).
+//! following the design intent of [Decision-0033](aura-docs/manual/src/decisions/0033-generation-writes-and-aggregation.md).
 
 use crate::TaskId;
 use bytes::BytesMut;
@@ -11,7 +11,7 @@ pub struct ContiguousBlock {
 }
 
 /// Aggregates and sequences disk write requests to minimize random disk I/O,
-/// implementing the strategy defined in [ADR-0033](aura-docs/manual/src/adr/0033-generation-writes-and-aggregation.md).
+/// implementing the strategy defined in [Decision-0033](aura-docs/manual/src/decisions/0033-generation-writes-and-aggregation.md).
 pub struct SequentialAggregator {
     pending_writes: HashMap<TaskId, BTreeMap<u64, BytesMut>>,
     dirty_buffers: HashMap<TaskId, Vec<(u64, BytesMut)>>,

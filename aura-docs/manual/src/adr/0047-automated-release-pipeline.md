@@ -1,4 +1,4 @@
-# ADR 0047: Automated Release Pipeline
+# Decision 0047: Automated Release Pipeline
 
 ## Status
 Implemented (2026-05-29, PR #144)

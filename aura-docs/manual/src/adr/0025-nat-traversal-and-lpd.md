@@ -1,4 +1,4 @@
-# ADR 0025: NAT Traversal and LAN Discovery
+# Decision 0025: NAT Traversal and LAN Discovery
 
 ## Status
 Implemented (2026-05-27, PR #114)

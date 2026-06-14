@@ -1,11 +1,11 @@
-# ADR 0042: Internationalization (i18n) Architecture
+# Decision 0042: Internationalization (i18n) Architecture
 
 ## Status
 Proposed — Deferred (lowest priority; see Priority note below)
 
 ## Priority
 
-**Lowest** — i18n is explicitly deferred until all P0–P3 security, correctness, and stability issues are resolved. The CLI, TUI, and daemon will remain English-only until this ADR is accepted and implementation begins. See GitHub issue #190.
+**Lowest** — i18n is explicitly deferred until all P0–P3 security, correctness, and stability issues are resolved. The CLI, TUI, and daemon will remain English-only until this Decision is accepted and implementation begins. See GitHub issue #190.
 
 ## Context
 Aura is intended for a global audience. Hardcoded English strings in the CLI, TUI, and logs make it difficult for non-English speakers to use the tool effectively.

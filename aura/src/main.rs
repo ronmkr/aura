@@ -87,7 +87,7 @@ enum Commands {
         #[arg(default_value = ".")]
         dir: String,
     },
-    /// View completed download history (ADR-0062)
+    /// View completed download history (Decision-0062)
     History {
         /// Limit the number of records displayed
         #[arg(long, short, default_value_t = 10)]
@@ -99,7 +99,7 @@ enum Commands {
         #[arg(long, short)]
         filter: Option<String>,
     },
-    /// View real-time engine status and bandwidth schedules (ADR-0063)
+    /// View real-time engine status and bandwidth schedules (Decision-0063)
     Status,
     /// Refresh the download metadata for a task, checking ETag and Last-Modified (conditional GET)
     Refresh {

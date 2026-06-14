@@ -1,4 +1,4 @@
-# ADR 0070: RSS/Atom Feed Subscriptions
+# Decision 0070: RSS/Atom Feed Subscriptions
 
 ## Status
 Implemented (2026-06-14 — PR #303)

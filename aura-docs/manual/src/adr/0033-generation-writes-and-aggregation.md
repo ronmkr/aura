@@ -1,4 +1,4 @@
-# ADR 0033: Generation-based Writes and Sequential Aggregation
+# Decision 0033: Generation-based Writes and Sequential Aggregation
 
 ## Status
 Implemented (2026-06-03)

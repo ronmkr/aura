@@ -1,4 +1,4 @@
-# ADR 0055: SecretScrubber for Log Sanitization
+# Decision 0055: SecretScrubber for Log Sanitization
 
 ## Status
 Implemented (2026-06-03, PR #215)

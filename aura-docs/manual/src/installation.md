@@ -52,6 +52,27 @@ The binaries will be available in `target/release/`:
 - `aura daemon`: Start in background service mode.
 - `aura tui`: Start the interactive dashboard.
 
+## Running as a System Service (Decision 0071)
+
+For permanent installations (Servers, NAS, Seedboxes), we recommend running the Aura daemon as a system service. This ensures the engine starts automatically on boot and recovers from unexpected process terminations.
+
+### Installation
+```bash
+sudo aura service install
+```
+*Note: On Linux/macOS, this usually requires root privileges to register the service with systemd or launchd.*
+
+### Control Commands
+- **Start**: `aura service start`
+- **Stop**: `aura service stop`
+- **Status**: `aura service status`
+- **Uninstall**: `sudo aura service uninstall`
+
+### Platform Support
+- **Linux**: Integrates with `systemd` (creates `aura.service`).
+- **macOS**: Integrates with `launchd` (creates `com.aura.daemon.plist`).
+- **Windows**: Integrates with the **Service Control Manager** (via `install-service.ps1`).
+
 ## Feature Flags
 
 When building from source via Cargo, you can toggle optional capabilities using Cargo feature flags:

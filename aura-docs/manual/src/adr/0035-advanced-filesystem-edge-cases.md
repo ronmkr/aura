@@ -1,4 +1,4 @@
-# ADR 0035: Advanced Filesystem Edge Cases (COW, Long Paths, Endgame)
+# Decision 0035: Advanced Filesystem Edge Cases (COW, Long Paths, Endgame)
 
 ## Status
 Implemented (2026-05-27, PR #99)

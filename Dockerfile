@@ -46,8 +46,8 @@ FROM debian:bookworm-slim
 # - ca-certificates for HTTPS
 # - libdbus-1-3 for dbus
 # - libxcb for TUI/clipboard
-# - wireguard-tools and iproute2 for VPN support (ADR-0038)
-# - curl for healthchecks (ADR-0051)
+# - wireguard-tools and iproute2 for VPN support (Decision-0038)
+# - curl for healthchecks (Decision-0051)
 RUN apt-get update && apt-get install -y \
     ca-certificates \
     libdbus-1-3 \
@@ -74,7 +74,7 @@ EXPOSE 6800
 # Provide a volume for downloads
 VOLUME ["/downloads"]
 
-# Add healthcheck to monitor the daemon (ADR-0051)
+# Add healthcheck to monitor the daemon (Decision-0051)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:6800/health || exit 1
 

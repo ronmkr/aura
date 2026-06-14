@@ -99,7 +99,7 @@ impl Orchestrator {
             Command::Shutdown => {
                 info!("Orchestrator shutting down");
 
-                // Explicitly flush DHT routing table during shutdown (ADR-0017)
+                // Explicitly flush DHT routing table during shutdown (Decision-0017)
                 let (dht_save_tx, dht_save_rx) = tokio::sync::oneshot::channel();
                 if let Err(e) = self
                     .dht_tx
@@ -129,7 +129,7 @@ impl Orchestrator {
                     }
                 }
 
-                // Send Stopped event announcements to all active trackers during shutdown (ADR-0058 Edge Case 3).
+                // Send Stopped event announcements to all active trackers during shutdown (Decision-0058 Edge Case 3).
                 let config = self.config.load();
                 let port = config.network.listen_port;
                 let local_addr = config.network.local_addr;

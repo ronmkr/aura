@@ -6,7 +6,7 @@ Aura's core strength is its ability to treat disparate sources (mirrors) as a si
 
 A `MetaTask` in Aura consists of one or more subtasks. Each subtask represents a specific source (e.g., an HTTP mirror, an FTP server, or a BitTorrent swarm).
 
-### Automatic Protocol Detection (ADR 0065)
+### Automatic Protocol Detection (Decision 0065)
 Aura features a centralized **ProtocolDetector** that identifies the source type from any given URI or local path. You no longer need to specify if a link is a magnet or an HTTP link; Aura will automatically spawn the correct protocol workers based on the metadata.
 
 ### Supported Combinations
@@ -14,9 +14,9 @@ Aura features a centralized **ProtocolDetector** that identifies the source type
 - **HTTP + BitTorrent**: Use stable mirrors to "seed" a swarm or fill in missing pieces in a stalled torrent.
 - **FTP + BitTorrent**: Aggregate high-speed FTP sources with P2P swarms for extreme throughput.
 - **Cloud Storage + HTTP + BitTorrent**: Race high-latency cloud objects (from S3, Google Drive, or OneDrive) against fast HTTP mirrors or dynamic P2P swarms, ensuring maximum availability and throughput.
-- **Usenet (NNTP) + HTTP + BitTorrent**: Combine standard HTTP mirrors and P2P swarms with newsgroups via `nntp://` or `nntps://` message-id URIs (ADR 0023).
+- **Usenet (NNTP) + HTTP + BitTorrent**: Combine standard HTTP mirrors and P2P swarms with newsgroups via `nntp://` or `nntps://` message-id URIs (Decision 0023).
 
-## Racing Work Stealer (ADR 0005)
+## Racing Work Stealer (Decision 0005)
 
 To prevent a single slow mirror from bottlenecking the entire download, Aura implements a **Racing Work Stealer**.
 
@@ -32,7 +32,7 @@ If a connection is significantly slower (3x slower than the current average), th
 - The **Storage Engine** performs an atomic write and signals completion.
 - The Orchestrator immediately sends a `CANCEL` message to the "loser" connection to save bandwidth.
 
-## Adaptive Connection Scaling (ADR 0023)
+## Adaptive Connection Scaling (Decision 0023)
 
 Aura dynamically scales the number of connections to a source based on performance metrics.
 

@@ -2,7 +2,7 @@
 
 Aura is built to operate reliably as a headless system service. It includes mechanisms to recover from worker panics, manage system resources like file descriptors, and generate diagnostic reports when fatal exceptions occur.
 
-## 1. Overview (ADR 0064)
+## 1. Overview (Decision 0064)
 
 The resilience layer is designed to isolate failures. A panic in a single BitTorrent peer worker or HTTP connection segment will not crash the daemon. Aura uses thread-isolated actor supervisions to log, restart, or failover affected tasks dynamically.
 
@@ -22,4 +22,4 @@ Concurrently downloading thousands of blocks across hundreds of BitTorrent peers
 ## 4. Storage Integrity Scrubbing
 
 In addition to runtime resilience, Aura protects against media decay (bit rot) on disk:
-- **Active Scrubber**: The background Integrity Scrubber (ADR 0024) scans active downloads, validates piece hashes, and automatically re-downloads corrupted blocks from the network.
+- **Active Scrubber**: The background Integrity Scrubber (Decision 0024) scans active downloads, validates piece hashes, and automatically re-downloads corrupted blocks from the network.

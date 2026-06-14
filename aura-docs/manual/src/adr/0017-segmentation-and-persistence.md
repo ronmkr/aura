@@ -1,4 +1,4 @@
-# ADR 0017: Segmentation and Discovery Persistence
+# Decision 0017: Segmentation and Discovery Persistence
 
 ## Status
 Implemented (2026-06-04, PR #259 — Issues #210, #255, #256)

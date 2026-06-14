@@ -2,7 +2,7 @@
 
 Aura maintains a persistent, append-only log of all completed, failed, and stopped downloads. This provides users with auditability, session persistence, and compatibility with standard download manager tools.
 
-## 1. Overview (ADR 0062)
+## 1. Overview (Decision 0062)
 
 The Download History system automatically records task completion statuses, start and end timestamps, total download size, protocols used, and any termination errors. 
 

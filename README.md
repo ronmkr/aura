@@ -8,7 +8,7 @@
 ## Features
 
 - **Actor-based Orchestration**: Built on Tokio for massive concurrency and clean decoupling between protocols and storage.
-- **Multi-source Aggregation**: Download a single file from multiple sources (HTTP, BitTorrent, FTP) simultaneously with **Adaptive Racing** and **Work Stealing** (ADR 0005).
+- **Multi-source Aggregation**: Download a single file from multiple sources (HTTP, BitTorrent, FTP) simultaneously with **Adaptive Racing** and **Work Stealing** (Decision 0005).
 - **BitTorrent Excellence**: Full support for BitTorrent v1 & v2 (BEP 52), Trackers (UDP/HTTP), DHT (Kademlia), Seeding, Pipelined Requests, and SHA-256 Merkle verification.
 - **FTP Support**: Support for FTP & FTPS (TLS) with exponential retry logic, range-based segment fetching, and authentication.
 - **Persistent Progress**: State is saved to `.aura` control files, allowing for seamless resumption after restarts.
@@ -61,7 +61,7 @@ If the `aura` binary is in your `PATH` (or using the compiled binary `./target/r
 - **[Aura User Manual](https://ronmkr.github.io/aura/)**: The comprehensive online guide to using Aura, covering CLI, TUI, and advanced features.
 - **[Rust API Docs](https://ronmkr.github.io/aura/api/aura_core/)**: Technical documentation for developers embedding the engine.
 - **[Architecture Deep Dive](https://ronmkr.github.io/aura/advanced/architecture.html)**: Detailed mapping of our actor model and data flows.
-- **[ADR Index](https://ronmkr.github.io/aura/advanced/adr-index.html)**: The "why" behind our technical decisions.
+- **[Decision Index](https://ronmkr.github.io/aura/advanced/adr-index.html)**: The "why" behind our technical decisions.
 
 ## Getting Started
 

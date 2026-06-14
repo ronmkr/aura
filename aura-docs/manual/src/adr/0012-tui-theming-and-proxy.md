@@ -1,4 +1,4 @@
-# ADR 0012: Themeable TUI and Proxy Connector
+# Decision 0012: Themeable TUI and Proxy Connector
 
 ## Status
 Implemented (2026-05-06, commit 0777b1ab)

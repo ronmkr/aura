@@ -1,4 +1,4 @@
-# ADR 0043: Unified Architecture and CLI-Daemon-TUI Integration
+# Decision 0043: Unified Architecture and CLI-Daemon-TUI Integration
 
 ## Status
 Implemented (2026-05-29, PR #144)

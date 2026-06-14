@@ -1,4 +1,4 @@
-# ADR 0020: Engine API and Library Embeddability
+# Decision 0020: Engine API and Library Embeddability
 
 ## Status
 Implemented (2026-05-06, commit 0777b1ab)

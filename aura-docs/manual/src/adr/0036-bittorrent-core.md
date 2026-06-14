@@ -1,4 +1,4 @@
-# ADR 0036: BitTorrent Core and Swarm Management
+# Decision 0036: BitTorrent Core and Swarm Management
 
 ## Status
 Implemented (2026-05-06, commit 0777b1ab)

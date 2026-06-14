@@ -1,4 +1,4 @@
-# ADR 0065: Interactive TUI Architecture & Selective Downloading
+# Decision 0065: Interactive TUI Architecture & Selective Downloading
 
 ## Status
 Implemented (2026-06-10, PR #277)

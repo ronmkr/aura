@@ -1,4 +1,4 @@
-# ADR 0027: Power Management and Automated Lifecycle Actions
+# Decision 0027: Power Management and Automated Lifecycle Actions
 
 ## Status
 Implemented (2026-05-06, commit 0777b1ab)

@@ -1,4 +1,4 @@
-# ADR 0054: SandboxRoot Confinement for Storage Engine
+# Decision 0054: SandboxRoot Confinement for Storage Engine
 
 ## Status
 Implemented (2026-06-03, PR #215)

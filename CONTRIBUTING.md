@@ -17,7 +17,7 @@ We maintain a high bar for code quality. All contributions must adhere to:
 ##  Pull Request Protocol
 
 1.  **Fork the Repository**: Create your own fork and work on a feature branch.
-2.  **Architecture (ADRs)**: Significant architectural changes require a new Architecture Decision Record in `aura-docs/manual/src/adr/`.
+2.  **Architecture (Decisions)**: Significant architectural changes require a new Design Decision in `aura-docs/manual/src/decisions/`.
 3.  **Glossary**: Update `aura-docs/manual/src/project/CONTEXT.md` if you introduce new domain concepts.
 4.  **Verification**: Before submitting, run:
     ```bash

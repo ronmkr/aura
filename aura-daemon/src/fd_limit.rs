@@ -1,6 +1,6 @@
-//! File descriptor limit adjustment (ADR-0064).
+//! File descriptor limit adjustment (Decision-0064).
 
-/// Helper to calculate the adjusted max_connections_per_task based on actual soft limit (ADR-0064).
+/// Helper to calculate the adjusted max_connections_per_task based on actual soft limit (Decision-0064).
 pub(crate) fn calculate_adjusted_connections(
     actual_soft: usize,
     max_concurrent: usize,
@@ -18,7 +18,7 @@ pub(crate) fn calculate_adjusted_connections(
     None
 }
 
-/// Dynamic file descriptor limit adjustment based on configured download/connection concurrency (ADR-0064).
+/// Dynamic file descriptor limit adjustment based on configured download/connection concurrency (Decision-0064).
 #[cfg(unix)]
 pub(crate) fn adjust_file_descriptor_limit(config: &mut aura_core::Config) {
     let max_concurrent = config.bandwidth.max_concurrent_downloads;
@@ -78,7 +78,7 @@ pub(crate) fn adjust_file_descriptor_limit(config: &mut aura_core::Config) {
     }
 }
 
-/// Dynamic file descriptor limit adjustment is a no-op on non-Unix platforms (ADR-0064).
+/// Dynamic file descriptor limit adjustment is a no-op on non-Unix platforms (Decision-0064).
 #[cfg(not(unix))]
 pub(crate) fn adjust_file_descriptor_limit(_config: &mut aura_core::Config) {
     // Windows or other non-Unix targets don't use RLIMIT_NOFILE

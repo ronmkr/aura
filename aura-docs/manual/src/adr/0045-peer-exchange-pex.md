@@ -1,4 +1,4 @@
-# ADR 0045: Peer Exchange (PEX) Implementation (BEP 11)
+# Decision 0045: Peer Exchange (PEX) Implementation (BEP 11)
 
 ## Status
 Implemented (2026-05-30, PR #159)

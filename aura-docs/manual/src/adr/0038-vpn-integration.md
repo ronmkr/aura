@@ -1,10 +1,10 @@
-# ADR 0038: Native VPN Integration (OpenVPN, WireGuard)
+# Decision 0038: Native VPN Integration (OpenVPN, WireGuard)
 
 ## Status
 Implemented (2026-06-02, PR #194)
 
 ## Context
-Privacy is a core mandate for `Aura`. While we have implemented an "Active Kill-switch" (ADR 0035/0034) that halts traffic if an interface drops, users currently have to manage the VPN connection itself (OpenVPN, WireGuard) outside of Aura. For a "set-and-forget" experience, Aura should be able to monitor, verify, and potentially trigger VPN connections.
+Privacy is a core mandate for `Aura`. While we have implemented an "Active Kill-switch" (Decision 0035/0034) that halts traffic if an interface drops, users currently have to manage the VPN connection itself (OpenVPN, WireGuard) outside of Aura. For a "set-and-forget" experience, Aura should be able to monitor, verify, and potentially trigger VPN connections.
 
 ## Decision
 1.  **VPN Provider Abstraction**: Implement a `VpnProvider` trait to support different VPN backends.

@@ -62,7 +62,7 @@ Displays real-time engine health, active bandwidth limits, and current schedules
 **Usage:** `aura status`
 
 ### `history`
-View the log of completed and failed downloads (ADR 0062).
+View the log of completed and failed downloads (Decision 0062).
 
 **Usage:** `aura history [OPTIONS]`
 - `--limit <N>`: Number of records to show (default: 10).
@@ -86,7 +86,7 @@ Display the file hierarchy within a BitTorrent or Metalink task.
 **Usage:** `aura show-files <GID>`
 
 ### `select-files`
-Select specific files to download within a multi-file task (ADR 0065).
+Select specific files to download within a multi-file task (Decision 0065).
 
 **Usage:** `aura select-files <GID> --indices <ID1,ID2,...>`
 - `-i, --indices`: Comma-separated list of file indices (get indices from `show-files`).
@@ -97,7 +97,7 @@ Check for updates on a completed or active download using ETag or Last-Modified 
 **Usage:** `aura refresh <GID>`
 
 ### `recheck`
-Force a full file integrity/hash validation scan of the target or `.part` files for a task (ADR 0068).
+Force a full file integrity/hash validation scan of the target or `.part` files for a task (Decision 0068).
 
 **Usage:** `aura recheck <GID>`
 
@@ -107,7 +107,7 @@ Run the **Allocation Prober** to identify the best disk allocation strategy for 
 **Usage:** `aura probe [DIR]`
 
 ### `service`
-Manage the Aura daemon as a system service (systemd, launchd, or Windows Service) (ADR 0071).
+Manage the Aura daemon as a system service (systemd, launchd, or Windows Service) (Decision 0071).
 
 **Usage:** `aura service <SUBCOMMAND>`
 - `install [OPTIONS]`: Install the daemon as a system service.
@@ -121,7 +121,7 @@ Manage the Aura daemon as a system service (systemd, launchd, or Windows Service
 - `status`: Check the status of the system service.
 
 ### `feed`
-Manage RSS/Atom feed subscriptions for automated download ingestion (ADR 0070).
+Manage RSS/Atom feed subscriptions for automated download ingestion (Decision 0070).
 
 **Usage:** `aura feed <SUBCOMMAND>`
 - `add <URL> [OPTIONS]`: Subscribe to an RSS/Atom feed.

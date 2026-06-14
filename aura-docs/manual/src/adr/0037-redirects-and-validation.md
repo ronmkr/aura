@@ -1,4 +1,4 @@
-# ADR 0037: Redirect Handling and Content Validation
+# Decision 0037: Redirect Handling and Content Validation
 
 ## Status
 Implemented (2026-05-06, commit 0777b1ab)

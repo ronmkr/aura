@@ -1,4 +1,4 @@
-# ADR 0029: Resource Mapping and Task Chaining
+# Decision 0029: Resource Mapping and Task Chaining
 
 ## Status
 Implemented (2026-05-06, commit 0777b1ab)

@@ -3,7 +3,7 @@ Feature: BitTorrent Swarm and v2 Support
   I want to participate in modern swarms
   So that I can download files efficiently and verify their integrity.
 
-  @ADR-0036 @Scenario-2.1
+  @Decision-0036 @Scenario-2.1
   Scenario: Magnet link metadata maturation
     Given a magnet link with info-hash "..."
     When I add the task
@@ -12,7 +12,7 @@ Feature: BitTorrent Swarm and v2 Support
     And once the info-dict is received, it should transition to "Downloading" phase
     And the total file size should be correctly resolved
 
-  @ADR-0031 @Scenario-2.3
+  @Decision-0031 @Scenario-2.3
   Scenario: BitTorrent v2 hybrid integrity
     Given a v2 hybrid torrent file
     When a piece is downloaded

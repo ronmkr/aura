@@ -1,4 +1,4 @@
-# ADR 0051: Docker Containerization
+# Decision 0051: Docker Containerization
 
 ## Status
 Implemented (2026-05-29, PR #144)

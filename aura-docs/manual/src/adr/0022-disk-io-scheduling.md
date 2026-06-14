@@ -1,4 +1,4 @@
-# ADR 0022: Advanced Disk I/O Scheduling and Kernel Hinting
+# Decision 0022: Advanced Disk I/O Scheduling and Kernel Hinting
 
 ## Status
 Partially Implemented (Audit 2026-06-03)

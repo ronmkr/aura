@@ -14,7 +14,7 @@ use axum::{
 use serde_json::json;
 use std::sync::Arc;
 
-/// Unauthenticated liveness probe — required for Docker/K8s health checks (ADR-0051).
+/// Unauthenticated liveness probe — required for Docker/K8s health checks (Decision-0051).
 async fn health_handler() -> impl IntoResponse {
     (StatusCode::OK, Json(json!({ "status": "ok" })))
 }

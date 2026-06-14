@@ -1,4 +1,4 @@
-# ADR 0013: Cloud Storage and Metalink Integration
+# Decision 0013: Cloud Storage and Metalink Integration
 
 ## Status
 Implemented (2026-06-11, Issue #10)

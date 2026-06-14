@@ -1,4 +1,4 @@
-# ADR 0023: Adaptive Connection Scaling and Sourced Aggregation
+# Decision 0023: Adaptive Connection Scaling and Sourced Aggregation
 
 ## Status
 Implemented (2026-06-11, PR #294)

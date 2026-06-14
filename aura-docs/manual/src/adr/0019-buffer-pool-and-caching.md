@@ -1,4 +1,4 @@
-# ADR 0019: Buffer Pool and Write-Back Caching
+# Decision 0019: Buffer Pool and Write-Back Caching
 
 ## Status
 Superceded (by Issue #160, 2026-05-30, PR #164)
@@ -31,4 +31,4 @@ Following an architectural audit (Issue #160), the dedicated `BufferPool` actor 
 
 ## Implementation Status (Audit 2026-06-03)
 - **BufferPool Actor**: Successfully removed via PR #164.
-- **ResourceGovernor**: Pending implementation to enforce global memory budgeting and piece picker throttling (GAP-01 / Issue #207). See ADR 0057 for the resource governor design.
+- **ResourceGovernor**: Pending implementation to enforce global memory budgeting and piece picker throttling (GAP-01 / Issue #207). See Decision 0057 for the resource governor design.

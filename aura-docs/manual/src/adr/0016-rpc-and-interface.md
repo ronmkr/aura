@@ -1,4 +1,4 @@
-# ADR 0016: RPC Server and Interface Binding
+# Decision 0016: RPC Server and Interface Binding
 
 ## Status
 Implemented (2026-05-06, commit 0777b1ab)
@@ -16,7 +16,7 @@ Implemented (2026-05-06, commit 0777b1ab)
 - **RPC Server & Interface Binding**: Initially implemented in commit `0777b1ab` (2026-05-06).
 - **WebSocket Telemetry**: Fully implemented via PR #106 (2026-05-28).
 - **Refresh API**: Conditional GET (ETag/Last-Modified) refresh RPC API (`aura.refreshUri`) added in Issue #255.
-- **Security Gaps**: Audit identified that the RPC daemon binds to `0.0.0.0` by default (GAP-07b / Issue #202), uses a public hardcoded default token (GAP-07a / Issue #201), has permissive CORS (GAP-41 / Issue #203), and does not support TLS (GAP-47). A security hardening effort is required to address these (see ADR 0056).
+- **Security Gaps**: Audit identified that the RPC daemon binds to `0.0.0.0` by default (GAP-07b / Issue #202), uses a public hardcoded default token (GAP-07a / Issue #201), has permissive CORS (GAP-41 / Issue #203), and does not support TLS (GAP-47). A security hardening effort is required to address these (see Decision 0056).
 
 ## Alternatives Considered
 - **Direct Orchestrator RPC**: Making the Orchestrator also an HTTP server. *Rejected:* Violates single-responsibility principle and makes the main loop too heavy.

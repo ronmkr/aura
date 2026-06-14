@@ -1,4 +1,4 @@
-# ADR 0044: BitTorrent Choking Algorithm (Tit-for-Tat)
+# Decision 0044: BitTorrent Choking Algorithm (Tit-for-Tat)
 
 ## Status
 Implemented (2026-05-28, PR #137)

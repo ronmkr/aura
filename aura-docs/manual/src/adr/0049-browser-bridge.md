@@ -1,4 +1,4 @@
-# ADR 0049: Browser Bridge (Extension Support)
+# Decision 0049: Browser Bridge (Extension Support)
 
 Date: 2026-05-27
 
@@ -41,9 +41,9 @@ Users often want to seamlessly offload large downloads from their web browser to
 ## Consequences
 
 - **Pros**: Significantly improves user experience by integrating into the Chrome browsing workflow. Eliminates the need to manually copy cookies for authenticated downloads. Single extension codebase to maintain.
-- **Cons**: Chrome-only; Firefox and Safari users must use the CLI/TUI. The daemon's bridge endpoint increases the attack surface — strict local authentication (ADR-0056) and SSRF protection (ADR-0059) are prerequisites before the extension ships.
+- **Cons**: Chrome-only; Firefox and Safari users must use the CLI/TUI. The daemon's bridge endpoint increases the attack surface — strict local authentication (Decision-0056) and SSRF protection (Decision-0059) are prerequisites before the extension ships.
 
 ## Implementation
 
 - **Browser Bridge Daemon Side**: Implemented via `aura-daemon/src/extension.rs` (PR #102).
-- **Chrome Extension**: Pending — tracked in GitHub issue #230. Blocked on ADR-0059 (SSRF protection) being implemented first.
+- **Chrome Extension**: Pending — tracked in GitHub issue #230. Blocked on Decision-0059 (SSRF protection) being implemented first.

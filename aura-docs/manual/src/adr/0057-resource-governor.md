@@ -1,10 +1,10 @@
-# ADR 0057: ResourceGovernor for Global Memory Backpressure
+# Decision 0057: ResourceGovernor for Global Memory Backpressure
 
 ## Status
 Implemented (2026-06-03, Issue #207). Safety margins, fair-share limits, and HTTP/FTP worker integration added in `feat/resource-governor-limits` (2026-06-05, Issues #234, #235).
 
 ## Context
-Following the removal of the dedicated `BufferPool` actor (ADR 0019), memory allocation in Aura is decentralized. Protocol Workers allocate `BytesMut` buffers directly and pass them down channels to the Storage Engine. Without a central tracking system, extreme high-speed downloads or large swarm populations can lead to unbounded allocations in channel buffers and memory queues, risking Out-Of-Memory (OOM) process crashes (GAP-01).
+Following the removal of the dedicated `BufferPool` actor (Decision 0019), memory allocation in Aura is decentralized. Protocol Workers allocate `BytesMut` buffers directly and pass them down channels to the Storage Engine. Without a central tracking system, extreme high-speed downloads or large swarm populations can lead to unbounded allocations in channel buffers and memory queues, risking Out-Of-Memory (OOM) process crashes (GAP-01).
 
 ## Decision
 1. **ResourceGovernor Component**: Implement a thread-safe `ResourceGovernor` shared across the application via `Arc`.

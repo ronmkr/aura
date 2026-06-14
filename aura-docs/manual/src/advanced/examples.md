@@ -86,6 +86,67 @@ target = "builds/{year}-{month}-{day}/{id}_{name}"
 
 ---
 
+## 5. Watch Folder Automation
+
+### Scenario
+You want to set up a "Drop and Forget" workflow on your NAS. Any torrent or metalink file dropped into a specific folder should be automatically downloaded and then moved to a `finished/` directory.
+
+### Configuration (`Aura.toml`)
+```toml
+[storage]
+watch_dir = "/srv/aura/watch"
+download_dir = "/srv/aura/finished"
+```
+
+### Result
+1. You copy `ubuntu-24.04.torrent` to `/srv/aura/watch`.
+2. Aura detects the file, waits 500ms for the write to stabilize, and adds it to the queue.
+3. Once the download starts, the `.torrent` file is moved to `/srv/aura/watch/processed/`.
+4. The final ISO is saved to `/srv/aura/finished/ubuntu-24.04-desktop-amd64.iso`.
+
+---
+
+## 6. RSS Feed Automation (Podcasts & Distros)
+
+### Scenario
+You want to automatically download the latest weekly ISO of a Linux distribution from its RSS feed, but only if the file size is under 5GB.
+
+### CLI Example
+```bash
+aura feed add "Weekly Distros" "https://example.com/rss/weekly.xml" \
+  --filter "linux.*\.iso" \
+  --max-size 5368709120 \
+  --poll-interval 60
+```
+
+### Result
+- Aura polls the feed every 60 minutes.
+- Any item with "linux" and ".iso" in the title that is smaller than 5GB is automatically added to the task list.
+- Aura tracks `feed_history.txt` to ensure the same item is never downloaded twice.
+
+---
+
+## 7. System Service Management (Daemon)
+
+### Scenario
+You want Aura to run in the background as a reliable system service that starts automatically when your server boots.
+
+### Implementation
+1. **Install**: `aura service install` (Sets up systemd/launchd/SCM).
+2. **Start**: `aura service start`.
+3. **Verify**:
+   ```bash
+   aura service status
+   # Output: Service 'aura' is running (PID: 1234)
+   ```
+
+### Benefits
+- **Auto-restart**: If the daemon crashes, the service manager automatically restarts it.
+- **Boot Persistence**: No need to manually start the engine after a reboot.
+- **Resource Management**: Systemd can enforce CPU and memory limits on the Aura process.
+
+---
+
 ## Supported Placeholders
 
 | Placeholder | Description | Example |

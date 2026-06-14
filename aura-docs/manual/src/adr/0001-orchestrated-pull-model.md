@@ -1,4 +1,4 @@
-# ADR 0001: Orchestrated Pull Model for Work Assignment
+# Decision 0001: Orchestrated Pull Model for Work Assignment
 
 ## Status
 Implemented (2026-05-06, commit 0777b1ab)

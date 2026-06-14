@@ -32,12 +32,12 @@ All active development tasks, technical debt, and feature requests are managed e
     - [x] RPC methods for `aura.addFromFolder` (torrents/metalinks) and `aura.addFromFile` (URL lists).
     - [x] Interactive "Discovery Modal" in TUI for single/bulk mission addition.
     - [x] CLI parity: Support directory paths and `--from-file` flag for headless bulk addition.
-### High (P1)
 - [x] **feat: Interactive BitTorrent File Selection and Selective Downloading** `[module:core, module:tui, module:cli, priority:high]`
     - [x] Update `PiecePicker` and `Storage` to support skipping pieces for non-selected files.
     - [x] Implement `aura.getFiles` and `aura.setFileSelection` RPC methods.
     - [x] Build interactive tree-view File Selector widget in TUI.
     - [x] CLI parity: Add `aura show-files <gid>` and `--select-file` flags.
+
 ### Moderate (P2)
 - [x] **feat: Real-time Search, Command Palette, and World-Class UX** `[module:tui, priority:moderate]`
     - [x] Real-time task list filtering with `/` search mode.
@@ -56,7 +56,7 @@ All active development tasks, technical debt, and feature requests are managed e
 - [x] **feat: Cloud Storage Support (S3, Google Drive)** (Issue #10) `[module:core, priority:moderate]`
 
 ### Low / Minor (P3)
-- [ ] **feat: Implement i18n Architecture (ADR-0042)** (Issue #190) `[module:i18n, priority:low]`
+- [ ] **feat: Implement i18n Architecture (Decision-0042)** (Issue #190) `[module:i18n, priority:low]`
 - [ ] **feat: Chrome extension companion codebase (Manifest V3, Chrome-only)** (Issue #230) `[module:daemon, priority:low]`
 - [x] **feat: NNTP (Usenet) Protocol Support** (Issue #22) `[module:core, priority:low]`
 - [ ] **feat: QR code sharing for magnet links in CLI/TUI** (Issue #74) `[module:cli, module:tui, priority:minor]`
@@ -64,14 +64,22 @@ All active development tasks, technical debt, and feature requests are managed e
 
 ## Completed Tasks
 
-- [x] **feat: System service integration — auto-start daemon on boot (systemd, launchd, Windows Service)** (Issue #291, ADR-0071) `[module:daemon, module:cli, priority:high, infra]`
+- [x] **feat: Implement BitTorrent tracker scrape for swarm statistics** (Issue #289) `[module:core, priority:moderate]`
+  - **Completion Commit**: `9e86833`
+  - **Key Changes**:
+    - Implemented HTTP/UDP tracker scrape in `aura-core/src/tracker/scrape.rs`.
+    - Added compact scrape response parser for binary tracker data.
+    - Updated `MetaTask` to store `swarm_seeders`, `swarm_leechers`, and `swarm_completed`.
+    - Surfaced swarm statistics in `tellStatus` RPC response and TUI Mission Details panel.
+
+- [x] **feat: System service integration — auto-start daemon on boot (systemd, launchd, Windows Service)** (Issue #291, Decision-0071) `[module:daemon, module:cli, priority:high, infra]`
   - **Completion Commit**: `9e86833`
   - **Key Changes**:
     - Integrated `service-manager` crate to provide cross-platform service control interface (systemd, launchd, and SCM).
     - Exposed service commands under `aura service <install|uninstall|start|stop|status>`.
     - Implemented platform-native configurations for systemd (`aura.service`), launchd (`com.aura.daemon.plist`), and Windows SCM PowerShell script (`install-service.ps1`).
 
-- [x] **feat: RSS/Atom feed subscriptions for automated download ingestion** (Issue #290, ADR-0070) `[module:core, module:daemon, priority:high]`
+- [x] **feat: RSS/Atom feed subscriptions for automated download ingestion** (Issue #290, Decision-0070) `[module:core, module:daemon, priority:high]`
   - **Completion Commit**: `9e86833`
   - **Key Changes**:
     - Added background polling task in `aura-daemon` to fetch feed items based on custom intervals.
@@ -79,7 +87,7 @@ All active development tasks, technical debt, and feature requests are managed e
     - Added XML security validation by disabling entity expansion to prevent Billion Laughs attacks.
     - Exposed `aura feed <add|remove|list|refresh>` CLI subcommands.
 
-- [x] **feat: Watch folder — auto-ingest .torrent/.metalink files dropped into a directory** (Issue #288, ADR-0069) `[module:core, module:daemon, priority:high]`
+- [x] **feat: Watch folder — auto-ingest .torrent/.metalink files dropped into a directory** (Issue #288, Decision-0069) `[module:core, module:daemon, priority:high]`
   - **Completion Commit**: `9e86833`
   - **Key Changes**:
     - Utilized the `notify` crate to watch a configured directory for file creation and modifications.
@@ -108,7 +116,7 @@ All active development tasks, technical debt, and feature requests are managed e
     - Integrated `MemoryGuard` allocation gates and sleeping backpressure retry loops into `HttpWorker` and `FtpWorker` segment fetching loops.
     - Implemented dynamic allocation resizing in the HTTP worker by reading the `Content-Length` header on successful response headers to release the nominal allocation and reserve the exact size.
     - Added integration tests verifying backpressure throttling and allocation checks under high memory pressure.
-- [x] **feat: RPC TLS support via --tls-cert / --tls-key flags (ADR-0056)** (Issue #226) `[module:daemon, priority:critical]`
+- [x] **feat: RPC TLS support via --tls-cert / --tls-key flags (Decision-0056)** (Issue #226) `[module:daemon, priority:critical]`
   - **Completion Commit**: `bc6d871` (PR #261)
   - **Key Changes**:
     - Added `--tls-cert`, `--tls-key`, and `--generate-tls-cert` CLI flags to `aura` daemon.
@@ -121,7 +129,7 @@ All active development tasks, technical debt, and feature requests are managed e
     - Created `jsonrpc_tests.rs` covering RPC header auth, Bearer tokens, invalid schemes (SSRF blocks), and request validation.
     - Created `websocket_tests.rs` covering query-parameter token validation, custom headers, and bearer prefix formats.
     - Implemented custom `ws_auth_middleware` in `websocket.rs` to validate handshakes prior to Axum websocket upgrade.
-- [x] **fix: Add WorkerCommand::EndgameFetch variant and broadcast overflow guard (ADR-0039)** (Issue #227) `[module:core, priority:critical]`
+- [x] **fix: Add WorkerCommand::EndgameFetch variant and broadcast overflow guard (Decision-0039)** (Issue #227) `[module:core, priority:critical]`
   - **Completion Commit**: `8ae43a1` (PR #260)
   - **Key Changes**:
     - Added a dedicated `WorkerCommand::EndgameFetch` variant to separate endgame block fetches from normal piece fetches.
@@ -151,14 +159,14 @@ All active development tasks, technical debt, and feature requests are managed e
   - **Completion Commit**: `ba26d56` (PR #259)
   - **Key Changes**:
     - Implemented task limits and max task capacities on the JSON-RPC daemon to mitigate DoS/memory exhaustion.
-- [x] **fix: Send tracker Stopped events on graceful shutdown (ADR-0058 Edge Case 3)** (Issue #228) `[module:core, priority:high]`
+- [x] **fix: Send tracker Stopped events on graceful shutdown (Decision-0058 Edge Case 3)** (Issue #228) `[module:core, priority:high]`
   - **Completion Commit**: `ba26d56` (PR #259)
   - **Key Changes**:
     - Added graceful shutdown handler to send `Stopped` event announces to BitTorrent trackers.
-- [x] **docs: Standardize machine-readable Status field in all 58 ADRs** (Issue #232) `[docs, priority:high]`
+- [x] **docs: Standardize machine-readable Status field in all 58 Decisions** (Issue #232) `[docs, priority:high]`
   - **Completion Commit**: `ba26d56` (PR #259)
   - **Key Changes**:
-    - Standardized the `Status:` field in frontmatter across all ADR markdown documents.
+    - Standardized the `Status:` field in frontmatter across all Decision markdown documents.
     - Removed redundant top-level status headers to ensure consistency and parsing capability.
 - [x] **feat: Completed download history log and aura RPC compatibility (tellStopped, getVersion)** (Issue #248) `[module:daemon, priority:high]`
   - **Completion Commit**: `ba26d56` (PR #259)
@@ -179,17 +187,17 @@ All active development tasks, technical debt, and feature requests are managed e
   - **Key Changes**:
     - Implemented time-based speed throttling schedules parsed from `Aura.toml` configuration.
     - Implemented config hot-reloading that dynamically triggers bandwidth schedule updates.
-- [x] **chore: Refactor FTPS to use rustls (ADR-0048 parity) — suppaftp migrated to tokio-rustls-ring** (Issue #189) `[module:worker, priority:moderate]`
+- [x] **chore: Refactor FTPS to use rustls (Decision-0048 parity) — suppaftp migrated to tokio-rustls-ring** (Issue #189) `[module:worker, priority:moderate]`
   - **Completion Commit**: `91bc1ee` (PR #224)
   - **Key Changes**:
     - Replaced `native-tls` in `suppaftp` with `tokio-rustls-ring` backend.
     - Integrated native root certs lookup via `rustls-native-certs` for secure certificate validation.
     - Fixed backoff calculation overflow bug.
-- [x] **feat: Add /health endpoint for Docker liveness probes (ADR-0051)** (Issue #240) `[module:daemon, priority:low]`
+- [x] **feat: Add /health endpoint for Docker liveness probes (Decision-0051)** (Issue #240) `[module:daemon, priority:low]`
   - **Completion Commit**: `be472d9` (PR #258)
   - **Key Changes**:
     - Added unauthenticated `/health` endpoint to Axum router returning `200 OK`.
-- [x] **security: URI scheme allowlist + SSRF mitigation (ADR-0059) — file:// exfiltration blocked** (Issues #241, #244) `[module:daemon, module:core, priority:critical]`
+- [x] **security: URI scheme allowlist + SSRF mitigation (Decision-0059) — file:// exfiltration blocked** (Issues #241, #244) `[module:daemon, module:core, priority:critical]`
   - **Completion Commit**: `be472d9` (PR #258)
   - **Key Changes**:
     - Implemented scheme validation block for unsafe protocols (`file://`, `data:`, `javascript:`, `blob:`).
@@ -202,7 +210,7 @@ All active development tasks, technical debt, and feature requests are managed e
   - **Completion Commit**: `be472d9` (PR #258)
   - **Key Changes**:
     - Applied authentication middleware to the `/metrics` endpoint to ensure it requires a valid `X-Aura-Token` header.
-- [x] **security: Remove moz-extension:// from CORS allowlist — Chrome-only (ADR-0049)** `[module:daemon, priority:high]`
+- [x] **security: Remove moz-extension:// from CORS allowlist — Chrome-only (Decision-0049)** `[module:daemon, priority:high]`
   - **Completion Commit**: `be472d9` (PR #258)
   - **Key Changes**:
     - Restricted CORS origins list by removing `moz-extension://` to restrict extension access to Chrome-only platforms.
@@ -322,7 +330,7 @@ All active development tasks, technical debt, and feature requests are managed e
 - [x] **Bug: DHT token is hardcoded [1,2,3,4] -- security vulnerability** (Issue #118) `[bug]`
 - [x] **Bug: Add fsync/fdatasync before atomic .part rename to prevent data loss** (Issue #117) `[bug, module:storage]`
 - [x] **Feature: NAT Traversal Mapping Refresh** (Issue #114) `[enhancement]`
-- [x] **feat: WebSocket Telemetry for RPC (ADR 0016 Edge Case)** (Issue #104)
+- [x] **feat: WebSocket Telemetry for RPC (Decision 0016 Edge Case)** (Issue #104)
 - [x] **chore: Modular Architecture Refactor (exceeding 400 lines)** (Issue #96)
 - [x] **feat: Browser Bridge (Extension Support)** (Issue #95)
 - [x] **feat: implement advanced filesystem hardening (Pre-allocation/No-COW)** (Issue #92)

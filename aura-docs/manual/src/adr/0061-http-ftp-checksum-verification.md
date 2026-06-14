@@ -1,11 +1,11 @@
-# ADR 0061: Checksum Verification for HTTP and FTP Downloads
+# Decision 0061: Checksum Verification for HTTP and FTP Downloads
 
 ## Status
 Implemented (2026-06-04, PR #259 — Issue #243)
 
 
 ## Context
-The `TaskState` and `AddTaskArgs` structs both include a `checksum: Option<Checksum>` field (ADR-0041 covers integrity verification for BitTorrent via piece hashes). However, for HTTP and FTP downloads, the checksum field is silently ignored: `aura-daemon/src/jsonrpc.rs` hardcodes `checksum: None` when creating RPC tasks, and `aura-core/src/orchestrator/event_handlers.rs` also hardcodes `checksum: None` at all HTTP completion events. The `ScrubberActor` in `aura-core/src/scrubber/` handles BitTorrent integrity but has no equivalent invocation for HTTP/FTP task completion. This means users who pass a SHA-256 or MD5 hash for an HTTP download (e.g., downloading an OS ISO with a published hash) receive no verification — a corrupted or tampered download is indistinguishable from a valid one. Related: GitHub Issue #243.
+The `TaskState` and `AddTaskArgs` structs both include a `checksum: Option<Checksum>` field (Decision-0041 covers integrity verification for BitTorrent via piece hashes). However, for HTTP and FTP downloads, the checksum field is silently ignored: `aura-daemon/src/jsonrpc.rs` hardcodes `checksum: None` when creating RPC tasks, and `aura-core/src/orchestrator/event_handlers.rs` also hardcodes `checksum: None` at all HTTP completion events. The `ScrubberActor` in `aura-core/src/scrubber/` handles BitTorrent integrity but has no equivalent invocation for HTTP/FTP task completion. This means users who pass a SHA-256 or MD5 hash for an HTTP download (e.g., downloading an OS ISO with a published hash) receive no verification — a corrupted or tampered download is indistinguishable from a valid one. Related: GitHub Issue #243.
 
 ## Decision
 1. Extend the `aura.addUri` RPC handler to accept an optional `checksum` parameter in the options object: `{"checksum": "sha-256=abc123..."}` following the aura checksum format (`algorithm=hexdigest`).
@@ -14,7 +14,7 @@ The `TaskState` and `AddTaskArgs` structs both include a `checksum: Option<Check
 4. Support SHA-256, SHA-1, and MD5 hash algorithms (with a deprecation warning for MD5 and SHA-1 due to collision vulnerabilities).
 5. On checksum mismatch: emit a `TaskEvent::IntegrityFailure { task_id, expected, actual }` event; delete the corrupted `.part` file; mark the task as `DownloadPhase::Error` with `ErrorKind::IntegrityFailure`; optionally retry from a different mirror source if available.
 6. On checksum match: emit a `TaskEvent::IntegrityVerified { task_id }` event; proceed with rename to final filename.
-7. Metalink manifests (ADR-0013) provide per-piece and whole-file checksums — these must also be wired through the same verification pipeline when a Metalink source is used.
+7. Metalink manifests (Decision-0013) provide per-piece and whole-file checksums — these must also be wired through the same verification pipeline when a Metalink source is used.
 
 ## Edge Cases
 1. **Streaming Mode**: When `streaming_mode = true`, the file is consumed by the media player as it arrives. Post-download hash verification of a streamed file is impractical. For streaming mode tasks with a checksum, perform best-effort streaming verification using an incremental hasher (e.g., `sha2::Sha256`) that digests each written segment in real time.

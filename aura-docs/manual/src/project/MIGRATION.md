@@ -25,7 +25,7 @@ Aura uses `.aura` files, which are binary-serialized structures that track piece
 ### 3. RPC Interface (XML-RPC vs. JSON-RPC over WebSockets)
 
 Legacy tools expose XML-RPC and JSON-RPC over HTTP and WebSockets.
-Aura exclusively uses JSON-RPC over WebSockets for bi-directional event streaming (ADR 0016). 
+Aura exclusively uses JSON-RPC over WebSockets for bi-directional event streaming (Decision 0016). 
 
 **Migration:**
 - Update your integration scripts to connect via WebSockets (`ws://localhost:6800`).

@@ -1,6 +1,6 @@
 # Resource Governor & Memory Backpressure
 
-Aura handles extreme high-speed downloads by dynamically managing its memory consumption. The **Resource Governor** (ADR 0057) is the central component responsible for preventing Out-Of-Memory (OOM) crashes through global backpressure.
+Aura handles extreme high-speed downloads by dynamically managing its memory consumption. The **Resource Governor** (Decision 0057) is the central component responsible for preventing Out-Of-Memory (OOM) crashes through global backpressure.
 
 ## 1. Decentralized Allocation Tracking
 

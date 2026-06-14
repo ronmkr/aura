@@ -18,15 +18,15 @@ We use precise labels to track the *maturity* of a feature, not just its intent.
 ##  Definition of Done (DoD)
 
 An issue is not considered "Closed" unless it meets these criteria:
-1.  **Code**: Implementation follows ADR specs.
-2.  **Documentation**: Relevant ADR status is updated to `Verified`.
+1.  **Code**: Implementation follows Decision specs.
+2.  **Documentation**: Relevant Decision status is updated to `Verified`.
 3.  **Tests**: At least one unit test and one integration test (in `tests/`) are added.
 4.  **Formatting**: `cargo fmt` and `cargo clippy -- -D warnings` pass.
 
 ##  Implementation Linkage
 
 Every Issue description must include an **Implementation Map**:
-- **ADR**: Link to the relevant ADR.
+- **Decision**: Link to the relevant Decision.
 - **Primary File**: The main file where logic resides.
 - **Test File**: The file containing verification logic.
 

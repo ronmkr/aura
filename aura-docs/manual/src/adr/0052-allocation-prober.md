@@ -1,4 +1,4 @@
-# ADR 0052: Allocation Prober Diagnostic Tool
+# Decision 0052: Allocation Prober Diagnostic Tool
 
 ## Status
 Implemented (2026-06-02, PR #196)

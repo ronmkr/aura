@@ -1,4 +1,4 @@
-# ADR 0064: Process Resilience — Panic Recovery, Crash Reporting, and File Descriptor Management
+# Decision 0064: Process Resilience — Panic Recovery, Crash Reporting, and File Descriptor Management
 
 ## Status
 Implemented (2026-06-04, PRs #258, #259 — Issues #225, #246, #247, #251, #253)
@@ -10,7 +10,7 @@ The Aura daemon is a long-running async process that must remain stable under ad
 1. **Panic Hook**: Install a `std::panic::set_hook()` at process startup (before Tokio runtime initialization) that: writes the panic message and backtrace to `~/.aura/crash.log` with a timestamp; flushes stderr; and calls `std::process::exit(101)`. This ensures crash information survives even when the tokio runtime is in an invalid state.
 2. **Task Panic Recovery**: Wrap crash-critical spawned tasks (orchestrator, storage engine, DHT actor) in a `JoinHandle` and match on `JoinError::is_panic()`. On panic detection, log the panic, attempt emergency state flush (write active TaskStates to their `.aura` control files), then call `std::process::exit(101)` with the crash log path shown to the user.
 3. **File Descriptor Limit Management**: At daemon startup, calculate `required_fds = (max_concurrent_downloads * max_connections_per_task * 2) + 512`. Use the `rlimit` crate to attempt `setrlimit(RLIMIT_NOFILE, required_fds)` on Unix. If the OS hard limit is below `required_fds`, log a startup warning. On Windows (no `RLIMIT_NOFILE`), document the 2048 handle limit and suggest `HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager` configuration.
-4. **`/metrics` Authentication**: Apply the existing `X-Aura-Token` bearer authentication middleware to the `/metrics` route. Alternatively, support a separate `X-Prometheus-Token` header configured via `Aura.toml [monitoring] scrape_token`. The `/health` endpoint (ADR-0051) must remain unauthenticated for container liveness probes.
+4. **`/metrics` Authentication**: Apply the existing `X-Aura-Token` bearer authentication middleware to the `/metrics` route. Alternatively, support a separate `X-Prometheus-Token` header configured via `Aura.toml [monitoring] scrape_token`. The `/health` endpoint (Decision-0051) must remain unauthenticated for container liveness probes.
 5. **RPC Rate Limiting**: Add a `tower_governor` or `tower::ServiceBuilder` rate-limiting layer to the axum router. Default: 120 requests per minute per connection. Configurable via `Aura.toml [security] rpc_max_requests_per_minute`. When the limit is exceeded, return HTTP 429 with `Retry-After: 60`.
 6. **Global Task Count Cap**: Enforce a `[limits] max_active_tasks` config value (default: 500) in `orchestrator/commands/add.rs` for the non-tenant code path. Reject `add_task` calls beyond this cap with `EngineError::TooManyTasks`.
 

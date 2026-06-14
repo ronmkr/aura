@@ -12,8 +12,7 @@ Cargo.lock.bak
 # Gemini and dev-specific
 .gemini/
 aura-dev.skill
-CLAUDE.md
-aura-docs/manual/src/project/CLAUDE.md
+/GEMINI.md
 aura-docs/manual/src/project/prompts/
 
 # OS-generated files

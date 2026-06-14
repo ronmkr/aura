@@ -19,6 +19,7 @@ Aura is highly tunable. This document provides an exhaustive reference for every
 14. [[monitoring] - Metrics & Health](#monitoring)
 15. [[limits] - Architectural Boundaries](#limits)
 16. [[general] - Engine & UI](#general)
+17. [RSS Feed Configuration (feeds.toml)](#rss-feed-configuration)
 
 ---
 
@@ -29,6 +30,9 @@ Aura searches for `Aura.toml` in this order:
 3.  **User Config**: 
     - Linux/macOS: `~/.config/aura/Aura.toml`
     - Windows: `%AppData%\aura\Aura.toml`
+
+> [!TIP]
+> Operational data (history, session state, RSS feeds) is stored in the `.aura` folder within your home directory (`~/.aura/`).
 
 ---
 
@@ -193,8 +197,8 @@ Controls how files are saved to your hard drive.
 | `io_deadline_ms` | Time (ms) | `500` | Target time for a single disk write to finish. |
 | `read_ahead_kb` | Number (KB) | `128` | Pre-read data from disk into memory when uploading. |
 | `write_buffer_kb` | Number (KB) | `256` | Size of individual data chunks written to disk. |
-| `recheck_throttle_ms`| Time (ms) | `10` | Throttling delay in milliseconds between read chunks during hash rechecks (ADR 0068). |
-| `watch_dir` | Text | `None` | The folder path to monitor for auto-ingesting `.torrent`, `.metalink`, `.meta4`, or `.nzb` drops (ADR 0069). |
+| `recheck_throttle_ms`| Time (ms) | `10` | Throttling delay in milliseconds between read chunks during hash rechecks (Decision 0068). |
+| `watch_dir` | Text | `None` | The folder path to monitor for auto-ingesting `.torrent`, `.metalink`, `.meta4`, or `.nzb` drops (Decision 0069). |
 
 ---
 
@@ -224,7 +228,7 @@ Automation and shell hooks on task lifecycle events.
 ---
 
 ## [credentials]
-Authentication credentials for secure HTTP, FTP, and Cloud Storage protocols (ADR 0013).
+Authentication credentials for secure HTTP, FTP, and Cloud Storage protocols (Decision 0013).
 
 | Setting | Value Type | Default | What it does |
 |:---|:---|:---|:---|
@@ -281,3 +285,17 @@ General app settings and visual theme.
 | `event_poll_interval_ms`| Time (ms) | `500` | How often to update the user interface (TUI). |
 | `graceful_shutdown_timeout_secs`| Time (Seconds) | `5` | How long to wait for tasks to stop cleanly when closing. |
 | `daemon_mode` | Yes / No | `false` | Run in the background without a window. |
+
+---
+
+## RSS Feed Configuration
+Subscription data for automated feed monitoring is stored in `~/.aura/feeds.toml`.
+
+| Field | Type | Description |
+|:---|:---|:---|
+| `name` | Text | Unique identifier for the subscription. |
+| `url` | Text | The RSS or Atom feed XML endpoint. |
+| `poll_interval` | Number | Minutes between polling attempts (default: 30). |
+| `filters` | List of Regex | Only download items where the title matches these patterns. |
+| `categories` | List of Texts | Filter items by the `<category>` tag. |
+| `max_size` | Number (Bytes) | Ignore items larger than this limit. |

@@ -1,4 +1,4 @@
-# ADR 0039: BitTorrent Endgame Mode
+# Decision 0039: BitTorrent Endgame Mode
 
 ## Status
 Implemented (2026-05-25, PR #82)

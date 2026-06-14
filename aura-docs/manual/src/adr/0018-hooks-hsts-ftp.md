@@ -1,4 +1,4 @@
-# ADR 0018: Hooks, HSTS, and Multi-Channel Protocols
+# Decision 0018: Hooks, HSTS, and Multi-Channel Protocols
 
 ## Status
 Implemented (2026-05-06, commit 0777b1ab)

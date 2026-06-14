@@ -1,4 +1,4 @@
-# ADR 0003: Atomic Completion and Pre-allocation Strategy
+# Decision 0003: Atomic Completion and Pre-allocation Strategy
 
 ## Status
 Implemented (2026-05-27, PR #99)

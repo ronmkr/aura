@@ -1,4 +1,4 @@
-# ADR 0005: Racing Work Stealer for Slow Stream Mitigation
+# Decision 0005: Racing Work Stealer for Slow Stream Mitigation
 
 ## Status
 Implemented (2026-05-06, commit 0777b1ab)

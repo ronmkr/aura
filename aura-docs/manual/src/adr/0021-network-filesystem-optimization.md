@@ -1,4 +1,4 @@
-# ADR 0021: Network Filesystem Optimization (NFS/SMB)
+# Decision 0021: Network Filesystem Optimization (NFS/SMB)
 
 ## Status
 Implemented (2026-06-04)

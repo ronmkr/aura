@@ -57,7 +57,7 @@ impl StorageEngine {
             .unwrap_or(std::path::Path::new("."))
             .to_path_buf();
 
-        // Dynamic Allocation Prober Integration (ADR 0052)
+        // Dynamic Allocation Prober Integration (Decision 0052)
         let method = if let Some(&m) = self.cached_allocations.get(&dir) {
             m
         } else {

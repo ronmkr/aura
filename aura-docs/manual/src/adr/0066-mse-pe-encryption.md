@@ -1,4 +1,4 @@
-# ADR 0066: MSE/PE Traffic Encryption
+# Decision 0066: MSE/PE Traffic Encryption
 
 ## Status
 Implemented (2026-06-13, PR #301)
@@ -25,7 +25,7 @@ BitTorrent protocol traffic is easily identified and throttled by Internet Servi
 
 ## Alternatives Considered
 - **Plaintext Only**: Maintain existing TCP transport. *Rejected:* Prevents access to encryption-only swarms (common on private trackers) and makes traffic highly susceptible to ISP throttling.
-- **WireGuard/VPN Only**: Force users to route all traffic through a VPN. *Rejected:* While Aura supports native VPN integration (ADR-0038), it is heavy, requires external configuration, and does not obfuscate traffic inside the tunnel itself or help with tracker encryption requirements.
+- **WireGuard/VPN Only**: Force users to route all traffic through a VPN. *Rejected:* While Aura supports native VPN integration (Decision-0038), it is heavy, requires external configuration, and does not obfuscate traffic inside the tunnel itself or help with tracker encryption requirements.
 
 ## Consequences
 - **Pros**: Protects Aura traffic from shallow DPI throttling; grants access to private tracker swarms with strict encryption policies; satisfies the design described in `CONTEXT.md`.

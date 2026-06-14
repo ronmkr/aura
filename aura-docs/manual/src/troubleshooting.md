@@ -14,18 +14,18 @@ Aura is designed to be self-healing, but certain network or system conditions ma
 
 ###  Storage & I/O
 - **`"Insufficient disk space; needed X, available Y"`**
-    - **Context**: Aura's pre-download verification (ADR 0060) detected that the target drive does not have enough space, including a required 5% or 512MB headroom.
+    - **Context**: Aura's pre-download verification (Decision 0060) detected that the target drive does not have enough space, including a required 5% or 512MB headroom.
     - **Action**: Free up space on the drive or change the `download_dir`. If you are using a Copy-on-Write (COW) filesystem (APFS, Btrfs), the OS-reported space may be an estimate; Aura will still enforce the reported limit to be safe.
 - **`"Failed to pre-allocate file: No space left on device"`**
     - **Context**: The `StorageEngine` failed to reserve contiguous blocks via `fallocate` (likely a TOCTOU race or quota limit).
     - **Action**: Check for per-user disk quotas (`EDQUOT`).
 - **`"Integrity verification failed: Checksum mismatch"`**
     - **Context**: The downloaded file does not match the provided SHA-256/MD5 hash.
-    - **Action**: Aura automatically deletes the corrupted `.part` file to prevent accidental use (ADR 0061). Check the source mirror or try a different mirror if available.
+    - **Action**: Aura automatically deletes the corrupted `.part` file to prevent accidental use (Decision 0061). Check the source mirror or try a different mirror if available.
 
 ###  Process & System
 - **`"Process Resilience: FD limit too low"`**
-    - **Context**: Aura detected that the OS limit for open files is lower than required for the configured number of connections (ADR 0064).
+    - **Context**: Aura detected that the OS limit for open files is lower than required for the configured number of connections (Decision 0064).
     - **Action**: 
         - **Linux/macOS**: Increase the limit using `ulimit -n 4096` before starting the daemon.
         - **Windows**: The limit is fixed at 2048 handles; reduce `max_connections_per_task` if you see connection drops.

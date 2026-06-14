@@ -1,4 +1,4 @@
-# ADR 0067: μTP/LEDBAT Transport Layer
+# Decision 0067: μTP/LEDBAT Transport Layer
 
 ## Status
 Proposed (2026-06-11 — Issue #286)
@@ -21,7 +21,7 @@ Standard TCP-based BitTorrent traffic is aggressive and can saturate a user's ne
 
 ## Alternatives Considered
 - **TCP Only**: Continue with standard TCP connections only. *Rejected:* Leaves Aura unable to connect to UDP-only peers and susceptible to network performance degradation under full link utilization.
-- **Strict Throttling**: Rely solely on static token bucket limits (ADR-0009) to avoid congestion. *Rejected:* Static throttling is not dynamic; it does not adjust to changing network conditions or other traffic on the LAN.
+- **Strict Throttling**: Rely solely on static token bucket limits (Decision-0009) to avoid congestion. *Rejected:* Static throttling is not dynamic; it does not adjust to changing network conditions or other traffic on the LAN.
 
 ## Consequences
 - **Pros**: Dynamic back-off prevents network saturation; enables communication with UDP-only peers; makes Aura a good network citizen.

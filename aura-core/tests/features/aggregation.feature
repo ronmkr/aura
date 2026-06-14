@@ -3,7 +3,7 @@ Feature: Multi-source Protocol Aggregation
   I want to download a file from multiple protocols simultaneously
   So that I can maximize my total throughput.
 
-  @ADR-0023 @Milestone-4
+  @Decision-0023 @Milestone-4
   Scenario: Download a file via Metalink with mixed mirrors
     Given a Metalink file "test.metalink" containing:
       | Protocol | URI                                           |
@@ -15,7 +15,7 @@ Feature: Multi-source Protocol Aggregation
     And the downloaded data should be aggregated into "file.zip"
     And the final file "file.zip" should pass SHA-256 verification
 
-  @ADR-0005
+  @Decision-0005
   Scenario: Work Stealing from a lagging mirror
     Given a download task with 2 HTTP mirrors
     And Mirror A is throttled to 10 KB/s

@@ -1,4 +1,4 @@
-# ADR 0030: Recursive Mirroring and HTML Parsing
+# Decision 0030: Recursive Mirroring and HTML Parsing
 
 ## Status
 Implemented (2026-05-27, PR #142)
@@ -11,7 +11,7 @@ Implemented (2026-05-27, PR #142)
 2. **Link Normalization**: The crawler will resolve relative URIs against the base URL and filter them based on user-defined "Stay on Host" or "Stay in Directory" policies.
 3. **Queue Integration**: Discovered URIs will be enqueued as new **Download Tasks** with a "Parent GID" link for tracking.
 4. **Depth Control**: Users can specify the maximum recursion depth (parity with `wget -l`).
-5. **Globbing Integration**: The crawler's base URL / start URL can be defined using brace and bracket glob patterns (conforming to [ADR-0015](0015-url-globbing.md)). The crawler resolves these patterns into multiple seed URLs during initialization to scan and discover assets across all expanded targets.
+5. **Globbing Integration**: The crawler's base URL / start URL can be defined using brace and bracket glob patterns (conforming to [Decision-0015](0015-url-globbing.md)). The crawler resolves these patterns into multiple seed URLs during initialization to scan and discover assets across all expanded targets.
 
 ## Implementation Status (Audit 2026-06-13)
 - **Recursive Crawler**: Fully implemented with link extraction and depth controls via PR #142 (2026-05-29).

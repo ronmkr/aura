@@ -1,4 +1,4 @@
-# ADR 0009: Global Token Bucket Throttling
+# Decision 0009: Global Token Bucket Throttling
 
 ## Status
 Implemented (2026-05-06, commit 0777b1ab)

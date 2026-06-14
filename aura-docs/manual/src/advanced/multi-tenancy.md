@@ -1,6 +1,6 @@
 # Multi-Tenancy & Resource Isolation
 
-Aura is designed to operate in shared environments where multiple users or applications share a single download daemon. To ensure fairness and security, Aura implements a robust **Multi-Tenancy** system (ADR 0032).
+Aura is designed to operate in shared environments where multiple users or applications share a single download daemon. To ensure fairness and security, Aura implements a robust **Multi-Tenancy** system (Decision 0032).
 
 ## Tenant Context (`TenantContext`)
 

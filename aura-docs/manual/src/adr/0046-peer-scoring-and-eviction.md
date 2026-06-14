@@ -1,4 +1,4 @@
-# ADR 0046: Peer Registry Health Scoring & Eviction
+# Decision 0046: Peer Registry Health Scoring & Eviction
 
 ## Status
 Implemented (2026-05-30, PR #165)

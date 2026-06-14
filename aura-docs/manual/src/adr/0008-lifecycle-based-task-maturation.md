@@ -1,4 +1,4 @@
-# ADR 0008: Lifecycle-based Task Maturation (Magnet Links)
+# Decision 0008: Lifecycle-based Task Maturation (Magnet Links)
 
 ## Status
 Implemented (2026-05-06, commit 0777b1ab)

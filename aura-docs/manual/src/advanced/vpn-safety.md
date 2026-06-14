@@ -2,7 +2,7 @@
 
 Privacy is a core pillar of Aura. Unlike traditional downloaders that rely on the OS to route traffic (which can fail silently), Aura proactively monitors the network environment to prevent sensitive data leaks.
 
-## The Active Kill-switch (ADR 0038)
+## The Active Kill-switch (Decision 0038)
 
 Aura implements an **Active Network Interface Lock**. When `force_tunnel = true` is enabled in `Aura.toml`, Aura enforces a strict hardware-level isolation.
 
@@ -25,7 +25,7 @@ To prevent ISP-level tracking of your download sources via DNS logs:
 - **Encrypted Resolution**: Aura uses the `hickory-resolver` to query upstream resolvers (Cloudflare/Google) over port 443 (DoH) or 853 (DoT).
 - **Bootstrap IPs**: Bypasses local system resolvers entirely by using hardcoded bootstrap IPs to find the encrypted resolvers, preventing "DNS hijacking."
 
-## Interface Roaming Reconnector (ADR 0034)
+## Interface Roaming Reconnector (Decision 0034)
 
 Aura handles network transitions (e.g., switching from Wi-Fi to Ethernet) gracefully:
 - **Event Monitoring**: Uses `rtnetlink` (on Linux) to listen for routing table changes.

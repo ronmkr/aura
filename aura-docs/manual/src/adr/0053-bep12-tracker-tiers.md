@@ -1,4 +1,4 @@
-# ADR 0053: BEP 12 Multitracker Compliance
+# Decision 0053: BEP 12 Multitracker Compliance
 
 ## Status
 Implemented (2026-06-02, PR #197)

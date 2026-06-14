@@ -1,4 +1,4 @@
-# ADR 0014: Credential and Security Abstraction
+# Decision 0014: Credential and Security Abstraction
 
 ## Status
 Implemented (2026-05-06, commit 0777b1ab)

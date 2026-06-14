@@ -83,7 +83,7 @@ impl ProtocolWorker for HttpWorker {
                     // instead of 206 Partial Content), the body starts at byte 0
                     // — writing it at segment.offset would silently corrupt the
                     // file. Return a retriable error so the orchestrator can
-                    // restart in single-stream mode. (Issue #251, ADR-0059)
+                    // restart in single-stream mode. (Issue #251, Decision-0059)
                     if sent_range && status == reqwest::StatusCode::OK && segment.offset > 0 {
                         return Err(Error::Protocol(format!(
                             "Server returned 200 OK for a ranged request at offset {}. \

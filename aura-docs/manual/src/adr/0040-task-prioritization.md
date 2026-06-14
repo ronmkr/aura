@@ -1,4 +1,4 @@
-# ADR 0040: Task Prioritization and Dependency Chains
+# Decision 0040: Task Prioritization and Dependency Chains
 
 ## Status
 Implemented (2026-06-03, PR #199)

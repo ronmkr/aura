@@ -17,8 +17,8 @@ A clear and concise description of what you want to happen.
 
 ### Architectural Alignment
 **Which ADR(s) does this feature relate to?**
-- [ ] ADR-XXXX: [Title]
-- [ ] New ADR required
+- [ ] Decision-XXXX: [Title]
+- [ ] New Decision required
 
 ### Implementation Plan
 **Describe the technical approach**

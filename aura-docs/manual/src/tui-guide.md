@@ -12,14 +12,14 @@ By default, it attempts to connect to `127.0.0.1:6800`.
 
 ## Interface Layout (Multi-View)
 
-Aura TUI uses a **ViewRouter** architecture (ADR 0065) with three primary screens:
+Aura TUI uses a **ViewRouter** architecture (Decision 0065) with three primary screens:
 
 1.  **Dashboard (Main)**: A 60/40 split-layout showing the global task list on the left and real-time details (Sparklines, Gauges) on the right.
 2.  **Mission Control (Task Detail)**: A deep-dive view into a single task, showing throughput history, piece availability maps, and peer distribution.
 3.  **File Selector**: An interactive tree-view for selecting specific files within a BitTorrent swarm or Metalink package.
 
 ### Automated Ingestion Status
-Tasks added automatically via **Watch Folders** (ADR 0069) or **RSS Feed Subscriptions** (ADR 0070) appear dynamically in the main Dashboard list. Their origin/source is displayed under the task metadata section in the detail panel.
+Tasks added automatically via **Watch Folders** (Decision 0069) or **RSS Feed Subscriptions** (Decision 0070) appear dynamically in the main Dashboard list. Their origin/source is displayed under the task metadata section in the detail panel.
 
 When no task is selected, the right details panel transitions into a **System Overview** dashboard displaying global status:
 - **Watch Folder**: Shows whether the automated watch folder system is active or idle.
