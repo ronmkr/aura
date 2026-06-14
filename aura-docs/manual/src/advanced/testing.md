@@ -14,6 +14,30 @@ Most core components (Bitfield, PiecePicker, Throttler) have exhaustive unit tes
 ### MockStorage (Decision 0072)
 To enable protocol testing without disk I/O side effects, we use the `MockStorage` helper (`aura-core/src/test_helpers/mock_storage.rs`). This implements the `StorageDispatch` trait, allowing us to verify network ingestion logic in isolation.
 
+#### Example: Using MockStorage in a Test
+```rust
+let storage = Arc::new(MockStorage::new());
+let worker = HttpWorker::new(uri, storage.clone(), orchestrator_handle);
+
+// After download completes...
+let writes = storage.writes.lock().await;
+assert!(!writes.is_empty(), "Worker should have written data to storage");
+```
+
+## TUI Testing
+
+The **Pilot Dashboard** (TUI) is tested using `ratatui`'s `TestBackend`. This allows us to:
+- Simulate key presses and terminal resizing.
+- Inspect the rendered buffer to verify UI layout and widget state.
+- Ensure that the `ViewRouter` correctly handles screen transitions.
+
+## Fuzzing & Stress Testing (Planned)
+
+We plan to integrate **`cargo-fuzz`** (libFuzzer) to stress-test our protocol parsers:
+- **BitTorrent Decoder**: Fuzzing the Bencode parser to prevent memory corruption from malicious torrent files.
+- **HTTP Header Parser**: Ensuring robust handling of non-standard or malformed headers.
+- **Metalink/RSS XML**: Stress-testing the `quick-xml` configuration for deep recursion and entity expansion.
+
 ## BDD Integration Suite (Cucumber)
 
 We use **Behavior-Driven Development (BDD)** to verify the engine's behavior against real-world scenarios. Our feature files are located in `aura-core/tests/features/`.

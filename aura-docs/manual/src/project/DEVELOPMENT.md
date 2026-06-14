@@ -71,6 +71,6 @@ All development must happen on branches and be merged via Pull Requests. To get 
 1. All CI checks must pass.
 2. The code must not introduce any new `unwrap()` or `panic!()` calls without extensive justification.
 3. Relevant tests (unit or integration) must be included.
-4. Any architectural changes must be accompanied by an update to the Decisions (`aura-docs/manual/src/decisions/`).
+4. Any architectural changes must be accompanied by an update to the Decisions (`aura-docs/manual/src/adr/`).
 
 Happy Hacking!
