@@ -12,11 +12,12 @@ fn test_parse_rss_feed() {
         <title>Aura v1.0.0 Stable</title>
         <link>https://github.com/ronmkr/aura/releases/download/v1.0.0/aura</link>
         <guid>v1.0.0-stable</guid>
+        <category>software</category>
         <pubDate>Thu, 11 Jun 2026 12:00:00 GMT</pubDate>
     </item>
     <item>
         <title>Aura v1.0.1 Patch</title>
-        <enclosure url="https://github.com/ronmkr/aura/releases/download/v1.0.1/aura.torrent" type="application/x-bittorrent" />
+        <enclosure url="https://github.com/ronmkr/aura/releases/download/v1.0.1/aura.torrent" length="12345" type="application/x-bittorrent" />
         <pubDate>Fri, 12 Jun 2026 12:00:00 GMT</pubDate>
     </item>
 </channel>
@@ -31,6 +32,8 @@ fn test_parse_rss_feed() {
         "https://github.com/ronmkr/aura/releases/download/v1.0.0/aura"
     );
     assert_eq!(items[0].guid, "v1.0.0-stable");
+    assert_eq!(items[0].category, Some("software".to_string()));
+    assert_eq!(items[0].size, None);
 
     assert_eq!(items[1].title, "Aura v1.0.1 Patch");
     assert_eq!(
@@ -40,6 +43,8 @@ fn test_parse_rss_feed() {
     // Hashed GUID fallback because no explicit <guid> is present
     assert!(!items[1].guid.is_empty());
     assert_ne!(items[1].guid, "v1.0.0-stable");
+    assert_eq!(items[1].category, None);
+    assert_eq!(items[1].size, Some(12345));
 }
 
 #[test]

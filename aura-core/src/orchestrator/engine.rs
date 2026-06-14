@@ -13,6 +13,7 @@ pub struct Engine {
     pub(crate) command_tx: mpsc::Sender<Command>,
     pub(crate) event_tx: broadcast::Sender<Event>,
     pub config: Arc<ArcSwap<crate::AuraConfig>>,
+    pub last_ingested_file: Arc<tokio::sync::Mutex<Option<String>>>,
 }
 
 impl std::fmt::Debug for Engine {
@@ -29,6 +30,7 @@ impl super::traits::EventSubscriber for Engine {
 
 impl Engine {
     pub async fn new(config: crate::AuraConfig) -> Result<(Self, Orchestrator, StorageEngine)> {
+        let last_ingested_file = Arc::new(tokio::sync::Mutex::new(None));
         let (command_tx, command_rx) = mpsc::channel(config.limits.command_channel_capacity);
         let (storage_tx, storage_rx) = mpsc::channel(config.limits.storage_channel_capacity);
         let (completion_tx, completion_rx) =
@@ -173,6 +175,7 @@ impl Engine {
                 let command_tx_watcher = command_tx.clone();
                 let config_watcher = config.clone();
                 let event_tx_watcher = event_tx.clone();
+                let last_ingested_watcher = last_ingested_file.clone();
 
                 tokio::spawn(async move {
                     use notify::{EventKind, RecursiveMode, Watcher};
@@ -202,6 +205,7 @@ impl Engine {
                         command_tx: command_tx_watcher,
                         event_tx: event_tx_watcher,
                         config: config_watcher,
+                        last_ingested_file: last_ingested_watcher,
                     };
 
                     while let Some(path) = rx.recv().await {
@@ -212,8 +216,26 @@ impl Engine {
                             }
                         }
 
-                        // Debounce logic: wait 1 second for write completion
-                        tokio::time::sleep(Duration::from_secs(1)).await;
+                        // Debounce logic: wait for file size to stabilize
+                        let mut last_size = 0;
+                        let mut stable_count = 0;
+                        loop {
+                            tokio::time::sleep(Duration::from_millis(500)).await;
+                            if let Ok(metadata) = std::fs::metadata(&path) {
+                                let current_size = metadata.len();
+                                if current_size > 0 && current_size == last_size {
+                                    stable_count += 1;
+                                    if stable_count >= 2 {
+                                        break; // Stabilized for 1 second (two 500ms intervals)
+                                    }
+                                } else {
+                                    stable_count = 0;
+                                }
+                                last_size = current_size;
+                            } else {
+                                break;
+                            }
+                        }
 
                         if !path.exists() {
                             continue;
@@ -300,6 +322,7 @@ impl Engine {
                 command_tx,
                 event_tx,
                 config,
+                last_ingested_file,
             },
             orchestrator,
             storage,

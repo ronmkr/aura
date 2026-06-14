@@ -155,7 +155,11 @@ pub async fn run(args: Args) -> Result<(), Box<dyn std::error::Error>> {
                                                     }
                                                     if aura_core::rss::RssManager::matches_filters(
                                                         &item.title,
+                                                        item.category.as_deref(),
+                                                        item.size,
                                                         &sub.filters,
+                                                        &sub.categories,
+                                                        sub.max_size,
                                                     ) {
                                                         tracing::info!("RSS Match: Ingesting task '{}' from URL '{}'", item.title, item.link);
 

@@ -42,6 +42,8 @@ pub struct AppData {
     pub downloads: Vec<DownloadInfo>,
     pub files: Vec<FileInfo>,
     pub speed_history: HashMap<String, VecDeque<u64>>,
+    pub watch_folder_active: bool,
+    pub last_ingested_file: String,
 }
 
 pub struct UiState {
@@ -83,6 +85,8 @@ impl App {
                 downloads: Vec::new(),
                 files: Vec::new(),
                 speed_history: HashMap::new(),
+                watch_folder_active: false,
+                last_ingested_file: String::new(),
             },
             ui: UiState {
                 table_state,

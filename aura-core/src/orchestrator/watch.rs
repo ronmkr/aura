@@ -47,7 +47,13 @@ pub async fn ingest_watch_file(
     };
 
     match engine.add_task_with_options(args).await {
-        Ok(_) => Ok(()),
+        Ok(_) => {
+            {
+                let mut guard = engine.last_ingested_file.lock().await;
+                *guard = Some(file_name.to_string());
+            }
+            Ok(())
+        }
         Err(crate::Error::DuplicateTask(_)) => {
             warn!("Watch folder: task already exists for {:?}", file_name);
             Ok(())

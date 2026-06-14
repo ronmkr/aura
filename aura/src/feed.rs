@@ -16,6 +16,12 @@ pub enum FeedAction {
         /// Title matching filters
         #[arg(long, short)]
         filter: Vec<String>,
+        /// Category matching filters
+        #[arg(long, short)]
+        category: Vec<String>,
+        /// Maximum item size limit in bytes
+        #[arg(long)]
+        max_size: Option<u64>,
     },
     /// Unsubscribe from a feed by URL or name
     Remove {
@@ -41,6 +47,8 @@ pub async fn handle_feed_command(
             name,
             poll_interval,
             filter,
+            category,
+            max_size,
         } => {
             let name = name.unwrap_or_else(|| {
                 if let Ok(u) = url::Url::parse(&url) {
@@ -56,11 +64,19 @@ pub async fn handle_feed_command(
                 Some(filter)
             };
 
+            let categories = if category.is_empty() {
+                None
+            } else {
+                Some(category)
+            };
+
             let sub = FeedSubscription {
                 url: url.clone(),
                 name: name.clone(),
                 poll_interval,
                 filters,
+                categories,
+                max_size,
             };
 
             match rss_manager.add_subscription(sub) {

@@ -128,6 +128,8 @@ Manage RSS/Atom feed subscriptions for automated download ingestion (ADR 0070).
     - `--name <NAME>`: Custom name for this subscription.
     - `--poll-interval <MINUTES>`: Custom polling interval in minutes (default: 30).
     - `-f, --filter <PATTERN>`: Title matching filters (regular expressions or strings).
+    - `-c, --category <CATEGORY>`: Category matching filters (can be specified multiple times).
+    - `--max-size <BYTES>`: Maximum item size limit in bytes.
 - `remove <NAME_OR_URL>`: Unsubscribe from a feed by URL or name.
 - `list`: List all subscribed feeds.
 - `refresh`: Force a refresh/poll of all feeds immediately.

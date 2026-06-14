@@ -5,28 +5,110 @@ fn test_matches_filters() {
     // Empty filters match everything
     assert!(RssManager::matches_filters(
         "Aura v1.0.0 Stable Release",
-        &None
+        None,
+        None,
+        &None,
+        &None,
+        None
     ));
     assert!(RssManager::matches_filters(
         "Aura v1.0.0 Stable Release",
-        &Some(vec![])
+        None,
+        None,
+        &Some(vec![]),
+        &None,
+        None
     ));
 
-    // Matching filters
+    // Matching title filters
     let filters = Some(vec!["Stable".to_string(), r"v\d+\.\d+\.\d+".to_string()]);
     assert!(RssManager::matches_filters(
         "Aura v1.0.0 Stable Release",
-        &filters
+        None,
+        None,
+        &filters,
+        &None,
+        None
     ));
-    assert!(!RssManager::matches_filters("Aura Patch Release", &filters));
-    assert!(!RssManager::matches_filters("Aura Beta Release", &filters));
+    assert!(!RssManager::matches_filters(
+        "Aura Patch Release",
+        None,
+        None,
+        &filters,
+        &None,
+        None
+    ));
+    assert!(!RssManager::matches_filters(
+        "Aura Beta Release",
+        None,
+        None,
+        &filters,
+        &None,
+        None
+    ));
 
     // Regex specific match
     let regex_filters = Some(vec![r"^Aura.*Stable$".to_string()]);
-    assert!(RssManager::matches_filters("Aura Stable", &regex_filters));
+    assert!(RssManager::matches_filters(
+        "Aura Stable",
+        None,
+        None,
+        &regex_filters,
+        &None,
+        None
+    ));
     assert!(!RssManager::matches_filters(
         "Aura Stable Release",
-        &regex_filters
+        None,
+        None,
+        &regex_filters,
+        &None,
+        None
+    ));
+
+    // Category filtering
+    let categories = Some(vec!["anime".to_string(), "movie".to_string()]);
+    assert!(RssManager::matches_filters(
+        "Aura v1.0.0",
+        Some("anime"),
+        None,
+        &None,
+        &categories,
+        None
+    ));
+    assert!(!RssManager::matches_filters(
+        "Aura v1.0.0",
+        Some("software"),
+        None,
+        &None,
+        &categories,
+        None
+    ));
+    assert!(!RssManager::matches_filters(
+        "Aura v1.0.0",
+        None,
+        None,
+        &None,
+        &categories,
+        None
+    ));
+
+    // Max size filtering
+    assert!(RssManager::matches_filters(
+        "Aura v1.0.0",
+        None,
+        Some(1000),
+        &None,
+        &None,
+        Some(2000)
+    ));
+    assert!(!RssManager::matches_filters(
+        "Aura v1.0.0",
+        None,
+        Some(3000),
+        &None,
+        &None,
+        Some(2000)
     ));
 }
 
@@ -51,6 +133,8 @@ fn test_manager_subscriptions() {
         name: "Example Feed".to_string(),
         poll_interval: Some(15),
         filters: Some(vec!["Aura".to_string()]),
+        categories: None,
+        max_size: None,
     };
     manager.add_subscription(sub.clone()).unwrap();
 

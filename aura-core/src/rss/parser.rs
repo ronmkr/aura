@@ -7,6 +7,8 @@ pub struct FeedItem {
     pub title: String,
     pub link: String,
     pub guid: String,
+    pub category: Option<String>,
+    pub size: Option<u64>,
 }
 
 fn compute_md5_hex(s: &str) -> String {
@@ -19,6 +21,8 @@ fn compute_md5_hex(s: &str) -> String {
 pub fn parse_feed<R: BufRead>(data: R) -> Result<Vec<FeedItem>, String> {
     let mut reader = Reader::from_reader(data);
     reader.config_mut().trim_text(true);
+    // Entity expansion is disabled by default in quick-xml (resolve_entities is false),
+    // protecting against XML entity expansion attacks (billion laughs).
 
     let mut buf = Vec::new();
     let mut items = Vec::new();
@@ -38,6 +42,8 @@ pub fn parse_feed<R: BufRead>(data: R) -> Result<Vec<FeedItem>, String> {
     let mut current_guid = String::new();
     let mut current_pubdate = String::new();
     let mut current_tag = String::new();
+    let mut current_category: Option<String> = None;
+    let mut current_size: Option<u64> = None;
 
     loop {
         match reader.read_event_into(&mut buf) {
@@ -58,6 +64,8 @@ pub fn parse_feed<R: BufRead>(data: R) -> Result<Vec<FeedItem>, String> {
                             current_link.clear();
                             current_guid.clear();
                             current_pubdate.clear();
+                            current_category = None;
+                            current_size = None;
                         }
                     }
                     State::Feed => {
@@ -67,6 +75,8 @@ pub fn parse_feed<R: BufRead>(data: R) -> Result<Vec<FeedItem>, String> {
                             current_link.clear();
                             current_guid.clear();
                             current_pubdate.clear();
+                            current_category = None;
+                            current_size = None;
                         }
                     }
                     State::Item | State::Entry => {
@@ -80,6 +90,12 @@ pub fn parse_feed<R: BufRead>(data: R) -> Result<Vec<FeedItem>, String> {
                             for attr in e.attributes().flatten() {
                                 if attr.key.as_ref() == b"url" {
                                     current_link = String::from_utf8_lossy(&attr.value).to_string();
+                                } else if attr.key.as_ref() == b"length" {
+                                    if let Ok(sz_str) = std::str::from_utf8(&attr.value) {
+                                        if let Ok(sz) = sz_str.parse::<u64>() {
+                                            current_size = Some(sz);
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -101,12 +117,14 @@ pub fn parse_feed<R: BufRead>(data: R) -> Result<Vec<FeedItem>, String> {
                         }
                         "guid" => current_guid = text,
                         "pubDate" => current_pubdate = text,
+                        "category" => current_category = Some(text),
                         _ => {}
                     },
                     State::Entry => match current_tag.as_str() {
                         "title" => current_title = text,
                         "id" => current_guid = text,
                         "published" | "updated" => current_pubdate = text,
+                        "category" => current_category = Some(text),
                         _ => {}
                     },
                     _ => {}
@@ -130,6 +148,8 @@ pub fn parse_feed<R: BufRead>(data: R) -> Result<Vec<FeedItem>, String> {
                                 title: current_title.clone(),
                                 link: current_link.clone(),
                                 guid: current_guid.clone(),
+                                category: current_category.clone(),
+                                size: current_size,
                             });
                         }
                     }
@@ -148,6 +168,8 @@ pub fn parse_feed<R: BufRead>(data: R) -> Result<Vec<FeedItem>, String> {
                                 title: current_title.clone(),
                                 link: current_link.clone(),
                                 guid: current_guid.clone(),
+                                category: current_category.clone(),
+                                size: current_size,
                             });
                         }
                     }
@@ -175,6 +197,12 @@ pub fn parse_feed<R: BufRead>(data: R) -> Result<Vec<FeedItem>, String> {
                             for attr in e.attributes().flatten() {
                                 if attr.key.as_ref() == b"url" {
                                     current_link = String::from_utf8_lossy(&attr.value).to_string();
+                                } else if attr.key.as_ref() == b"length" {
+                                    if let Ok(sz_str) = std::str::from_utf8(&attr.value) {
+                                        if let Ok(sz) = sz_str.parse::<u64>() {
+                                            current_size = Some(sz);
+                                        }
+                                    }
                                 }
                             }
                         }

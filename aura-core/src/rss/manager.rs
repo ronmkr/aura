@@ -9,6 +9,8 @@ pub struct FeedSubscription {
     pub name: String,
     pub poll_interval: Option<u64>, // Polling frequency in minutes, default: 30
     pub filters: Option<Vec<String>>,
+    pub categories: Option<Vec<String>>,
+    pub max_size: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -104,24 +106,70 @@ impl RssManager {
         Ok(())
     }
 
-    pub fn matches_filters(title: &str, filters: &Option<Vec<String>>) -> bool {
+    pub fn matches_filters(
+        title: &str,
+        category: Option<&str>,
+        size: Option<u64>,
+        filters: &Option<Vec<String>>,
+        categories: &Option<Vec<String>>,
+        max_size: Option<u64>,
+    ) -> bool {
+        // 1. Check title filters
         if let Some(ref list) = filters {
-            if list.is_empty() {
-                return true;
-            }
-            for pattern in list {
-                if let Ok(re) = regex::Regex::new(pattern) {
-                    if re.is_match(title) {
-                        return true;
+            if !list.is_empty() {
+                let mut matched = false;
+                for pattern in list {
+                    if let Ok(re) = regex::Regex::new(pattern) {
+                        if re.is_match(title) {
+                            matched = true;
+                            break;
+                        }
+                    } else if title.contains(pattern) {
+                        matched = true;
+                        break;
                     }
-                } else if title.contains(pattern) {
-                    return true;
+                }
+                if !matched {
+                    return false;
                 }
             }
-            false
-        } else {
-            true
         }
+
+        // 2. Check category filters
+        if let Some(ref cat_list) = categories {
+            if !cat_list.is_empty() {
+                if let Some(cat) = category {
+                    let mut matched = false;
+                    for pattern in cat_list {
+                        if let Ok(re) = regex::Regex::new(pattern) {
+                            if re.is_match(cat) {
+                                matched = true;
+                                break;
+                            }
+                        } else if cat.contains(pattern) {
+                            matched = true;
+                            break;
+                        }
+                    }
+                    if !matched {
+                        return false;
+                    }
+                } else {
+                    return false;
+                }
+            }
+        }
+
+        // 3. Check max size limit
+        if let Some(limit) = max_size {
+            if let Some(sz) = size {
+                if sz > limit {
+                    return false;
+                }
+            }
+        }
+
+        true
     }
 }
 
