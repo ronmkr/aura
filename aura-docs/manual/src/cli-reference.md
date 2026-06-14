@@ -106,6 +106,32 @@ Run the **Allocation Prober** to identify the best disk allocation strategy for 
 
 **Usage:** `aura probe [DIR]`
 
+### `service`
+Manage the Aura daemon as a system service (systemd, launchd, or Windows Service) (ADR 0071).
+
+**Usage:** `aura service <SUBCOMMAND>`
+- `install [OPTIONS]`: Install the daemon as a system service.
+    - `--config <PATH>`: Custom configuration file path to use for the service.
+    - `--bind-address <IP>`: IP address to bind the RPC server.
+    - `--rpc-port <PORT>`: Port to bind the RPC server.
+    - `--user <USER>`: The username under which the service should run.
+- `uninstall`: Uninstall the system service.
+- `start`: Start the system service.
+- `stop`: Stop the system service.
+- `status`: Check the status of the system service.
+
+### `feed`
+Manage RSS/Atom feed subscriptions for automated download ingestion (ADR 0070).
+
+**Usage:** `aura feed <SUBCOMMAND>`
+- `add <URL> [OPTIONS]`: Subscribe to an RSS/Atom feed.
+    - `--name <NAME>`: Custom name for this subscription.
+    - `--poll-interval <MINUTES>`: Custom polling interval in minutes (default: 30).
+    - `-f, --filter <PATTERN>`: Title matching filters (regular expressions or strings).
+- `remove <NAME_OR_URL>`: Unsubscribe from a feed by URL or name.
+- `list`: List all subscribed feeds.
+- `refresh`: Force a refresh/poll of all feeds immediately.
+
 ---
 
 ## URL Globbing

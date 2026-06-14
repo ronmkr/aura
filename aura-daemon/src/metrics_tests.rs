@@ -40,6 +40,7 @@ async fn test_metrics_handler() {
         engine,
         rpc_secret: None,
         metrics,
+        rss_refresh_tx: None,
     });
 
     let response = metrics_handler(State(state)).await.into_response();

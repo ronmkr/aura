@@ -6,7 +6,7 @@ use arc_swap::ArcSwap;
 use rand::RngExt;
 use std::sync::Arc;
 use tokio::sync::{broadcast, mpsc};
-use tracing::{info, warn};
+use tracing::{error, info, warn};
 
 #[derive(Clone)]
 pub struct Engine {
@@ -166,6 +166,135 @@ impl Engine {
             }
         }
 
+        // Setup watch directory watcher
+        if let Some(ref watch_dir_str) = initial_config.storage.watch_dir {
+            let watch_dir_path = std::path::PathBuf::from(watch_dir_str);
+            if watch_dir_path.exists() {
+                let command_tx_watcher = command_tx.clone();
+                let config_watcher = config.clone();
+                let event_tx_watcher = event_tx.clone();
+
+                tokio::spawn(async move {
+                    use notify::{EventKind, RecursiveMode, Watcher};
+                    use std::time::Duration;
+
+                    let (tx, mut rx) = mpsc::channel(100);
+                    let mut watcher =
+                        notify::recommended_watcher(move |res: notify::Result<notify::Event>| {
+                            if let Ok(event) = res {
+                                if matches!(event.kind, EventKind::Create(_) | EventKind::Modify(_))
+                                {
+                                    for path in event.paths {
+                                        let _ = tx.blocking_send(path);
+                                    }
+                                }
+                            }
+                        })
+                        .expect("Failed to create watch directory watcher");
+
+                    watcher
+                        .watch(&watch_dir_path, RecursiveMode::NonRecursive)
+                        .expect("Failed to watch watch directory");
+
+                    info!("Watch folder monitoring enabled at {:?}", watch_dir_path);
+
+                    let engine_instance = Self {
+                        command_tx: command_tx_watcher,
+                        event_tx: event_tx_watcher,
+                        config: config_watcher,
+                    };
+
+                    while let Some(path) = rx.recv().await {
+                        // Skip if it's already in processed or failed folders
+                        if let Some(parent) = path.parent() {
+                            if parent.ends_with("processed") || parent.ends_with("failed") {
+                                continue;
+                            }
+                        }
+
+                        // Debounce logic: wait 1 second for write completion
+                        tokio::time::sleep(Duration::from_secs(1)).await;
+
+                        if !path.exists() {
+                            continue;
+                        }
+
+                        let ext = path
+                            .extension()
+                            .and_then(|e| e.to_str())
+                            .unwrap_or("")
+                            .to_lowercase();
+
+                        if ext != "torrent" && ext != "metalink" && ext != "meta4" && ext != "nzb" {
+                            continue;
+                        }
+
+                        info!("Watch folder: detected file {:?}", path);
+
+                        let result =
+                            crate::orchestrator::watch::ingest_watch_file(&engine_instance, &path)
+                                .await;
+
+                        let file_name = match path.file_name() {
+                            Some(f) => f,
+                            None => continue,
+                        };
+
+                        let mut move_or_delete_failed = false;
+                        let mut final_err = None;
+
+                        if result.is_ok() {
+                            let dest_dir = watch_dir_path.join("processed");
+                            let _ = std::fs::create_dir_all(&dest_dir);
+                            let dest_path = dest_dir.join(file_name);
+                            if let Err(e) = std::fs::rename(&path, &dest_path) {
+                                warn!(
+                                    "Watch folder: failed to move {:?} to processed folder: {}",
+                                    path, e
+                                );
+                                if let Err(e2) = std::fs::remove_file(&path) {
+                                    move_or_delete_failed = true;
+                                    final_err = Some(e2);
+                                }
+                            } else {
+                                info!("Watch folder: moved {:?} to processed folder", file_name);
+                            }
+                        } else {
+                            let err_msg = result.err().unwrap();
+                            warn!(
+                                "Watch folder ingestion failed for {:?}: {}",
+                                file_name, err_msg
+                            );
+                            let dest_dir = watch_dir_path.join("failed");
+                            let _ = std::fs::create_dir_all(&dest_dir);
+                            let dest_path = dest_dir.join(file_name);
+                            if let Err(e) = std::fs::rename(&path, &dest_path) {
+                                warn!(
+                                    "Watch folder: failed to move {:?} to failed folder: {}",
+                                    path, e
+                                );
+                                if let Err(e2) = std::fs::remove_file(&path) {
+                                    move_or_delete_failed = true;
+                                    final_err = Some(e2);
+                                }
+                            }
+                        }
+
+                        if move_or_delete_failed {
+                            error!(
+                                "Watch folder: permission error. Cannot move or delete file {:?}. \
+                                Disabling watch folder watcher to prevent infinite loops. Error: {:?}",
+                                path, final_err
+                            );
+                            break;
+                        }
+                    }
+
+                    drop(watcher);
+                });
+            }
+        }
+
         Ok((
             Self {
                 command_tx,
@@ -177,3 +306,7 @@ impl Engine {
         ))
     }
 }
+
+#[cfg(test)]
+#[path = "engine_tests.rs"]
+mod tests;

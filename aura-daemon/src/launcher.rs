@@ -63,7 +63,11 @@ pub fn spawn_actors(
     });
 }
 
-pub async fn setup_signal_handler(engine: Arc<Engine>, shutdown_tx: tokio::sync::mpsc::Sender<()>) {
+pub async fn setup_signal_handler(
+    engine: Arc<Engine>,
+    shutdown_tx: tokio::sync::mpsc::Sender<()>,
+    mut custom_shutdown: Option<tokio::sync::mpsc::Receiver<()>>,
+) {
     tokio::spawn(async move {
         #[cfg(unix)]
         {
@@ -73,12 +77,27 @@ pub async fn setup_signal_handler(engine: Arc<Engine>, shutdown_tx: tokio::sync:
             tokio::select! {
                 _ = sigint.recv() => info!("Received SIGINT, initiating graceful shutdown"),
                 _ = sigterm.recv() => info!("Received SIGTERM, initiating graceful shutdown"),
+                _ = async {
+                    if let Some(ref mut rx) = custom_shutdown {
+                        rx.recv().await;
+                    } else {
+                        std::future::pending::<()>().await;
+                    }
+                } => info!("Received custom shutdown signal, initiating graceful shutdown"),
             }
         }
         #[cfg(not(unix))]
         {
-            let _ = tokio::signal::ctrl_c().await;
-            info!("Received Ctrl+C, initiating graceful shutdown");
+            tokio::select! {
+                _ = tokio::signal::ctrl_c() => info!("Received Ctrl+C, initiating graceful shutdown"),
+                _ = async {
+                    if let Some(ref mut rx) = custom_shutdown {
+                        rx.recv().await;
+                    } else {
+                        std::future::pending::<()>().await;
+                    }
+                } => info!("Received custom shutdown signal, initiating graceful shutdown"),
+            }
         }
 
         let shutdown_result = tokio::select! {

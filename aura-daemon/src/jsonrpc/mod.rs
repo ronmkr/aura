@@ -58,7 +58,7 @@ pub async fn handle_jsonrpc(
 
     info!("RPC Method: {}", payload.method);
 
-    let router = RpcRouter::new(state.engine.clone());
+    let router = RpcRouter::new(state.engine.clone(), state.rss_refresh_tx.clone());
     let (result, already_exists) = router.route(payload.method.as_str(), payload.params).await;
 
     match result {

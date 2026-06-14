@@ -87,6 +87,7 @@ write_buffer_kb = 256                  # Size of thread-local write buffers
 memory_limit_mb = 512                  # Max RAM for write aggregation
 memory_safety_margin_mb = 50           # Reserve memory to prevent OOM
 recheck_throttle_ms = 10               # Delay in milliseconds between read chunks during hash recheck
+# watch_dir = "watch"                  # Folder to monitor for auto-ingesting .torrent/.metalink/etc. drops (ADR 0069)
 
 
 [bulk]

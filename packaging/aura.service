@@ -1,0 +1,12 @@
+[Unit]
+Description=Aura Download Engine Daemon
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/aura daemon
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
