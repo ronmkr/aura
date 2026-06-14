@@ -115,55 +115,47 @@ pub fn parse_feed<R: BufRead>(data: R) -> Result<Vec<FeedItem>, String> {
             Ok(Event::End(ref e)) => {
                 let tag = String::from_utf8_lossy(e.name().as_ref()).to_string();
                 match state {
-                    State::Item => {
-                        if tag == "item" {
-                            state = State::Channel;
-                            if current_guid.is_empty() {
-                                let hash_input = if !current_pubdate.is_empty() {
-                                    format!("{}{}", current_title, current_pubdate)
-                                } else {
-                                    format!("{}{}", current_title, current_link)
-                                };
-                                current_guid = compute_md5_hex(&hash_input);
-                            }
-                            if !current_link.is_empty() {
-                                items.push(FeedItem {
-                                    title: current_title.clone(),
-                                    link: current_link.clone(),
-                                    guid: current_guid.clone(),
-                                });
-                            }
+                    State::Item if tag == "item" => {
+                        state = State::Channel;
+                        if current_guid.is_empty() {
+                            let hash_input = if !current_pubdate.is_empty() {
+                                format!("{}{}", current_title, current_pubdate)
+                            } else {
+                                format!("{}{}", current_title, current_link)
+                            };
+                            current_guid = compute_md5_hex(&hash_input);
+                        }
+                        if !current_link.is_empty() {
+                            items.push(FeedItem {
+                                title: current_title.clone(),
+                                link: current_link.clone(),
+                                guid: current_guid.clone(),
+                            });
                         }
                     }
-                    State::Entry => {
-                        if tag == "entry" {
-                            state = State::Feed;
-                            if current_guid.is_empty() {
-                                let hash_input = if !current_pubdate.is_empty() {
-                                    format!("{}{}", current_title, current_pubdate)
-                                } else {
-                                    format!("{}{}", current_title, current_link)
-                                };
-                                current_guid = compute_md5_hex(&hash_input);
-                            }
-                            if !current_link.is_empty() {
-                                items.push(FeedItem {
-                                    title: current_title.clone(),
-                                    link: current_link.clone(),
-                                    guid: current_guid.clone(),
-                                });
-                            }
+                    State::Entry if tag == "entry" => {
+                        state = State::Feed;
+                        if current_guid.is_empty() {
+                            let hash_input = if !current_pubdate.is_empty() {
+                                format!("{}{}", current_title, current_pubdate)
+                            } else {
+                                format!("{}{}", current_title, current_link)
+                            };
+                            current_guid = compute_md5_hex(&hash_input);
+                        }
+                        if !current_link.is_empty() {
+                            items.push(FeedItem {
+                                title: current_title.clone(),
+                                link: current_link.clone(),
+                                guid: current_guid.clone(),
+                            });
                         }
                     }
-                    State::Channel => {
-                        if tag == "channel" {
-                            state = State::Root;
-                        }
+                    State::Channel if tag == "channel" => {
+                        state = State::Root;
                     }
-                    State::Feed => {
-                        if tag == "feed" {
-                            state = State::Root;
-                        }
+                    State::Feed if tag == "feed" => {
+                        state = State::Root;
                     }
                     _ => {}
                 }
