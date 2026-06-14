@@ -1,5 +1,5 @@
 //! piece_picker: Implements the rarest-first piece selection strategy.
-//! Also implements BitTorrent Endgame Mode as specified in [ADR-0039](aura-docs/adr/0039-bittorrent-endgame-mode.md).
+//! Also implements BitTorrent Endgame Mode as specified in [ADR-0039](aura-docs/manual/src/adr/0039-bittorrent-endgame-mode.md).
 
 use crate::bitfield::Bitfield;
 use std::collections::HashMap;
@@ -7,7 +7,7 @@ use std::collections::HashMap;
 pub type PeerId = [u8; 20];
 
 /// Manages piece selection logic, prioritizing the rarest pieces in the swarm.
-/// Implements the BitTorrent Endgame Mode strategy detailed in [ADR-0039](aura-docs/adr/0039-bittorrent-endgame-mode.md).
+/// Implements the BitTorrent Endgame Mode strategy detailed in [ADR-0039](aura-docs/manual/src/adr/0039-bittorrent-endgame-mode.md).
 #[derive(Debug)]
 pub struct PiecePicker {
     pub num_pieces: usize,

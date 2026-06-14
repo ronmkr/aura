@@ -20,9 +20,9 @@ All active development tasks, technical debt, and feature requests are managed e
 - [x] **feat: Implement MSE/PE (Message Stream Encryption) for BitTorrent traffic obfuscation** (Issue #283) `[module:core, module:network, priority:high]`
 - [ ] **feat: Implement μTP/LEDBAT transport (BEP 29) for ISP-friendly BitTorrent** (Issue #286) `[module:core, module:network, priority:high]`
 - [x] **feat: Fast resume — verify and reuse existing file data on task re-add** (Issue #284) `[module:core, module:storage, priority:high]`
-- [ ] **feat: Watch folder — auto-ingest .torrent/.metalink files dropped into a directory** (Issue #288) `[module:core, module:daemon, priority:high]`
-- [ ] **feat: RSS/Atom feed subscriptions for automated download ingestion** (Issue #290) `[module:core, module:daemon, priority:high]`
-- [ ] **feat: System service integration — auto-start daemon on boot (systemd, launchd, Windows Service)** (Issue #291) `[module:daemon, module:cli, priority:high, infra]`
+- [x] **feat: Watch folder — auto-ingest .torrent/.metalink files dropped into a directory** (Issue #288) `[module:core, module:daemon, priority:high]`
+- [x] **feat: RSS/Atom feed subscriptions for automated download ingestion** (Issue #290) `[module:core, module:daemon, priority:high]`
+- [x] **feat: System service integration — auto-start daemon on boot (systemd, launchd, Windows Service)** (Issue #291) `[module:daemon, module:cli, priority:high, infra]`
 - [x] **epic: Interactive TUI Modernization (Command Center)** `[module:tui, priority:high]`
     - [x] Refactor TUI to stateful Multi-View architecture (Dashboard, Mission Control, File Selector).
     - [x] Implement the Main Dashboard with split-layout (Task List + Real-time Detail Panel).
@@ -48,21 +48,44 @@ All active development tasks, technical debt, and feature requests are managed e
     - [x] Zero-friction ingest: Terminal Drag-and-Drop and OS Clipboard monitoring.
 - [ ] **infra: Add CI cross-platform matrix and cargo audit workflow** (Issue #148) `[infra, priority:moderate]`
 - [ ] **infra: CI test matrix missing Windows and macOS runners (Issue #148 partially done)** (Issue #287) `[infra, priority:moderate, module:ci]`
-- [ ] **feat: Implement BitTorrent tracker scrape for swarm statistics** (Issue #289) `[module:core, priority:moderate]`
+- [x] **feat: Implement BitTorrent tracker scrape for swarm statistics** (Issue #289) `[module:core, priority:moderate]`
 - [x] **feat: ETag and Last-Modified conditional GET for incremental file refresh** (Issue #255) `[module:core, priority:moderate]`
 - [x] **perf: Share reqwest HTTP connection pool across segment workers for same-host downloads** (Issue #256) `[module:core, priority:moderate]`
 - [x] **feat: BitTorrent seeding ratio and maximum seeding time limits** (Issue #257) `[module:core, priority:moderate]`
 - [x] **feat: Prioritized Streaming Mode for Media Playback** (Issue #28) `[module:core, priority:moderate]`
-- [ ] **feat: Cloud Storage Support (S3, Google Drive)** (Issue #10) `[module:core, priority:moderate]`
+- [x] **feat: Cloud Storage Support (S3, Google Drive)** (Issue #10) `[module:core, priority:moderate]`
 
 ### Low / Minor (P3)
 - [ ] **feat: Implement i18n Architecture (ADR-0042)** (Issue #190) `[module:i18n, priority:low]`
 - [ ] **feat: Chrome extension companion codebase (Manifest V3, Chrome-only)** (Issue #230) `[module:daemon, priority:low]`
-- [ ] **feat: NNTP (Usenet) Protocol Support** (Issue #22) `[module:core, priority:low]`
+- [x] **feat: NNTP (Usenet) Protocol Support** (Issue #22) `[module:core, priority:low]`
 - [ ] **feat: QR code sharing for magnet links in CLI/TUI** (Issue #74) `[module:cli, module:tui, priority:minor]`
 - [ ] **feat: i18n support for CLI and TUI** (Issue #71) `[module:cli, module:tui, priority:minor]`
 
 ## Completed Tasks
+
+- [x] **feat: System service integration — auto-start daemon on boot (systemd, launchd, Windows Service)** (Issue #291, ADR-0071) `[module:daemon, module:cli, priority:high, infra]`
+  - **Completion Commit**: `9e86833`
+  - **Key Changes**:
+    - Integrated `service-manager` crate to provide cross-platform service control interface (systemd, launchd, and SCM).
+    - Exposed service commands under `aura service <install|uninstall|start|stop|status>`.
+    - Implemented platform-native configurations for systemd (`aura.service`), launchd (`com.aura.daemon.plist`), and Windows SCM PowerShell script (`install-service.ps1`).
+
+- [x] **feat: RSS/Atom feed subscriptions for automated download ingestion** (Issue #290, ADR-0070) `[module:core, module:daemon, priority:high]`
+  - **Completion Commit**: `9e86833`
+  - **Key Changes**:
+    - Added background polling task in `aura-daemon` to fetch feed items based on custom intervals.
+    - Implemented regex filtering for titles and category/size matching filters.
+    - Added XML security validation by disabling entity expansion to prevent Billion Laughs attacks.
+    - Exposed `aura feed <add|remove|list|refresh>` CLI subcommands.
+
+- [x] **feat: Watch folder — auto-ingest .torrent/.metalink files dropped into a directory** (Issue #288, ADR-0069) `[module:core, module:daemon, priority:high]`
+  - **Completion Commit**: `9e86833`
+  - **Key Changes**:
+    - Utilized the `notify` crate to watch a configured directory for file creation and modifications.
+    - Implemented a 500ms file-size stabilization loop to debounce incremental writes and prevent premature parsing.
+    - Automatically stages `.torrent` and `.metalink` file drops, moving successfully parsed files to `processed/` and invalid files to `failed/`.
+    - Exposed watch folder active status and the last ingested file path via JSON-RPC, TUI details panel, and system commands.
 
 - [x] **feat: Prioritized Streaming Mode for Media Playback** (Issue #28) `[module:core, priority:moderate]`
   - **Completion Commit**: `3b97c9d`

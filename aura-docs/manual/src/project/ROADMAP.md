@@ -80,6 +80,7 @@
 - [x] **Advanced Networking (kTLS, Captive Portals, Roaming)** (Issue #8).
 - [x] **Multi-tenancy & Structured Audit Tracing** (Issue #15).
 - [x] **Architectural Decoupling (God Nodes)** (ADR-0072).
+- [x] **Cloud Storage Support (S3, GDrive, OneDrive)** (Issue #10, ADR 0013) (#280).
 
 ### Remaining - Priority
 
@@ -90,16 +91,15 @@
 - [ ] **HTTP/3 QUIC** (Issue #23).
 - [ ] **QR Code Sharing** (Issue #74).
 - [ ] **i18n Architecture** (Issue #71).
-- [ ] **Cloud Storage Support (S3, Google Drive)** (Issue #10).
 
 ## Milestone 8: Daemon Maturity & Production Swarm Capabilities (In Progress)
 - [x] **feat: Implement MSE/PE (Message Stream Encryption) for BitTorrent traffic obfuscation** (Issue #283, ADR-0066).
 - [ ] **feat: Implement μTP/LEDBAT transport (BEP 29) for ISP-friendly BitTorrent** (Issue #286, ADR-0067).
-- [ ] **feat: Fast resume — verify and reuse existing file data on task re-add** (Issue #284, ADR-0068).
-- [ ] **feat: Watch folder — auto-ingest torrents/metalinks** (Issue #288, ADR-0069).
-- [ ] **feat: RSS/Atom feed subscriptions for automated download ingestion** (Issue #290, ADR-0070).
-- [ ] **feat: System service integration (systemd, launchd, Windows Service)** (Issue #291, ADR-0071).
-- [ ] **feat: Implement BitTorrent tracker scrape for swarm statistics** (Issue #289).
+- [x] **feat: Fast resume — verify and reuse existing file data on task re-add** (Issue #284, ADR-0068).
+- [x] **feat: Watch folder — auto-ingest torrents/metalinks** (Issue #288, ADR-0069).
+- [x] **feat: RSS/Atom feed subscriptions for automated download ingestion** (Issue #290, ADR-0070).
+- [x] **feat: System service integration (systemd, launchd, Windows Service)** (Issue #291, ADR-0071).
+- [x] **feat: Implement BitTorrent tracker scrape for swarm statistics** (Issue #289).
 
 ## Infrastructure & DevSecOps
 - [x] `GEMINI.md` (Engineering Mandates).

@@ -53,9 +53,6 @@ green-loop: fmt clippy test modularity-check bench
 
 # Build the User Manual (requires mdbook)
 docs:
-	rm -rf aura-docs/manual/src/adr
-	mkdir -p aura-docs/manual/src/adr
-	cp aura-docs/adr/*.md aura-docs/manual/src/adr/
 	cd aura-docs/manual && mdbook build
 
 # Build the Rust API documentation
@@ -67,10 +64,8 @@ docs-all: docs docs-api
 
 # Serve the manual locally
 docs-serve:
-	rm -rf aura-docs/manual/src/adr
-	mkdir -p aura-docs/manual/src/adr
-	cp aura-docs/adr/*.md aura-docs/manual/src/adr/
 	cd aura-docs/manual && mdbook serve
+
 
 # --- Execution ---
 

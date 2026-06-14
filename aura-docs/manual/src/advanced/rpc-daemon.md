@@ -39,7 +39,8 @@ Aura implements a standardized RPC interface. It is largely compatible with stan
 | `aura.getVersion`| Returns engine version and features. | None |
 | `aura.getSessionInfo`| Returns a session UUID. | None |
 | `aura.saveSession`| Flushes active task states to disk. | None |
-| `aura.getGlobalStat`| Returns global engine stats. | None |
+| `aura.getGlobalStat`| Returns global engine stats (including Watch Folder active status and last-ingested path). | None |
+| `aura.refreshFeeds`| Forces a refresh/polling of all RSS feed subscriptions immediately. | None |
 | `aura.shutdown` | Gracefully shuts down the daemon. | None |
 
 ## WebSocket Telemetry (Real-time)
