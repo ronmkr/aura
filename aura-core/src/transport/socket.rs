@@ -5,11 +5,9 @@ use super::packet::{PacketHeader, PacketType};
 use crate::Result;
 use std::collections::VecDeque;
 use std::net::SocketAddr;
-use std::pin::Pin;
 use std::sync::Arc;
-use std::task::{Context, Poll, Waker};
+use std::task::Waker;
 use std::time::Instant;
-use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use tokio::net::UdpSocket;
 use tokio::sync::Mutex;
 use tracing::{debug, error, info};
@@ -24,24 +22,27 @@ pub enum SocketState {
 
 /// The uTP Socket implementing AsyncRead and AsyncWrite.
 pub struct UtpSocket {
-    udp: Arc<UdpSocket>,
-    inner: Arc<Mutex<SocketStateInner>>,
+    pub(crate) udp: Arc<UdpSocket>,
+    pub(crate) inner: Arc<Mutex<SocketStateInner>>,
 }
 
 #[allow(dead_code)]
-struct SocketStateInner {
-    peer_addr: SocketAddr,
-    state: SocketState,
-    conn_id_send: u16,
-    conn_id_recv: u16,
-    seq_nr: u16,
-    ack_nr: u16,
-    ledbat: LedbatController,
-    read_buf: VecDeque<u8>,
-    read_waker: Option<Waker>,
-    write_buf: VecDeque<u8>,
-    write_waker: Option<Waker>,
-    last_recv_time: Instant,
+pub(crate) struct SocketStateInner {
+    pub(crate) peer_addr: SocketAddr,
+    pub(crate) state: SocketState,
+    pub(crate) conn_id_send: u16,
+    pub(crate) conn_id_recv: u16,
+    pub(crate) seq_nr: u16,
+    pub(crate) ack_nr: u16,
+    pub(crate) last_acked_seq: u16,
+    pub(crate) ledbat: LedbatController,
+    pub(crate) read_buf: VecDeque<u8>,
+    pub(crate) read_waker: Option<Waker>,
+    pub(crate) write_buf: VecDeque<u8>,
+    pub(crate) write_waker: Option<Waker>,
+    pub(crate) last_recv_time: Instant,
+    pub(crate) last_received_timestamp_us: u32,
+    pub(crate) last_measured_delay_us: u32,
 }
 
 impl UtpSocket {
@@ -64,12 +65,15 @@ impl UtpSocket {
             conn_id_recv,
             seq_nr: 1,
             ack_nr: 0,
+            last_acked_seq: 0,
             ledbat: LedbatController::new(),
             read_buf: VecDeque::new(),
             read_waker: None,
             write_buf: VecDeque::new(),
             write_waker: None,
             last_recv_time: Instant::now(),
+            last_received_timestamp_us: 0,
+            last_measured_delay_us: 0,
         }));
 
         let socket = Self { udp, inner: state };
@@ -112,8 +116,8 @@ impl UtpSocket {
             version: 1,
             extension: 0,
             connection_id: inner.conn_id_recv,
-            timestamp_us: 0,
-            timestamp_difference_us: 0,
+            timestamp_us: get_microsecond_timestamp(),
+            timestamp_difference_us: inner.last_measured_delay_us,
             wnd_size: 1048576,
             seq_nr: inner.seq_nr,
             ack_nr: 0,
@@ -151,7 +155,12 @@ impl UtpSocket {
                 Err(_) => continue,
             };
 
+            let now_us = get_microsecond_timestamp();
             let mut guard = inner.lock().await;
+
+            guard.last_received_timestamp_us = header.timestamp_us;
+            guard.last_measured_delay_us = now_us.wrapping_sub(header.timestamp_us);
+            guard.last_recv_time = Instant::now();
 
             // Handle incoming packets based on type
             match header.packet_type {
@@ -163,14 +172,26 @@ impl UtpSocket {
                     if guard.state == SocketState::SynSent && header.ack_nr == guard.seq_nr {
                         guard.state = SocketState::Connected;
                         guard.ack_nr = header.seq_nr;
+                        guard.last_acked_seq = header.seq_nr;
                         info!("uTP connection established with peer");
                     }
 
                     // Update LEDBAT base delay using timestamp difference
                     let now = Instant::now();
-                    guard
-                        .ledbat
-                        .on_ack(header.timestamp_difference_us as u64, 0, now);
+                    let acked_diff = header.ack_nr.wrapping_sub(guard.last_acked_seq);
+                    if acked_diff > 0 && acked_diff < 32768 {
+                        let bytes_newly_acked = (acked_diff as u32) * 1400; // Estimate 1400 bytes per packet
+                        guard.last_acked_seq = header.ack_nr;
+                        guard.ledbat.on_ack(
+                            header.timestamp_difference_us as u64,
+                            bytes_newly_acked,
+                            now,
+                        );
+                    } else {
+                        guard
+                            .ledbat
+                            .on_ack(header.timestamp_difference_us as u64, 0, now);
+                    }
                 }
                 PacketType::Data => {
                     // Data packet
@@ -191,8 +212,8 @@ impl UtpSocket {
                             version: 1,
                             extension: 0,
                             connection_id: guard.conn_id_send,
-                            timestamp_us: 0,
-                            timestamp_difference_us: 0,
+                            timestamp_us: get_microsecond_timestamp(),
+                            timestamp_difference_us: guard.last_measured_delay_us,
                             wnd_size: 1048576,
                             seq_nr: guard.seq_nr,
                             ack_nr: guard.ack_nr,
@@ -219,126 +240,10 @@ impl UtpSocket {
     }
 }
 
-// Implement AsyncRead and AsyncWrite traits for UtpSocket so it matches TcpStream
-impl AsyncRead for UtpSocket {
-    fn poll_read(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        buf: &mut ReadBuf<'_>,
-    ) -> Poll<std::io::Result<()>> {
-        let mut inner = match self.inner.try_lock() {
-            Ok(guard) => guard,
-            Err(_) => {
-                cx.waker().wake_by_ref();
-                return Poll::Pending;
-            }
-        };
-
-        if inner.state == SocketState::Closed && inner.read_buf.is_empty() {
-            return Poll::Ready(Ok(()));
-        }
-
-        if inner.read_buf.is_empty() {
-            inner.read_waker = Some(cx.waker().clone());
-            return Poll::Pending;
-        }
-
-        let to_read = std::cmp::min(buf.remaining(), inner.read_buf.len());
-        let drained: Vec<u8> = inner.read_buf.drain(0..to_read).collect();
-        buf.put_slice(&drained);
-
-        Poll::Ready(Ok(()))
-    }
-}
-
-impl AsyncWrite for UtpSocket {
-    fn poll_write(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        buf: &[u8],
-    ) -> Poll<std::io::Result<usize>> {
-        let mut inner = match self.inner.try_lock() {
-            Ok(guard) => guard,
-            Err(_) => {
-                cx.waker().wake_by_ref();
-                return Poll::Pending;
-            }
-        };
-
-        if inner.state == SocketState::Closed {
-            return Poll::Ready(Err(std::io::Error::new(
-                std::io::ErrorKind::NotConnected,
-                "uTP socket is closed",
-            )));
-        }
-
-        // For simplicity in the starting implementation, we immediately send the packet over UDP.
-        // In a full implementation, we would queue it and send it according to the LEDBAT cwnd.
-        let mut data_buf = vec![0u8; PacketHeader::LEN + buf.len()];
-        let header = PacketHeader {
-            packet_type: PacketType::Data,
-            version: 1,
-            extension: 0,
-            connection_id: inner.conn_id_send,
-            timestamp_us: 0,
-            timestamp_difference_us: 0,
-            wnd_size: 1048576,
-            seq_nr: inner.seq_nr,
-            ack_nr: inner.ack_nr,
-        };
-        header.serialize(&mut data_buf[..PacketHeader::LEN]);
-        data_buf[PacketHeader::LEN..].copy_from_slice(buf);
-
-        let udp = Arc::clone(&self.udp);
-        let len = buf.len();
-
-        // Spawn sending as a task to prevent blocking the poll
-        tokio::spawn(async move {
-            let _ = udp.send(&data_buf).await;
-        });
-
-        inner.seq_nr = inner.seq_nr.wrapping_add(1);
-
-        Poll::Ready(Ok(len))
-    }
-
-    fn poll_flush(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<std::io::Result<()>> {
-        Poll::Ready(Ok(()))
-    }
-
-    fn poll_shutdown(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<std::io::Result<()>> {
-        let mut inner = match self.inner.try_lock() {
-            Ok(guard) => guard,
-            Err(_) => {
-                cx.waker().wake_by_ref();
-                return Poll::Pending;
-            }
-        };
-
-        inner.state = SocketState::Closed;
-
-        let udp = Arc::clone(&self.udp);
-        let conn_id = inner.conn_id_send;
-        let seq = inner.seq_nr;
-        let ack = inner.ack_nr;
-
-        tokio::spawn(async move {
-            let mut fin_buf = [0u8; PacketHeader::LEN];
-            let header = PacketHeader {
-                packet_type: PacketType::Fin,
-                version: 1,
-                extension: 0,
-                connection_id: conn_id,
-                timestamp_us: 0,
-                timestamp_difference_us: 0,
-                wnd_size: 1048576,
-                seq_nr: seq,
-                ack_nr: ack,
-            };
-            header.serialize(&mut fin_buf);
-            let _ = udp.send(&fin_buf).await;
-        });
-
-        Poll::Ready(Ok(()))
-    }
+/// Helper function to get the current system time in microseconds modulo 2^32.
+pub(crate) fn get_microsecond_timestamp() -> u32 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or(std::time::Duration::ZERO)
+        .as_micros() as u32
 }

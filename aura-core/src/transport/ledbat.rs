@@ -31,7 +31,7 @@ struct DelaySample {
 #[derive(Debug, Clone)]
 pub struct LedbatController {
     /// The current congestion window in bytes.
-    cwnd: u32,
+    cwnd: f64,
     /// Minimum observed delays to calculate the base delay.
     base_delays: Vec<DelaySample>,
     /// Last base delay value used.
@@ -48,7 +48,7 @@ impl LedbatController {
     /// Creates a new LEDBAT congestion controller.
     pub fn new() -> Self {
         Self {
-            cwnd: MIN_CWND,
+            cwnd: MIN_CWND as f64,
             base_delays: Vec::new(),
             last_base_delay_us: u64::MAX,
         }
@@ -56,7 +56,7 @@ impl LedbatController {
 
     /// Returns the current congestion window size in bytes.
     pub fn cwnd(&self) -> u32 {
-        self.cwnd
+        self.cwnd as u32
     }
 
     /// Records a new one-way delay measurement and updates base delay history.
@@ -101,26 +101,25 @@ impl LedbatController {
         let delay_factor = (off_target as f64) / (TARGET_DELAY_US as f64);
 
         // Apply gain factor and newly acked proportion to scale cwnd adjustment
-        // cwnd_increase = GAIN * delay_factor * (bytes_newly_acked / cwnd)
+        // cwnd_increase = GAIN * delay_factor * (bytes_newly_acked / cwnd) * MSS
         // GAIN is typically 1 (meaning we scale linearly)
-        let adjustment =
-            delay_factor * (bytes_newly_acked as f64) * (MSS as f64) / (self.cwnd as f64);
+        let adjustment = delay_factor * (bytes_newly_acked as f64) * (MSS as f64) / self.cwnd;
 
-        let new_cwnd = (self.cwnd as i64) + (adjustment as i64);
+        let new_cwnd = self.cwnd + adjustment;
 
         // Cap cwnd between minimum and maximum limits
-        self.cwnd = if new_cwnd < MIN_CWND as i64 {
-            MIN_CWND
-        } else if new_cwnd > MAX_CWND as i64 {
-            MAX_CWND
+        self.cwnd = if new_cwnd < MIN_CWND as f64 {
+            MIN_CWND as f64
+        } else if new_cwnd > MAX_CWND as f64 {
+            MAX_CWND as f64
         } else {
-            new_cwnd as u32
+            new_cwnd
         };
     }
 
     /// Reduces congestion window on packet loss (standard TCP back-off).
     pub fn on_loss(&mut self) {
         // Multiplicative decrease: halve the congestion window on loss, but keep it above the minimum
-        self.cwnd = std::cmp::max(self.cwnd / 2, MIN_CWND);
+        self.cwnd = (self.cwnd / 2.0).max(MIN_CWND as f64);
     }
 }

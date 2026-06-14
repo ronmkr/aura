@@ -3,6 +3,7 @@
 pub mod ledbat;
 pub mod packet;
 pub mod socket;
+pub mod socket_io;
 
 pub use ledbat::LedbatController;
 pub use packet::{PacketHeader, PacketType};

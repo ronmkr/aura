@@ -36,3 +36,6 @@ pub trait VpnProvider: Send + Sync {
 pub use monitor::InterfaceMonitor;
 pub use openvpn::OpenVpnProvider;
 pub use wireguard::WireGuardProvider;
+
+#[cfg(test)]
+mod tests;
