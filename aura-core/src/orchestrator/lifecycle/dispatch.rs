@@ -1,6 +1,5 @@
 use super::SubTaskEvent;
 use crate::orchestrator::Orchestrator;
-use crate::storage::StorageRequest;
 use crate::task::{DownloadPhase, TaskType};
 use crate::worker::{ProtocolWorker, Segment};
 use crate::{Error, Result, TaskId};
@@ -73,7 +72,7 @@ impl Orchestrator {
                 };
 
                 if let Some(range) = range {
-                    let storage_tx = self.storage_tx.clone();
+                    let storage_client = self.storage_client.clone();
                     let subtask_tx = self.subtask_tx.clone();
                     let (progress_tx, mut progress_rx) = mpsc::unbounded_channel::<u64>();
                     let child_token = token.child_token();
@@ -112,19 +111,19 @@ impl Orchestrator {
                                 tokio::select! {
                                     _ = token_clone.cancelled() => {
                                     }
-                                    res = worker.fetch_segment(meta_id, segment, Some(progress_tx), Some(storage_tx.clone()), throttler_clone.clone()) => {
+                                    res = worker.fetch_segment(meta_id, segment, Some(progress_tx), Some(storage_client.clone()), throttler_clone.clone()) => {
                                         // Ensure all progress events are forwarded before finishing the range
                                         let _ = progress_handle.await;
 
                                         match res {
                                             Ok(piece) => {
-                                                let _ = storage_tx.send(StorageRequest::Write {
-                                                    task_id: meta_id,
-                                                    segment: piece.segment,
-                                                    data: piece.data,
-                                                    guard: None,
-                                                    generation: None,
-                                                }).await;
+                                                let _ = storage_client.submit_write(
+                                                    meta_id,
+                                                    piece.segment,
+                                                    piece.data,
+                                                    None,
+                                                    None,
+                                                ).await;
                                                 let _ = subtask_tx.send(SubTaskEvent::RangeFinished(meta_id, sub_id, range)).await;
                                             }
                                             Err(e) => {
@@ -147,16 +146,16 @@ impl Orchestrator {
                                 tokio::select! {
                                     _ = token_clone.cancelled() => {
                                     }
-                                    res = worker.fetch_segment(meta_id, segment, Some(progress_tx), Some(storage_tx.clone()), throttler_clone.clone()) => {
+                                    res = worker.fetch_segment(meta_id, segment, Some(progress_tx), Some(storage_client.clone()), throttler_clone.clone()) => {
                                         match res {
                                             Ok(piece) => {
-                                                let _ = storage_tx.send(StorageRequest::Write {
-                                                    task_id: meta_id,
-                                                    segment: piece.segment,
-                                                    data: piece.data,
-                                                    guard: None,
-                                                    generation: None,
-                                                }).await;
+                                                let _ = storage_client.submit_write(
+                                                    meta_id,
+                                                    piece.segment,
+                                                    piece.data,
+                                                    None,
+                                                    None,
+                                                ).await;
                                                 let _ = subtask_tx.send(SubTaskEvent::RangeFinished(meta_id, sub_id, range)).await;
                                             }
                                             Err(e) => {
@@ -179,17 +178,17 @@ impl Orchestrator {
                                 tokio::select! {
                                     _ = token_clone.cancelled() => {
                                     }
-                                    res = worker.fetch_segment(meta_id, segment, Some(progress_tx), Some(storage_tx.clone()), throttler_clone.clone()) => {
+                                    res = worker.fetch_segment(meta_id, segment, Some(progress_tx), Some(storage_client.clone()), throttler_clone.clone()) => {
                                         let _ = progress_handle.await;
                                         match res {
                                             Ok(piece) => {
-                                                let _ = storage_tx.send(StorageRequest::Write {
-                                                    task_id: meta_id,
-                                                    segment: piece.segment,
-                                                    data: piece.data,
-                                                    guard: None,
-                                                    generation: None,
-                                                }).await;
+                                                let _ = storage_client.submit_write(
+                                                    meta_id,
+                                                    piece.segment,
+                                                    piece.data,
+                                                    None,
+                                                    None,
+                                                ).await;
                                                 let _ = subtask_tx.send(SubTaskEvent::RangeFinished(meta_id, sub_id, range)).await;
                                             }
                                             Err(e) => {
@@ -212,17 +211,17 @@ impl Orchestrator {
                                 tokio::select! {
                                     _ = token_clone.cancelled() => {
                                     }
-                                    res = worker.fetch_segment(meta_id, segment, Some(progress_tx), Some(storage_tx.clone()), throttler_clone.clone()) => {
+                                    res = worker.fetch_segment(meta_id, segment, Some(progress_tx), Some(storage_client.clone()), throttler_clone.clone()) => {
                                         let _ = progress_handle.await;
                                         match res {
                                             Ok(piece) => {
-                                                let _ = storage_tx.send(StorageRequest::Write {
-                                                    task_id: meta_id,
-                                                    segment: piece.segment,
-                                                    data: piece.data,
-                                                    guard: None,
-                                                    generation: None,
-                                                }).await;
+                                                let _ = storage_client.submit_write(
+                                                    meta_id,
+                                                    piece.segment,
+                                                    piece.data,
+                                                    None,
+                                                    None,
+                                                ).await;
                                                 let _ = subtask_tx.send(SubTaskEvent::RangeFinished(meta_id, sub_id, range)).await;
                                             }
                                             Err(e) => {
@@ -247,17 +246,23 @@ impl Orchestrator {
                                     _ = token_clone.cancelled() => {}
                                     res = async {
                                         #[cfg(feature = "nntp")] {
-                                            worker.fetch_segment(meta_id, segment, Some(progress_tx), Some(storage_tx.clone()), throttler_clone.clone()).await
+                                            worker.fetch_segment(meta_id, segment, Some(progress_tx), Some(storage_client.clone()), throttler_clone.clone()).await
                                         }
                                         #[cfg(not(feature = "nntp"))] {
-                                            let _ = (&meta_id, &progress_tx, &storage_tx, &throttler_clone, &segment);
+                                            let _ = (&meta_id, &progress_tx, &storage_client, &throttler_clone, &segment);
                                             Err::<crate::worker::PieceData, crate::Error>(crate::Error::Protocol("NNTP feature not enabled".to_string()))
                                         }
                                     } => {
                                         let _ = progress_handle.await;
                                         match res {
                                             Ok(piece) => {
-                                                let _ = storage_tx.send(StorageRequest::Write { task_id: meta_id, segment: piece.segment, data: piece.data, guard: None, generation: None }).await;
+                                                let _ = storage_client.submit_write(
+                                                    meta_id,
+                                                    piece.segment,
+                                                    piece.data,
+                                                    None,
+                                                    None,
+                                                ).await;
                                                 let _ = subtask_tx.send(SubTaskEvent::RangeFinished(meta_id, sub_id, range)).await;
                                             }
                                             Err(e) => {

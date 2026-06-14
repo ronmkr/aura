@@ -1,4 +1,4 @@
-use aura_core::orchestrator::{Engine, Event};
+use aura_core::orchestrator::{Engine, Event, EventSubscriber};
 use aura_core::task::{FollowOnAction, TaskType};
 use aura_core::{Result, TaskId};
 

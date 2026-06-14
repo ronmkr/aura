@@ -10,7 +10,7 @@ pub(super) fn make_test_orchestrator() -> (
     mpsc::Receiver<crate::storage::StorageRequest>,
     tempfile::TempDir,
 ) {
-    let (orch, storage_rx) = crate::orchestrator::test_helpers::create_test_orchestrator();
+    let (orch, storage_rx) = crate::test_helpers::create_test_orchestrator();
     let temp_dir = tempdir().unwrap();
     (orch, storage_rx, temp_dir)
 }

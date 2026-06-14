@@ -134,7 +134,7 @@ async fn test_failed_connection_transitions_to_disconnected() {
         meta_id: crate::TaskId(12345),
         sub_id: crate::TaskId(12345),
         task: task.clone(),
-        storage_tx,
+        storage_client: Arc::new(crate::storage::StorageClient::new(storage_tx)),
         subtask_tx,
         command_rx: cmd_tx.subscribe(),
         token,

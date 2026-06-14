@@ -68,7 +68,7 @@ impl Orchestrator {
             let uri = sub_task.uri.clone();
             let ttype = sub_task.task_type.clone();
             let subtask_tx = self.subtask_tx.clone();
-            let storage_tx = self.storage_tx.clone();
+            let storage_client = self.storage_client.clone();
             let dht_tx = self.dht_tx.clone();
             let lpd_tx = self.lpd_tx.clone();
             let token_clone = token.clone();
@@ -301,7 +301,7 @@ impl Orchestrator {
                             if let Err(e) = bt_task_run
                                 .run(
                                     orchestrator_handle.peer_id,
-                                    storage_tx,
+                                    storage_client,
                                     subtask_tx,
                                     token_clone,
                                     throttler_clone,

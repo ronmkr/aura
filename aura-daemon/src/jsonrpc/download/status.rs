@@ -1,5 +1,5 @@
 use crate::jsonrpc::utils::{format_task_value, parse_gid, rpc_error, RpcResultExt};
-use aura_core::orchestrator::Engine;
+use aura_core::orchestrator::{Engine, TaskQuerier};
 use serde_json::{json, Value};
 
 pub async fn handle_tell_active(engine: &Engine) -> Result<Value, Value> {

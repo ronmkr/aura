@@ -225,7 +225,7 @@ impl Orchestrator {
                 Ok((stream, addr)) = listener.accept() => {
                     let bt_registry = self.bt_registry.clone();
                     let worker_command_txs = self.worker_command_txs.clone();
-                    let storage_tx = self.storage_tx.clone();
+                    let storage_client = self.storage_client.clone();
                     let subtask_tx = self.subtask_tx.clone();
                     let cancellation_tokens = self.cancellation_tokens.clone();
                     let throttler = self.throttler.clone();
@@ -238,7 +238,7 @@ impl Orchestrator {
                             bt_registry,
                             bt_tasks,
                             worker_command_txs,
-                            storage_tx,
+                            storage_client,
                             subtask_tx,
                             cancellation_tokens,
                             throttler,

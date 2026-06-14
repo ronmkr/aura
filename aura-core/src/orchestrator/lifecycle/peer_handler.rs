@@ -1,5 +1,4 @@
 use crate::orchestrator::{SubTaskEvent, WorkerCommand};
-use crate::storage::StorageRequest;
 use crate::worker::bittorrent::protocol::mse::MseStream;
 use crate::worker::bittorrent::task::BtTask;
 use crate::worker::bittorrent::BtWorker;
@@ -15,7 +14,7 @@ pub struct IncomingPeerContext {
     pub bt_tasks: std::collections::HashMap<TaskId, Arc<BtTask>>,
     pub worker_command_txs:
         std::collections::HashMap<TaskId, tokio::sync::broadcast::Sender<WorkerCommand>>,
-    pub storage_tx: mpsc::Sender<StorageRequest>,
+    pub storage_client: Arc<dyn crate::storage::StorageDispatch>,
     pub subtask_tx: mpsc::Sender<SubTaskEvent>,
     pub cancellation_tokens: std::collections::HashMap<TaskId, CancellationToken>,
     pub throttler: Arc<crate::throttler::Throttler>,
@@ -153,7 +152,7 @@ pub async fn handle_incoming_peer(
                         meta_id: task.id,
                         sub_id: task.id,
                         task: task.clone(),
-                        storage_tx: ctx.storage_tx,
+                        storage_client: ctx.storage_client,
                         subtask_tx: ctx.subtask_tx,
                         command_rx: w_cmd_rx,
                         token: token.clone(),

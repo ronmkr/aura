@@ -1,4 +1,5 @@
 use crate::AuraWorld;
+use aura_core::orchestrator::EventSubscriber;
 use cucumber::{given, then, when};
 use std::io::Write;
 use tokio::fs;

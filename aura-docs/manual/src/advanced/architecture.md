@@ -64,3 +64,19 @@ The **Pilot Dashboard** (TUI) uses a stateful **ViewRouter** architecture:
 Aura uses **Bounded MPSC Channels** for all inter-actor communication.
 - **Disk Backpressure**: If the disk I/O subsystem is saturated, the `Storage Engine`'s input channel fills up.
 - **Natural Throttling**: Protocol workers automatically block when trying to send data to a full storage queue, naturally slowing down network ingestion and preventing memory exhaustion.
+
+---
+
+## Architectural Decoupling & Trait Boundaries (ADR 0072)
+
+To maintain modularity and testability, Aura enforces strict decoupling of its core "God Nodes" (Orchestrator and Storage Engine) using Rust traits.
+
+### Orchestrator Trait Boundaries
+Instead of depending on the monolithic `Engine` struct, high-level handlers and handles depend on specialized traits:
+- **`EventSubscriber`**: Provides access to the global telemetry and event bus.
+- **`TaskController`**: Exposes lifecycle mutation methods (pause, resume, remove).
+- **`TaskQuerier`**: Exposes metadata and state retrieval methods.
+- **`EngineApi`**: A composite trait object used by `TaskHandle` to provide a stable, mockable interface for downstream consumers.
+
+### Storage Decoupling
+Protocol Workers do not interact with the Storage Engine's internal MPSC channels directly. Instead, they utilize the **`StorageDispatch`** trait. This allows the network layer to be tested in isolation with a mock storage provider, completely bypassing disk I/O during unit tests.

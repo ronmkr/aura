@@ -19,6 +19,7 @@ pub mod subtask_failure;
 pub mod subtask_handlers;
 pub mod task_handle;
 pub mod telemetry;
+pub mod traits;
 pub mod vpn_enforcement;
 pub mod worker_command;
 
@@ -30,6 +31,7 @@ pub use state::{Orchestrator, OrchestratorHandle};
 pub use subtask_event::SubTaskEvent;
 pub use task_handle::{TaskEvent, TaskHandle};
 pub use telemetry::Event;
+pub use traits::{EngineApi, EventSubscriber, TaskController, TaskHandleApi, TaskQuerier};
 pub use worker_command::WorkerCommand;
 
 #[cfg(test)]
@@ -47,6 +49,3 @@ mod dag_cycle_tests;
 #[cfg(test)]
 #[path = "advanced_net_and_tenant_tests.rs"]
 mod advanced_net_and_tenant_tests;
-
-#[cfg(test)]
-pub mod test_helpers;

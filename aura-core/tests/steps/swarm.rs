@@ -1,4 +1,5 @@
 use crate::AuraWorld;
+use aura_core::orchestrator::TaskQuerier;
 use cucumber::{given, then, when};
 
 #[given(expr = "a magnet link with info-hash {string}")]

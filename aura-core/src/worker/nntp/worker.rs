@@ -3,9 +3,7 @@ use crate::worker::builder::WorkerOptions;
 use crate::worker::{Metadata, PieceData, ProgressSender, ProtocolWorker, Segment};
 use crate::{Error, Result, TaskId};
 use async_trait::async_trait;
-use bytes::BytesMut;
 use std::sync::Arc;
-use tokio::sync::mpsc;
 use url::Url;
 
 use super::connection::{parse_ybegin, NntpConnection};
@@ -94,7 +92,7 @@ impl ProtocolWorker for NntpWorker {
         task_id: TaskId,
         segment: Segment,
         progress: Option<ProgressSender>,
-        storage_tx: Option<mpsc::Sender<crate::storage::StorageRequest>>,
+        storage_client: Option<Arc<dyn crate::storage::StorageDispatch>>,
         throttler: Arc<Throttler>,
     ) -> Result<PieceData> {
         let mut _guard = if let Some(ref gov) = self.options.resource_governor {
@@ -204,25 +202,25 @@ impl ProtocolWorker for NntpWorker {
             &[]
         };
 
-        if let Some(ref s_tx) = storage_tx {
-            let _ = s_tx
-                .send(crate::storage::StorageRequest::Write {
+        if let Some(ref s_client) = storage_client {
+            let _ = s_client
+                .submit_write(
                     task_id,
-                    segment: Segment {
+                    Segment {
                         offset: segment.offset,
-                        length: sliced_data.len() as u64,
+                        length: decoded_data.len() as u64,
                     },
-                    data: BytesMut::from(sliced_data),
-                    guard: None,
-                    generation: None,
-                })
+                    bytes::BytesMut::from(decoded_data.as_slice()),
+                    None,
+                    None,
+                )
                 .await;
         }
 
-        let buffer = if storage_tx.is_some() {
-            BytesMut::new()
+        let buffer = if storage_client.is_some() {
+            bytes::BytesMut::new()
         } else {
-            BytesMut::from(sliced_data)
+            bytes::BytesMut::from(sliced_data)
         };
 
         Ok(PieceData {

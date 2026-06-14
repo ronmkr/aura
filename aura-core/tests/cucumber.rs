@@ -1,4 +1,4 @@
-use aura_core::orchestrator::{Engine, Event};
+use aura_core::orchestrator::{Engine, Event, EventSubscriber};
 use aura_core::{Checksum, Config, TaskId};
 use cucumber::World;
 use tokio::sync::mpsc;

@@ -130,7 +130,7 @@ impl BtTask {
     pub async fn run(
         &self,
         my_id: [u8; 20],
-        _storage_tx: mpsc::Sender<crate::storage::StorageRequest>,
+        _storage_client: Arc<dyn crate::storage::StorageDispatch>,
         subtask_tx: mpsc::Sender<crate::orchestrator::SubTaskEvent>,
         token: tokio_util::sync::CancellationToken,
         _throttler: Arc<crate::throttler::Throttler>,

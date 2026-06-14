@@ -1,5 +1,5 @@
-use crate::orchestrator::test_helpers::create_test_orchestrator as make_test_orchestrator;
 use crate::task::{DownloadPhase, MetaTask, SubTask, TaskType};
+use crate::test_helpers::create_test_orchestrator as make_test_orchestrator;
 use crate::TaskId;
 use std::collections::HashMap;
 use std::sync::Arc;

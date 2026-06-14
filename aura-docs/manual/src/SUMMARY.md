@@ -105,6 +105,7 @@
     - [ADR 0069: Watch Folder Auto-ingestion](./adr/0069-watch-folder.md)
     - [ADR 0070: RSS/Atom Feed Subscriptions](./adr/0070-rss-subscriptions.md)
     - [ADR 0071: System Service Integration](./adr/0071-system-service.md)
+    - [ADR 0072: God Node Decoupling](./adr/0072-god-node-decoupling.md)
 
 ---
 

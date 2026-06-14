@@ -1,16 +1,88 @@
-use super::{Command, Engine, Event};
+use super::traits::{TaskController, TaskQuerier};
+use super::{Command, Engine};
 use crate::orchestrator::TaskHandle;
 use crate::task::{MetaTask, TaskType};
 use crate::{Error, Result, TaskId};
+use async_trait::async_trait;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 use tracing::info;
 
-impl Engine {
-    pub fn subscribe(&self) -> tokio::sync::broadcast::Receiver<Event> {
-        self.event_tx.subscribe()
+#[async_trait]
+impl TaskController for Engine {
+    async fn pause(&self, id: TaskId) -> Result<()> {
+        self.command_tx
+            .send(Command::Pause(id))
+            .await
+            .map_err(|e| Error::Engine(format!("Failed to send Pause command: {}", e)))?;
+        Ok(())
     }
 
+    async fn resume(&self, id: TaskId) -> Result<()> {
+        self.command_tx
+            .send(Command::Resume(id))
+            .await
+            .map_err(|e| Error::Engine(format!("Failed to send Resume command: {}", e)))?;
+        Ok(())
+    }
+
+    async fn remove(&self, id: TaskId) -> Result<()> {
+        self.command_tx
+            .send(Command::Remove(id))
+            .await
+            .map_err(|e| Error::Engine(format!("Failed to send Remove command: {}", e)))?;
+        Ok(())
+    }
+
+    async fn change_option(
+        &self,
+        id: TaskId,
+        priority: Option<u32>,
+        depends_on: Option<Vec<TaskId>>,
+        seed_ratio: Option<f32>,
+        seed_time: Option<u32>,
+        streaming_mode: Option<bool>,
+    ) -> Result<()> {
+        self.command_tx
+            .send(Command::ChangeOption {
+                id,
+                priority,
+                depends_on,
+                seed_ratio,
+                seed_time,
+                streaming_mode,
+            })
+            .await
+            .map_err(|e| Error::Engine(format!("Failed to send ChangeOption command: {}", e)))?;
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl TaskQuerier for Engine {
+    async fn tell_active(&self) -> Result<Vec<MetaTask>> {
+        let (tx, mut rx) = mpsc::channel(1);
+        self.command_tx
+            .send(Command::ListActive(tx))
+            .await
+            .map_err(|e| Error::Engine(format!("Failed to send ListActive command: {}", e)))?;
+        rx.recv()
+            .await
+            .ok_or_else(|| Error::Engine("Engine shut down".to_string()))
+    }
+
+    async fn get_files(&self, id: TaskId) -> Result<Option<Vec<crate::torrent::File>>> {
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        self.command_tx
+            .send(Command::GetFiles(id, tx))
+            .await
+            .map_err(|e| Error::Engine(format!("Failed to send GetFiles command: {}", e)))?;
+        rx.await
+            .map_err(|_| Error::Engine("Engine shut down before replying".to_string()))
+    }
+}
+
+impl Engine {
     pub async fn add_task(
         &self,
         name: String,
@@ -54,7 +126,7 @@ impl Engine {
             .send(Command::AddTask(args))
             .await
             .map_err(|e| Error::Engine(format!("Failed to send AddTask command: {}", e)))?;
-        Ok(TaskHandle::new(id, self.clone()))
+        Ok(TaskHandle::new(id, Arc::new(self.clone())))
     }
 
     pub async fn add_task_with_sources(
@@ -78,56 +150,6 @@ impl Engine {
             follow_on: None,
         })
         .await
-    }
-
-    pub async fn change_option(
-        &self,
-        id: TaskId,
-        priority: Option<u32>,
-        depends_on: Option<Vec<TaskId>>,
-        seed_ratio: Option<f32>,
-        seed_time: Option<u32>,
-        streaming_mode: Option<bool>,
-    ) -> Result<()> {
-        self.command_tx
-            .send(Command::ChangeOption {
-                id,
-                priority,
-                depends_on,
-                seed_ratio,
-                seed_time,
-                streaming_mode,
-            })
-            .await
-            .map_err(|e| Error::Engine(format!("Failed to send ChangeOption command: {}", e)))?;
-        Ok(())
-    }
-
-    pub async fn tell_active(&self) -> Result<Vec<MetaTask>> {
-        let (tx, mut rx) = mpsc::channel(1);
-        self.command_tx
-            .send(Command::ListActive(tx))
-            .await
-            .map_err(|e| Error::Engine(format!("Failed to send ListActive command: {}", e)))?;
-        rx.recv()
-            .await
-            .ok_or_else(|| Error::Engine("Engine shut down".to_string()))
-    }
-
-    pub async fn pause(&self, id: TaskId) -> Result<()> {
-        self.command_tx
-            .send(Command::Pause(id))
-            .await
-            .map_err(|e| Error::Engine(format!("Failed to send Pause command: {}", e)))?;
-        Ok(())
-    }
-
-    pub async fn resume(&self, id: TaskId) -> Result<()> {
-        self.command_tx
-            .send(Command::Resume(id))
-            .await
-            .map_err(|e| Error::Engine(format!("Failed to send Resume command: {}", e)))?;
-        Ok(())
     }
 
     pub async fn refresh(&self, id: TaskId) -> Result<()> {
@@ -186,14 +208,6 @@ impl Engine {
         Ok(())
     }
 
-    pub async fn remove(&self, id: TaskId) -> Result<()> {
-        self.command_tx
-            .send(Command::Remove(id))
-            .await
-            .map_err(|e| Error::Engine(format!("Failed to send Remove command: {}", e)))?;
-        Ok(())
-    }
-
     pub async fn shutdown(&self) -> Result<()> {
         self.command_tx
             .send(Command::Shutdown)
@@ -242,16 +256,6 @@ impl Engine {
         records.reverse();
         let paginated = records.into_iter().skip(offset).take(num).collect();
         Ok(paginated)
-    }
-
-    pub async fn get_files(&self, id: TaskId) -> Result<Option<Vec<crate::torrent::File>>> {
-        let (tx, rx) = tokio::sync::oneshot::channel();
-        self.command_tx
-            .send(Command::GetFiles(id, tx))
-            .await
-            .map_err(|e| Error::Engine(format!("Failed to send GetFiles command: {}", e)))?;
-        rx.await
-            .map_err(|_| Error::Engine("Engine shut down before replying".to_string()))
     }
 
     pub async fn set_file_selection(&self, id: TaskId, selection: Vec<bool>) -> Result<()> {

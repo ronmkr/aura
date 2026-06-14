@@ -1,6 +1,7 @@
-use crate::orchestrator::{Engine, Event};
+use crate::orchestrator::{Event, TaskHandleApi};
 use crate::{Result, TaskId};
 use std::pin::Pin;
+use std::sync::Arc;
 use tokio_stream::Stream;
 
 /// High-level events for a specific download task.
@@ -35,11 +36,11 @@ pub enum TaskEvent {
 #[derive(Clone)]
 pub struct TaskHandle {
     id: TaskId,
-    engine: Engine,
+    engine: Arc<dyn TaskHandleApi>,
 }
 
 impl TaskHandle {
-    pub(crate) fn new(id: TaskId, engine: Engine) -> Self {
+    pub(crate) fn new(id: TaskId, engine: Arc<dyn TaskHandleApi>) -> Self {
         Self { id, engine }
     }
 

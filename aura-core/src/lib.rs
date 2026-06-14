@@ -30,6 +30,7 @@ pub mod worker;
 pub mod config;
 pub mod history;
 pub mod security;
+pub mod test_helpers;
 
 pub use config::{AuraConfig, AuraConfig as Config, CliOverrides};
 pub use history::{CompletedTaskRecord, HistoryManager};

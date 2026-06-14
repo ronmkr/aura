@@ -69,12 +69,13 @@ Aura's design is driven by a series of formal Architecture Decision Records. The
 | [0063](../adr/0063-bandwidth-time-scheduling.md) | ADR 0063: Bandwidth Time Scheduling | Implemented (2026-06-04, PR #259) |
 | [0064](../adr/0064-process-resilience-panic-fd-limits.md) | ADR 0064: Process Resilience — Panic Recovery, Crash Reporting, and File Descriptor Management | Implemented (2026-06-04, PRs #258, #259) |
 | [0065](../adr/0065-interactive-tui-architecture.md) | ADR 0065: Interactive TUI Architecture & Selective Downloading | Implemented (2026-06-10, PR #277) |
-| [0066](../adr/0066-mse-pe-encryption.md) | ADR 0066: MSE/PE Traffic Encryption | Accepted (2026-06-13 — Issue #283) |
+| [0066](../adr/0066-mse-pe-encryption.md) | ADR 0066: MSE/PE Traffic Encryption | Implemented (2026-06-13, PR #301) |
 | [0067](../adr/0067-utp-ledbat.md) | ADR 0067: μTP/LEDBAT Transport Layer | Proposed (2026-06-11 — Issue #286) |
 | [0068](../adr/0068-fast-resume.md) | ADR 0068: Fast Resume and Piece Recheck | Proposed (2026-06-11 — Issue #284) |
 | [0069](../adr/0069-watch-folder.md) | ADR 0069: Watch Folder Auto-ingestion | Proposed (2026-06-11 — Issue #288) |
 | [0070](../adr/0070-rss-subscriptions.md) | ADR 0070: RSS/Atom Feed Subscriptions | Proposed (2026-06-11 — Issue #290) |
 | [0071](../adr/0071-system-service.md) | ADR 0071: System Service Integration | Proposed (2026-06-11 — Issue #291) |
+| [0072](../adr/0072-god-node-decoupling.md) | ADR 0072: God Node Decoupling | Implemented (2026-06-13) |
 
 For a full list of ADRs, see the `aura-docs/adr/` directory in the repository.
 
