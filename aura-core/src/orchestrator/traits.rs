@@ -44,6 +44,11 @@ pub trait TaskQuerier: Send + Sync {
     async fn get_files(&self, id: TaskId) -> Result<Option<Vec<crate::torrent::File>>>;
 }
 
+/// A trait for components that can control task lifecycle and telemetry.
+pub trait TaskHandleApi: EventSubscriber + TaskController + Send + Sync {}
+
+impl<T> TaskHandleApi for T where T: EventSubscriber + TaskController + Send + Sync {}
+
 /// A unified interface representing the full Engine API.
 ///
 /// This combines the discrete traits into a single interface that can be

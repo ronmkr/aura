@@ -1,4 +1,4 @@
-use crate::orchestrator::{EngineApi, Event};
+use crate::orchestrator::{Event, TaskHandleApi};
 use crate::{Result, TaskId};
 use std::pin::Pin;
 use std::sync::Arc;
@@ -36,11 +36,11 @@ pub enum TaskEvent {
 #[derive(Clone)]
 pub struct TaskHandle {
     id: TaskId,
-    engine: Arc<dyn EngineApi>,
+    engine: Arc<dyn TaskHandleApi>,
 }
 
 impl TaskHandle {
-    pub(crate) fn new(id: TaskId, engine: Arc<dyn EngineApi>) -> Self {
+    pub(crate) fn new(id: TaskId, engine: Arc<dyn TaskHandleApi>) -> Self {
         Self { id, engine }
     }
 
