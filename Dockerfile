@@ -61,7 +61,10 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Create a non-root user for security
-RUN useradd -m -s /bin/bash aurauser
+RUN useradd -m -s /bin/bash aurauser && \
+    mkdir -p /downloads && \
+    chown aurauser:aurauser /downloads
+
 USER aurauser
 WORKDIR /home/aurauser
 
@@ -81,5 +84,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 # Set the default entrypoint to the unified binary
 ENTRYPOINT ["aura"]
 
-# Default command if none is provided: print help
-CMD ["--help"]
+# Default command: Start the daemon binding to all interfaces for Docker compatibility
+CMD ["daemon", "--bind-address", "0.0.0.0"]
