@@ -28,6 +28,14 @@
 
 ---
 
+# Project Management
+
+- [Roadmap](./project/ROADMAP.md)
+- [Development Tasks](./project/TASKS.md)
+- [Development Guide](./project/DEVELOPMENT.md)
+
+---
+
 # Developer Documentation
 
 - [Architecture](./advanced/architecture.md)

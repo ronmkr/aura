@@ -1,7 +1,7 @@
 # ADR 0070: RSS/Atom Feed Subscriptions
 
 ## Status
-Proposed (2026-06-11 — Issue #290)
+Implemented (2026-06-14 — PR #303)
 
 ## Context
 NAS deployments, seedboxes, and home servers often serve as automated media download hubs. Users expect the ability to subscribe to RSS or Atom feeds (e.g., software release feeds, podcasts, media releases) and have matching items downloaded automatically. Aura currently has no feed subscription, polling, or filtering system. However, the `quick-xml` crate is already a project dependency, providing high-performance XML parsing capabilities suitable for RSS/Atom formats.

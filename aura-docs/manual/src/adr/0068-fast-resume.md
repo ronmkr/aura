@@ -1,7 +1,7 @@
 # ADR 0068: Fast Resume and Piece Recheck
 
 ## Status
-Proposed (2026-06-11 — Issue #284)
+Implemented (2026-06-13 — PR #300)
 
 ## Context
 When a download task is added or the daemon restarts, Aura currently ignores any existing data at the target file paths and starts downloading from byte 0. In NAS, home server, and seedbox environments, daemon restarts are common due to updates, reboots, or power failures. Re-downloading massive files from scratch on every restart wastes significant network bandwidth and storage I/O, and causes unacceptable delay. While Aura implements metadata persistence (ADR-0017) and atomic renaming (ADR-0003), it lacks the ability to verify and resume downloads from existing partial files on disk.

@@ -1,7 +1,7 @@
 # ADR 0069: Watch Folder Auto-ingestion
 
 ## Status
-Proposed (2026-06-11 — Issue #288)
+Implemented (2026-06-14 — PR #303)
 
 ## Context
 Aura relies on external triggers (CLI inputs, RPC requests, browser extensions) to add downloads. There is no file-system-driven ingestion mechanism. Power users and server environments expect a "Watch Folder" workflow: dropping a `.torrent`, `.metalink`, or `.meta4` file into a monitored directory should automatically schedule the download. Aura already depends on the `notify` crate and uses it in `aura-core/src/orchestrator/engine.rs` to hot-reload `Aura.toml`. The same filesystem monitoring infrastructure can be leveraged to support a watch folder.

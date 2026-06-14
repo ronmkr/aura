@@ -1,7 +1,7 @@
 # ADR 0071: System Service Integration
 
 ## Status
-Proposed (2026-06-11 — Issue #291)
+Implemented (2026-06-14 — PR #303)
 
 ## Context
 Aura's daemon (`daemon_mode = true`) currently requires manual execution or Docker containerization (ADR-0051) to run. For native (non-containerized) deployments on bare metal, virtual machines, or local desktop systems, there is no built-in way to auto-start the daemon on system boot. A daemon that requires user login or manual console execution is not production-ready for servers. System managers like systemd (Linux), launchd (macOS), and Windows Service Control Manager (Windows) are standard system utilities that should be supported.
