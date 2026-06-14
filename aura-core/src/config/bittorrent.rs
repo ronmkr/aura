@@ -58,6 +58,7 @@ pub struct BitTorrentConfig {
     pub lpd_announce_interval_secs: u64,
     pub choker_interval_secs: u64,
     pub encryption: EncryptionPolicy,
+    pub prefer_utp: bool,
 }
 
 impl Default for BitTorrentConfig {
@@ -90,6 +91,7 @@ impl Default for BitTorrentConfig {
             lpd_announce_interval_secs: 300,
             choker_interval_secs: 10,
             encryption: EncryptionPolicy::Prefer,
+            prefer_utp: true,
         }
     }
 }

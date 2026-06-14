@@ -13,7 +13,7 @@
   - **Watch Folder**: Automatically ingest `.torrent` and `.metalink` files dropped into a directory (Decision 0069).
   - **RSS Subscriptions**: Subscribe to feeds for automated, filter-based download ingestion (Decision 0070).
   - **System Service**: Run Aura as a persistent background daemon on Linux, macOS, and Windows (Decision 0071).
-- **BitTorrent Excellence**: Full support for BitTorrent v1 & v2 (BEP 52), Trackers (UDP/HTTP), DHT (Kademlia), Seeding, Pipelined Requests, and SHA-256 Merkle verification.
+- **BitTorrent Excellence**: Full support for BitTorrent v1 & v2 (BEP 52), μTP/LEDBAT Transport (BEP 29), Trackers (UDP/HTTP), DHT (Kademlia), Seeding, Pipelined Requests, and SHA-256 Merkle verification.
 - **FTP Support**: Support for FTP & FTPS (TLS) with exponential retry logic, range-based segment fetching, and authentication.
 - **Persistent Progress**: State is saved to `.aura` control files, allowing for seamless resumption after restarts.
 - **Advanced Networking**: Built-in NAT Traversal (UPnP, NAT-PMP/PCP), DNS-over-HTTPS (DoH/DoT) resolution, and VPN Kill-switch protection.

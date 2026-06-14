@@ -25,6 +25,7 @@ pub mod task;
 pub mod throttler;
 pub mod torrent;
 pub mod tracker;
+pub mod transport;
 pub mod vpn;
 pub mod worker;
 

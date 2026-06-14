@@ -5,7 +5,7 @@ use tokio::net::TcpListener;
 #[tokio::test]
 async fn test_wireguard_provider_not_found_error() {
     // Create a provider with a dummy interface
-    let provider = WireGuardProvider::new("wg_mock_dummy".to_string());
+    let provider = WireGuardProvider::new("wg_mock_dummy".to_string(), 5);
 
     // Attempting status, connect, or disconnect should fail elegantly with NotFound,
     // or since "wg" command doesn't exist under standard test path or if it does,
@@ -54,7 +54,7 @@ async fn test_openvpn_provider_handshake_and_state() {
     });
 
     // Instantiate OpenVpnProvider connecting to mock server
-    let provider = OpenVpnProvider::new(local_addr.to_string());
+    let provider = OpenVpnProvider::new(local_addr.to_string(), 5);
 
     // Verify status check succeeds and parses correctly
     let status = provider.status().await.unwrap();
@@ -101,7 +101,7 @@ async fn test_openvpn_provider_password_authentication() {
 
     // Instantiate OpenVpnProvider with password
     let provider =
-        OpenVpnProvider::new(local_addr.to_string()).with_password("my_secret_pass".to_string());
+        OpenVpnProvider::new(local_addr.to_string(), 5).with_password("my_secret_pass".to_string());
 
     // Verify status parses CONNECTING correctly
     let status = provider.status().await.unwrap();

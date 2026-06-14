@@ -212,6 +212,7 @@ Settings for fine-tuning BitTorrent downloads.
 | `max_connections_per_torrent`| Number| `200` | Hard connection limit for one torrent. |
 | `streaming_metadata_pieces`| Number | `4` | Number of pieces at the beginning and end of a torrent to prioritize sequentially when streaming mode is enabled (for fast index/metadata loading). |
 | `encryption` | `prefer` / `require` / `disable` | `prefer` | Traffic encryption policy for obfuscation (Message Stream Encryption / Protocol Encryption). |
+| `prefer_utp` | Yes / No | `true` | Enable and prefer uTP (UDP-based LEDBAT congestion control) transport over TCP for BitTorrent peers (Decision 0067). |
 
 ---
 
