@@ -34,15 +34,13 @@ async fn test_nntp_resolve_metadata_mock() {
 
             let mut reader = tokio::io::BufReader::new(&mut stream);
             let mut line = String::new();
-            if reader.read_line(&mut line).await.is_ok() {
-                if line.starts_with("BODY") {
-                    let _ = stream.write_all(b"222 Body follows\r\n").await;
-                    let _ = stream
-                        .write_all(b"=ybegin line=128 size=500 name=mock_file.txt\r\n")
-                        .await;
-                    let _ = stream.write_all(b"yEnc data\r\n").await;
-                    let _ = stream.write_all(b".\r\n").await;
-                }
+            if reader.read_line(&mut line).await.is_ok() && line.starts_with("BODY") {
+                let _ = stream.write_all(b"222 Body follows\r\n").await;
+                let _ = stream
+                    .write_all(b"=ybegin line=128 size=500 name=mock_file.txt\r\n")
+                    .await;
+                let _ = stream.write_all(b"yEnc data\r\n").await;
+                let _ = stream.write_all(b".\r\n").await;
             }
         }
     });
