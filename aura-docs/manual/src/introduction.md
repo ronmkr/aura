@@ -1,6 +1,11 @@
 # Introduction
 
-**Aura** is a high-performance, asynchronous download engine written in Rust. It is designed to be the next-generation multi-protocol download engine, with a focus on modern protocols, extreme concurrency, and proactive privacy.
+<p align="center">
+  <img src="logo.svg" width="120" height="120" alt="Aura Logo">
+</p>
+
+**Aura** is a high-performance, asynchronous download engine written in Rust.
+ It is designed to be the next-generation multi-protocol download engine, with a focus on modern protocols, extreme concurrency, and proactive privacy.
 
 ## Key Philosophies
 

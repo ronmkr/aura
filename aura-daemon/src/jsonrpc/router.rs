@@ -6,11 +6,15 @@ use std::sync::Arc;
 
 pub struct RpcRouter {
     engine: Arc<Engine>,
+    rss_refresh_tx: Option<tokio::sync::mpsc::Sender<()>>,
 }
 
 impl RpcRouter {
-    pub fn new(engine: Arc<Engine>) -> Self {
-        Self { engine }
+    pub fn new(engine: Arc<Engine>, rss_refresh_tx: Option<tokio::sync::mpsc::Sender<()>>) -> Self {
+        Self {
+            engine,
+            rss_refresh_tx,
+        }
     }
 
     pub async fn route(
@@ -18,6 +22,13 @@ impl RpcRouter {
         method: &str,
         params: Option<Value>,
     ) -> (Result<Value, Value>, Option<bool>) {
+        if method == "aura.refreshFeeds" {
+            if let Some(ref tx) = self.rss_refresh_tx {
+                let _ = tx.try_send(());
+            }
+            return (Ok(serde_json::json!(true)), None);
+        }
+
         if method == "aura.addUri" {
             return match handle_add_uri(&self.engine, params).await {
                 Ok((val, exists)) => (Ok(val), exists),

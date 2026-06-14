@@ -1,28 +1,43 @@
 # Rust build artifacts
 target/
 Cargo.lock.bak
+
 # IDE and Editor files
 .vscode/
 .idea/
 *.swp
 *.swo
 .helix/
+
 # Gemini and dev-specific
 .gemini/
 aura-dev.skill
+/GEMINI.md
+aura-docs/manual/src/project/prompts/
+
 # OS-generated files
 .DS_Store
 .DS_Store?
-graphify-out
 ._*
 .Spotlight-V100
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Knowledge Graph
+graphify-out/
+
 # Project-specific logs and environment
 *.log
 .env
 .env.*
+audit_report.json
+audit_report.json
+metadata.json
+unused_deps.txt
+architecture_review.md
+gap_analysis.md
+
 # Aura session and data
 *.aura
 !tests/**/*.aura
@@ -32,26 +47,26 @@ out/
 .aura/
 *.sled/
 db.sled/
+
 # Crate-specific local configuration
 **/local_config.toml
 Aura.toml
-# Proptest regression files (unless you want to track them)
+
+# Proptest regression files
 proptest-regressions/
-aura-docs/project/prompts
-architecture_review.md
-gap_analysis.md
+
 # BitTorrent files
 *.torrent
 !tests/**/*.torrent
 *.magnet
-# Local analysis files
-metadata.json
-unused_deps.txt
+
 # Antigravity CLI artifacts
 .antigravitycli/
-# mdBook generated ADRs
-aura-docs/manual/src/adr/
+
+# mdBook generated output
 aura-docs/manual/book/
-CLAUDE.md
-audit_report.json
-graphify-out/
+aura-docs/internal/
+aura-docs/manual/mermaid.min.js
+aura-docs/manual/mermaid-init.js
+aura-docs/manual/mdbook-admonish.css
+

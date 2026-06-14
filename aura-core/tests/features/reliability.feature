@@ -3,7 +3,7 @@ Feature: Persistence and Reliability
   I want the engine to be resilient to interruptions
   So that I don't lose progress during crashes or network drops.
 
-  @ADR-0017 @Scenario-4.1
+  @Decision-0017 @Scenario-4.1
   Scenario: Pause and Resume download
     Given an active download at 50% completion
     When I send the "Pause" command
@@ -13,7 +13,7 @@ Feature: Persistence and Reliability
     Then the engine should reload the .aura file
     And download should continue from 50% without re-downloading existing chunks
 
-  @ADR-0035 @Scenario-4.3
+  @Decision-0035 @Scenario-4.3
   Scenario: VPN Kill-switch protection
     Given the network interface is set to "tun0"
     And the VPN kill-switch is "Enabled"

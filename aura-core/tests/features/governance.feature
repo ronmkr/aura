@@ -3,14 +3,14 @@ Feature: Resource Governance and Throttling
   I want to limit the bandwidth usage of Aura
   So that it doesn't interfere with other network activities.
 
-  @ADR-0009 @Scenario-3.1
+  @Decision-0009 @Scenario-3.1
   Scenario: Global download speed limit
     Given the configuration "global_download_limit" is set to "51200" (50 KB/s)
     When I start a high-speed HTTP download
     Then the EWMA throughput should not exceed 55 KB/s over any 5-second window
     And the workers should wait for tokens from the global bucket before network reads
 
-  @ADR-0009 @Scenario-3.2
+  @Decision-0009 @Scenario-3.2
   Scenario: Hierarchical task-level throttling
     Given the global download limit is "204800" (200 KB/s)
     And Task A has a per-task limit of "51200" (50 KB/s)
@@ -18,7 +18,7 @@ Feature: Resource Governance and Throttling
     Then Task A should be capped at 50 KB/s
     And the global bucket should still have remaining capacity
 
-  @ADR-0023
+  @Decision-0023
   Scenario: Adaptive connection scaling for slow servers
     Given an HTTP server that caps per-connection speed to 100 KB/s
     And the "max_connections_per_task" is set to "8"

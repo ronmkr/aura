@@ -38,17 +38,14 @@ jobs:
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
 
-      - name: Install mdBook
-        run: |
-          curl -sSL https://github.com/rust-lang/mdBook/releases/download/v0.4.37/mdbook-v0.4.37-x86_64-unknown-linux-gnu.tar.gz | tar -xz -C /usr/local/bin
+      - name: Install Documentation Tools
+        run: make docs-install
+
+      - name: Lint Documentation
+        run: make docs-lint
 
       - name: Build mdBook
-        run: |
-          mkdir -p aura-docs/manual/src/adr
-          cp aura-docs/adr/*.md aura-docs/manual/src/adr/
-          cd aura-docs/manual
-          mdbook build
-          cd ../..
+        run: make docs
 
       - name: Build API Docs
         run: |

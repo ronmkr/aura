@@ -201,7 +201,7 @@ impl Orchestrator {
                     for id in ids {
                         let _ = self.save_task(id).await;
 
-                        // Stall detection for Scrubber (ADR 0024)
+                        // Stall detection for Scrubber (Decision 0024)
                         if let Some(task) = self.tasks.get_mut(&id) {
                             if task.phase == crate::task::DownloadPhase::Downloading {
                                 let total_throughput: f64 = task.subtasks.iter().map(|s| s.ewma_throughput).sum();

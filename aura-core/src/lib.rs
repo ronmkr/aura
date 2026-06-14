@@ -18,6 +18,7 @@ pub mod orchestrator;
 pub mod peer_registry;
 pub mod piece_picker;
 pub mod power;
+pub mod rss;
 pub mod scrubber;
 pub mod storage;
 pub mod task;

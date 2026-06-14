@@ -1,0 +1,382 @@
+# Aura: Development Tasks
+
+All active development tasks, technical debt, and feature requests are managed exclusively via [GitHub Issues](https://github.com/ronmkr/aura/issues).
+
+## Open Tasks
+
+### Core & Architecture Standardized
+
+- [x] **epic: Final Branding & API Standardization** `[module:all, priority:high]`
+  - [x] Renamed all legacy `aria2` references to `aura` globally (RPC, strings, docs).
+  - [x] Refactored all functions with `too_many_arguments` into clean parameter structs.
+  - [x] Deduplicated path resolution, throttler lookups, and TaskId generation.
+  - [x] Implemented `OrchestratorHandle` to unify thread-safe shared state access.
+  - [x] Centralized worker construction logic in `OrchestratorHandle::build_worker_builder`.
+  - [x] Centralized JSON-RPC error handling with `rpc_error` helper.
+  - [x] Eliminated all hardcoded magic numbers and timeouts into `Aura.toml`.
+  - [x] **Architectural Decoupling (God Nodes)**: Decoupled `StorageEngine`, `Orchestrator`, `WorkerBuilder`, and `MetaTask` based on Graphify AST analysis.
+  - [x] Zero Clippy warning policy enforced across all crates.
+  - [x] Updated `aura-dev` skill to mandate zero hardcoded values and struct-based args.
+
+### High (p1)
+
+- [x] **feat: Implement MSE/PE (Message Stream Encryption) for BitTorrent traffic obfuscation** (Issue #283) `[module:core, module:network, priority:high]`
+- [ ] **feat: Implement μTP/LEDBAT transport (BEP 29) for ISP-friendly BitTorrent** (Issue #286) `[module:core, module:network, priority:high]`
+- [x] **feat: Fast resume — verify and reuse existing file data on task re-add** (Issue #284) `[module:core, module:storage, priority:high]`
+- [x] **feat: Watch folder — auto-ingest .torrent/.metalink files dropped into a directory** (Issue #288) `[module:core, module:daemon, priority:high]`
+- [x] **feat: RSS/Atom feed subscriptions for automated download ingestion** (Issue #290) `[module:core, module:daemon, priority:high]`
+- [x] **feat: System service integration — auto-start daemon on boot (systemd, launchd, Windows Service)** (Issue #291) `[module:daemon, module:cli, priority:high, infra]`
+- [x] **epic: Interactive TUI Modernization (Command Center)** `[module:tui, priority:high]`
+  - [x] Refactor TUI to stateful Multi-View architecture (Dashboard, Mission Control, File Selector).
+  - [x] Implement the Main Dashboard with split-layout (Task List + Real-time Detail Panel).
+  - [x] Add Sparkline throughput visualization and progress gauges.
+- [x] **feat: Intelligent Protocol Detection and Bulk Task Ingestion** `[module:core, module:daemon, module:cli, priority:high]`
+  - [x] Centralized `ProtocolDetector` for HTTP/FTP/BT/Metalink.
+  - [x] RPC methods for `aura.addFromFolder` (torrents/metalinks) and `aura.addFromFile` (URL lists).
+  - [x] Interactive "Discovery Modal" in TUI for single/bulk mission addition.
+  - [x] CLI parity: Support directory paths and `--from-file` flag for headless bulk addition.
+- [x] **feat: Interactive BitTorrent File Selection and Selective Downloading** `[module:core, module:tui, module:cli, priority:high]`
+  - [x] Update `PiecePicker` and `Storage` to support skipping pieces for non-selected files.
+  - [x] Implement `aura.getFiles` and `aura.setFileSelection` RPC methods.
+  - [x] Build interactive tree-view File Selector widget in TUI.
+  - [x] CLI parity: Add `aura show-files <gid>` and `--select-file` flags.
+
+### Moderate (p2)
+
+- [x] **feat: Real-time Search, Command Palette, and World-Class UX** `[module:tui, priority:moderate]`
+  - [x] Real-time task list filtering with `/` search mode.
+  - [x] Interactive help modal (`?`) and fuzzy-searchable Command Palette (`:` or `Ctrl+P`).
+  - [x] Implement Vim motions (`j/k`, `h/l`, `gg`, `G`).
+  - [x] Actionable Error Recovery prompts in Mission Details.
+  - [x] Native OS Desktop Notifications via `notify-rust`.
+  - [x] Zero-friction ingest: Terminal Drag-and-Drop and OS Clipboard monitoring.
+- [ ] **infra: Add CI cross-platform matrix and cargo audit workflow** (Issue #148) `[infra, priority:moderate]`
+- [ ] **infra: CI test matrix missing Windows and macOS runners (Issue #148 partially done)** (Issue #287) `[infra, priority:moderate, module:ci]`
+- [x] **feat: Implement BitTorrent tracker scrape for swarm statistics** (Issue #289) `[module:core, priority:moderate]`
+- [x] **feat: ETag and Last-Modified conditional GET for incremental file refresh** (Issue #255) `[module:core, priority:moderate]`
+- [x] **perf: Share reqwest HTTP connection pool across segment workers for same-host downloads** (Issue #256) `[module:core, priority:moderate]`
+- [x] **feat: BitTorrent seeding ratio and maximum seeding time limits** (Issue #257) `[module:core, priority:moderate]`
+- [x] **feat: Prioritized Streaming Mode for Media Playback** (Issue #28) `[module:core, priority:moderate]`
+- [x] **feat: Cloud Storage Support (S3, Google Drive)** (Issue #10) `[module:core, priority:moderate]`
+
+### Low / Minor (p3)
+
+- [ ] **feat: Implement i18n Architecture (Decision-0042)** (Issue #190) `[module:i18n, priority:low]`
+- [ ] **feat: Chrome extension companion codebase (Manifest V3, Chrome-only)** (Issue #230) `[module:daemon, priority:low]`
+- [x] **feat: NNTP (Usenet) Protocol Support** (Issue #22) `[module:core, priority:low]`
+- [ ] **feat: QR code sharing for magnet links in CLI/TUI** (Issue #74) `[module:cli, module:tui, priority:minor]`
+- [ ] **feat: i18n support for CLI and TUI** (Issue #71) `[module:cli, module:tui, priority:minor]`
+
+## Completed Tasks
+
+- [x] **feat: Implement BitTorrent tracker scrape for swarm statistics** (Issue #289) `[module:core, priority:moderate]`
+  - **Completion Commit**: `9e86833`
+  - **Key Changes**:
+  - Implemented HTTP/UDP tracker scrape in `aura-core/src/tracker/scrape.rs`.
+  - Added compact scrape response parser for binary tracker data.
+  - Updated `MetaTask` to store `swarm_seeders`, `swarm_leechers`, and `swarm_completed`.
+  - Surfaced swarm statistics in `tellStatus` RPC response and TUI Mission Details panel.
+
+- [x] **feat: System service integration — auto-start daemon on boot (systemd, launchd, Windows Service)** (Issue #291, Decision-0071) `[module:daemon, module:cli, priority:high, infra]`
+  - **Completion Commit**: `9e86833`
+  - **Key Changes**:
+  - Integrated `service-manager` crate to provide cross-platform service control interface (systemd, launchd, and SCM).
+  - Exposed service commands under `aura service <install|uninstall|start|stop|status>`.
+  - Implemented platform-native configurations for systemd (`aura.service`), launchd (`com.aura.daemon.plist`), and Windows SCM PowerShell script (`install-service.ps1`).
+
+- [x] **feat: RSS/Atom feed subscriptions for automated download ingestion** (Issue #290, Decision-0070) `[module:core, module:daemon, priority:high]`
+  - **Completion Commit**: `9e86833`
+  - **Key Changes**:
+  - Added background polling task in `aura-daemon` to fetch feed items based on custom intervals.
+  - Implemented regex filtering for titles and category/size matching filters.
+  - Added XML security validation by disabling entity expansion to prevent Billion Laughs attacks.
+  - Exposed `aura feed <add|remove|list|refresh>` CLI subcommands.
+
+- [x] **feat: Watch folder — auto-ingest .torrent/.metalink files dropped into a directory** (Issue #288, Decision-0069) `[module:core, module:daemon, priority:high]`
+  - **Completion Commit**: `9e86833`
+  - **Key Changes**:
+  - Utilized the `notify` crate to watch a configured directory for file creation and modifications.
+  - Implemented a 500ms file-size stabilization loop to debounce incremental writes and prevent premature parsing.
+  - Automatically stages `.torrent` and `.metalink` file drops, moving successfully parsed files to `processed/` and invalid files to `failed/`.
+  - Exposed watch folder active status and the last ingested file path via JSON-RPC, TUI details panel, and system commands.
+
+- [x] **feat: Prioritized Streaming Mode for Media Playback** (Issue #28) `[module:core, priority:moderate]`
+  - **Completion Commit**: `3b97c9d`
+  - **Key Changes**:
+  - Added `streaming_metadata_pieces` config parameter (default `4`) to `BitTorrentConfig` to define boundary piece count.
+  - Updated `PiecePicker` to prioritize boundary pieces (first `N` and last `N`) sequentially when `streaming_mode` is enabled.
+  - Hooked `streaming_mode` flag into BitTorrent task loops, engine command APIs, and JSON-RPC (`streamingMode` / `streaming-mode` options support).
+  - Refactored `BtTaskState` to `state.rs` module to satisfy project 350-line modularity constraints.
+
+- [x] **feat: ResourceGovernor per-tenant fair-share limit and metadata safety margin** (Issue #234) `[module:core, priority:moderate]`
+  - **Completion Commit**: `3a17d06`
+  - **Key Changes**:
+  - Implemented `safety_margin` checks in `ResourceGovernor` to choke data requests when allocations breach `limit - safety_margin`, while allowing metadata allocations up to the full limit.
+  - Added per-tenant fair-share caps that restrict a single tenant's standard download allocations to `limit / active_tenants` when other tenants are active, exempting critical metadata requests from fair-share.
+  - Added comprehensive unit tests in `resource_governor_tests.rs` verifying safety margins, tenant isolation, and fair-share allocation behavior.
+- [x] **feat: Hook ResourceGovernor into HTTP and FTP workers** (Issue #235) `[module:core, priority:moderate]`
+  - **Completion Commit**: `3a17d06`
+  - **Key Changes**:
+  - Updated `WorkerBuilder` to accept and inject `resource_governor` and `tenant_id` options into HTTP and FTP workers.
+  - Integrated `MemoryGuard` allocation gates and sleeping backpressure retry loops into `HttpWorker` and `FtpWorker` segment fetching loops.
+  - Implemented dynamic allocation resizing in the HTTP worker by reading the `Content-Length` header on successful response headers to release the nominal allocation and reserve the exact size.
+  - Added integration tests verifying backpressure throttling and allocation checks under high memory pressure.
+- [x] **feat: RPC TLS support via --tls-cert / --tls-key flags (Decision-0056)** (Issue #226) `[module:daemon, priority:critical]`
+  - **Completion Commit**: `bc6d871` (PR #261)
+  - **Key Changes**:
+  - Added `--tls-cert`, `--tls-key`, and `--generate-tls-cert` CLI flags to `aura` daemon.
+  - Implemented dynamic self-signed certificate generation using `rcgen` when cert/key paths are not provided.
+  - Configured secure Unix file permissions (`0600`) for generated TLS keys.
+  - Integrated `axum-server` with `tls-rustls` to serve HTTPS and WSS (WebSocket Secure) connections.
+- [x] **test: Add unit tests for aura-daemon jsonrpc.rs and websocket.rs** (Issue #236) `[module:daemon, priority:moderate]`
+  - **Completion Commit**: `bc6d871` (PR #261)
+  - **Key Changes**:
+  - Created `jsonrpc_tests.rs` covering RPC header auth, Bearer tokens, invalid schemes (SSRF blocks), and request validation.
+  - Created `websocket_tests.rs` covering query-parameter token validation, custom headers, and bearer prefix formats.
+  - Implemented custom `ws_auth_middleware` in `websocket.rs` to validate handshakes prior to Axum websocket upgrade.
+- [x] **fix: Add WorkerCommand::EndgameFetch variant and broadcast overflow guard (Decision-0039)** (Issue #227) `[module:core, priority:critical]`
+  - **Completion Commit**: `8ae43a1` (PR #260)
+  - **Key Changes**:
+  - Added a dedicated `WorkerCommand::EndgameFetch` variant to separate endgame block fetches from normal piece fetches.
+  - Implemented error handling on broadcast channel sends to catch and log overflow events during endgame phase.
+  - Configured `BtWorker` to double its pipeline queue size when in endgame mode.
+- [x] **fix: BEP-12 tracker tier promotion on successful announce** (Issue #237) `[module:core, priority:moderate]`
+  - **Completion Commit**: `8ae43a1` (PR #260)
+  - **Key Changes**:
+  - Implemented logic in `tracker/logic.rs` to promote successfully responding trackers to the front of their respective tiers.
+  - Added `test_bep12_tracker_tiers` to verify correct tier promotion and ordering.
+- [x] **fix: Flush DHT routing table explicitly in engine.shutdown()** (Issue #238) `[module:core, priority:moderate]`
+  - **Completion Commit**: `8ae43a1` (PR #260)
+  - **Key Changes**:
+  - Introduced `DhtCommand::SaveNow` to force the DHT actor to save the routing table to `dht.dat` immediately.
+  - Updated engine shutdown logic to dispatch `SaveNow` to the DHT actor and await confirmation.
+- [x] **security: Pre-download disk space verification to prevent corrupt partial files** (Issue #242) `[module:storage, priority:high]`
+  - **Completion Commit**: `ba26d56` (PR #259)
+  - **Key Changes**:
+  - Added disk space check to ensure there is enough space on target partition before allocating files.
+  - Added `flush_scheduler_tasks` to Storage Engine to guarantee read-after-write consistency for space calculations.
+- [x] **feat: HTTP/FTP checksum verification (SHA-256/SHA-1) for download integrity** (Issue #243) `[module:core, priority:high]`
+  - **Completion Commit**: `ba26d56` (PR #259)
+  - **Key Changes**:
+  - Added checksum verification for completed HTTP/FTP downloads via `[[checksum]]` support in configuration.
+  - Updated storage flow to validate SHA-256 and SHA-1 hashes of written bytes.
+- [x] **feat: RPC rate limiting (prevent local DoS via task flooding)** (Issue #246) `[module:daemon, priority:high]`
+  - **Completion Commit**: `ba26d56` (PR #259)
+  - **Key Changes**:
+  - Implemented task limits and max task capacities on the JSON-RPC daemon to mitigate DoS/memory exhaustion.
+- [x] **fix: Send tracker Stopped events on graceful shutdown (Decision-0058 Edge Case 3)** (Issue #228) `[module:core, priority:high]`
+  - **Completion Commit**: `ba26d56` (PR #259)
+  - **Key Changes**:
+  - Added graceful shutdown handler to send `Stopped` event announces to BitTorrent trackers.
+- [x] **docs: Standardize machine-readable Status field in all 58 Decisions** (Issue #232) `[docs, priority:high]`
+  - **Completion Commit**: `ba26d56` (PR #259)
+  - **Key Changes**:
+  - Standardized the `Status:` field in frontmatter across all Decision markdown documents.
+  - Removed redundant top-level status headers to ensure consistency and parsing capability.
+- [x] **feat: Completed download history log and aura RPC compatibility (tellStopped, getVersion)** (Issue #248) `[module:daemon, priority:high]`
+  - **Completion Commit**: `ba26d56` (PR #259)
+  - **Key Changes**:
+  - Implemented JSONL-based download history tracking at `~/.aura/history.jsonl`.
+  - Added 11 missing `aura` compatibility JSON-RPC API methods.
+  - Created `aura history` CLI command to retrieve and query history records.
+- [x] **bug: No URL deduplication — same URI creates unlimited tasks filling disk** (Issue #250) `[module:core, priority:high]`
+  - **Completion Commit**: `ba26d56` (PR #259)
+  - **Key Changes**:
+  - Implemented URI deduplication logic to prevent redundant concurrent download tasks of the same resource.
+- [x] **feat: File descriptor limit management at daemon startup** (Issue #251) `[module:daemon, priority:high]`
+  - **Completion Commit**: `ba26d56` (PR #259)
+  - **Key Changes**:
+  - Implemented dynamic `setrlimit` (`RLIMIT_NOFILE`) adjustment at daemon startup on Unix systems to maximize open file descriptor limits.
+- [x] **feat: Time-based bandwidth scheduling via [[bandwidth.schedule]] config** (Issue #249) `[module:core, priority:moderate]`
+  - **Completion Commit**: `ba26d56` (PR #259)
+  - **Key Changes**:
+  - Implemented time-based speed throttling schedules parsed from `Aura.toml` configuration.
+  - Implemented config hot-reloading that dynamically triggers bandwidth schedule updates.
+- [x] **chore: Refactor FTPS to use rustls (Decision-0048 parity) — suppaftp migrated to tokio-rustls-ring** (Issue #189) `[module:worker, priority:moderate]`
+  - **Completion Commit**: `91bc1ee` (PR #224)
+  - **Key Changes**:
+  - Replaced `native-tls` in `suppaftp` with `tokio-rustls-ring` backend.
+  - Integrated native root certs lookup via `rustls-native-certs` for secure certificate validation.
+  - Fixed backoff calculation overflow bug.
+- [x] **feat: Add /health endpoint for Docker liveness probes (Decision-0051)** (Issue #240) `[module:daemon, priority:low]`
+  - **Completion Commit**: `be472d9` (PR #258)
+  - **Key Changes**:
+  - Added unauthenticated `/health` endpoint to Axum router returning `200 OK`.
+- [x] **security: URI scheme allowlist + SSRF mitigation (Decision-0059) — file:// exfiltration blocked** (Issues #241, #244) `[module:daemon, module:core, priority:critical]`
+  - **Completion Commit**: `be472d9` (PR #258)
+  - **Key Changes**:
+  - Implemented scheme validation block for unsafe protocols (`file://`, `data:`, `javascript:`, `blob:`).
+  - Added checks to block requests to RFC 1918 private and link-local IP addresses.
+- [x] **security: RPC secret value removed from log output** (Issue #239) `[module:daemon, priority:critical]`
+  - **Completion Commit**: `be472d9` (PR #258)
+  - **Key Changes**:
+  - Modified daemon startup logging to prevent leaking the generated or custom RPC secret token in the stdout logs.
+- [x] **security: /metrics endpoint gated behind X-Aura-Token authentication** (Issue #253) `[module:daemon, priority:high]`
+  - **Completion Commit**: `be472d9` (PR #258)
+  - **Key Changes**:
+  - Applied authentication middleware to the `/metrics` endpoint to ensure it requires a valid `X-Aura-Token` header.
+- [x] **security: Remove moz-extension:// from CORS allowlist — Chrome-only (Decision-0049)** `[module:daemon, priority:high]`
+  - **Completion Commit**: `be472d9` (PR #258)
+  - **Key Changes**:
+  - Restricted CORS origins list by removing `moz-extension://` to restrict extension access to Chrome-only platforms.
+- [x] **bug: HTTP 200-instead-of-206 data corruption on range-resume prevented** (Issue #251) `[module:core, priority:critical]`
+  - **Completion Commit**: `be472d9` (PR #258)
+  - **Key Changes**:
+  - Added validation on HTTP range request responses to fail-fast if server returns HTTP 200 instead of HTTP 206, preventing overwriting or corrupting already downloaded parts.
+- [x] **security: Content-Disposition path traversal sanitization + RFC 5987 filename* support** (Issue #252) `[module:core, priority:critical]`
+  - **Completion Commit**: `be472d9` (PR #258)
+  - **Key Changes**:
+  - Implemented RFC 6266 / RFC 5987 compliant Content-Disposition header parser with `filename*` encoding support.
+  - Added null-byte stripping, directory traversal validation, and truncation to POSIX `NAME_MAX` limit.
+- [x] **reliability: Global panic hook writes crash report to ~/.aura/crash.log** (Issue #247) `[module:daemon, priority:high]`
+  - **Completion Commit**: `be472d9` (PR #258)
+  - **Key Changes**:
+  - Installed a custom panic hook that catches panics and writes diagnostic tracebacks to `~/.aura/crash.log`.
+- [x] **reliability: Double Ctrl+C force-quit + 5-second graceful shutdown timeout** (Issue #225) `[module:daemon, priority:high]`
+  - **Completion Commit**: `be472d9` (PR #258)
+  - **Key Changes**:
+  - Implemented double Ctrl+C handling to immediately exit daemon process on second interrupt.
+  - Added 5-second maximum graceful shutdown timeout.
+- [x] **security: SecretScrubber extended — .netrc, PEM private keys, URL-encoded creds, AWS tokens** (Issue #229) `[module:daemon, priority:high]`
+  - **Completion Commit**: `be472d9` (PR #258)
+  - **Key Changes**:
+  - Extended sanitization regex patterns in `SecretScrubber` to capture and redact PEM files, AWS credentials, `.netrc`, and URL-encoded query strings.
+- [x] **bug: Initialize and persist Prometheus metrics registry in daemon state** (Issue #212) `[module:daemon, priority:moderate]`
+  - **Completion Commit**: `78169f8` (PR #223)
+  - **Key Changes**:
+  - Fixed prometheus registry reset bug by initializing it once and storing it inside the daemon's persistent state.
+- [x] **feat: Implement hierarchical configuration file resolution and CLI overrides** (Issue #214) `[module:core, module:daemon, module:cli, priority:high]`
+  - **Completion Commit**: `4f78323` (PR #222)
+  - **Key Changes**:
+  - Implemented configuration resolution hierarchy: CLI flags -> environment variables -> local config -> global config -> default values.
+- [x] **feat: PolicyManager error classification and retry coordinator** (Issue #211) `[module:core, priority:high]`
+  - **Completion Commit**: `6e5b3d1` (PR #221)
+  - **Key Changes**:
+  - Implemented `PolicyManager` component to classify HTTP/FTP/BitTorrent errors and manage task retry backoffs.
+- [x] **feat: Implement ResourceGovernor for global memory backpressure** (Issue #207) `[module:core, priority:critical]`
+  - **Completion Commit**: `c4d908c` (PR #216)
+  - **Key Changes**:
+  - Implemented `ResourceGovernor` to track memory allocation across all active workers.
+  - Added backpressure control loops to throttle block reading when global memory thresholds are crossed.
+- [x] **feat: Advisory file locking (flock) on active download files** (Issue #208) `[module:storage, priority:high]`
+  - **Completion Commit**: `107c33f` (PR #218)
+  - **Key Changes**:
+  - Implemented cross-platform advisory file locking using `flock` on active download segments.
+- [x] **feat: Generational write-request validation in Storage Engine** (Issue #209) `[module:storage, priority:high]`
+  - **Completion Commit**: `f0c4ce3` (PR #217)
+  - **Key Changes**:
+  - Implemented generational write validation logic in `StorageEngine` to reject write commands targeting older task runs.
+- [x] **feat: PersistentState trait and DHT routing table persistence** (Issue #210) `[module:core, priority:high]`
+  - **Completion Commit**: `46455b0` (PR #220)
+  - **Key Changes**:
+  - Defined `PersistentState` trait for structured save/restore of engine components.
+  - Integrated DHT routing table state persistence to `dht.dat`.
+- [x] **chore: Document safety invariants for all unsafe blocks** (Issue #213) `[module:core, priority:moderate]`
+  - **Completion Commit**: `0dac1d2` (PR #219)
+  - **Key Changes**:
+  - Added required `// SAFETY:` explanatory comments preceding all `unsafe` code block usages.
+- [x] **bug: Remove default hardcoded RPC secret token** (Issue #201) `[module:daemon, priority:critical]`
+  - **Completion Commit**: `aa313dd` (PR #215)
+  - **Key Changes**:
+  - Replaced default hardcoded secrets with dynamically-generated high-entropy random tokens written securely to runtime config.
+- [x] **bug: Daemon binds to 0.0.0.0 (all interfaces) by default** (Issue #202) `[module:daemon, priority:critical]`
+  - **Completion Commit**: `aa313dd` (PR #215)
+  - **Key Changes**:
+  - Changed the default server listen bind address from `0.0.0.0` to `127.0.0.1` to enhance local security.
+- [x] **bug: Permissive CORS configuration allows arbitrary cross-origin requests** (Issue #203) `[module:daemon, priority:critical]`
+  - **Completion Commit**: `aa313dd` (PR #215)
+  - **Key Changes**:
+  - Restricted cross-origin resource sharing (CORS) rules to only permit connections from localhost interfaces and verified Chrome/Firefox extensions.
+- [x] **feat: SandboxRoot path traversal confinement for Storage Engine** (Issue #204) `[module:storage, priority:critical]`
+  - **Completion Commit**: `aa313dd` (PR #215)
+  - **Key Changes**:
+  - Added path normalization and validation logic to restrict file writes to within the designated `SandboxRoot` directory.
+- [x] **feat: SecretScrubber tracing layer for credentials sanitization** (Issue #205) `[module:core, priority:critical]`
+  - **Completion Commit**: `aa313dd` (PR #215)
+  - **Key Changes**:
+  - Added structured tracing subscriber filtering out API keys, tokens, and basic auth components from debug output.
+- [x] **bug: Implement graceful shutdown and signal handling in daemon/cli** (Issue #206) `[module:daemon, module:cli, priority:high]`
+  - **Completion Commit**: `aa313dd` (PR #215)
+  - **Key Changes**:
+  - Created unified shutdown coordinator handling SIGINT/SIGTERM to cleanly abort download loops and persist metadata.
+- [x] **feat: Implement Bit-Bucket virtual files (BEP 47)** (Issue #183) `[completed, module:storage]`
+- [x] **docs: Synchronize ARCHITECTURE.md with source tree** (Issue #186) `[completed, module:docs]`
+- [x] **feat: Graduate VPN Providers to full Controller Mode** (Issue #185) `[completed, module:vpn, priority:high]`
+- [x] **chore: Decompose monolithic files to enforce 400-line limit** (Issue #184) `[completed, module:storage]`
+- [x] **chore: Enforce file modularity, isolated testing, and CI 400-line limit check** (Issue #188) `[module:ci, priority:moderate]`
+- [x] **feat: Implement Allocation Prober diagnostic tool** (Issue #191) `[module:storage, priority:low]`
+- [x] **feat: implement actual Recursive Crawler (Wget parity)** (Issue #65)
+- [x] **feat: Dual-Stack Asynchronous DNS Racing (Happy Eyeballs)** (Issue #25) `[status:completed, priority:moderate, module:network]`
+- [x] **infra: CI Docs Deployment** (Issue #134) `[enhancement, priority:moderate, infra]`
+- [x] **feat: Respect BEP 12 tracker tier ordering** (Issue #128) `[enhancement, module:core, priority:low]`
+- [x] **feat: implement Privacy-Enhanced Resolver (DoH/DoT)** (Issue #73) `[enhancement, priority:moderate, module:network]`
+- [x] **feat: Modern Networking: HTTP/3 (QUIC) & Alt-Svc Support** (Issue #23) `[enhancement, module:core, priority:moderate]`
+- [x] **feat: Multi-tenancy & Structured Audit Tracing** (Issue #15) `[enhancement, priority:moderate, module:daemon]`
+- [x] **feat: Network Filesystem (NFS/SMB) Optimizations** (Issue #12) `[enhancement, module:storage, priority:moderate]`
+- [x] **feat: Task Chaining & Metadata-based Path Mapping** (Issue #11) `[status:completed, module:core, priority:low]`
+- [x] **feat: Advanced Networking (kTLS, Captive Portals, Roaming)** (Issue #8) `[enhancement, priority:low, module:network]`
+- [x] **feat: task prioritization and dependency management** (Issue #72)
+- [x] **Test: Implement BDD step definitions for daemon, networking, storage, swarm features** (Issue #124)
+- [x] **Feat: Add peer health scoring, reputation, and eviction to peer registry** (Issue #123)
+- [x] **Feat: Implement PEX (Peer Exchange) -- BEP 11** (Issue #121)
+- [x] **perf: Advanced Disk I/O Scheduling** (Issue #13)
+- [x] **Feat: Implement BT choking algorithm (tit-for-tat + optimistic unchoke)** (Issue #120)
+- [x] **feat: Adaptive Connection Scaling & Sourced Aggregation** (Issue #31)
+- [x] **feat: Hierarchical Token Bucket Throttling** (Issue #30)
+- [x] **feat: Racing Work Stealer for Slow Stream Mitigation** (Issue #29)
+- [x] **perf: Generational Write Buffer & Advanced Caching** (Issue #14)
+- [x] **feat: implement Integrity Scrubber Actor and self-healing** (Issue #4)
+- [x] **Bug: DNS resolver config is a facade -- DoH/DoT not wired** (Issue #135)
+- [x] **Bug: BT block size is 32KB -- non-standard (spec is 16KB)** (Issue #127) `[bug]`
+- [x] **Bug: Metalink parser has debug eprintln and hardcoded priority** (Issue #126) `[bug]`
+- [x] **Bug: Daemon ignores rpc_port config -- hardcoded to 6800** (Issue #125) `[bug]`
+- [x] **Feat: Add FTPS (TLS) support and retry logic to FTP worker** (Issue #122) `[enhancement]`
+- [x] **Bug: VPN kill-switch (force_tunnel) is dead code -- not enforced** (Issue #119) `[bug]`
+- [x] **Bug: DHT token is hardcoded ````[1,2,3,4]```` -- security vulnerability** (Issue #118) `[bug]`
+- [x] **Bug: Add fsync/fdatasync before atomic .part rename to prevent data loss** (Issue #117) `[bug, module:storage]`
+- [x] **Feature: NAT Traversal Mapping Refresh** (Issue #114) `[enhancement]`
+- [x] **feat: WebSocket Telemetry for RPC (Decision 0016 Edge Case)** (Issue #104)
+- [x] **chore: Modular Architecture Refactor (exceeding 400 lines)** (Issue #96)
+- [x] **feat: Browser Bridge (Extension Support)** (Issue #95)
+- [x] **feat: implement advanced filesystem hardening (Pre-allocation/No-COW)** (Issue #92)
+- [x] **infra: Automated binary releases via GitHub Actions** (Issue #143)
+- [x] **chore: Unified Binary Architecture (Single Executable)**
+- [x] **Implement Integration Tests Infrastructure** (Issue #89)
+- [x] **refactor: technical debt cleanup and dead code removal** (Issue #78)
+- [x] **feat: dynamic DHT bootstrap node refreshing** (Issue #77)
+- [x] **feat: enforce BitTorrent upload ratio and seed time limits** (Issue #76)
+- [x] **feat: checksum verification for HTTP and FTP downloads** (Issue #75)
+- [x] **feat: implement COW-aware storage allocator (Btrfs/ZFS)** (Issue #70)
+- [x] **feat: prometheus metrics and telemetry exporter** (Issue #69) `[enhancement]`
+- [x] **feat: support BitTorrent v2 (SHA-256 Merkle Trees)** (Issue #68)
+- [x] **feat: built-in Web UI dashboard for Aura Daemon** (Issue #67)
+- [x] **feat: implement SOCKS5 proxy support for BitTorrent protocol** (Issue #66)
+- [x] **feat: enable full palette customization & token-based theming** (Issue #57)
+- [x] **refactor: Use robust URL encoding for tracker announces** (Issue #52)
+- [x] **perf: Wrap synchronous network interface calls in spawn_blocking** (Issue #51)
+- [x] **perf: Replace unbounded subtask channel with bounded backpressure** (Issue #50)
+- [x] **reliability: Replace unchecked unwrap() calls with robust error handling** (Issue #49)
+- [x] **infra: Automated Performance Benchmarking Suite** (Issue #47)
+- [x] **feat: Public Rust API & Embeddability (TaskHandles)** (Issue #46)
+- [x] **feat: Magnet Link Support (BEP 9 Metadata Exchange)** (Issue #45)
+- [x] **feat: Task Persistence & Session Recovery (.aura files)** (Issue #44)
+- [x] **feat: URL Globbing & Batch Expansion Support** (Issue #43)
+- [x] **feat: Native VPN Integration (OpenVPN/WireGuard)** (Issue #42)
+- [x] **chore: Modular Architecture Refactor (No file > 400 lines)** (Issue #41)
+- [x] **feat: Metalink Support (V3/V4) & Automated Multi-source Tasking** (Issue #33)
+- [x] **feat: Unified Proxy Connector (SOCKS5/HTTP)** (Issue #32)
+- [x] **feat: Themeable TUI & UI Customization** (Issue #27)
+- [x] **perf: Write-Back Caching & Memory-aligned I/O** (Issue #26)
+- [x] **feat: DNS over HTTPS (DoH) & Async DNS Resolver** (Issue #24)
+- [x] **feat: Credential Provider & Security Abstraction** (Issue #21)
+- [x] **feat: HSTS Cache & Automated HTTPS Upgrade** (Issue #20)
+- [x] **feat: MIME Validation & Landing Page Resolution** (Issue #19) `[enhancement]`
+- [x] **feat: Policy-based Error Management & Self-healing** (Issue #18) `[enhancement]`
+- [x] **feat: Integrated Hook System (Event Callbacks)** (Issue #16)
+- [x] **feat: BitTorrent v2 Support (Merkle Trees)** (Issue #9)
+- [x] **feat: Recursive Site Mirroring (Basic Asset Scraping)** (Issue #7)
+- [x] **feat: BitTorrent Endgame Mode** (Issue #6)
+- [x] **feat: Power Management & Sleep Prevention** (Issue #5)
+- [x] **feat: Dynamic TOML Configuration & Hot-reloading** (Issue #3)
+- [x] **perf: No-COW Allocator & Disk Optimization** (Issue #2)
+- [x] **feat: Local Peer Discovery (LPD) Support** (Issue #1)

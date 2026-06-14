@@ -3,7 +3,7 @@ Feature: Storage Performance and Integrity
   I want my files to be saved safely and efficiently
   So that my disk health is protected and data is never corrupt.
 
-  @ADR-0003 @Scenario-5.1
+  @Decision-0003 @Scenario-5.1
   Scenario: Atomic file completion
     Given a new download task for "movie.mp4"
     When the download is in progress
@@ -13,7 +13,7 @@ Feature: Storage Performance and Integrity
     Then "movie.mp4.part" should be renamed to "movie.mp4"
     And the .aura control file should be deleted
 
-  @ADR-0002 @Scenario-5.2
+  @Decision-0002 @Scenario-5.2
   Scenario: Sequential Write Aggregation
     Given a BitTorrent swarm delivering pieces out of order
     When Piece 5 (10MB-20MB) arrives before Piece 4 (0MB-10MB)
@@ -22,7 +22,7 @@ Feature: Storage Performance and Integrity
     Then the Storage Engine should immediately flush Piece 5 to disk
     And the disk seek count should be minimized
 
-  @ADR-0024 @Scenario-5.3
+  @Decision-0024 @Scenario-5.3
   Scenario: Scrubber detects corruption and triggers recovery
     Given a stalled BitTorrent download task
     And the downloaded file contains corrupted data at piece 0

@@ -7,11 +7,14 @@ Currently, Aura is in active development. You can build it from source using Car
 - **Rust**: Version 1.75 or higher.
 - **OpenSSL**: Development headers (for Linux).
 
+---
+
 ## Docker (Recommended for Servers & NAS)
 
 We provide an official Dockerfile that packages the unified binary in a minimal, secure container.
 
 ### Building the Image
+
 ```bash
 git clone https://github.com/ronmkr/aura.git
 cd aura
@@ -19,6 +22,7 @@ docker build -t ronmkr/aura .
 ```
 
 ### Running the Daemon
+
 ```bash
 docker run -d \
   --name aura-daemon \
@@ -28,29 +32,61 @@ docker run -d \
 ```
 
 ### Running the CLI
+
 ```bash
 docker run --rm \
-  -v $(pwd):/downloads \
+  -v \$(pwd):/downloads \
   ronmkr/aura "https://example.com/file.iso"
 ```
 
-## Cargo (From Source)
+---
+
+## Cargo (from Source)
 
 1. Clone the repository:
-   ```bash
-   git clone https://github.com/ronmkr/aura.git
-   cd aura
-   ```
+
+    ```bash
+    git clone https://github.com/ronmkr/aura.git
+    cd aura
+    ```
 
 2. Build the workspace:
-   ```bash
-   cargo build --release
-   ```
+
+    ```bash
+    cargo build --release
+    ```
 
 The binaries will be available in `target/release/`:
 - `aura`: The unified binary.
 - `aura daemon`: Start in background service mode.
 - `aura tui`: Start the interactive dashboard.
+
+---
+
+## Running as a System Service (Decision 0071)
+
+For permanent installations (Servers, NAS, Seedboxes), we recommend running the Aura daemon as a system service.
+This ensures the engine starts automatically on boot and recovers from unexpected process terminations.
+
+### Service Setup
+
+```bash
+sudo aura service install
+```
+*Note: On Linux/macOS, this usually requires root privileges to register the service with systemd or launchd.*
+
+### Control Commands
+- **Start**: `aura service start`
+- **Stop**: `aura service stop`
+- **Status**: `aura service status`
+- **Uninstall**: `sudo aura service uninstall`
+
+### Platform Support
+- **Linux**: Integrates with `systemd` (creates `aura.service`).
+- **macOS**: Integrates with `launchd` (creates `com.aura.daemon.plist`).
+- **Windows**: Integrates with the **Service Control Manager** (via `install-service.ps1`).
+
+---
 
 ## Feature Flags
 
@@ -61,9 +97,37 @@ When building from source via Cargo, you can toggle optional capabilities using 
 - **`nntp`**: Enables experimental Usenet (NNTP) protocol worker stubbing.
 
 To build Aura with all features enabled:
+
 ```bash
 cargo build --release --features "s3 gdrive"
 ```
+
+---
+
+## Documentation (mdBook)
+
+If you want to build this manual locally, you can use our built-in `docs` target.
+
+1.  **Install dependencies**:
+
+    ```bash
+    make docs-install
+    ```
+
+2.  **Build the book**:
+
+    ```bash
+    make docs
+    ```
+
+3.  **Serve locally**:
+
+    ```bash
+    make docs-serve
+    ```
+*The HTML output will be available in `aura-docs/manual/book/`.*
+
+---
 
 ## Configuration & Data Directory
 
@@ -71,15 +135,18 @@ Aura stores its persistent state, history, and logs in a hidden directory:
 - **Linux/macOS**: `~/.aura/`
 - **Windows**: `%AppData%\aura\`
 
-### Key Files:
+### Key Data Files
 - `tasks/`: Directory containing active task state files (`.json`).
 - `history.jsonl`: Append-only download history log.
 - `crash.log`: Emergency backtrace reports from the panic hook.
 - `rpc_secret`: (Auto-generated) The secret token for the RPC API.
 
+---
+
 ## Verification
 
 After installing, verify the version:
+
 ```bash
 aura --version
 ```

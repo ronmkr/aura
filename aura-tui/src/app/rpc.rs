@@ -134,6 +134,20 @@ impl App {
                 self.ui.error_msg = Some(format!("Daemon Connection Error: {}", e));
             }
         }
+
+        // Fetch watch folder telemetry
+        let stat_res = self.call_rpc("aura.getGlobalStat", None, "tui-stats").await;
+        if let Ok(body) = stat_res {
+            if let Some(result) = body.get("result") {
+                if let Some(active) = result.get("watchFolderActive").and_then(|v| v.as_bool()) {
+                    self.data.watch_folder_active = active;
+                }
+                if let Some(last) = result.get("lastIngestedFile").and_then(|v| v.as_str()) {
+                    self.data.last_ingested_file = last.to_string();
+                }
+            }
+        }
+
         Ok(())
     }
 

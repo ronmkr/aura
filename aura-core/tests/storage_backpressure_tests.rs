@@ -22,7 +22,7 @@ async fn test_storage_backpressure_throttles_writes() {
     let res1 = mock_storage
         .submit_write(
             task_id,
-            segment.clone(),
+            segment,
             BytesMut::from(&[0u8; 100][..]),
             None,
             None,

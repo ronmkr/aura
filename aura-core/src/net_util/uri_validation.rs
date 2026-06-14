@@ -1,4 +1,4 @@
-//! URI validation and SSRF mitigation (ADR-0059).
+//! URI validation and SSRF mitigation (Decision-0059).
 //!
 //! Enforces a strict scheme allowlist and blocks private/loopback/link-local
 //! destination addresses before any URI enters the download pipeline.

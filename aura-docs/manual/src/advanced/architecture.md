@@ -1,82 +1,147 @@
-# System Architecture
+# Aura Architectural Map
 
-Aura is built on a highly modular, actor-based architecture using the **Tokio** runtime. This design ensures that disk I/O, network traffic, and UI updates never block each other.
+This document provides a high-level overview of the Aura architecture using Mermaid diagrams to visualize component interactions and data flow.
 
-## Core Actors
+## System Overview
 
-### 1. The Orchestrator
-The "brain" of Aura. It is the single source of truth for the entire engine.
-- **Task Management**: Spawns and kills `ProtocolWorkers`.
-- **Protocol Detection (ADR 0065)**: Uses a centralized `ProtocolDetector` to automatically infer task types (HTTP, FTP, BitTorrent, Metalink) from URIs, local paths, or Info-Hashes.
-- **Bandwidth Control**: Coordinates with the `Throttler` to enforce static and scheduled limits (ADR 0063).
-- **Chain Orchestrator**: Handles task-to-task dependencies and auto-starts (e.g., HTTP -> BitTorrent handover).
-- **Mapping Engine**: Resolves logical file structures to physical disk paths using metadata rules.
-- **Scaling**: Analyzes EWMA metrics to scale connections.
-- **Event Bus**: Broadcasts state changes (JSON-formatted) to the RPC server, WebUI, and TUI.
+Aura is built on a decoupled, actor-based architecture where protocol-specific logic is isolated from the core orchestration and storage engines. It follows the **Orchestrated Pull Model** (Decision-0001) for work assignment.
 
-### 2. The Storage Engine
-A centralized actor responsible for all disk interactions.
-- **Sequential Write Aggregation (ADR 0033)**: Reorders out-of-order blocks in RAM before performing large, sequential disk writes. It prefers flushing contiguous blocks to disk to reduce fragmentation.
-- **Generation-based Writes (ADR 0033)**: Every piece request is assigned a unique Generation ID. The Storage Engine only commits writes that match the current active generation, ensuring that slow "losers" of a Work Stealer race cannot overwrite fresher data.
-- **Disk I/O Scheduler (ADR 0022)**: Uses kernel hints and asynchronous I/O to maximize throughput.
-    - **Kernel Hinting**: Aura applies `POSIX_FADV_SEQUENTIAL` for single-stream downloads and `POSIX_FADV_DONTNEED` after verification to keep the OS page cache clean.
-    - **io-uring Integration**: On supported Linux systems, Aura utilizes `io-uring` for zero-copy, non-blocking writes.
-- **Atomic Operations**: Manages `.part` files and renames them only after successful hash verification and `fsync`.
-- **Disk Space Verification (ADR 0060)**: Queries filesystem availability before pre-allocation and enforces safety headroom (5% or 512MB).
-- **Zero-Copy Intent**: Uses `BytesMut` for efficient memory management without pooling overhead.
-- **No-COW Aware**: Automatically disables Copy-on-Write for Btrfs/ZFS.
+```text
+       ┌─────────────────────────────────────────────────────────────┐
+       │                 User Interfaces (Personas)                  │
+       │  ┌──────────────┐      ┌──────────────┐      ┌───────────┐  │
+       │  │ CLI Client   │      │ TUI Dashboard│      │ Web UI    │  │
+       │  └──────┬───────┘      └──────┬───────┘      └─────┬─────┘  │
+       └─────────┼─────────────────────┼────────────────────┼────────┘
+                 │            JSON-RPC │ (Port 6800)        │
+                 └─────────────────────┴───────┬────────────┘
+                                               │
+       ┌───────────────────────────────────────▼─────────────────────┐
+       │                    Unified Binary (aura)                    │
+       │                                                             │
+       │  ┌─────────────────┐   ┌─────────────────┐   ┌───────────┐  │
+       │  │ System Service  │   │ Watch Folder    │   │ RSS Poller│  │
+       │  └────────┬────────┘   └────────┬────────┘   └─────┬─────┘  │
+       │           │                     │                  │        │
+       │  ┌────────▼─────────────────────▼──────────────────▼─────┐  │
+       │  │                  Aura Core Engine                     │  │
+       │  │                                                       │  │
+       │  │  ┌────────────┐      ┌──────────────┐      ┌───────┐  │  │
+       │  │  │ Engine Hub │─────▶│ Orchestrator │─────▶│Governor│  │  │
+       │  │  └────────────┘      └──────┬───────┘      └───────┘  │  │
+       │  │                             │                         │  │
+       │  │              ┌──────────────┴──────────────┐          │  │
+       │  │      ┌───────▼──────┐              ┌───────▼──────┐   │  │
+       │  │      │  Workers     │              │   Swarm      │   │  │
+       │  │      │ (HTTP/BT/FTP)│              │ (DHT/Tracker)│   │  │
+       │  │      └──────┬───────┘              └──────────────┘   │  │
+       │  │             │                                         │  │
+       │  │      ┌──────▼───────┐                                 │  │
+       │  │      │Storage Engine│                                 │  │
+       │  │      └──────┬───────┘                                 │  │
+       │  └─────────────┼─────────────────────────────────────────┘  │
+       └────────────────┼────────────────────────────────────────────┘
+                        │
+       ┌────────────────▼────────────────────────────────────────────┐
+       │                      System Resources                       │
+       │  ┌──────────────┐      ┌──────────────┐      ┌───────────┐  │
+       │  │ Disk I/O     │      │ Network      │      │ VPN Tunnel│  │
+       │  └──────────────┘      └──────────────┘      └───────────┘  │
+       └─────────────────────────────────────────────────────────────┘
+```
 
-### 3. Protocol Workers
-Lightweight, disposable actors spawned for each download source.
-- **Stateless Logic**: Workers are isolated and easily replaceable.
-- **Fine-Grained Cancellation**: Orchestrator instantly aborts workers that lose a "Work Stealing" race.
-- **Selective Downloading (ADR 0065)**: Storage and workers coordinate to skip pieces for unselected files in a swarm while correctly handling shared boundary pieces.
+## Component Definitions
 
+### 1. User Interfaces (personas)
+
+- **Aura CLI ("The Sprinter")**: Optimized for one-off tasks and shell pipelines. It can operate in "Standalone Mode" (booting an ephemeral core) or "Client Mode" (connecting to a local/remote daemon).
+- **Aura TUI ("The Pilot")**: An interactive terminal dashboard following the **Stateful View Pattern**. It provides real-time visualization of swarm health, piece distribution, and historical throughput via Braille sparklines.
+- **Aura Web ("The Ghost")**: A lightweight, integrated dashboard for headless servers, accessible via standard browsers.
+
+### 2. The Engine & Orchestrator
+
+- **Engine Hub**: The global coordinator for state, configuration, and shared services (Telemetry, Event Bus).
+- **Task Orchestrator**: Manages the maturation of tasks (Decision-0008). It spans the lifecycle from URI detection to metadata exchange (BitTorrent info-dicts) and final assembly.
+- **Resource Governor**: Implements global memory backpressure and CPU prioritization (Decision-0057), ensuring the daemon remains stable during massive protocol aggregation.
+- **Protocol Detector**: A centralized gateway for parsing URIs and expanding local file globs (Decision-0015).
+
+### God Node Decoupling (decision-0072)
+
+To improve maintainability and testability, Aura migrated from a monolithic "God Node" pattern to a **Trait-Based Decoupling** model:
+- **Engine Hub vs. Task Orchestrator**: The `Engine` now serves as a lightweight container for global resources, while the `Orchestrator` handles task-specific state machines.
+- **Dependency Inversion**: Components no longer interact with concrete structs. Instead, they depend on specialized traits (e.g., `StorageDispatch`, `TaskController`), allowing for 100% isolated unit testing via mocks (e.g., `MockStorage`).
+- **Clean Boundaries**: This decoupling ensures that changes to the BitTorrent protocol worker do not require modifications to the Storage Engine's internal logic.
+
+### 3. Storage & Memory
+
+- **Sequential Aggregator**: Reorders random network chunks into contiguous disk flushes (Decision-0033), protecting hardware longevity.
+- **Atomic Completion**: Utilizes `.part` files and transactional renames to ensure no corrupt or partial data is ever exposed as finished (Decision-0003).
+- **Zero-Copy Pipeline**: Leverages `BytesMut` reference counting to move data from the network card to the filesystem buffer without intermediate copies.
+
+### 4. Protocol Workers
+
+- **HTTP/FTP**: Implements **Racing Work Stealing** (Decision-0005) across multiple mirrors to maximize bandwidth utilization.
+- **BitTorrent**: A fully-featured swarm engine supporting **BitTorrent v2** (Merkle Trees), PEX, DHT, and an advanced **Endgame Mode** (Decision-0039).
+
+### 5. System Integration
+
+- **VPN Kill-switch**: A native monitoring loop for WireGuard and OpenVPN interfaces (Decision-0038), halting all traffic if the secure tunnel drops.
+- **Happy Eyeballs**: Dual-stack racing (IPv4/IPv6) for resilient connectivity (Decision-0026).
+- **Docker Hardening**: Multi-stage builds and non-root confinement for secure containerized deployment (Decision-0051).
+- **Watch Folder Auto-Ingestion**: Filesystem watch loop utilizing `notify` with an active 500ms file-size stabilization loop to debounce writes and ingest torrents/metalinks (Decision-0069).
+- **RSS Subscription Poller**: Background feed polling loop inside the daemon to automatically fetch, filter, and ingest matching feed downloads (Decision-0070).
+- **System Service Control**: Native system manager service configuration (systemd, launchd, Windows SCM) supporting daemon auto-start on boot (Decision-0071).
+
+## Core Data Flow (The Green Path)
+
+```text
+ Persona/Watch/RSS      Engine Hub      Orchestrator        Worker           Storage            Disk
+        │                   │                │                │                │                │
+        │ Add Task          │                │                │                │                │
+        ├──────────────────▶│                │                │                │                │
+        │                   │ Dispatch Task  │                │                │                │
+        │                   ├───────────────▶│                │                │                │
+        │                   │                │ Pre-allocate   │                │                │
+        │                   │                ├────────────────────────────────▶│                │
+        │                   │                │ Spawn Worker   │                │                │
+        │                   │                ├───────────────▶│                │                │
+        │                   │                │                │ Fetch Segment  │                │
+        │                   │                │                ├───────┐        │                │
+        │                   │                │                │       │        │                │
+        │                   │                │                │ Write │        │                │
+        │                   │                │                ├────────────────▶│                │
+        │                   │                │                │                │ Aggregate      │
+        │                   │                │                │                ├───────┐        │
+        │                   │                │                │                │       │ Flush  │
+        │                   │                │                │                │       ├───────▶│
+        │                   │                │                │ Verified       │                │
+        │                   │                │                │◀───────────────┤                │
+        │                   │                │ Progress       │                │                │
+        │                   │                │◀───────────────┤                │                │
+        │ Event Sync        │◀───────────────┤                │                │                │
+        │◀──────────────────┤                │                │                │                │
+        │                   │                │                │                │                │
+```
+
+## Implementation Map
+
+This table maps architectural concepts to the verified codebase paths as identified by the Knowledge Graph.
+| Component | Path | Primary Role |
+| :--- | :--- | :--- |
+| **Engine Core** | `aura-core/src/orchestrator/engine.rs` | Global state & event bus |
+| **Orchestrator** | `aura-core/src/orchestrator/runner.rs` | Task lifecycle & maturation |
+| **Storage Engine** | `aura-core/src/storage/engine.rs` | Disk I/O & Sandbox root |
+| **Aggregator** | `aura-core/src/storage/aggregator.rs` | Write-back caching |
+| **HTTP Worker** | `aura-core/src/worker/http/mod.rs` | Mirror racing & segmenting |
+| **BT Worker** | `aura-core/src/worker/bittorrent/mod.rs` | Swarm management |
+| **BT v2 Merkle** | `aura-core/src/torrent/v2/merkle.rs` | Block-level integrity |
+| **DHT Manager** | `aura-core/src/dht/mod.rs` | Kademlia routing & protocol facade |
+| **NNTP Worker** | `aura-core/src/worker/nntp/worker.rs` | Usenet/Newsgroup segment fetching |
+| **VPN Provider** | `aura-core/src/vpn/wireguard.rs` | Tunnel enforcement |
+| **RPC Router** | `aura-daemon/src/jsonrpc/router.rs` | Centralized JSON-RPC dispatch |
+| **TUI App State** | `aura-tui/src/app/state.rs` | Stateful view management |
+| **CLI Client** | `aura/src/cli_client.rs` | Unified binary gateway |
+| **RSS Manager** | `aura-core/src/rss/manager.rs` | RSS feed parsing, storage, and matching |
+| **Watch Folder** | `aura-core/src/orchestrator/watch.rs` | Filesystem watch loop and debouncer |
+| **System Service** | `aura/src/service.rs` | Service control installer and manager |
 ---
-
-## Process Resilience & Safety (ADR 0064)
-
-Aura is designed for mission-critical stability:
-- **Panic Hook**: A global `std::panic::set_hook` captures backtraces and saves them to `~/.aura/crash.log` before emergency shutdown.
-- **Task Recovery**: Critical tasks (Orchestrator, Storage) are monitored via `JoinHandle`. On panic, the engine attempts an emergency state flush to disk before exiting.
-- **FD Management**: Aura automatically calculates and attempts to raise the OS file descriptor limit (`RLIMIT_NOFILE`) to prevent connection drops.
-
----
-
-## Interactive TUI Architecture (ADR 0065)
-
-The **Pilot Dashboard** (TUI) uses a stateful **ViewRouter** architecture:
-- **Enum State Machine**: Manages a navigation stack (Dashboard -> Mission Control -> File Selector).
-- **Reactive Rendering**: The UI only redraws affected areas, maintaining 60fps even with thousands of files in a virtualized tree view.
-- **Buffered Telemetry**: Throughput history is maintained in the TUI process using circular buffers to power the real-time sparkline charts.
-
----
-
-## Persistence & History (ADR 0062)
-
-- **Control Files**: Active task states are persisted in `~/.aura/tasks/` using JSON files for fast recovery after restarts.
-- **History Log**: Completed, failed, and removed tasks are recorded in an append-only `~/.aura/history.jsonl` file. This log is rotated automatically when it reaches 10MB to maintain performance.
-
----
-
-## Concurrency & Backpressure
-
-Aura uses **Bounded MPSC Channels** for all inter-actor communication.
-- **Disk Backpressure**: If the disk I/O subsystem is saturated, the `Storage Engine`'s input channel fills up.
-- **Natural Throttling**: Protocol workers automatically block when trying to send data to a full storage queue, naturally slowing down network ingestion and preventing memory exhaustion.
-
----
-
-## Architectural Decoupling & Trait Boundaries (ADR 0072)
-
-To maintain modularity and testability, Aura enforces strict decoupling of its core "God Nodes" (Orchestrator and Storage Engine) using Rust traits.
-
-### Orchestrator Trait Boundaries
-Instead of depending on the monolithic `Engine` struct, high-level handlers and handles depend on specialized traits:
-- **`EventSubscriber`**: Provides access to the global telemetry and event bus.
-- **`TaskController`**: Exposes lifecycle mutation methods (pause, resume, remove).
-- **`TaskQuerier`**: Exposes metadata and state retrieval methods.
-- **`EngineApi`**: A composite trait object used by `TaskHandle` to provide a stable, mockable interface for downstream consumers.
-
-### Storage Decoupling
-Protocol Workers do not interact with the Storage Engine's internal MPSC channels directly. Instead, they utilize the **`StorageDispatch`** trait. This allows the network layer to be tested in isolation with a mock storage provider, completely bypassing disk I/O during unit tests.

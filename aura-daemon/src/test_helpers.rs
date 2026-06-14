@@ -15,6 +15,7 @@ pub async fn setup_test_app(secret: Option<String>) -> (axum::Router, tempfile::
         engine: Arc::new(engine),
         rpc_secret: secret,
         metrics,
+        rss_refresh_tx: None,
     });
     (crate::router::create_router(state), temp_dir)
 }

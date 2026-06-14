@@ -135,7 +135,7 @@ impl MetaTask {
             return Some(range);
         }
 
-        // 2. Work Stealing / Racing (ADR 0005)
+        // 2. Work Stealing / Racing (Decision 0005)
         if !self.range_supported {
             return None;
         }

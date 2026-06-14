@@ -3,7 +3,7 @@ Feature: Daemon and RPC Orchestration
   I want a consistent and synchronized RPC interface
   So that my UI always reflects the true engine state.
 
-  @ADR-0016 @Milestone-5
+  @Decision-0016 @Milestone-5
   Scenario: Multi-client state synchronization
     Given the "Aura-daemon" is running
     And Client A (CLI) and Client B (TUI) are both connected via JSON-RPC
@@ -12,7 +12,7 @@ Feature: Daemon and RPC Orchestration
     And both Client A and Client B should receive the update within 500ms
     And both clients should show the task as "Paused"
 
-  @ADR-0014
+  @Decision-0014
   Scenario: Secure RPC Authentication
     Given the daemon is configured with an "rpc_secret"
     When a client attempts to connect without a token

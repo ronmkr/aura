@@ -3,7 +3,7 @@ Feature: Unified Credential Provider
   I want the engine to automatically use .netrc and cookie credentials
   So that I don't have to embed secrets in URLs.
 
-  @ADR-0014
+  @Decision-0014
   Scenario: Authenticated HTTP download via .netrc
     Given an HTTP mirror requiring Basic Auth
     And a .netrc file with:

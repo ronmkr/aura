@@ -1,0 +1,33 @@
+# mdbook-lint configuration for Aura
+
+# List of categories to enable (leave empty for all)
+enabled-categories = []
+
+# List of categories to disable
+disabled-categories = []
+
+# List of specific rules to enable
+enabled-rules = []
+
+# List of specific rules to disable
+disabled-rules = [
+    "ADR001", "ADR002", "ADR003", "ADR004", "ADR005", "ADR006", "ADR007", "ADR008", "ADR009",
+    "MD013", # line-length
+    "MD033", # no-inline-html
+    "MD007", # ul-indent
+    "MD030", # list-marker-space
+    "MD032", # blanks-around-lists
+    "MD024", # no-duplicate-heading
+    "MDBOOK005", # orphaned-files
+    "MDBOOK023", # chapter-title-match
+    "MD003", # header-style
+    "MD052", # undefined-label
+]
+
+# Additional settings
+deprecated-warning = 'warn'
+markdownlint-compatible = false
+auto-fix = true
+fail-on-warnings = false
+fail-on-errors = true
+malformed-markdown = 'warn'

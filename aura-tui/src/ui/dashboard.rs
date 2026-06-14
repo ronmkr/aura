@@ -229,8 +229,46 @@ pub fn draw_dashboard(f: &mut Frame, app: &mut App, area: Rect) {
             f.render_widget(sparkline, detail_chunks[2]);
         }
     } else {
-        let detail_panel = Paragraph::new("No missions available.")
-            .block(Block::default().borders(Borders::ALL).title(" Details "));
+        let watch_status = if app.data.watch_folder_active {
+            "Active"
+        } else {
+            "Disabled"
+        };
+        let last_file = if app.data.last_ingested_file.is_empty() {
+            "None"
+        } else {
+            &app.data.last_ingested_file
+        };
+
+        let text = vec![
+            Line::from(vec![Span::styled(
+                "System Overview",
+                Style::default().add_modifier(Modifier::BOLD),
+            )]),
+            Line::from(""),
+            Line::from(vec![
+                Span::raw("Watch Folder: "),
+                Span::styled(
+                    watch_status,
+                    if app.data.watch_folder_active {
+                        Style::default().fg(app.ui.theme.success)
+                    } else {
+                        Style::default().fg(app.ui.theme.warning)
+                    },
+                ),
+            ]),
+            Line::from(format!("Last Ingested: {}", last_file)),
+            Line::from(""),
+            Line::from("Select a mission on the left to see details."),
+        ];
+
+        let detail_panel = Paragraph::new(text)
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title(" System Status "),
+            )
+            .wrap(Wrap { trim: true });
         f.render_widget(detail_panel, main_chunks[1]);
     }
 }

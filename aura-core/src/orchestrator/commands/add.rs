@@ -23,7 +23,7 @@ impl Orchestrator {
 
         let config = self.config.load();
 
-        // Enforce maximum active tasks limit for non-tenant callers (ADR-0064)
+        // Enforce maximum active tasks limit for non-tenant callers (Decision-0064)
         if tenant_id.is_none() {
             let non_tenant_tasks = self
                 .tasks

@@ -1,0 +1,62 @@
+/* Aura Brand Theme for mdBook */
+
+:root {
+    /* Brand Colors */
+    --aura-blue: #89b4fa;
+    --aura-cyan: #94e2d5;
+    --aura-bg: #1e1e2e;
+    --aura-text: #cdd6f4;
+    --aura-card: #313244;
+}
+
+/* Sidebar styling */
+.sidebar {
+    background-color: var(--aura-bg);
+}
+
+.sidebar .active > a {
+    color: var(--aura-blue) !important;
+}
+
+/* Custom Admonition Styles (Replacements for mdbook-admonish) */
+/* We look for the <code>admonish type</code> pattern if possible, 
+   but for now just standard blockquotes */
+
+blockquote {
+    padding: 10px 20px;
+    margin: 20px 0;
+    border-left: 5px solid var(--aura-blue);
+    background-color: var(--aura-card);
+    border-radius: 4px;
+    color: var(--aura-text);
+}
+
+/* Mermaid Diagram Centering */
+.mermaid {
+    display: flex;
+    justify-content: center;
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    margin: 20px 0;
+}
+
+/* Typography Improvements */
+body {
+    line-height: 1.6;
+}
+
+code {
+    background-color: #f1f1f1;
+    padding: 2px 4px;
+    border-radius: 4px;
+    color: #e83e8c;
+}
+
+/* Dark mode adjustments for mdBook */
+@media (prefers-color-scheme: dark) {
+    code {
+        background-color: #2d2d2d;
+        color: #f8f8f2;
+    }
+}

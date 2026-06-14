@@ -1,4 +1,4 @@
-# Multi-Protocol Aggregation
+# Multi-protocol Aggregation
 
 Aura's core strength is its ability to treat disparate sources (mirrors) as a single logical download. This process is managed by the **Sequential Aggregator** and the **Sourced Model**.
 
@@ -6,37 +6,43 @@ Aura's core strength is its ability to treat disparate sources (mirrors) as a si
 
 A `MetaTask` in Aura consists of one or more subtasks. Each subtask represents a specific source (e.g., an HTTP mirror, an FTP server, or a BitTorrent swarm).
 
-### Automatic Protocol Detection (ADR 0065)
+### Automatic Protocol Detection (Decision 0065)
+
 Aura features a centralized **ProtocolDetector** that identifies the source type from any given URI or local path. You no longer need to specify if a link is a magnet or an HTTP link; Aura will automatically spawn the correct protocol workers based on the metadata.
 
 ### Supported Combinations
+
 - **HTTP + HTTP**: Speed up downloads by hitting multiple mirrors simultaneously.
 - **HTTP + BitTorrent**: Use stable mirrors to "seed" a swarm or fill in missing pieces in a stalled torrent.
 - **FTP + BitTorrent**: Aggregate high-speed FTP sources with P2P swarms for extreme throughput.
 - **Cloud Storage + HTTP + BitTorrent**: Race high-latency cloud objects (from S3, Google Drive, or OneDrive) against fast HTTP mirrors or dynamic P2P swarms, ensuring maximum availability and throughput.
-- **Usenet (NNTP) + HTTP + BitTorrent**: Combine standard HTTP mirrors and P2P swarms with newsgroups via `nntp://` or `nntps://` message-id URIs (ADR 0023).
+- **Usenet (NNTP) + HTTP + BitTorrent**: Combine standard HTTP mirrors and P2P swarms with newsgroups via `nntp://` or `nntps://` message-id URIs (Decision 0023).
 
-## Racing Work Stealer (ADR 0005)
+## Racing Work Stealer (Decision 0005)
 
 To prevent a single slow mirror from bottlenecking the entire download, Aura implements a **Racing Work Stealer**.
 
-### 1. Throughput Monitoring (EWMA)
+### 1. Throughput Monitoring (ewma)
+
 The Orchestrator calculates the **Exponential Weighted Moving Average (EWMA)** throughput for every individual connection. Unlike a standard average, EWMA reacts instantly to sudden network congestion or server-side throttling.
 
 ### 2. Speculative Stealing
+
 If a connection is significantly slower (3x slower than the current average), the Orchestrator marks its assigned ranges as "stolen." It doesn't kill the slow connectionit simply assigns the same range to a faster worker.
 
 ### 3. The Race
+
 - Both connections fetch the same data range in parallel.
 - The first connection to deliver the data to the **Storage Engine** wins.
 - The **Storage Engine** performs an atomic write and signals completion.
 - The Orchestrator immediately sends a `CANCEL` message to the "loser" connection to save bandwidth.
 
-## Adaptive Connection Scaling (ADR 0023)
+## Adaptive Connection Scaling (Decision 0023)
 
 Aura dynamically scales the number of connections to a source based on performance metrics.
 
 ### Global Potential
+
 Aura maintains an internal estimate of your network's capacity, known as the **Global Potential**.
 - **Scaling Up**: If the current total throughput is below the Global Potential, the Orchestrator will open more concurrent connections (up to `max_connections_per_task`) to the same source. This is particularly effective for servers that cap speed per-connection (e.g., 100KB/s per stream).
 - **Scaling Down**: If increasing connections does not result in higher throughput (e.g., because your own line is saturated), Aura scales back to the `min_connections_per_task` floor to reduce system overhead and avoid being flagged as a bot.

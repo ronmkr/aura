@@ -1,13 +1,13 @@
-# Built-in Web UI
+# Built-in Web Ui
 
 In addition to the CLI and TUI, the Aura Daemon includes a built-in **Web Dashboard** for managing downloads from any modern browser.
 
-## Accessing the Web UI
+## Accessing The Web Ui
 
 By default, the Web UI is served by the daemon on the same port as the RPC server.
 
-1.  Start the daemon: `aura daemon`
-2.  Open your browser to: `http://127.0.0.1:6800/ui/`
+1. Start the daemon: `aura daemon`
+2. Open your browser to: `http://127.0.0.1:6800/ui/`
 
 ## Features
 

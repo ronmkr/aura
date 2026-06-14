@@ -2,7 +2,8 @@
 
 Aura is highly tunable. This document provides an exhaustive reference for every setting in `Aura.toml` using plain language.
 
-## Table of Contents
+## Table Of Contents
+
 1. [Configuration File Discovery](#configuration-file-location)
 2. [[network] - Connectivity & Security](#network)
 3. [[bandwidth] - Speed & Concurrency](#bandwidth)
@@ -19,20 +20,25 @@ Aura is highly tunable. This document provides an exhaustive reference for every
 14. [[monitoring] - Metrics & Health](#monitoring)
 15. [[limits] - Architectural Boundaries](#limits)
 16. [[general] - Engine & UI](#general)
+17. [RSS Feed Configuration (feeds.toml)](#rss-feed-configuration)
 
 ---
 
 ## Configuration File Location
+
 Aura searches for `Aura.toml` in this order:
-1.  **Direct Path**: Specified via the `--config` CLI flag.
-2.  **Working Directory**: The folder where the `aura` command is executed.
-3.  **User Config**: 
-    - Linux/macOS: `~/.config/aura/Aura.toml`
-    - Windows: `%AppData%\aura\Aura.toml`
+1. **Direct Path**: Specified via the `--config` CLI flag.
+2. **Working Directory**: The folder where the `aura` command is executed.
+3. **User Config**:
+  - Linux/macOS: `~/.config/aura/Aura.toml`
+  - Windows: `%AppData%\aura\Aura.toml`
+
+> **Tip**: Operational data (history, session state, RSS feeds) is stored in the `.aura` folder within your home directory (`~/.aura/`).
 
 ---
 
 ## [network]
+
 Manages how Aura interacts with the outside world.
 
 | Setting | Value Type | Default | What it does |
@@ -66,6 +72,7 @@ Manages how Aura interacts with the outside world.
 ---
 
 ## [bandwidth]
+
 Controls the flow of data to prevent slowing down your internet.
 
 | Setting | Value Type | Default | What it does |
@@ -82,6 +89,7 @@ Controls the flow of data to prevent slowing down your internet.
 | `adaptive_scaling_high_throughput`| Number (Bytes/s)| `5242880` | Threshold to scale down connections. |
 
 ### [[bandwidth.schedule]]
+
 Aura supports time-based bandwidth limits, allowing you to automatically throttle or unthrottle downloads at specific times (e.g., off-peak unlimited data).
 
 | Setting | Value Type | Default | What it does |
@@ -95,7 +103,30 @@ Aura supports time-based bandwidth limits, allowing you to automatically throttl
 
 ---
 
+## [resource_mapping]
+
+<a name="resource_mapping"></a>
+
+Defines how Aura maps logical downloads to physical paths on your disk.
+
+| Setting | Value Type | Default | What it does |
+|:---|:---|:---|:---|
+| `sandbox_root` | Directory Path | Current Dir | Hard boundary for all downloads. Traversal attempts are rejected. |
+| `default_conflict_policy`| Option | `"AutoRename"` | What to do if a file exists (`AutoRename`, `Overwrite`, `Skip`). |
+
+### [[resource_mapping.rules]]
+
+Rules for automated file organization.
+
+| Setting | Value Type | Default | What it does |
+|:---|:---|:---|:---|
+| `condition` | Object | Mandatory | Criteria for the rule (e.g., `{ Extension = "mp4" }`). |
+| `target` | Text (Template) | Mandatory | Target path using placeholders (e.g., `movies/{year}/{name}`). |
+
+---
+
 ## [bulk]
+
 Settings for batch operations and folder ingestion.
 
 | Setting | Value Type | Default | What it does |
@@ -105,6 +136,7 @@ Settings for batch operations and folder ingestion.
 ---
 
 ## [notifications]
+
 Native OS desktop notification settings.
 
 | Setting | Value Type | Default | What it does |
@@ -117,6 +149,7 @@ Native OS desktop notification settings.
 ---
 
 ## [tui]
+
 Interactive dashboard settings.
 
 | Setting | Value Type | Default | What it does |
@@ -127,6 +160,7 @@ Interactive dashboard settings.
 ---
 
 ## [security]
+
 Security hardening for the RPC interface and daemon.
 
 | Setting | Value Type | Default | What it does |
@@ -138,6 +172,7 @@ Security hardening for the RPC interface and daemon.
 ---
 
 ## [monitoring]
+
 Metrics and health monitoring settings.
 
 | Setting | Value Type | Default | What it does |
@@ -149,6 +184,7 @@ Metrics and health monitoring settings.
 ---
 
 ## [bittorrent]
+
 Settings for fine-tuning BitTorrent downloads.
 
 | Setting | Value Type | Default | What it does |
@@ -180,6 +216,7 @@ Settings for fine-tuning BitTorrent downloads.
 ---
 
 ## [storage]
+
 Controls how files are saved to your hard drive.
 
 | Setting | Value Type | Default | What it does |
@@ -193,11 +230,13 @@ Controls how files are saved to your hard drive.
 | `io_deadline_ms` | Time (ms) | `500` | Target time for a single disk write to finish. |
 | `read_ahead_kb` | Number (KB) | `128` | Pre-read data from disk into memory when uploading. |
 | `write_buffer_kb` | Number (KB) | `256` | Size of individual data chunks written to disk. |
-| `recheck_throttle_ms`| Time (ms) | `10` | Throttling delay in milliseconds between read chunks during hash rechecks (ADR 0068). |
+| `recheck_throttle_ms`| Time (ms) | `10` | Throttling delay in milliseconds between read chunks during hash rechecks (Decision 0068). |
+| `watch_dir` | Text | `None` | The folder path to monitor for auto-ingesting `.torrent`, `.metalink`, `.meta4`, or `.nzb` drops (Decision 0069). |
 
 ---
 
 ## [vpn]
+
 Safety settings for using a VPN.
 
 | Setting | Value Type | Default | What it does |
@@ -213,6 +252,7 @@ Safety settings for using a VPN.
 ---
 
 ## [hooks]
+
 Automation and shell hooks on task lifecycle events.
 
 | Setting | Value Type | Default | What it does |
@@ -223,7 +263,8 @@ Automation and shell hooks on task lifecycle events.
 ---
 
 ## [credentials]
-Authentication credentials for secure HTTP, FTP, and Cloud Storage protocols (ADR 0013).
+
+Authentication credentials for secure HTTP, FTP, and Cloud Storage protocols (Decision 0013).
 
 | Setting | Value Type | Default | What it does |
 |:---|:---|:---|:---|
@@ -248,6 +289,7 @@ Aura supports secure credentials for S3, Google Drive, and OneDrive:
 ---
 
 ## [limits]
+
 Defines administrative, network, and architectural constraints.
 
 | Setting | Value Type | Default | What it does |
@@ -270,6 +312,7 @@ Defines administrative, network, and architectural constraints.
 ---
 
 ## [general]
+
 General app settings and visual theme.
 
 | Setting | Value Type | Default | What it does |
@@ -280,3 +323,18 @@ General app settings and visual theme.
 | `event_poll_interval_ms`| Time (ms) | `500` | How often to update the user interface (TUI). |
 | `graceful_shutdown_timeout_secs`| Time (Seconds) | `5` | How long to wait for tasks to stop cleanly when closing. |
 | `daemon_mode` | Yes / No | `false` | Run in the background without a window. |
+
+---
+
+## Rss Feed Configuration
+
+Subscription data for automated feed monitoring is stored in `~/.aura/feeds.toml`.
+
+| Field | Type | Description |
+|:---|:---|:---|
+| `name` | Text | Unique identifier for the subscription. |
+| `url` | Text | The RSS or Atom feed XML endpoint. |
+| `poll_interval` | Number | Minutes between polling attempts (default: 30). |
+| `filters` | List of Regex | Only download items where the title matches these patterns. |
+| `categories` | List of Texts | Filter items by the `<category>` tag. |
+| `max_size` | Number (Bytes) | Ignore items larger than this limit. |

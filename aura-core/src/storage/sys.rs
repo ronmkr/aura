@@ -27,11 +27,11 @@ pub(crate) fn harden_file(file: &File, length: u64) -> Result<()> {
                     flags |= FS_NOCOW_FL;
                     let _ = libc::ioctl(fd, FS_IOC_SETFLAGS, &flags);
                 }
-                // Skip fallocate on COW filesystems as per ADR 0035
+                // Skip fallocate on COW filesystems as per Decision 0035
                 return Ok(());
             }
 
-            // Check for network shares to skip fallocate (ADR 0021)
+            // Check for network shares to skip fallocate (Decision 0021)
             // NFS = 0x6969, SMB = 0x517B, CIFS = 0xFF534D42
             if f_type == 0x6969 || f_type == 0x517B || f_type == 0xFF534D42 {
                 return Ok(());

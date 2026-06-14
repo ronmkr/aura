@@ -63,7 +63,7 @@ impl Orchestrator {
                             (None, None, 0, false, String::new())
                         };
 
-                    // Handle follow-on actions (ADR 0029)
+                    // Handle follow-on actions (Decision 0029)
                     if let Some(follow_on) = follow_on {
                         let base_dir = self.resolve_base_dir(&tenant_id);
                         let file_path = base_dir.join(&task_name);

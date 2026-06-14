@@ -2,7 +2,7 @@
 
 Aura's codebase is extensively documented using standard Rust doc comments. This documentation provides a deep-dive into the internal types, traits, and functions that power the engine.
 
-## Generating the Documentation
+## Generating The Documentation
 
 To build the internal API documentation locally, run:
 
@@ -15,7 +15,7 @@ This uses `cargo doc` with the following flags:
 - `--no-deps`: Skips generating documentation for external dependencies to speed up the process.
 - `--document-private-items`: Includes internal (non-public) items to provide full visibility for developers.
 
-## Viewing the Documentation
+## Viewing The Documentation
 
 Once generated, the documentation is available in the `target/doc/` directory. You can open it in your browser:
 
@@ -23,7 +23,7 @@ Once generated, the documentation is available in the `target/doc/` directory. Y
 open target/doc/aura_core/index.html
 ```
 
-## Key Modules to Explore
+## Key Modules To Explore
 
 - **`aura_core::orchestrator`**: The central actor and task management logic.
 - **`aura_core::storage`**: Asynchronous disk I/O and write aggregation.

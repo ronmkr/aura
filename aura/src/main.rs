@@ -1,5 +1,11 @@
 use clap::{Parser, Subcommand};
 mod cli_client;
+mod feed;
+mod logging;
+mod service;
+#[cfg(target_os = "windows")]
+mod service_windows;
+
 #[derive(Parser, Debug)]
 #[command(author, version, about = "Aura", long_about = None)]
 struct Cli {
@@ -58,7 +64,21 @@ enum Commands {
         /// Automatically generate self-signed TLS certificate and key files
         #[arg(long)]
         generate_tls_cert: bool,
+        /// Run as a Windows Service (internal flag used by SCM)
+        #[arg(long)]
+        windows_service: bool,
     },
+    /// Manage the Aura daemon as a system service (systemd, launchd, Windows Service)
+    Service {
+        #[command(subcommand)]
+        action: service::ServiceAction,
+    },
+    /// Manage RSS/Atom feed subscriptions
+    Feed {
+        #[command(subcommand)]
+        action: feed::FeedAction,
+    },
+
     /// Start the Terminal UI dashboard
     Tui,
     /// Probe the optimal allocation strategy for a given directory
@@ -67,7 +87,7 @@ enum Commands {
         #[arg(default_value = ".")]
         dir: String,
     },
-    /// View completed download history (ADR-0062)
+    /// View completed download history (Decision-0062)
     History {
         /// Limit the number of records displayed
         #[arg(long, short, default_value_t = 10)]
@@ -79,7 +99,7 @@ enum Commands {
         #[arg(long, short)]
         filter: Option<String>,
     },
-    /// View real-time engine status and bandwidth schedules (ADR-0063)
+    /// View real-time engine status and bandwidth schedules (Decision-0063)
     Status,
     /// Refresh the download metadata for a task, checking ETag and Last-Modified (conditional GET)
     Refresh {
@@ -122,19 +142,12 @@ enum Commands {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
     // Initialize tracing
-    let log_level = match cli.verbose {
-        0 => tracing::Level::INFO,
-        1 => tracing::Level::DEBUG,
-        _ => tracing::Level::TRACE,
-    };
-    let subscriber = tracing_subscriber::FmtSubscriber::builder()
-        .with_max_level(log_level)
-        .with_target(false)
-        .with_writer(aura_daemon::scrubber::ScrubbingMakeWriter::new(
-            std::io::stdout,
-        ))
-        .finish();
-    tracing::subscriber::set_global_default(subscriber).expect("Failed to set tracing subscriber");
+    let is_service = std::env::var("AURA_SERVICE").is_ok()
+        || std::env::var("AURA_LOG_JSON").is_ok()
+        || std::env::args().any(|arg| arg == "--windows-service");
+    let use_json = std::env::var("AURA_LOG_JSON").is_ok();
+
+    logging::init_logging(cli.verbose, is_service, use_json);
     // Load configuration based on hierarchy rules
     let mut config = aura_core::Config::load_resolved(cli.config.as_deref())?;
     // Extract daemon-specific overrides
@@ -144,6 +157,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut daemon_tls_cert = None;
     let mut daemon_tls_key = None;
     let mut daemon_generate_tls_cert = false;
+    let mut daemon_windows_service = false;
     if let Some(Commands::Daemon {
         bind_address,
         rpc_port,
@@ -151,6 +165,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         tls_cert,
         tls_key,
         generate_tls_cert,
+        windows_service,
     }) = &cli.command
     {
         daemon_bind_address = bind_address.clone();
@@ -159,6 +174,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         daemon_tls_cert = tls_cert.clone();
         daemon_tls_key = tls_key.clone();
         daemon_generate_tls_cert = *generate_tls_cert;
+        daemon_windows_service = *windows_service;
     }
     // Apply CLI overrides to configuration
     config.apply_cli_overrides(aura_core::config::CliOverrides {
@@ -180,9 +196,36 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 tls_cert: daemon_tls_cert,
                 tls_key: daemon_tls_key,
                 generate_tls_cert: daemon_generate_tls_cert,
+                custom_shutdown: None,
             };
-            aura_daemon::run(args).await?;
+            #[cfg(target_os = "windows")]
+            {
+                if daemon_windows_service {
+                    service_windows::run_as_windows_service(args)?;
+                } else {
+                    aura_daemon::run(args).await?;
+                }
+            }
+            #[cfg(not(target_os = "windows"))]
+            {
+                if daemon_windows_service {
+                    return Err("Windows service mode is only supported on Windows".into());
+                }
+                aura_daemon::run(args).await?;
+            }
         }
+        Some(Commands::Service { action }) => {
+            service::handle_service_command(action)?;
+        }
+        Some(Commands::Feed { action }) => {
+            feed::handle_feed_command(
+                action,
+                config.network.rpc_port,
+                config.network.rpc_secret.clone(),
+            )
+            .await?;
+        }
+
         Some(Commands::Tui) => {
             // Run TUI
             let rpc_url = format!("http://localhost:{}/jsonrpc", config.network.rpc_port);

@@ -26,11 +26,14 @@ This allows you to download a torrent file via HTTP and have Aura automatically 
 Aura supports complex **Task Dependency Graphs**. Unlike Chaining (which triggers after completion), Dependencies prevent a task from starting until its "parents" are finished.
 
 ### Use Cases:
+
 - **Prerequisite Data**: Download a library or shared assets before starting a specific application build.
 - **Ordered Batches**: Ensure `Part 1` is 100% finished and verified before dedicating bandwidth to `Part 2`.
 
 ### Configuration:
+
 In the JSON-RPC API or CLI (multi-task mode), you can specify `depends_on`:
+
 ```json
 {
     "method": "aura.addUri",
@@ -40,6 +43,7 @@ In the JSON-RPC API or CLI (multi-task mode), you can specify `depends_on`:
     ]
 }
 ```
+
 Tasks with unmet dependencies will stay in the **Waiting** phase until all parent GIDs are marked as `Complete`.
 
 ## Metadata-based Path Mapping
@@ -67,7 +71,8 @@ When a rule matches, the task is saved to a path determined by the template stri
 - **{month}**: Current local month (MM).
 - **{day}**: Current local day (DD).
 
-#### Example Configuration
+#### Example Configuration (Mapping)
+
 ```toml
 [[resource_mapping.rules]]
 condition = { type = "Extension", value = "mp4" }
@@ -93,11 +98,13 @@ To guarantee system safety, the mapping engine strictly sanitizes the final mapp
 When the resolved path already exists on disk, Aura applies a `ConflictPolicy` to determine the next step. This can be configured globally in `Aura.toml`:
 
 ### Supported Policies
+
 - **AutoRename** (Default): Appends a numeric suffix to the filename (e.g., `movie.1.mp4`) until a unique path is found.
 - **Overwrite**: Overwrites the existing file. Use with caution.
 - **Skip**: Prevents the download if the file already exists.
 
-#### Example Configuration
+#### Example Configuration (Conflict Resolution)
+
 ```toml
 [resource_mapping]
 default_conflict_policy = "AutoRename"

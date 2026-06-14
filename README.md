@@ -8,7 +8,11 @@
 ## Features
 
 - **Actor-based Orchestration**: Built on Tokio for massive concurrency and clean decoupling between protocols and storage.
-- **Multi-source Aggregation**: Download a single file from multiple sources (HTTP, BitTorrent, FTP) simultaneously with **Adaptive Racing** and **Work Stealing** (ADR 0005).
+- **Multi-source Aggregation**: Download a single file from multiple sources (HTTP, BitTorrent, FTP) simultaneously with **Adaptive Racing** and **Work Stealing** (Decision 0005).
+- **Automation & Ingestion**:
+  - **Watch Folder**: Automatically ingest `.torrent` and `.metalink` files dropped into a directory (Decision 0069).
+  - **RSS Subscriptions**: Subscribe to feeds for automated, filter-based download ingestion (Decision 0070).
+  - **System Service**: Run Aura as a persistent background daemon on Linux, macOS, and Windows (Decision 0071).
 - **BitTorrent Excellence**: Full support for BitTorrent v1 & v2 (BEP 52), Trackers (UDP/HTTP), DHT (Kademlia), Seeding, Pipelined Requests, and SHA-256 Merkle verification.
 - **FTP Support**: Support for FTP & FTPS (TLS) with exponential retry logic, range-based segment fetching, and authentication.
 - **Persistent Progress**: State is saved to `.aura` control files, allowing for seamless resumption after restarts.
@@ -61,11 +65,12 @@ If the `aura` binary is in your `PATH` (or using the compiled binary `./target/r
 - **[Aura User Manual](https://ronmkr.github.io/aura/)**: The comprehensive online guide to using Aura, covering CLI, TUI, and advanced features.
 - **[Rust API Docs](https://ronmkr.github.io/aura/api/aura_core/)**: Technical documentation for developers embedding the engine.
 - **[Architecture Deep Dive](https://ronmkr.github.io/aura/advanced/architecture.html)**: Detailed mapping of our actor model and data flows.
-- **[ADR Index](https://ronmkr.github.io/aura/advanced/adr-index.html)**: The "why" behind our technical decisions.
+- **[Design Decisions](https://ronmkr.github.io/aura/advanced/adr-index.html)**: The "why" behind our technical choices.
 
 ## Getting Started
 
 ### Installation
+
 Ensure you have Rust and Cargo installed, then clone the repository:
 
 ```bash
@@ -75,17 +80,21 @@ cargo build --release
 ```
 
 ### Basic Usage
+
 Download a file via HTTP:
+
 ```bash
 ./target/release/aura https://example.com/file.zip
 ```
 
 Download a BitTorrent magnet link or torrent file:
+
 ```bash
 ./target/release/aura "magnet:?xt=urn:btih:..."
 ```
 
 Batch download using globbing:
+
 ```bash
 ./target/release/aura "https://example.com/images/img_[001-100].jpg"
 ```
@@ -97,7 +106,7 @@ Aura is built on a foundation of independent actors:
 2. **Storage Engine**: Manages high-speed asynchronous disk I/O, write aggregation, and atomic file completion.
 3. **Protocol Workers**: Lightweight, specialized actors for HTTP, BitTorrent, and FTP that handle protocol-specific logic and data retrieval.
 
-See [ARCHITECTURE.md](aura-docs/project/ARCHITECTURE.md) for a deep dive into the system design and [CONTEXT.md](aura-docs/project/CONTEXT.md) for our ubiquitous language.
+See [ARCHITECTURE.md](aura-docs/manual/src/advanced/architecture.md) for a deep dive into the system design and [CONTEXT.md](aura-docs/manual/src/project/CONTEXT.md) for our ubiquitous language.
 
 ## Configuration
 
@@ -112,8 +121,9 @@ Aura uses an optional TOML configuration file (e.g., `Aura.toml`) to tune perfor
 See [Aura.example.toml](Aura.example.toml) for a fully annotated list of all options and their defaults.
 
 ## Contributing
+
 Please read [CONTRIBUTING.md](CONTRIBUTING.md) for our engineering standards and TDD workflow.
 
 ## License
-This project is licensed under the MIT License - see the LICENSE file for details.
 
+This project is licensed under the MIT License - see the LICENSE file for details.

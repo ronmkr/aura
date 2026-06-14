@@ -1,6 +1,6 @@
 # Resource Governor & Memory Backpressure
 
-Aura handles extreme high-speed downloads by dynamically managing its memory consumption. The **Resource Governor** (ADR 0057) is the central component responsible for preventing Out-Of-Memory (OOM) crashes through global backpressure.
+Aura handles extreme high-speed downloads by dynamically managing its memory consumption. The **Resource Governor** (Decision 0057) is the central component responsible for preventing Out-Of-Memory (OOM) crashes through global backpressure.
 
 ## 1. Decentralized Allocation Tracking
 
@@ -21,7 +21,7 @@ To prevent deadlocks (where a system is so full it can't even process the "flush
 - **Metadata Protection**: A portion of the memory budget is reserved exclusively for metadata (e.g., `.torrent` files) and internal control messages.
 - **Unchokable Tasks**: Critical operations like block verification and session saving are always allowed to proceed, even if the data limit is reached.
 
-## 4. Multi-Tenant Fairness
+## 4. Multi-tenant Fairness
 
 In shared environments, the Resource Governor ensures that one high-speed download doesn't starve others of memory:
 - **Fair-Share Limits**: The governor calculates a `limit / active_tenants` quota.

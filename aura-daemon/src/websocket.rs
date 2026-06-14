@@ -1,5 +1,5 @@
 //! Websocket session handler streaming real-time telemetry events from the
-//! internal event bus as specified by [ADR-0004](aura-docs/adr/0004-telemetry-and-event-bus.md).
+//! internal event bus as specified by [Decision-0004](aura-docs/manual/src/decisions/0004-telemetry-and-event-bus.md).
 
 use super::types::{AppState, WsQuery};
 use aura_core::orchestrator::{Engine, EventSubscriber};
@@ -51,7 +51,7 @@ pub async fn handle_ws(
 }
 
 /// Handles the WebSocket session lifecycle, upgrading the connection to stream
-/// real-time telemetry events from the core event bus as specified in [ADR-0004](aura-docs/adr/0004-telemetry-and-event-bus.md).
+/// real-time telemetry events from the core event bus as specified in [Decision-0004](aura-docs/manual/src/decisions/0004-telemetry-and-event-bus.md).
 pub async fn ws_session(socket: WebSocket, engine: Arc<Engine>) {
     let (mut sender, mut receiver) = socket.split();
     let mut event_rx = engine.subscribe();
