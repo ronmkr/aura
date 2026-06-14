@@ -24,7 +24,7 @@ impl MockStorage {
 }
 
 #[async_trait]
-impl super::StorageDispatch for MockStorage {
+impl crate::storage::StorageDispatch for MockStorage {
     async fn register_task(
         &self,
         _task_id: TaskId,
