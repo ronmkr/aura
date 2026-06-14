@@ -70,7 +70,7 @@ Aura's design is driven by a series of formal Design Decisions. These documents 
 | [0064](../adr/0064-process-resilience-panic-fd-limits.md) | Decision 0064: Process Resilience — Panic Recovery, Crash Reporting, and File Descriptor Management | Implemented (2026-06-04, PRs #258, #259) |
 | [0065](../adr/0065-interactive-tui-architecture.md) | Decision 0065: Interactive TUI Architecture & Selective Downloading | Implemented (2026-06-10, PR #277) |
 | [0066](../adr/0066-mse-pe-encryption.md) | Decision 0066: MSE/PE Traffic Encryption | Implemented (2026-06-13, PR #301) |
-| [0067](../adr/0067-utp-ledbat.md) | Decision 0067: μTP/LEDBAT Transport Layer | Proposed (2026-06-11 — Issue #286) |
+| [0067](../adr/0067-utp-ledbat.md) | Decision 0067: μTP/LEDBAT Transport Layer | Implemented (2026-06-14, PR #309) |
 | [0068](../adr/0068-fast-resume.md) | Decision 0068: Fast Resume and Piece Recheck | Implemented (2026-06-13, PR #300) |
 | [0069](../adr/0069-watch-folder.md) | Decision 0069: Watch Folder Auto-ingestion | Implemented (2026-06-14, PR #303) |
 | [0070](../adr/0070-rss-subscriptions.md) | Decision 0070: RSS/Atom Feed Subscriptions | Implemented (2026-06-14, PR #303) |

@@ -100,10 +100,10 @@
 - [ ] **QR Code Sharing** (Issue #74).
 - [ ] **i18n Architecture** (Issue #71).
 
-## Milestone 8: Daemon Maturity & Production Swarm Capabilities (in Progress)
+## Milestone 8: Daemon Maturity & Production Swarm Capabilities (completed)
 
 - [x] **feat: Implement MSE/PE (Message Stream Encryption) for BitTorrent traffic obfuscation** (Issue #283, Decision-0066).
-- [ ] **feat: Implement μTP/LEDBAT transport (BEP 29) for ISP-friendly BitTorrent** (Issue #286, Decision-0067).
+- [x] **feat: Implement μTP/LEDBAT transport (BEP 29) for ISP-friendly BitTorrent** (Issue #286, Decision-0067).
 - [x] **feat: Fast resume — verify and reuse existing file data on task re-add** (Issue #284, Decision-0068).
 - [x] **feat: Watch folder — auto-ingest torrents/metalinks** (Issue #288, Decision-0069).
 - [x] **feat: RSS/Atom feed subscriptions for automated download ingestion** (Issue #290, Decision-0070).
