@@ -21,6 +21,10 @@ Aura TUI uses a **ViewRouter** architecture (ADR 0065) with three primary screen
 ### Automated Ingestion Status
 Tasks added automatically via **Watch Folders** (ADR 0069) or **RSS Feed Subscriptions** (ADR 0070) appear dynamically in the main Dashboard list. Their origin/source is displayed under the task metadata section in the detail panel.
 
+When no task is selected, the right details panel transitions into a **System Overview** dashboard displaying global status:
+- **Watch Folder**: Shows whether the automated watch folder system is active or idle.
+- **Last Ingested**: Displays the file name of the most recently ingested torrent or metalink file.
+
 ---
 
 ## Power-User Navigation

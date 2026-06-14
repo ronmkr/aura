@@ -21,6 +21,7 @@ pub mod task_handle;
 pub mod telemetry;
 pub mod traits;
 pub mod vpn_enforcement;
+pub mod watch;
 pub mod worker_command;
 
 pub use command::Command;

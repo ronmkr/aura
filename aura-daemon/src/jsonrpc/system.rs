@@ -168,11 +168,27 @@ pub async fn handle_get_global_stat(engine: &Engine) -> Result<Value, Value> {
         .unwrap_or_default();
     let num_stopped = history.len();
 
+    let config = engine.config.load();
+    let watch_folder_active = config.storage.watch_dir.is_some() && {
+        if let Some(ref path_str) = config.storage.watch_dir {
+            std::path::Path::new(path_str).exists()
+        } else {
+            false
+        }
+    };
+
+    let last_ingested = {
+        let guard = engine.last_ingested_file.lock().await;
+        guard.clone().unwrap_or_else(|| "".to_string())
+    };
+
     Ok(json!({
         "downloadSpeed": "0",
         "uploadSpeed": "0",
         "numActive": num_active.to_string(),
         "numWaiting": num_waiting.to_string(),
         "numStopped": num_stopped.to_string(),
+        "watchFolderActive": watch_folder_active,
+        "lastIngestedFile": last_ingested,
     }))
 }

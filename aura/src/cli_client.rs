@@ -276,6 +276,14 @@ pub async fn run_status(
                 .unwrap_or(0);
             println!("{:<20}: {}", "Max Active Tasks", active);
         }
+
+        if let Some(storage) = config.get("storage") {
+            if let Some(watch_dir) = storage.get("watch_dir").and_then(|v| v.as_str()) {
+                println!("{:<20}: {}", "Watch Folder", watch_dir);
+            } else {
+                println!("{:<20}: Disabled", "Watch Folder");
+            }
+        }
     }
 
     Ok(())

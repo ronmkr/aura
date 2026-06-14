@@ -194,6 +194,7 @@ Controls how files are saved to your hard drive.
 | `read_ahead_kb` | Number (KB) | `128` | Pre-read data from disk into memory when uploading. |
 | `write_buffer_kb` | Number (KB) | `256` | Size of individual data chunks written to disk. |
 | `recheck_throttle_ms`| Time (ms) | `10` | Throttling delay in milliseconds between read chunks during hash rechecks (ADR 0068). |
+| `watch_dir` | Text | `None` | The folder path to monitor for auto-ingesting `.torrent`, `.metalink`, `.meta4`, or `.nzb` drops (ADR 0069). |
 
 ---
 
