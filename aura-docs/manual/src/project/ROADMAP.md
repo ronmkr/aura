@@ -1,6 +1,6 @@
 # Aura: Project Tasks & Roadmap
 
-> Last updated: 2026-05-26 (post-audit & gap-fix session)
+> Last updated: 2026-06-14 (post-audit & gap-fix session)
 
 ## Milestone 1: The Atomic Download (completed)
 

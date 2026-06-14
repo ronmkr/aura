@@ -70,12 +70,13 @@ All active development tasks, technical debt, and feature requests are managed e
 ## Completed Tasks
 
 - [x] **feat: Implement μTP/LEDBAT transport (BEP 29) for ISP-friendly BitTorrent** (Issue #286, Decision-0067) `[module:core, module:network, priority:high]`
-  - **Completion Commit**: `2135595`
+  - **Completion Commit**: `2135595`, `68d87bc` (refactoring & tests)
   - **Key Changes**:
-    - Implemented LEDBAT congestion controller (`aura-core/src/transport/ledbat.rs`) following RFC 6817 delay-based algorithms.
+    - Implemented LEDBAT congestion controller (`aura-core/src/transport/ledbat.rs`) following RFC 6817 delay-based algorithms, optimized using floating-point window calculations to eliminate integer truncation sticking points.
     - Implemented uTP packet header serialization/deserialization (`aura-core/src/transport/packet.rs`) using native Rust byte conversion without external dependencies.
-    - Implemented `UtpSocket` state machine (`aura-core/src/transport/socket.rs`) which implements Tokio's `AsyncRead` and `AsyncWrite` traits.
+    - Implemented `UtpSocket` state machine and split the async read/write implementations into `socket_io.rs` to comply with the 350-line file length limit.
     - Added the `prefer_utp` configuration flag (default `true`) to `BitTorrentConfig` and documented it in `Aura.example.toml` and manual.
+    - Activated the previously orphaned VPN unit tests (`aura-core/src/vpn/tests.rs`) and fixed outdated constructor signatures.
     - Added transport unit tests under `aura-core/src/transport/tests.rs` verifying LEDBAT and packet serialization.
 
 - [x] **feat: Implement BitTorrent tracker scrape for swarm statistics** (Issue #289) `[module:core, priority:moderate]`
