@@ -69,4 +69,5 @@ aura-docs/internal/
 aura-docs/manual/mermaid.min.js
 aura-docs/manual/mermaid-init.js
 aura-docs/manual/mdbook-admonish.css
+public/
 

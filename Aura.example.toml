@@ -66,6 +66,7 @@ dht_query_timeout_secs = 5             # Timeout for DHT queries
 tracker_polling_interval_secs = 60     # Interval to announce to trackers
 lpd_announce_interval_secs = 300       # Interval for Local Peer Discovery
 choker_interval_secs = 10              # Choking algorithm tick rate
+prefer_utp = true                      # Enable and prefer uTP (LEDBAT over UDP) transport for BitTorrent
 
 [bittorrent.seeding]
 min_ratio = 1.0                        # Stop seeding at 1.0 ratio
