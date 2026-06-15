@@ -120,6 +120,8 @@
   - [Decision 0070: RSS/Atom Feed Subscriptions](./adr/0070-rss-subscriptions.md)
   - [Decision 0071: System Service Integration](./adr/0071-system-service.md)
   - [Decision 0072: Architectural Decoupling of Engine God Nodes](./adr/0072-god-node-decoupling.md)
+  - [Decision 0073: NNTP Usenet Protocol Worker](./adr/0073-nntp-usenet.md)
+  - [Decision 0074: Desktop OS Notifications](./adr/0074-desktop-notifications.md)
 
 ---
 

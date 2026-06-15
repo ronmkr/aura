@@ -15,6 +15,7 @@ Users often need to download a sequential series of files (e.g., `image001.jpg` 
 3. **Batch Tasks**: Each expanded URI is treated as a separate **Download Task**.
 4. **Shared Options**: All tasks in a batch share the same initial configuration but can be controlled individually once created.
 5. **Crawler Integration**: Seed URLs passed to the recursive crawler (defined under [Decision-0030](0030-recursive-mirroring.md)) are also expanded using the glob expansion logic during crawler initialization.
+6. **Safety Limits**: To prevent resource exhaustion during batch folder scanning and ingestion, the engine will enforce directory depth boundaries using the `[bulk]` configuration section (e.g., `max_scan_depth`).
 
 ## Alternatives Considered
 

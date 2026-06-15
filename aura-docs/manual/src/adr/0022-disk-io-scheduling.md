@@ -31,8 +31,8 @@ Standard file I/O can be a bottleneck for high-speed downloads and can degrade s
 
 - **Disk I/O Scheduler & Hinting**: Initially scoped in `aura-core/src/storage/ops.rs` and `aura-core/src/storage/scheduler.rs` (2026-05-30, PR #163).
 
-## Implementation Status (audit 2026-06-03)
+## Implementation Status
 
 - **Kernel Hinting (posix_fadvise)**: Fully implemented.
-- **Disk I/O Scheduler (io_uring)**: Pending implementation behind a linux-specific feature flag (GAP-17).
-- **Mmap Fallback**: Pending implementation for large file operations (GAP-17).
+- **Disk I/O Scheduler (io_uring)**: Pending implementation behind a linux-specific feature flag (tracked in Issue #295).
+- **Mmap Fallback**: Pending implementation for large file operations (tracked in Issue #295).

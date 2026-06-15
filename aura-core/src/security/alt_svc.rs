@@ -1,3 +1,4 @@
+use arc_swap::ArcSwap;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -20,24 +21,40 @@ pub struct AltSvcCacheInner {
 #[derive(Debug, Clone)]
 pub struct AltSvcCache {
     inner: Arc<RwLock<AltSvcCacheInner>>,
+    config: Arc<ArcSwap<crate::Config>>,
 }
 
 impl Default for AltSvcCache {
     fn default() -> Self {
-        Self::new()
+        Self::new(Arc::new(ArcSwap::from_pointee(crate::Config::default())))
     }
 }
 
 impl AltSvcCache {
-    pub fn new() -> Self {
-        let cache = Self::load();
+    pub fn new(config: Arc<ArcSwap<crate::Config>>) -> Self {
+        let path = Self::resolve_path(&config);
+        let cache = Self::load(&path);
         Self {
             inner: Arc::new(RwLock::new(cache)),
+            config,
         }
     }
 
-    pub fn load() -> AltSvcCacheInner {
-        let path = std::path::Path::new(".aura/alt_svc.json");
+    fn resolve_path(config: &ArcSwap<crate::Config>) -> std::path::PathBuf {
+        let current_config = config.load();
+        let base_dir = if let Some(ref sandbox) = current_config.storage.sandbox_root {
+            std::path::PathBuf::from(sandbox)
+        } else {
+            let home = std::env::var_os("HOME")
+                .or_else(|| std::env::var_os("USERPROFILE"))
+                .map(std::path::PathBuf::from);
+            home.map(|h| h.join(".aura"))
+                .unwrap_or_else(|| std::path::PathBuf::from(".aura"))
+        };
+        base_dir.join("alt_svc.json")
+    }
+
+    pub fn load(path: &std::path::Path) -> AltSvcCacheInner {
         if path.exists() {
             if let Ok(data) = std::fs::read_to_string(path) {
                 if let Ok(cache) = serde_json::from_str::<AltSvcCacheInner>(&data) {
@@ -49,10 +66,13 @@ impl AltSvcCache {
     }
 
     pub async fn save(&self) {
+        let path = Self::resolve_path(&self.config);
+        if let Some(parent) = path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
         let inner = self.inner.read().await;
-        let _ = std::fs::create_dir_all(".aura");
         if let Ok(data) = serde_json::to_string_pretty(&*inner) {
-            let _ = std::fs::write(".aura/alt_svc.json", data);
+            let _ = std::fs::write(&path, data);
         }
     }
 

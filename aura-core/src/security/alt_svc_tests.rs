@@ -71,7 +71,12 @@ fn test_rewrite_url_for_alt_svc() {
 
 #[tokio::test]
 async fn test_alt_svc_cache_workflow() {
-    let cache = AltSvcCache::new();
+    let temp_dir = tempfile::tempdir().unwrap();
+    let sandbox_path = temp_dir.path().to_str().unwrap().to_string();
+    let mut config = crate::Config::default();
+    config.storage.sandbox_root = Some(sandbox_path);
+    let config_swap = Arc::new(arc_swap::ArcSwap::from_pointee(config));
+    let cache = AltSvcCache::new(config_swap);
     let domain = "api.example.com".to_string();
 
     // Initially no alt service
