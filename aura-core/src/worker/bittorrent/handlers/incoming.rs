@@ -102,7 +102,13 @@ impl BtWorker {
                     self.handle_metadata_message(payload, ctx).await?;
                     Ok(true)
                 } else if Some(id) == self.ut_pex_id {
-                    if self.pex_enabled {
+                    let is_private = if let Some(ref torrent) = *ctx.task.state.torrent.lock().await
+                    {
+                        torrent.is_private()
+                    } else {
+                        false
+                    };
+                    if self.pex_enabled && !is_private {
                         if let Ok(pex_msg) = serde_bencode::from_bytes::<
                             crate::worker::bittorrent::protocol::PexMessage,
                         >(&payload)

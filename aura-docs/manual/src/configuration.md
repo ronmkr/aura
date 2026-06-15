@@ -339,3 +339,20 @@ Subscription data for automated feed monitoring is stored in `~/.aura/feeds.toml
 | `filters` | List of Regex | Only download items where the title matches these patterns. |
 | `categories` | List of Texts | Filter items by the `<category>` tag. |
 | `max_size` | Number (Bytes) | Ignore items larger than this limit. |
+
+---
+
+## [theme]
+
+Defines color customizations for the interactive TUI (Decision 0012). Colors can be specified as hex strings (e.g., `"#FF0000"` or `"#00FF00"`).
+
+| Setting | Value Type | Default | What it does |
+|:---|:---|:---|:---|
+| `primary` | Text (Hex) | `"#0000FF"` | Primary color for UI borders and headers. |
+| `accent` | Text (Hex) | `"#00FFFF"` | Accent color for selections and highlights. |
+| `highlight` | Text (Hex) | `"#FFFF00"` | Highlight color for cursor items. |
+| `background` | Text (Hex) | `"#000000"` | TUI background color. |
+| `foreground` | Text (Hex) | `"#FFFFFF"` | Main text color. |
+| `success` | Text (Hex) | `"#00FF00"` | Color for completed tasks and active speed indicators. |
+| `error` | Text (Hex) | `"#FF0000"` | Color for error logs and failed downloads. |
+| `warning` | Text (Hex) | `"#FFFF00"` | Color for warning symbols and pending states. |

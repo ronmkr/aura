@@ -39,6 +39,7 @@ async fn test_recheck_bittorrent_success() {
         files: None,
         meta_version: None,
         file_tree: None,
+        private: None,
     };
     let torrent = Torrent {
         announce: "http://tracker.example.com/announce".to_string(),

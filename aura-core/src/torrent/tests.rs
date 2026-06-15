@@ -10,6 +10,7 @@ fn test_torrent_serialization() {
         files: None,
         meta_version: None,
         file_tree: None,
+        private: None,
     };
     let torrent = Torrent {
         announce: "http://tracker.com/announce".to_string(),
@@ -69,6 +70,7 @@ fn test_flatten_v2_files() {
         files: None,
         meta_version: Some(2),
         file_tree: Some(Value::Dict(file_tree)),
+        private: None,
     };
 
     let torrent = Torrent {
@@ -146,6 +148,7 @@ fn test_block_hash_v2_lookup() {
         files: None,
         meta_version: Some(2),
         file_tree: Some(Value::Dict(file_tree)),
+        private: None,
     };
 
     let torrent = Torrent {
@@ -179,4 +182,54 @@ fn test_block_hash_v2_lookup() {
 
     let h1 = torrent.block_hash_v2(0, 1, Some(&db)).unwrap();
     assert_eq!(h1, block1_hash);
+}
+
+#[test]
+fn test_private_torrent() {
+    let info_public = Info {
+        name: "test.txt".to_string(),
+        piece_length: 1024,
+        pieces: Some(vec![0; 20]),
+        length: Some(1024),
+        files: None,
+        meta_version: None,
+        file_tree: None,
+        private: None,
+    };
+    let torrent_public = Torrent {
+        announce: "http://tracker.com/announce".to_string(),
+        info: info_public,
+        announce_list: None,
+        comment: None,
+        created_by: None,
+        creation_date: None,
+        piece_layers: None,
+    };
+    assert!(!torrent_public.is_private());
+
+    let info_private = Info {
+        name: "test.txt".to_string(),
+        piece_length: 1024,
+        pieces: Some(vec![0; 20]),
+        length: Some(1024),
+        files: None,
+        meta_version: None,
+        file_tree: None,
+        private: Some(1),
+    };
+    let torrent_private = Torrent {
+        announce: "http://tracker.com/announce".to_string(),
+        info: info_private,
+        announce_list: None,
+        comment: None,
+        created_by: None,
+        creation_date: None,
+        piece_layers: None,
+    };
+    assert!(torrent_private.is_private());
+
+    // Test bencode parsing
+    let encoded = serde_bencode::to_bytes(&torrent_private).unwrap();
+    let decoded = Torrent::from_bytes(&encoded).unwrap();
+    assert!(decoded.is_private());
 }

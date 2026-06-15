@@ -26,6 +26,7 @@ All active development tasks, technical debt, and feature requests are managed e
 - [x] **feat: Watch folder — auto-ingest .torrent/.metalink files dropped into a directory** (Issue #288) `[module:core, module:daemon, priority:high]`
 - [x] **feat: RSS/Atom feed subscriptions for automated download ingestion** (Issue #290) `[module:core, module:daemon, priority:high]`
 - [x] **feat: System service integration — auto-start daemon on boot (systemd, launchd, Windows Service)** (Issue #291) `[module:daemon, module:cli, priority:high, infra]`
+- [x] **feat: Implement BitTorrent private torrents (BEP 27) support to protect user privacy and respect tracker constraints** (Issue #292) `[module:core, module:network, priority:high]`
 - [x] **epic: Interactive TUI Modernization (Command Center)** `[module:tui, priority:high]`
   - [x] Refactor TUI to stateful Multi-View architecture (Dashboard, Mission Control, File Selector).
   - [x] Implement the Main Dashboard with split-layout (Task List + Real-time Detail Panel).

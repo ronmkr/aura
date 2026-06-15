@@ -11,6 +11,17 @@ impl BtTask {
         let info_hash = self.state.info_hash;
         info!(%self.id, "Starting LPD announcement loop");
 
+        let is_private = if let Some(ref torrent) = *self.state.torrent.lock().await {
+            torrent.is_private()
+        } else {
+            false
+        };
+
+        if is_private {
+            info!(%self.id, "Skipping LPD loop for private torrent");
+            return Ok(());
+        }
+
         // Initial announcement
         let _ = self
             .lpd_tx
@@ -18,6 +29,21 @@ impl BtTask {
             .await;
 
         loop {
+            let is_private = if let Some(ref torrent) = *self.state.torrent.lock().await {
+                torrent.is_private()
+            } else {
+                false
+            };
+
+            if is_private {
+                info!(%self.id, "Stopping LPD announcement loop for private torrent");
+                let _ = self
+                    .lpd_tx
+                    .send(crate::lpd::LpdCommand::Remove { info_hash })
+                    .await;
+                break;
+            }
+
             let lpd_announce_interval_secs = self
                 .state
                 .config

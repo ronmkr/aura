@@ -45,39 +45,7 @@ impl Orchestrator {
                 self.handle_resume(id).await?;
             }
             Command::Remove(id) => {
-                let _ = self.handle_pause(id).await;
-                if let Some(task) = self.tasks.get(&id) {
-                    if task.phase != crate::task::DownloadPhase::Complete
-                        && task.phase != crate::task::DownloadPhase::Error
-                    {
-                        let duration_secs = task
-                            .created_at
-                            .map(|t| (chrono::Utc::now() - t).num_seconds().max(0) as u64)
-                            .unwrap_or(0);
-                        let record = crate::history::CompletedTaskRecord {
-                            id: task.id.0.to_string(),
-                            name: task.name.clone(),
-                            uris: task.subtasks.iter().map(|s| s.uri.clone()).collect(),
-                            total_bytes: task.total_length,
-                            downloaded_bytes: task.completed_length,
-                            uploaded_bytes: task.uploaded_length(),
-                            duration_secs,
-                            checksum_verified: Some(false),
-                            phase: "Removed".to_string(),
-                            error: Some("Task removed by user".to_string()),
-                            completed_at: chrono::Utc::now(),
-                        };
-                        let config = self.config.load();
-                        crate::history::HistoryManager::append_record(&config, record);
-                    }
-                }
-                let throttler = if let Some(task) = self.tasks.get(&id) {
-                    self.resolve_throttler(&task.tenant_id)
-                } else {
-                    self.throttler.clone()
-                };
-                throttler.unregister_task(id).await;
-                self.tasks.remove(&id);
+                self.handle_remove(id).await?;
             }
             Command::ListActive(reply_tx) => {
                 let active: Vec<MetaTask> = self.tasks.values().cloned().collect();
@@ -237,15 +205,24 @@ impl Orchestrator {
                             let info_hash = bt_task.state.info_hash;
                             let config = self.config.load();
                             let port = config.network.listen_port;
-                            let _ = self
-                                .dht_tx
-                                .send(crate::dht::DhtCommand::Announce { info_hash, port })
-                                .await;
-                            let _ = self
-                                .lpd_tx
-                                .send(crate::lpd::LpdCommand::Announce { info_hash, port })
-                                .await;
-                            tracing::info!(%id, "Refreshed peer discovery via DHT and LPD");
+                            let is_private = bt_task
+                                .state
+                                .torrent
+                                .lock()
+                                .await
+                                .as_ref()
+                                .is_some_and(|t| t.is_private());
+                            if !is_private {
+                                let _ = self
+                                    .dht_tx
+                                    .send(crate::dht::DhtCommand::Announce { info_hash, port })
+                                    .await;
+                                let _ = self
+                                    .lpd_tx
+                                    .send(crate::lpd::LpdCommand::Announce { info_hash, port })
+                                    .await;
+                                tracing::info!(%id, "Refreshed peer discovery via DHT and LPD");
+                            }
                         }
                     }
                 }

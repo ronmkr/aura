@@ -28,4 +28,6 @@ pub struct Info {
     pub meta_version: Option<u64>,
     #[serde(rename = "file tree", skip_serializing_if = "Option::is_none")]
     pub file_tree: Option<serde_bencode::value::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub private: Option<u8>,
 }

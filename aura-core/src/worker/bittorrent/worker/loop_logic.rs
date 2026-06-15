@@ -75,9 +75,14 @@ impl BtWorker {
         }
 
         if ext_support {
+            let is_private = if let Some(ref torrent) = *task.state.torrent.lock().await {
+                torrent.is_private()
+            } else {
+                false
+            };
             let mut m = std::collections::HashMap::new();
             m.insert("ut_metadata".to_string(), 1);
-            if self.pex_enabled {
+            if self.pex_enabled && !is_private {
                 m.insert("ut_pex".to_string(), 2);
             }
             let ext_hs = ExtendedHandshake {
@@ -229,7 +234,12 @@ impl BtWorker {
                 }
             }
             WorkerCommand::PexUpdate(active_peers) => {
-                if !self.pex_enabled {
+                let is_private = if let Some(ref torrent) = *ctx.task.state.torrent.lock().await {
+                    torrent.is_private()
+                } else {
+                    false
+                };
+                if !self.pex_enabled || is_private {
                     return Ok(());
                 }
                 if let Some(pex_id) = self.ut_pex_id {

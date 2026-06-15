@@ -72,6 +72,7 @@ async fn test_bep12_tracker_tiers() {
             files: None,
             meta_version: None,
             file_tree: None,
+            private: None,
         },
         announce_list: Some(vec![vec![server_b.uri()], vec![server_c.uri()]]),
         comment: None,
@@ -96,6 +97,7 @@ async fn test_bep12_tracker_tiers() {
             files: None,
             meta_version: None,
             file_tree: None,
+            private: None,
         },
         announce_list: Some(vec![vec![server_b.uri(), server_a.uri()]]),
         comment: None,
@@ -132,6 +134,7 @@ async fn test_bep12_tracker_tiers_edge_cases() {
             files: None,
             meta_version: None,
             file_tree: None,
+            private: None,
         },
         announce_list: Some(vec![
             vec![
@@ -183,6 +186,7 @@ async fn test_tracker_scrape_http() {
             files: None,
             meta_version: None,
             file_tree: None,
+            private: None,
         },
         announce_list: None,
         comment: None,
