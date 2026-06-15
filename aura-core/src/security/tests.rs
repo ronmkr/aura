@@ -19,8 +19,12 @@ fn test_parse_hsts_header() {
 
 #[tokio::test]
 async fn test_hsts_cache_upgrades() {
-    let _ = std::fs::remove_file(".aura/hsts.json");
-    let cache = HstsCache::new();
+    let temp_dir = tempfile::tempdir().unwrap();
+    let sandbox_path = temp_dir.path().to_str().unwrap().to_string();
+    let mut config = crate::Config::default();
+    config.storage.sandbox_root = Some(sandbox_path);
+    let config_swap = Arc::new(arc_swap::ArcSwap::from_pointee(config));
+    let cache = HstsCache::new(config_swap);
     let domain = "secure-example.com".to_string();
 
     // Initially no policy, so should not upgrade
@@ -38,14 +42,16 @@ async fn test_hsts_cache_upgrades() {
     // Small delay just to be completely sure expiry is not in exact same second
     tokio::time::sleep(std::time::Duration::from_millis(50)).await;
     assert!(!cache.should_upgrade(&domain).await);
-
-    let _ = std::fs::remove_file(".aura/hsts.json");
 }
 
 #[tokio::test]
 async fn test_hsts_subdomain_matching() {
-    let _ = std::fs::remove_file(".aura/hsts.json");
-    let cache = HstsCache::new();
+    let temp_dir = tempfile::tempdir().unwrap();
+    let sandbox_path = temp_dir.path().to_str().unwrap().to_string();
+    let mut config = crate::Config::default();
+    config.storage.sandbox_root = Some(sandbox_path);
+    let config_swap = Arc::new(arc_swap::ArcSwap::from_pointee(config));
+    let cache = HstsCache::new(config_swap);
     let domain = "parent.com".to_string();
 
     cache.insert_policy(domain.clone(), 300, true).await;
@@ -56,6 +62,4 @@ async fn test_hsts_subdomain_matching() {
 
     // Mismatched domain should not upgrade
     assert!(!cache.should_upgrade("otherparent.com").await);
-
-    let _ = std::fs::remove_file(".aura/hsts.json");
 }

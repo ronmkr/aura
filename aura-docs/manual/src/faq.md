@@ -49,7 +49,7 @@ Yes. Aura is built from the ground up for **BitTorrent v2** (BEP 52). It support
 
 ### Does Aura Support Usenet / Nntp?
 
-Not yet. There is an experimental protocol worker stub in the codebase, but active Usenet (NNTP) downloading is currently deferred (tracked as Issue #22).
+Yes! Aura includes a full NNTP/Usenet worker supporting yEnc-encoded segment downloads. Provide an `nntp://` URI or configure a provider in `Aura.toml`. See the [Worker Architecture](../architecture/workers.md) page for details.
 
 ### Can I Choose Specific Files To Download In A Torrent?
 

@@ -247,7 +247,12 @@ async fn test_http_worker_retry_on_503() {
 }
 #[tokio::test]
 async fn test_http_worker_hsts_upgrade() {
-    let hsts_cache = crate::security::HstsCache::new();
+    let temp_dir = tempfile::tempdir().unwrap();
+    let sandbox_path = temp_dir.path().to_str().unwrap().to_string();
+    let mut config = crate::Config::default();
+    config.storage.sandbox_root = Some(sandbox_path);
+    let config_swap = std::sync::Arc::new(arc_swap::ArcSwap::from_pointee(config));
+    let hsts_cache = crate::security::HstsCache::new(config_swap);
     let host = "example.com".to_string();
     hsts_cache.insert_policy(host, 300, true).await;
 
@@ -295,7 +300,12 @@ async fn test_http_worker_alt_svc_header_caching() {
         .mount(&server)
         .await;
 
-    let alt_svc_cache = crate::security::AltSvcCache::new();
+    let temp_dir = tempfile::tempdir().unwrap();
+    let sandbox_path = temp_dir.path().to_str().unwrap().to_string();
+    let mut config = crate::Config::default();
+    config.storage.sandbox_root = Some(sandbox_path);
+    let config_swap = std::sync::Arc::new(arc_swap::ArcSwap::from_pointee(config));
+    let alt_svc_cache = crate::security::AltSvcCache::new(config_swap);
     let worker = HttpWorker::new(WorkerOptions {
         uri: format!("{}/file", server.uri()),
         local_addr: None,

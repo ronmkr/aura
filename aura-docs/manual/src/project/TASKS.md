@@ -52,6 +52,7 @@ All active development tasks, technical debt, and feature requests are managed e
   - [x] Zero-friction ingest: Terminal Drag-and-Drop and OS Clipboard monitoring.
 - [ ] **infra: Add CI cross-platform matrix and cargo audit workflow** (Issue #148) `[infra, priority:moderate]`
 - [ ] **infra: CI test matrix missing Windows and macOS runners (Issue #148 partially done)** (Issue #287) `[infra, priority:moderate, module:ci]`
+- [ ] **perf: Complete io_uring and mmap fallbacks for Disk I/O scheduling (Decision-0022)** (Issue #295) `[module:storage, priority:moderate]`
 - [x] **feat: Implement BitTorrent tracker scrape for swarm statistics** (Issue #289) `[module:core, priority:moderate]`
 - [x] **feat: ETag and Last-Modified conditional GET for incremental file refresh** (Issue #255) `[module:core, priority:moderate]`
 - [x] **perf: Share reqwest HTTP connection pool across segment workers for same-host downloads** (Issue #256) `[module:core, priority:moderate]`
@@ -68,6 +69,13 @@ All active development tasks, technical debt, and feature requests are managed e
 - [ ] **feat: i18n support for CLI and TUI** (Issue #71) `[module:cli, module:tui, priority:minor]`
 
 ## Completed Tasks
+
+- [x] **feat: Desktop Notifications** (OS-native alerts on download complete/error via notify-rust) `[module:orchestrator, priority:moderate]`
+  - **Completion Commit**: `9e86833`
+  - **Key Changes**:
+    - Integrated `notify-rust` library to trigger native OS desktop notifications.
+    - Added `notify_complete` and `notify_error` triggers in orchestrator task state transitions.
+    - Wired notifications configuration into the `[notifications]` section of `Aura.toml`.
 
 - [x] **feat: Implement μTP/LEDBAT transport (BEP 29) for ISP-friendly BitTorrent** (Issue #286, Decision-0067) `[module:core, module:network, priority:high]`
   - **Completion Commit**: `2135595`, `68d87bc` (refactoring & tests)

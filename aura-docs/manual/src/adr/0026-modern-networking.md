@@ -27,7 +27,7 @@ Modern networking requires minimizing latency through parallel connection attemp
 ## Implementation Details
 
 1. **HTTP/3 Support**: Enabled via the `reqwest` crate's `"http3"` feature and workspace-level global `--cfg reqwest_unstable` compilation configuration.
-2. **Alt-Svc Caching**: Built a persistent [alt_svc.rs](../../aura-core/src/security/alt_svc.rs) cache that serializes to `.aura/alt_svc.json`. This stores alternative protocols, hosts, ports, and max-age expiration.
+2. **Alt-Svc Caching**: Built a persistent [alt_svc.rs](../../aura-core/src/security/alt_svc.rs) cache that serializes to `alt_svc.json` under the configured `sandbox_root` directory (or falls back to the user's home `.aura/` directory). This stores alternative protocols, hosts, ports, and max-age expiration.
 3. **Transparent Fallback**: To handle hostile environments where UDP/443 is blocked or filtered, the worker automatically falls back to standard HTTP/1.1 or HTTP/2 over TCP if the HTTP/3 handshake or request fails.
 
 ## Implementation Status (audit 2026-06-03)

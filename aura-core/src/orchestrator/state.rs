@@ -309,8 +309,8 @@ impl Orchestrator {
                 credential_provider,
                 dns_resolver,
                 db,
-                hsts_cache: crate::security::HstsCache::new(),
-                alt_svc_cache: crate::security::AltSvcCache::new(),
+                hsts_cache: crate::security::HstsCache::new(config.clone()),
+                alt_svc_cache: crate::security::AltSvcCache::new(config.clone()),
                 policy_manager: crate::orchestrator::policy_manager::PolicyManager::new(),
                 client_pool: crate::worker::http::ClientPool::new(),
                 notification_service: Arc::new(super::notifications::NotificationService::new(

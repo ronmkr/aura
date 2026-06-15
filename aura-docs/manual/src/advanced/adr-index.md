@@ -26,7 +26,7 @@ Aura's design is driven by a series of formal Design Decisions. These documents 
 | [0020](../adr/0020-engine-api.md) | Decision 0020: Engine API and Library Embeddability | Implemented (2026-05-06, commit 0777b1ab) |
 | [0021](../adr/0021-network-filesystem-optimization.md) | Decision 0021: Network Filesystem Optimization (NFS/SMB) | Implemented (2026-06-04) |
 | [0022](../adr/0022-disk-io-scheduling.md) | Decision 0022: Advanced Disk I/O Scheduling and Kernel Hinting | Partially Implemented (Audit 2026-06-03) |
-| [0023](../adr/0023-adaptive-scaling-and-aggregation.md) | Decision 0023: Adaptive Connection Scaling and Sourced Aggregation | Partially Implemented (2026-05-25, PR #90) |
+| [0023](../adr/0023-adaptive-scaling-and-aggregation.md) | Decision 0023: Adaptive Connection Scaling and Sourced Aggregation | Implemented (2026-06-11, PR #294) |
 | [0024](../adr/0024-integrity-scrubbing.md) | Decision 0024: Integrity Scrubbing and Torrent Refreshing | Implemented (2026-05-06, commit 0777b1ab) |
 | [0025](../adr/0025-nat-traversal-and-lpd.md) | Decision 0025: NAT Traversal and LAN Discovery | Implemented (2026-05-27, PR #114) |
 | [0026](../adr/0026-modern-networking.md) | Decision 0026: Modern Networking (Happy Eyeballs, Alt-Svc, Streaming) | Implemented (2026-06-10, PR #277) |
@@ -76,4 +76,7 @@ Aura's design is driven by a series of formal Design Decisions. These documents 
 | [0070](../adr/0070-rss-subscriptions.md) | Decision 0070: RSS/Atom Feed Subscriptions | Implemented (2026-06-14, PR #303) |
 | [0071](../adr/0071-system-service.md) | Decision 0071: System Service Integration | Implemented (2026-06-14, PR #303) |
 | [0072](../adr/0072-god-node-decoupling.md) | Decision 0072: God Node Decoupling | Implemented (2026-06-13) |
+| [0073](../adr/0073-nntp-usenet.md) | Decision 0073: NNTP Usenet Protocol Worker | Implemented (2026-06-11, PR #294) |
+| [0074](../adr/0074-desktop-notifications.md) | Decision 0074: Desktop OS Notifications | Implemented (2026-06-11, commit 9e86833) |
+
 For a full list of Decisions, see the `aura-docs/manual/src/adr/` directory in the repository.

@@ -63,6 +63,7 @@
 - [x] **Modular Architecture Refactor** (Strict 400-line per file limit enforced).
 - [x] **Unified Binary Architecture** (Single `aura` executable with subcommands).
 - [x] **Power Management** (Thread-isolated `nosleep`, cross-platform).
+- [x] **Task Chaining & Metadata-based Path Mapping** (Issue #11).
 
 ## Milestone 7: Industrial Hardening (in Progress)
 
@@ -88,15 +89,13 @@
 - [x] **Multi-tenancy & Structured Audit Tracing** (Issue #15).
 - [x] **Architectural Decoupling (God Nodes)** (Decision-0072).
 - [x] **Cloud Storage Support (S3, GDrive, OneDrive)** (Issue #10, Decision 0013) (#280).
-
-### Remaining - Priority
+- [x] **Recursive Mirroring** (Wget-style site crawling) (Issue #65) (Decision 0030).
+- [x] **Network Filesystem (NFS/SMB) Optimizations** (Issue #12) (Decision 0021).
+- [x] **HTTP/3 QUIC** (Issue #23) (Decision 0026).
+- [x] **Desktop Notifications** (OS-native alerts on download complete/error via notify-rust) (Decision 0074).
 
 ### Future Backlog
 
-- [ ] **Recursive Mirroring** (Wget-style site crawling) (Issue #65).
-- [ ] **Network Filesystem (NFS/SMB) Optimizations** (Issue #12).
-- [ ] **Task Chaining & Metadata-based Path Mapping** (Issue #11).
-- [ ] **HTTP/3 QUIC** (Issue #23).
 - [ ] **QR Code Sharing** (Issue #74).
 - [ ] **i18n Architecture** (Issue #71).
 
