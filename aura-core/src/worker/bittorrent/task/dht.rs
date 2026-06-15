@@ -7,6 +7,17 @@ impl BtTask {
     pub async fn run_dht_loop(&self, token: tokio_util::sync::CancellationToken) -> Result<()> {
         let info_hash = self.state.info_hash;
         loop {
+            let is_private = if let Some(ref torrent) = *self.state.torrent.lock().await {
+                torrent.is_private()
+            } else {
+                false
+            };
+
+            if is_private {
+                debug!(%self.id, "Exiting DHT loop for private torrent");
+                break;
+            }
+
             tokio::select! {
                 _ = token.cancelled() => break,
                 _ = async {

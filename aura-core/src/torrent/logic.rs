@@ -28,6 +28,10 @@ impl Torrent {
             .map_err(|e| Error::Protocol(format!("Failed to parse torrent file: {}", e)))
     }
 
+    pub fn is_private(&self) -> bool {
+        self.info.private == Some(1)
+    }
+
     pub fn info_hash_v1(&self) -> Result<Option<[u8; 20]>> {
         if self.info.pieces.is_none() {
             return Ok(None);

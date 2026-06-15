@@ -108,6 +108,7 @@
 - [x] **feat: RSS/Atom feed subscriptions for automated download ingestion** (Issue #290, Decision-0070).
 - [x] **feat: System service integration (systemd, launchd, Windows Service)** (Issue #291, Decision-0071).
 - [x] **feat: Implement BitTorrent tracker scrape for swarm statistics** (Issue #289).
+- [x] **feat: Implement BitTorrent private torrents (BEP 27) support to respect tracker rules and protect user privacy** (Decision 0075).
 
 ## Infrastructure & Devsecops
 

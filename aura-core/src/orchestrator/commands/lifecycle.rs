@@ -238,4 +238,39 @@ impl Orchestrator {
 
         Ok(())
     }
+
+    pub(crate) async fn handle_remove(&mut self, id: TaskId) -> Result<()> {
+        let _ = self.handle_pause(id).await;
+        if let Some(task) = self.tasks.get(&id) {
+            if task.phase != DownloadPhase::Complete && task.phase != DownloadPhase::Error {
+                let duration_secs = task
+                    .created_at
+                    .map(|t| (chrono::Utc::now() - t).num_seconds().max(0) as u64)
+                    .unwrap_or(0);
+                let record = crate::history::CompletedTaskRecord {
+                    id: task.id.0.to_string(),
+                    name: task.name.clone(),
+                    uris: task.subtasks.iter().map(|s| s.uri.clone()).collect(),
+                    total_bytes: task.total_length,
+                    downloaded_bytes: task.completed_length,
+                    uploaded_bytes: task.uploaded_length(),
+                    duration_secs,
+                    checksum_verified: Some(false),
+                    phase: "Removed".to_string(),
+                    error: Some("Task removed by user".to_string()),
+                    completed_at: chrono::Utc::now(),
+                };
+                let config = self.config.load();
+                crate::history::HistoryManager::append_record(&config, record);
+            }
+        }
+        let throttler = if let Some(task) = self.tasks.get(&id) {
+            self.resolve_throttler(&task.tenant_id)
+        } else {
+            self.throttler.clone()
+        };
+        throttler.unregister_task(id).await;
+        self.tasks.remove(&id);
+        Ok(())
+    }
 }

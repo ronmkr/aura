@@ -45,6 +45,7 @@ Standard BitTorrent "Announces" only provide a list of active peers. To provide 
 Aura implements high-performance discovery protocols:
 - **PEX (BEP 11)**: A gossip protocol where peers share their own lists of known good peers. Aura uses a reputation-based filter to prioritize high-uptime peers from PEX messages.
 - **Mainline DHT (BEP 5)**: A Kademlia-based Distributed Hash Table for trackerless discovery. Aura periodically refreshes its routing table and stores high-uptime "bootstrap" candidates to ensure fast joining even if primary trackers are offline.
+- **Private Torrents (BEP 27)**: Aura respects the `private` flag in the torrent's metadata info dictionary. When set to `1`, Aura completely disables DHT routing and `get_peers` queries, suppresses Local Peer Discovery (LPD) broadcasts, and shuts down PEX messaging for the swarm. This ensures that only the tracker is used for peer discovery, satisfying private tracker rules and protecting user anonymity.
 
 ## Choking Algorithm (tit-for-tat)
 
