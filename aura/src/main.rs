@@ -229,7 +229,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some(Commands::Tui) => {
             // Run TUI
             let rpc_url = format!("http://localhost:{}/jsonrpc", config.network.rpc_port);
-            aura_tui::run(rpc_url, config.network.rpc_secret.clone()).await?;
+            let secret = aura_core::Config::resolve_rpc_secret(config.network.rpc_secret.clone());
+            aura_tui::run(rpc_url, secret).await?;
         }
         Some(Commands::Probe { dir }) => {
             aura_cli::commands::probe::run_probe(Some(dir)).await?;
