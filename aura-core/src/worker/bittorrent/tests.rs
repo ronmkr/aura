@@ -89,6 +89,7 @@ async fn test_failed_connection_transitions_to_disconnected() {
         crate::worker::bittorrent::task::BtTaskFromMagnetArgs {
             id: crate::TaskId(12345),
             info_hash,
+            trackers: Vec::new(),
             dht_tx,
             lpd_tx,
             db,

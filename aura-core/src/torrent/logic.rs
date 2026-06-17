@@ -1,6 +1,6 @@
 //! torrent: Parsing and handling of .torrent (metainfo) files.
 
-use crate::{Error, Result};
+use crate::{Error, InfoHash, Result};
 use serde::{Deserialize, Serialize};
 use sha1::{Digest as Sha1Digest, Sha1};
 use sha2::Sha256;
@@ -20,6 +20,8 @@ pub struct Torrent {
     pub creation_date: Option<u64>,
     #[serde(rename = "piece layers", skip_serializing_if = "Option::is_none")]
     pub piece_layers: Option<serde_bencode::value::Value>,
+    #[serde(skip)]
+    pub info_hash_override: Option<InfoHash>,
 }
 
 impl Torrent {
@@ -33,6 +35,12 @@ impl Torrent {
     }
 
     pub fn info_hash_v1(&self) -> Result<Option<[u8; 20]>> {
+        if let Some(ref o) = self.info_hash_override {
+            return match o {
+                InfoHash::V1(h) => Ok(Some(*h)),
+                InfoHash::V2(_) => Ok(None),
+            };
+        }
         if self.info.pieces.is_none() {
             return Ok(None);
         }
@@ -46,6 +54,12 @@ impl Torrent {
     }
 
     pub fn info_hash_v2(&self) -> Result<Option<[u8; 32]>> {
+        if let Some(ref o) = self.info_hash_override {
+            return match o {
+                InfoHash::V1(_) => Ok(None),
+                InfoHash::V2(h) => Ok(Some(*h)),
+            };
+        }
         if self.info.meta_version != Some(2) {
             return Ok(None);
         }

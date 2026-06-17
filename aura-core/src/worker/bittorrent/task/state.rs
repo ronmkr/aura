@@ -11,6 +11,7 @@ use tokio::sync::Mutex;
 pub struct BtTaskState {
     pub info_hash: InfoHash,
     pub torrent: Mutex<Option<Torrent>>,
+    pub magnet_trackers: Vec<String>,
     pub bitfield: Mutex<Option<Bitfield>>,
     pub picker: Mutex<Option<PiecePicker>>,
     pub registry: Mutex<PeerRegistry>,
@@ -85,6 +86,7 @@ impl BtTaskState {
         Self {
             info_hash,
             torrent: Mutex::new(Some(torrent)),
+            magnet_trackers: Vec::new(),
             bitfield: Mutex::new(Some(bf)),
             picker: Mutex::new(Some(picker)),
             registry: Mutex::new(registry),
@@ -107,6 +109,7 @@ impl BtTaskState {
 
     pub fn new_magnet(
         info_hash: InfoHash,
+        trackers: Vec<String>,
         db: sled::Db,
         resource_governor: Arc<crate::orchestrator::resource_governor::ResourceGovernor>,
         tenant_id: Option<TenantId>,
@@ -116,6 +119,7 @@ impl BtTaskState {
         Self {
             info_hash,
             torrent: Mutex::new(None),
+            magnet_trackers: trackers,
             bitfield: Mutex::new(None),
             picker: Mutex::new(None),
             registry: Mutex::new(PeerRegistry::new()),

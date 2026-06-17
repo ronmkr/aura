@@ -202,6 +202,7 @@ impl Orchestrator {
                                         crate::worker::bittorrent::task::BtTaskFromMagnetArgs {
                                             id,
                                             info_hash: m.info_hash,
+                                            trackers: m.trackers.clone(),
                                             dht_tx,
                                             lpd_tx,
                                             db: orchestrator_handle.db.clone(),

@@ -81,7 +81,7 @@ pub async fn run(args: Args) -> Result<()> {
                     .file_name()
                     .and_then(|s| s.to_str())
                     .map(|s| s.to_string())
-                    .unwrap_or_else(|| "download.bin".to_string()),
+                    .unwrap_or_else(|| aura_core::DEFAULT_TASK_NAME.to_string()),
                 false,
             )
         } else {
@@ -90,7 +90,7 @@ pub async fn run(args: Args) -> Result<()> {
                     .ok()
                     .and_then(|u| u.path_segments()?.next_back()?.to_string().into())
                     .filter(|s: &String| !s.is_empty())
-                    .unwrap_or_else(|| "download.bin".to_string()),
+                    .unwrap_or_else(|| aura_core::DEFAULT_TASK_NAME.to_string()),
                 false,
             )
         };

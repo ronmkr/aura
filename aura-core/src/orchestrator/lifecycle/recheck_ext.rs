@@ -81,6 +81,11 @@ impl Orchestrator {
         } else {
             let checksum = meta_task.checksum.clone();
             let total_length = meta_task.total_length;
+            let saved_progress = if total_length > 0 {
+                Some(meta_task.completed_length as f64 / total_length as f64)
+            } else {
+                None
+            };
             tokio::spawn(async move {
                 let _ = crate::storage::recheck::recheck_non_swarm(
                     meta_id,
@@ -88,6 +93,7 @@ impl Orchestrator {
                     &part_path,
                     total_length,
                     checksum,
+                    saved_progress,
                     subtask_tx,
                     throttle_ms,
                 )

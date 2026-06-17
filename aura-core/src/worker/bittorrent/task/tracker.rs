@@ -40,7 +40,53 @@ impl BtTask {
 
         loop {
             let torrent_opt = self.state.torrent.lock().await.clone();
-            if let Some(torrent) = torrent_opt {
+            let torrent = if let Some(t) = torrent_opt {
+                t
+            } else {
+                let trackers = self.state.magnet_trackers.clone();
+                let announce = trackers.first().cloned().unwrap_or_default();
+                let announce_list = if trackers.is_empty() {
+                    None
+                } else {
+                    Some(trackers.iter().map(|t| vec![t.clone()]).collect())
+                };
+
+                let meta_version = match self.state.info_hash {
+                    crate::InfoHash::V1(_) => None,
+                    crate::InfoHash::V2(_) => Some(2),
+                };
+
+                let info = crate::torrent::Info {
+                    name: crate::DEFAULT_TASK_NAME.to_string(),
+                    piece_length: 16384,
+                    pieces: None,
+                    length: Some(0),
+                    files: None,
+                    meta_version,
+                    file_tree: None,
+                    private: None,
+                };
+
+                crate::torrent::Torrent {
+                    announce,
+                    info,
+                    announce_list,
+                    comment: None,
+                    created_by: None,
+                    creation_date: None,
+                    piece_layers: None,
+                    info_hash_override: Some(self.state.info_hash),
+                }
+            };
+
+            let has_trackers = !torrent.announce.is_empty()
+                || torrent
+                    .announce_list
+                    .as_ref()
+                    .map(|l| !l.is_empty())
+                    .unwrap_or(false);
+
+            if has_trackers {
                 tokio::select! {
                     _ = token.cancelled() => break,
                     res = tracker.announce(&torrent) => {

@@ -20,6 +20,7 @@ fn test_torrent_serialization() {
         created_by: None,
         creation_date: None,
         piece_layers: None,
+        info_hash_override: None,
     };
 
     let encoded = serde_bencode::to_bytes(&torrent).unwrap();
@@ -81,6 +82,7 @@ fn test_flatten_v2_files() {
         created_by: None,
         creation_date: None,
         piece_layers: None,
+        info_hash_override: None,
     };
 
     assert_eq!(torrent.total_length(), 300);
@@ -159,6 +161,7 @@ fn test_block_hash_v2_lookup() {
         created_by: None,
         creation_date: None,
         piece_layers: None,
+        info_hash_override: None,
     };
 
     // Setup temporary sled DB
@@ -204,6 +207,7 @@ fn test_private_torrent() {
         created_by: None,
         creation_date: None,
         piece_layers: None,
+        info_hash_override: None,
     };
     assert!(!torrent_public.is_private());
 
@@ -225,6 +229,7 @@ fn test_private_torrent() {
         created_by: None,
         creation_date: None,
         piece_layers: None,
+        info_hash_override: None,
     };
     assert!(torrent_private.is_private());
 

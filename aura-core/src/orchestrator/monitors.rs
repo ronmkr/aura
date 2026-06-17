@@ -17,6 +17,20 @@ impl Orchestrator {
                 }
 
                 for sub in &mut task.subtasks {
+                    let elapsed_secs = (config.general.event_poll_interval_ms as f64) / 1000.0;
+                    let instant_throughput = if elapsed_secs > 0.0 {
+                        sub.recent_bytes_downloaded as f64 / elapsed_secs
+                    } else {
+                        0.0
+                    };
+                    sub.recent_bytes_downloaded = 0;
+
+                    if sub.ewma_throughput == 0.0 && instant_throughput > 0.0 {
+                        sub.ewma_throughput = instant_throughput;
+                    } else if instant_throughput > 0.0 || sub.ewma_throughput > 0.0 {
+                        sub.ewma_throughput = 0.2 * instant_throughput + 0.8 * sub.ewma_throughput;
+                    }
+
                     if sub.ewma_throughput < config.bandwidth.adaptive_scaling_low_throughput {
                         // Slow source, scale up
                         sub.target_concurrency =

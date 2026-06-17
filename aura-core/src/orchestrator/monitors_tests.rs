@@ -114,6 +114,7 @@ async fn test_check_seed_limits() {
         crate::worker::bittorrent::task::BtTaskFromMagnetArgs {
             id: TaskId(1),
             info_hash: crate::InfoHash::V1([0; 20]),
+            trackers: Vec::new(),
             dht_tx: tokio::sync::mpsc::channel(1).0,
             lpd_tx: tokio::sync::mpsc::channel(1).0,
             db: orchestrator.db.clone(),
@@ -178,6 +179,7 @@ async fn test_check_seed_limits() {
         crate::worker::bittorrent::task::BtTaskFromMagnetArgs {
             id: TaskId(2),
             info_hash: crate::InfoHash::V1([0; 20]),
+            trackers: Vec::new(),
             dht_tx: tokio::sync::mpsc::channel(1).0,
             lpd_tx: tokio::sync::mpsc::channel(1).0,
             db: orchestrator.db.clone(),
@@ -241,6 +243,7 @@ async fn test_check_seed_limits() {
         crate::worker::bittorrent::task::BtTaskFromMagnetArgs {
             id: TaskId(3),
             info_hash: crate::InfoHash::V1([0; 20]),
+            trackers: Vec::new(),
             dht_tx: tokio::sync::mpsc::channel(1).0,
             lpd_tx: tokio::sync::mpsc::channel(1).0,
             db: orchestrator.db.clone(),

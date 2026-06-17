@@ -107,12 +107,14 @@ pub async fn recheck_bittorrent(
 }
 
 /// Runs the recheck validation for an HTTP/FTP task using file size or checksum.
+#[allow(clippy::too_many_arguments)]
 pub async fn recheck_non_swarm(
     task_id: TaskId,
     _sub_id: TaskId,
     part_path: &Path,
     total_length: u64,
     checksum: Option<crate::Checksum>,
+    saved_progress: Option<f64>,
     subtask_tx: mpsc::Sender<SubTaskEvent>,
     throttle_ms: u64,
 ) -> Result<()> {
@@ -245,8 +247,20 @@ pub async fn recheck_non_swarm(
     }
 
     if !checksum_verified {
-        // If checksum check failed or wasn't provided, resume from end of .part file
-        let progress = (file_len as f64 / total_length as f64).clamp(0.0, 1.0);
+        // If checksum check failed or wasn't provided, resume from end of .part file.
+        // However, if the file is pre-allocated or sparse, file_len can be equal to total_length even if incomplete.
+        // In that case, we default to the saved_progress if available.
+        let file_progress = (file_len as f64 / total_length as f64).clamp(0.0, 1.0);
+        let progress = if file_progress >= 1.0 && file_len == total_length {
+            if let Some(sp) = saved_progress {
+                sp.clamp(0.0, 1.0)
+            } else {
+                file_progress
+            }
+        } else {
+            file_progress
+        };
+
         let completed_pieces = (progress * num_pieces as f64) as usize;
 
         for idx in 0..completed_pieces {

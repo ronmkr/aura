@@ -35,6 +35,7 @@ pub struct BtTaskFromFileArgs<'a> {
 pub struct BtTaskFromMagnetArgs {
     pub id: TaskId,
     pub info_hash: InfoHash,
+    pub trackers: Vec<String>,
     pub dht_tx: mpsc::Sender<crate::dht::DhtCommand>,
     pub lpd_tx: mpsc::Sender<crate::lpd::LpdCommand>,
     pub db: sled::Db,
@@ -72,6 +73,7 @@ impl BtTask {
             id: args.id,
             state: Arc::new(BtTaskState::new_magnet(
                 args.info_hash,
+                args.trackers,
                 args.db,
                 args.resource_governor,
                 args.tenant_id,

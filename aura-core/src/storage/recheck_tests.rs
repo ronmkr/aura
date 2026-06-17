@@ -49,6 +49,7 @@ async fn test_recheck_bittorrent_success() {
         created_by: None,
         creation_date: None,
         piece_layers: None,
+        info_hash_override: None,
     };
 
     // Write dummy file to disk
@@ -124,6 +125,7 @@ async fn test_recheck_non_swarm_checksum_match() {
         &part_path,
         content.len() as u64,
         Some(Checksum::Sha256(sha256_hex)),
+        None,
         tx,
         0,
     )
@@ -172,6 +174,7 @@ async fn test_recheck_non_swarm_checksum_mismatch_resume() {
         &part_path,
         100, // Total length is 100, file length is 50 -> 50% done (64 pieces out of 128)
         Some(Checksum::Sha256("wrongchecksum".to_string())),
+        None,
         tx,
         0,
     )

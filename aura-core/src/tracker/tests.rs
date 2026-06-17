@@ -79,6 +79,7 @@ async fn test_bep12_tracker_tiers() {
         created_by: None,
         creation_date: None,
         piece_layers: None,
+        info_hash_override: None,
     };
 
     let peers1 = client.announce(&torrent1).await.unwrap();
@@ -104,6 +105,7 @@ async fn test_bep12_tracker_tiers() {
         created_by: None,
         creation_date: None,
         piece_layers: None,
+        info_hash_override: None,
     };
 
     let hash2 = torrent2.info_hash_v1().unwrap().unwrap();
@@ -152,6 +154,7 @@ async fn test_bep12_tracker_tiers_edge_cases() {
         created_by: None,
         creation_date: None,
         piece_layers: None,
+        info_hash_override: None,
     };
 
     let hash = torrent.info_hash_v1().unwrap().unwrap();
@@ -193,6 +196,7 @@ async fn test_tracker_scrape_http() {
         created_by: None,
         creation_date: None,
         piece_layers: None,
+        info_hash_override: None,
     };
 
     let info_hash = torrent.info_hash_v1().unwrap().unwrap();

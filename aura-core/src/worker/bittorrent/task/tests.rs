@@ -19,6 +19,7 @@ async fn test_bt_task_from_magnet() {
     let task = BtTask::from_magnet(BtTaskFromMagnetArgs {
         id: crate::TaskId(12345),
         info_hash,
+        trackers: Vec::new(),
         dht_tx,
         lpd_tx,
         db,
