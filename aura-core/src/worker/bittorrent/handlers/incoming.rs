@@ -155,39 +155,35 @@ impl BtWorker {
                         if start + data.len() <= buf.len() {
                             buf[start..start + data.len()].copy_from_slice(data);
                             let full_info_dict = buf.clone().freeze();
-                            if let Ok(info_val) = serde_bencode::from_bytes::<
-                                serde_bencode::value::Value,
-                            >(&full_info_dict)
+                            // Manually construct the torrent file bytes around the raw info dict
+                            // This preserves the exact binary representation (and info_hash) of the info dict.
+                            let mut torrent_bytes = Vec::new();
+                            torrent_bytes
+                                .extend_from_slice(b"d8:announce21:http://aura-internal/4:info");
+                            torrent_bytes.extend_from_slice(&full_info_dict);
+                            torrent_bytes.push(b'e');
+
+                            if let Ok(torrent) = crate::torrent::Torrent::from_bytes(&torrent_bytes)
                             {
-                                let mut full_torrent_dict = std::collections::HashMap::new();
-                                full_torrent_dict.insert(b"info".to_vec(), info_val);
-                                full_torrent_dict.insert(
-                                    b"announce".to_vec(),
-                                    serde_bencode::value::Value::Bytes(
-                                        b"http://aura-internal/".to_vec(),
-                                    ),
-                                );
-                                if let Ok(torrent_bytes) = serde_bencode::to_bytes(
-                                    &serde_bencode::value::Value::Dict(full_torrent_dict),
-                                ) {
-                                    if let Ok(torrent) =
-                                        crate::torrent::Torrent::from_bytes(&torrent_bytes)
-                                    {
-                                        if let Ok(Some(hash)) = torrent.info_hash_v1() {
-                                            if self.info_hash.matches_handshake(&hash) {
-                                                let _ = ctx
-                                                    .subtask_tx
-                                                    .send(SubTaskEvent::MetadataReceived(
-                                                        ctx.meta_id,
-                                                        ctx.sub_id,
-                                                        Box::new(torrent),
-                                                    ))
-                                                    .await;
-                                                self.trigger_request(ctx).await?;
-                                            }
-                                        }
+                                if let Ok(Some(hash)) = torrent.info_hash_v1() {
+                                    if self.info_hash.matches_handshake(&hash) {
+                                        let _ = ctx
+                                            .subtask_tx
+                                            .send(SubTaskEvent::MetadataReceived(
+                                                ctx.meta_id,
+                                                ctx.sub_id,
+                                                Box::new(torrent),
+                                            ))
+                                            .await;
+                                        self.trigger_request(ctx).await?;
+                                    } else {
+                                        tracing::warn!(addr = %self.peer_addr, "Metadata info_hash mismatch after download");
                                     }
+                                } else {
+                                    tracing::warn!(addr = %self.peer_addr, "Failed to compute info_hash from downloaded metadata");
                                 }
+                            } else {
+                                tracing::warn!(addr = %self.peer_addr, "Failed to parse downloaded metadata as Torrent");
                             }
                         }
                     }
