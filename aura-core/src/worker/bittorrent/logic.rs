@@ -1,6 +1,6 @@
 use super::handlers::PeerHandlerContext;
 use super::protocol::{MetadataMessage, PeerMessage, BLOCK_SIZE};
-use crate::{Error, Result};
+use crate::Result;
 use bytes::BytesMut;
 use futures_util::SinkExt;
 use tracing::{debug, info, warn};
@@ -18,22 +18,34 @@ impl super::BtWorker {
         let torrent = match torrent_guard.as_ref() {
             Some(t) => t,
             None => {
-                if let Some(metadata_id) = self.ut_metadata_id {
-                    debug!(addr = %self.peer_addr, "Requesting metadata piece 0");
-                    let msg = MetadataMessage {
-                        msg_type: 0,
-                        piece: 0,
-                        total_size: None,
-                    };
-                    let payload = serde_bencode::to_bytes(&msg).map_err(|e| {
-                        Error::Protocol(format!("Failed to encode metadata request: {}", e))
-                    })?;
-                    ctx.framed
-                        .send(PeerMessage::Extended {
-                            id: metadata_id,
-                            payload: payload.into(),
-                        })
-                        .await?;
+                if !self.metadata_requested {
+                    if let Some(metadata_id) = self.ut_metadata_id {
+                        self.metadata_requested = true;
+                        let total_pieces = if let Some(ref buf) = self.metadata_buffer {
+                            buf.len()
+                                .div_ceil(crate::worker::bittorrent::protocol::BLOCK_SIZE as usize)
+                        } else {
+                            1
+                        };
+
+                        for piece in 0..total_pieces {
+                            debug!(addr = %self.peer_addr, piece, "Requesting metadata piece");
+                            let msg = MetadataMessage {
+                                msg_type: 0,
+                                piece: piece as u32,
+                                total_size: None,
+                            };
+                            if let Ok(payload) = serde_bencode::to_bytes(&msg) {
+                                let _ = ctx
+                                    .framed
+                                    .send(PeerMessage::Extended {
+                                        id: metadata_id,
+                                        payload: payload.into(),
+                                    })
+                                    .await;
+                            }
+                        }
+                    }
                 }
                 return Ok(());
             }

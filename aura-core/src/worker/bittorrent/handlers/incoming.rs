@@ -96,6 +96,9 @@ impl BtWorker {
                                 self.trigger_request(ctx).await?;
                             }
                         }
+                    } else if let Err(e) = serde_bencode::from_bytes::<ExtendedHandshake>(&payload)
+                    {
+                        tracing::warn!(addr = %self.peer_addr, error = %e, "Failed to parse ExtendedHandshake");
                     }
                     Ok(true)
                 } else if Some(id) == self.ut_metadata_id {
@@ -152,34 +155,36 @@ impl BtWorker {
                         if start + data.len() <= buf.len() {
                             buf[start..start + data.len()].copy_from_slice(data);
                             let full_info_dict = buf.clone().freeze();
-                            let mut full_torrent_dict = std::collections::HashMap::new();
-                            full_torrent_dict.insert(
-                                b"info".to_vec(),
-                                serde_bencode::value::Value::Bytes(full_info_dict.to_vec()),
-                            );
-                            full_torrent_dict.insert(
-                                b"announce".to_vec(),
-                                serde_bencode::value::Value::Bytes(
-                                    b"http://aura-internal/".to_vec(),
-                                ),
-                            );
-                            if let Ok(torrent_bytes) = serde_bencode::to_bytes(
-                                &serde_bencode::value::Value::Dict(full_torrent_dict),
-                            ) {
-                                if let Ok(torrent) =
-                                    crate::torrent::Torrent::from_bytes(&torrent_bytes)
-                                {
-                                    if let Ok(Some(hash)) = torrent.info_hash_v1() {
-                                        if self.info_hash.matches_handshake(&hash) {
-                                            let _ = ctx
-                                                .subtask_tx
-                                                .send(SubTaskEvent::MetadataReceived(
-                                                    ctx.meta_id,
-                                                    ctx.sub_id,
-                                                    Box::new(torrent),
-                                                ))
-                                                .await;
-                                            self.trigger_request(ctx).await?;
+                            if let Ok(info_val) = serde_bencode::from_bytes::<
+                                serde_bencode::value::Value,
+                            >(&full_info_dict)
+                            {
+                                let mut full_torrent_dict = std::collections::HashMap::new();
+                                full_torrent_dict.insert(b"info".to_vec(), info_val);
+                                full_torrent_dict.insert(
+                                    b"announce".to_vec(),
+                                    serde_bencode::value::Value::Bytes(
+                                        b"http://aura-internal/".to_vec(),
+                                    ),
+                                );
+                                if let Ok(torrent_bytes) = serde_bencode::to_bytes(
+                                    &serde_bencode::value::Value::Dict(full_torrent_dict),
+                                ) {
+                                    if let Ok(torrent) =
+                                        crate::torrent::Torrent::from_bytes(&torrent_bytes)
+                                    {
+                                        if let Ok(Some(hash)) = torrent.info_hash_v1() {
+                                            if self.info_hash.matches_handshake(&hash) {
+                                                let _ = ctx
+                                                    .subtask_tx
+                                                    .send(SubTaskEvent::MetadataReceived(
+                                                        ctx.meta_id,
+                                                        ctx.sub_id,
+                                                        Box::new(torrent),
+                                                    ))
+                                                    .await;
+                                                self.trigger_request(ctx).await?;
+                                            }
                                         }
                                     }
                                 }
